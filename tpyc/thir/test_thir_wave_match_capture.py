@@ -26,7 +26,8 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
+from .testutil import (
+    _reject_tally, _lower_ctx, _lower_ctx_witnessed, _fn,
                        _assert_byte_identical, _assert_routes_byte_identical,
                        _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
@@ -38,13 +39,8 @@ def _body(thir, name: str) -> str:
     return buf.getvalue()
 
 
-def _fallback(src: str) -> dict:
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str) -> dict:
+    return _reject_tally(src)
 
 
 _HOLDER = (
@@ -181,7 +177,7 @@ class TestKeywordCaptureFamilies:
                          "        case _:\n"
                          "            return -1\n"
                          "    return 0\n")
-        assert "body:stmt.match" in _fallback(src)
+        assert "body:stmt.match" in _reject_tags(src)
 
 
 class TestMatchValueTupleHoist:

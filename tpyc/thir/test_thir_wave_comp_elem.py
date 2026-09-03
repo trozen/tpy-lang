@@ -7,6 +7,8 @@ Boundary: a set comp keeps rejecting (unwitnessed kind)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _fn,
     _lower_ctx_witnessed,
@@ -49,9 +51,7 @@ class TestCompElement:
             "    d = {'s': {x * 2 for x in xs}}\n"
             "    print(d)\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.container_literal")
 
 
 class TestLiteralIterableComp:
@@ -78,9 +78,7 @@ class TestLiteralIterableComp:
             "    r = [len(x) for x in ['a', 'bb']]\n"
             "    print(r, len(x))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.list_comp")
 
 
 class TestOwnedElemTempFlush:
@@ -148,6 +146,5 @@ class TestOwnedElemTempFlush:
             "    xs: Array[Box[Int32], 3] = [Box(v) for v in src]\n"
             "    print(len(xs), xs[0].get())\n"
             "main()\n")
-        thir, _faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_scalar")

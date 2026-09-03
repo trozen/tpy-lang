@@ -13,6 +13,7 @@ test_thir_wave_grind12.TestAwaitBoundCopyRoutes.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _compile,
     _entry,
@@ -20,15 +21,12 @@ from .testutil import (
 
 
 def _gen(source):
+    """`(compiler, (hpp, cpp))` from one emit -- the compiler is kept for the
+    face-witness reads."""
     compiler, modules = _compile(source)
-    entry = _entry(modules)
-    outs = {}
-    for flag in (False, True):
-        outs[flag] = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=flag))
-    return compiler, outs[False], outs[True]
+    return compiler, compiler.generate_code_to_strings(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                comment_line_numbers=False))
 
 
 _PRE = (
@@ -70,9 +68,7 @@ class TestReturnCopyRecordRoutes:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "C __tpy_async_ret = C(__self);" in thir[1]
         w = compiler._thir_face_witnesses
         assert w.get("res.return_copy_record", 0) >= 1
@@ -94,11 +90,7 @@ class TestCopyTempAtReturnSeamDefers:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        _assert_rejects_at(dict(compiler._thir_fallback),
-                           "resumable:expr.call",
-                           "call.arg_shape.own_record_f1")
+        _assert_rejects_at(_reject_tally(self.SRC), 'resumable:expr.call', 'call.arg_shape.own_record_f1')
 
 
 class TestFrameSlotEmplaceTempRoutes:
@@ -124,7 +116,5 @@ class TestFrameSlotEmplaceTempRoutes:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert fb == {}, fb

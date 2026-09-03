@@ -7,6 +7,7 @@ reject (`return.genrec_source`), byte-identically."""
 
 from ..codegen_cpp import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -65,12 +66,4 @@ class TestGenrecReturnNameStaysFenced:
     )
 
     def test_name_source_stays_ast(self):
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any("return.genrec_source" in k
-                   for k in compiler._thir_fallback), compiler._thir_fallback
+        assert any(('return.genrec_source' in k for k in _reject_tally(self.SRC))), _reject_tally(self.SRC)

@@ -7,6 +7,7 @@ lift); the mixed unpack stays on the AST path."""
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_rejects_at,
     _assert_routes_byte_identical,
@@ -78,8 +79,8 @@ class TestMixedOwnTupleAliasDecl:
                "    a, b = m.mixed(c)\n"
                "    print(a.val, b.val)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.ret_type")
 
 
 class TestMixedOwnTupleFrameSlot:
@@ -154,4 +155,3 @@ class TestMixedOwnTupleFrameSlot:
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "resumable:expr.call",
                            "call.arg_shape.tuple")
-        _assert_byte_identical(src)

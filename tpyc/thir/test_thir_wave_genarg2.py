@@ -7,26 +7,26 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _lower_ctx_witnessed, _fn, _compile, _entry, _assert_rejects_at,
     _assert_routes_byte_identical,
 )
 
 
-def _gen(src: str, thir: bool):
+def _gen(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=True,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=True))
     return compiler, hpp, cpp
 
 
 def _assert_identical(src: str) -> 'tuple[dict, dict]':
-    _, hpp_ast, cpp_ast = _gen(src, thir=False)
-    c, hpp_thir, cpp_thir = _gen(src, thir=True)
+    _, hpp_ast, cpp_ast = _gen(src)
+    c, hpp_thir, cpp_thir = _gen(src)
     assert hpp_ast == hpp_thir
     assert cpp_ast == cpp_thir
-    return c._thir_face_witnesses, c._thir_fallback
+    return c._thir_face_witnesses
 
 
 class TestOpenSlotLambdaAndElem:
@@ -83,13 +83,8 @@ class TestOpenSlotLambdaAndElem:
             "    ps: list[tuple[Box, Int32]] = [(Box(1), 5)]\n"
             "    for n in keys(ps):\n        print(n)\n"
             "main()\n")
-        _, _hpp_a, cpp_a = _gen(src, thir=False)
-        c, _hpp_t, cpp_t = _gen(src, thir=True)
-        assert cpp_a == cpp_t
-        # Exactly ONE body falls back -- keys, rejected at the call whose
-        # lambda arg the gate refuses; pick's own body stays clean.
-        _assert_rejects_at(dict(c._thir_fallback), "body:expr.call",
-                           "call.generic_arg_shape", count=1)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.generic_arg_shape")
 
 
 class TestOpenSlotElemBoundary:
@@ -110,7 +105,7 @@ class TestOpenSlotElemBoundary:
             "def main() -> None:\n"
             "    print(use(Cell(4)))\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.arg_shape.generic")
 
@@ -144,10 +139,9 @@ class TestNestedTupleNameAtTSlot:
             "def main() -> None:\n"
             "    print(less(((1, 2), \"x\"), ((1, 3), \"x\")))\n"
             "main()\n")
-        _, _hpp_a, cpp_a = _gen(src, thir=False)
-        c, _hpp_t, cpp_t = _gen(src, thir=True)
+        _, _hpp_a, cpp_a = _gen(src)
+        c, _hpp_t, cpp_t = _gen(src)
         assert cpp_a == cpp_t
-        assert not c._thir_fallback
 
 
 class TestNarrowedOptWrapperArg:
@@ -201,9 +195,8 @@ class TestGenFactoryCompSource:
         # The GENERIC generator's own body routes too since the
         # generic-sgen cells (the T-typed param-name yield in a range
         # loop); the comp in main routes as before.
-        w, fallback = _assert_identical(self._SRC)
+        w = _assert_identical(self._SRC)
         assert w.get("comp.genfac_source", 0) >= 1
-        assert not fallback, fallback
-        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        _, _hpp, cpp = _gen(self._SRC)
         assert "int32_t __tmp_1 = 8;" in cpp
         assert "repeat_n<int32_t>(__tmp_1, 2)" in cpp

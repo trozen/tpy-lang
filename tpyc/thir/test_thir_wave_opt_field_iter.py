@@ -9,6 +9,8 @@ container or str literal.
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _lower_ctx_witnessed,
     _thir_ctx, _thir_ctx_witnessed,
 )
@@ -62,7 +64,7 @@ class TestNarrowedOptContainerFieldForEach:
         # resumable seam (pinned there).
         src = _holder("list[Int32]", "[Int32(1)]", "x", "n += x")
         _, faces, fb = _thir_ctx_witnessed(src)
-        assert fb == {}, fb
+        assert not fb
         assert not faces.get("field.narrowed_opt_container_iterable")
         assert faces["mil.optional_container_literal"] >= 1
 
@@ -122,9 +124,8 @@ class TestNarrowedOptContainerFieldForEachBoundaries:
                "def main() -> None:\n"
                "    print(H().total())\n"
                "main()\n")
-        _ctx, fb = _thir_ctx(src)
-        assert fb == {"body:stmt.for_each:field.result_type": 1}, fb
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:field.result_type")
 
     def test_chain_receiver_keeps_rejecting(self):
         # BOUNDARY: the for-head route admits a plain record/self receiver
@@ -149,9 +150,8 @@ class TestNarrowedOptContainerFieldForEachBoundaries:
                "def main() -> None:\n"
                "    print(g(O()))\n"
                "main()\n")
-        _ctx, fb = _thir_ctx(src)
-        assert fb == {"body:stmt.for_each:foreach.field_parent": 1}, fb
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:foreach.field_parent")
 
     def test_borrow_bind_local_does_not_reach_the_row(self):
         # BOUNDARY: the row is ITERABLE-only. A local bound to the narrowed
@@ -173,7 +173,7 @@ class TestNarrowedOptContainerFieldForEachBoundaries:
                "    print(H().grow())\n"
                "main()\n")
         _, faces, fb = _thir_ctx_witnessed(src)
-        assert fb == {}, fb
+        assert not fb
         assert not faces.get("field.narrowed_opt_container_iterable")
         _assert_routes_byte_identical(src)
 
@@ -199,7 +199,7 @@ class TestNarrowedOptContainerFieldResumable:
                "    print(sum(H().each()))\n"
                "main()\n")
         _, faces, fb = _thir_ctx_witnessed(src)
-        assert fb == {}, fb
+        assert not fb
         assert faces["res.for_narrowed_opt_field_src"] >= 1
         assert faces["field.narrowed_opt_container_iterable"] >= 1
         hpp, cpp = _assert_routes_byte_identical(src)
@@ -225,7 +225,7 @@ class TestNarrowedOptContainerFieldResumable:
                "    print(asyncio.run(H().total()))\n"
                "main()\n")
         _, faces, fb = _thir_ctx_witnessed(src)
-        assert fb == {}, fb
+        assert not fb
         assert faces["res.for_narrowed_opt_field_src"] >= 1
         assert faces["field.narrowed_opt_container_iterable"] >= 1
         hpp, cpp = _assert_routes_byte_identical(src)
@@ -270,7 +270,7 @@ class TestOptionalFieldMilLiterals:
                "    print(H().first())\n"
                "main()\n")
         _, faces, fb = _thir_ctx_witnessed(src)
-        assert fb == {}, fb
+        assert not fb
         assert faces["mil.optional_container_literal"] >= 1
         hpp, cpp = _assert_routes_byte_identical(src)
         assert "f(std::array<int32_t, 3>{1, 2, 3})" in hpp + cpp
@@ -289,7 +289,7 @@ class TestOptionalFieldMilLiterals:
                "    print(H().size())\n"
                "main()\n")
         _, faces, fb = _thir_ctx_witnessed(src)
-        assert fb == {}, fb
+        assert not fb
         assert faces["mil.optional_str_literal"] >= 1
         hpp, cpp = _assert_routes_byte_identical(src)
         assert "s(\"xy\")" in hpp + cpp
@@ -312,9 +312,8 @@ class TestOptionalFieldMilBoundaries:
                "def main() -> None:\n"
                "    print(H().size())\n"
                "main()\n")
-        _ctx, fb = _thir_ctx(src)
-        assert fb == {"ctor:ctor.mil_field.optional.bytesliteral": 1}, fb
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.optional.bytesliteral")
 
     def test_strview_inner_keeps_rejecting(self):
         # BOUNDARY: a VIEW inner (`optional<string_view>`) takes the AST's
@@ -329,9 +328,8 @@ class TestOptionalFieldMilBoundaries:
                "def main() -> None:\n"
                "    print(H().has())\n"
                "main()\n")
-        _ctx, fb = _thir_ctx(src)
-        assert fb == {"ctor:ctor.mil_field.optional.strliteral": 1}, fb
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.optional.strliteral")
 
     def test_bytearray_native_call_keeps_rejecting(self):
         # BOUNDARY: the container-literal row admits LITERAL sources only; a
@@ -348,6 +346,5 @@ class TestOptionalFieldMilBoundaries:
                "def main() -> None:\n"
                "    print(H().size())\n"
                "main()\n")
-        _ctx, fb = _thir_ctx(src)
-        assert fb == {"ctor:ctor.mil_field.optional.native_call": 1}, fb
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.optional.native_call")

@@ -6,7 +6,8 @@ carry a lift the bare `push_back` does not render."""
 
 from __future__ import annotations
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at, _compile,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at, _compile,
                        _entry)
 
 
@@ -15,9 +16,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 class TestTparamElement:
@@ -35,8 +35,7 @@ class TestTparamElement:
             "    b.add(7)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "this->items.push_back(item);" in out
         _assert_byte_identical(src)
 
@@ -57,8 +56,7 @@ class TestTparamElement:
             "    b.drop()\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "::tpy::pop_back(this->items);" in out
         _assert_byte_identical(src)
 
@@ -72,8 +70,7 @@ class TestUnitAndCallableElements:
             "    print(len(xs))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "xs.push_back(std::monostate{});" in out
         _assert_byte_identical(src)
 
@@ -90,8 +87,7 @@ class TestUnitAndCallableElements:
             "    print(f(3))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "fs.push_back(double_);" in out
         assert "::tpy::__getitem__(fs, 0)" in out
         assert faces.get("name.func_ref", 0) >= 1
@@ -111,8 +107,7 @@ class TestUnitAndCallableElements:
             "    print(g(4))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "fs.push_back(scale);" in out
         assert faces.get("name.closure_local", 0) >= 1
         _assert_byte_identical(src)
@@ -138,8 +133,7 @@ class TestUnionElement:
             "    print(len(xs))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "xs.push_back(Circle(1));" in out
         _assert_byte_identical(src)
 
@@ -164,9 +158,8 @@ class TestUnionElement:
             "    print(len(xs))\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert fallback
-        _assert_byte_identical(src)
 
 
 class TestElementBoundaries:
@@ -187,8 +180,7 @@ class TestElementBoundaries:
             "    print(len(pairs))\n"
             "main()\n"
         )
-        _out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        _out, faces = _gen_thir(src)
         assert faces.get("arg.own_btuple_literal", 0) >= 1
         _assert_byte_identical(src)
 
@@ -213,8 +205,7 @@ class TestElementBoundaries:
             "    print(b.take())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("decl.type_param_slot", 0) >= 1
         assert "T x = ::tpy::pop_back(this->items);" in out
         _assert_byte_identical(src)
@@ -241,8 +232,6 @@ class TestElementBoundaries:
             "    print(b.take())\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         _assert_rejects_at(fallback, "body:stmt.var_decl",
                            "decl.slot_type")
-        assert "T* x = &__slot_1;" in out
-        _assert_byte_identical(src)

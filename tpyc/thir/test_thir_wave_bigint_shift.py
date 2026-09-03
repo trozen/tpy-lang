@@ -3,7 +3,9 @@ operator on both paths -- `_gen_binop` folds only when `target_type is None`."""
 
 from __future__ import annotations
 
-from .testutil import (_lower_ctx, _fn, _assert_byte_identical,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _lower_ctx, _fn, _assert_byte_identical,
                        _assert_routes_byte_identical)
 
 
@@ -88,9 +90,8 @@ class TestBigIntBinopBoundaries:
                "def use() -> None:\n"
                "    c = Counter()\n"
                "    print(c.bump((1 << 33) + 1))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.+")
 
     def test_bigint_free_call_arg_binop_still_defers(self):
         # A BigInt (non-fixed) free-call param arg stays outside the row:
@@ -100,6 +101,5 @@ class TestBigIntBinopBoundaries:
                "    return x\n"
                "def use() -> None:\n"
                "    print(take(1 << 62))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:binop.shape.<<")

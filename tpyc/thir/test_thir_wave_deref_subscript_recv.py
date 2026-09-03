@@ -13,7 +13,8 @@ of being pre-screened by the receiver predicate -- the boundary class pins
 each one at the landmark that actually rejects it.
 """
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
 
@@ -31,13 +32,8 @@ _PET = ("from tpy import Int32, Own\n"
         "        self.n = self.n + d\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestSubscriptDerefReceiver:
@@ -185,9 +181,8 @@ class TestSubscriptDerefReceiverBoundary:
                + "    b.xs.append(Box(Pet(3)))\n"
                + "    print(b.hit())\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.expr_stmt",
-                           "subscript.record_getitem")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.record_getitem")
 
     def test_local_record_getitem_keeps_rejecting(self):
         src = (self._BAG
@@ -200,9 +195,8 @@ class TestSubscriptDerefReceiverBoundary:
                + "    b.xs.append(Box(Pet(3)))\n"
                + "    print(use(b))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.return",
-                           "subscript.record_getitem")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:subscript.record_getitem")
 
     def test_slice_getitem_keeps_rejecting(self):
         # A user `__getitem__(slice)` returning a wrapper is the one shape
@@ -218,9 +212,8 @@ class TestSubscriptDerefReceiverBoundary:
                + "    b.xs.append(Box(Pet(3)))\n"
                + "    print(use(b))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.return",
-                           "subscript.slice_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:subscript.slice_shape")
 
     def test_subscript_over_subscript_keeps_rejecting(self):
         src = (_PET
@@ -233,9 +226,8 @@ class TestSubscriptDerefReceiverBoundary:
                + "    pp.append(inner)\n"
                + "    print(use(pp))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.return",
-                           "subscript.recv.subscript")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:subscript.recv.subscript")
 
     def test_unproven_optional_element_keeps_rejecting(self):
         # An Optional element read carries the call's null-check marker, so
@@ -248,6 +240,5 @@ class TestSubscriptDerefReceiverBoundary:
                + "    xs: list[Box[Pet] | None] = [Box(Pet(3))]\n"
                + "    print(use(xs))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.method_call",
-                           "method.marker.deref.recv_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.marker.deref.recv_shape")

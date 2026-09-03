@@ -11,7 +11,7 @@ defaults) already route; these are the residue left rejected on purpose."""
 from __future__ import annotations
 
 from ..compilation_context import activate_compiler
-from .fallback import begin_attempt
+from .reject import begin_attempt
 from .lower import iter_module_callables, lower_function
 from .testutil import (_assert_byte_identical, _assert_rejects_at,
                        _compile, _entry)
@@ -136,8 +136,7 @@ class TestExprCalleeRoutes:
         compiler, modules = _compile(self._PROG)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "(mk(10))(5)" in cpp
         assert "(::tpy::__getitem__(fns, 0))(100)" in cpp
 

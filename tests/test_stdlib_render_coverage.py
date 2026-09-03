@@ -10,19 +10,13 @@ in ONE expected/ tree, where two module names mapping to one snapshot path
 would overwrite each other just as quietly.
 
 The first two guards are name-level scans: no compile, no toolchain. The third
-compiles the library and emits it through THIR alone, because what it asks --
-does anything ever DISPATCH to each arg-table family -- has no other reliable
-answer and needs only one emitter. It lives here rather than beside the
-AST/THIR byte-diff (tests/test_thir_stdlib_gate.py) so that deleting the diff
-does not take a coverage guard with it that has nothing to do with having two
-authors.
+compiles the library and emits it, because what it asks -- does anything ever
+DISPATCH to each arg-table family -- has no other reliable answer.
 """
 
 from __future__ import annotations
 
 import ast
-import dataclasses
-import os
 from pathlib import Path
 
 import pytest
@@ -122,17 +116,14 @@ def compile_lib_tpy(tmp_path: Path) -> tuple[Compiler, list]:
     return compiler, compiled
 
 
-def test_every_arg_family_is_reached(request: pytest.FixtureRequest,
-                                     tmp_path: Path) -> None:
+def test_every_arg_family_is_reached(tmp_path: Path) -> None:
     """Every registered arg-table family is REACHED by the stdlib sweep.
 
     Not an audit join against the ladders the table replaced -- that one proved
     a cell decides what its ladder decided, and is gone with them. This proves
-    anything ever asks. The second question has no other reliable answer: an
-    unreached family's bodies fall back, a fallback emits the AST's own bytes,
-    so a byte-diff stays silent; the fallback ratchet notices only while it
-    happens to carry no slack; and only a minority of the table's cells carry a
-    face, so the zero-witness census covers some rows and no family as a whole.
+    anything ever asks, which has no other reliable answer: only a minority of
+    the table's cells carry a face, so the zero-witness census covers some rows
+    and no family as a whole.
 
     Asserted over ~2800 stdlib bodies through every callee shape the library
     uses, which no single corpus case reaches. Non-zero, never a fixed count:
@@ -142,29 +133,15 @@ def test_every_arg_family_is_reached(request: pytest.FixtureRequest,
     that is the gate saying the family has no witness, which is the thing
     worth knowing.
     """
-    if request.config.getoption("--no-thir"):
-        pytest.skip("--no-thir disables THIR entirely")
-    if (request.config.getoption("--update-snapshots")
-            or os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")):
-        # Snapshot authoring runs the AST path; a full second library compile
-        # through THIR buys nothing there and can fail a regeneration run over
-        # a property regeneration does not touch.
-        pytest.skip("--update-snapshots authors snapshots from the AST path")
     assert len(THIR_ARG_FAMILIES) >= MIN_ARG_FAMILIES, (
         f"only {len(THIR_ARG_FAMILIES)} arg-table families registered "
         f"(expected >= {MIN_ARG_FAMILIES}) -- the snapshot was taken before "
         f"the sink modules were imported, so this gate asserts nothing")
 
     compiler, compiled = compile_lib_tpy(tmp_path)
-    # thir_all_modules lifts the user-module scoping gate (compiler.py
-    # `_make_codegen`) -- the same knob --thir-stdlib uses, so routing keeps
-    # one definition. Only THIR emits: the question is which families lowering
-    # dispatches to, which one author answers.
-    thir_opts = dataclasses.replace(TEST_CODEGEN_OPTIONS, thir_codegen=True,
-                                    thir_all_modules=True)
     for mod in compiled:
         if not mod.is_entry_point:
-            compiler.generate_code_and_thir(mod, thir_opts)
+            compiler.generate_code_and_thir(mod, TEST_CODEGEN_OPTIONS)
 
     reached = arg_table.reached_families(compiler)
     missing = [f for f in THIR_ARG_FAMILIES if f not in reached]

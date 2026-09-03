@@ -12,6 +12,7 @@ members at their last use (`return (w1, w2, w3)` ->
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -19,14 +20,8 @@ from .testutil import (
 )
 
 
-def _thir_fallbacks(source, extra_lib_dirs=None):
-    compiler, modules = _compile(source, extra_lib_dirs=extra_lib_dirs)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source, extra_lib_dirs=None):
+    return _reject_tally(source, extra_lib_dirs=extra_lib_dirs)
 
 
 class TestPendingViewOwnCtorArg:
@@ -68,7 +63,7 @@ class TestPendingViewOwnCtorArg:
             "    print(1)\n"
             "main()\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert "body:stmt.var_decl:decl.slot_type" in fell, fell
 
     def test_owned_str_name_at_own_str_slot_takes_the_owned_temp(self):
@@ -130,7 +125,7 @@ class TestOwnTupleMovableNameReturn:
             "    n = Node(1)\n"
             "    return (n, n)\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert "body:stmt.return:return.tuple_source" in fell, fell
 
 

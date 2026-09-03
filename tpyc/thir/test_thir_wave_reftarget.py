@@ -9,6 +9,7 @@ inferred-@readonly method's self)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -209,4 +210,3 @@ class TestFieldReceiverItemsUnpack:
         _ctx, fell = _thir_ctx(self._CHAIN_SRC)
         _assert_rejects_at(fell, "body:stmt.for_each",
                            shape="iter.method_call_shape")
-        _assert_byte_identical(self._CHAIN_SRC)

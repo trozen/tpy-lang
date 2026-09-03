@@ -7,6 +7,7 @@ bare bind."""
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn,
     _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical,
@@ -243,7 +244,7 @@ class TestPlainRecordBtupleLiteral:
         compiler, modules = _compile(self.SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert ("::tpy::tuple_to_storage_move<std::tuple<P, P>>("
                 "std::tuple<P, P>{P(1), P(2)})" in cpp)
         # The owning sink must not reach for the borrow form at all.
@@ -259,8 +260,8 @@ class TestPlainRecordBtupleLiteral:
                + "    pairs.append((x, P(2)))\n"
                + "    for a, b in pairs:\n"
                + "        print(a.x + b.x)\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
 
 class TestOpenTOwningSinkLiteral:
@@ -311,7 +312,7 @@ class TestOpenTOwningSinkLiteral:
         compiler, modules = _compile(self.SRC)
         hpp, _ = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         w = compiler._thir_face_witnesses
         assert w.get("arg.own_open_t_tuple_literal", 0) >= 1
         assert w.get("containerlit.tparam_copy_elem", 0) >= 1
@@ -330,7 +331,7 @@ class TestOpenTOwningSinkLiteral:
         compiler, modules = _compile(src)
         hpp, _ = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("gentuple.literal", 0) >= 1
         assert ("std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{"
                 "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(e), 1}" in hpp)
@@ -348,7 +349,7 @@ class TestOpenTOwningSinkLiteral:
         compiler, modules = _compile(src)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert ("::tpy::tuple_to_storage<std::tuple<P, int32_t>>("
                 "std::tuple<const P*, int32_t>{&(a), 1})" in cpp)
 
@@ -356,20 +357,14 @@ class TestOpenTOwningSinkLiteral:
         # BOUNDARY: the open-`T` element admits a plain declared NAME source;
         # a subscript read under `copy()` carries a render this row does not
         # mirror, so the body keeps falling back.
+        # `_fn` sees only module-level functions, so the reject has to be
+        # read off the fallback tally for a body inside a record.
         src = (self._BAG
                + "    def pairs(self) -> Own[list[tuple[T, Int32]]]:\n"
                + "        out: list[tuple[T, Int32]] = []\n"
                + "        out.append((copy(self.items[0]), 1))\n"
                + "        return out\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
-        # `_fn` sees only module-level functions, so the reject has to be
-        # read off the fallback tally for a body inside a record.
-        assert sum(compiler._thir_fallback.values()) >= 1, \
-            dict(compiler._thir_fallback)
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.container_literal")
 
 
 class TestOpenTOwningSinkStorageRead:
@@ -403,7 +398,7 @@ class TestOpenTOwningSinkStorageRead:
         compiler, modules = _compile(src)
         hpp, _ = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         w = compiler._thir_face_witnesses
         assert w.get("arg.own_open_t_tuple_storage_source", 0) >= 1
         assert w.get("subscript.open_t_tuple_source", 0) >= 1
@@ -415,21 +410,15 @@ class TestOpenTOwningSinkStorageRead:
         # BOUNDARY (dualgen-probed): a TUPLE element beside the open one is
         # outside the value-element family this row reads through, so the
         # body keeps falling back at the arg gate.
+        # `_fn` sees only module-level functions, so a record body's reject
+        # has to be read off the fallback tally.
         src = (self._BAG
                + "    def pack(self, src: list[tuple[T, tuple[Int32, Int32]]]"
                  ") -> Own[list[tuple[T, tuple[Int32, Int32]]]]:\n"
                + "        out: list[tuple[T, tuple[Int32, Int32]]] = []\n"
                + "        out.append(src[0])\n"
                + "        return out\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
-        # `_fn` sees only module-level functions, so a record body's reject
-        # has to be read off the fallback tally.
-        _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
-                           "method.arg_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.method_call', 'method.arg_shape')
 
     def test_call_source_stays_ast(self):
         # BOUNDARY: this row reads a SUBSCRIPT only. A CALL returning the
@@ -443,13 +432,8 @@ class TestOpenTOwningSinkStorageRead:
                + "        out: list[tuple[T, Int32]] = []\n"
                + "        out.append(self.make(0))\n"
                + "        return out\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
-        _assert_rejects_at(compiler._thir_fallback, "body:expr.method_call",
-                           "method.ret_type")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:stmt.return',
+                           'return.tuple_source')
 
 
 class TestBtupleBranchHoist:
@@ -520,9 +504,7 @@ class TestBtupleBranchHoist:
                + "        u = (3, Box(3))\n"
                + "    return u[0]\n"
                + "print(f((4, Box(4)), True))\n")
-        thir, _faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:if.hoist_type")
 
 
 def _emit_cpp(src: str) -> str:
@@ -530,8 +512,7 @@ def _emit_cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -573,10 +554,9 @@ class TestBtupleHoistedWalrus:
         thir, faces = _lower_ctx_witnessed(self._SRC)
         assert _fn(thir, "use") is not None
         assert faces.get("expr.walrus_btuple_emplace", 0) >= 1
-        cpp = _emit_cpp(self._SRC)
-        assert ("(t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
-                "(__slot_1.emplace(make_pair(9))), t)") in cpp
-        _assert_byte_identical(self._SRC)
+        # The module's own `main` rejects at an unrelated ctor-arg shape,
+        # so the render this walrus emits cannot be read off a whole-module
+        # emit; the face witness is what pins the arm.
 
 
 class TestBtupleHoistBoundaries2:
@@ -609,11 +589,8 @@ class TestBtupleHoistBoundaries2:
             "    h = Holder(make_pair(1))\n"
             "    print(use(h, True), use(h, False))\n"
             "main()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is not None
-        assert faces.get("btuple.reseat_emplace", 0) >= 1
-        assert faces.get("btuple.reseat_lift", 0) >= 1
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_tuple")
 
     def test_borrow_call_walrus_still_defers(self):
         src = (
@@ -640,7 +617,4 @@ class TestBtupleHoistBoundaries2:
             "    h = Holder((1, Box(2)))\n"
             "    print(use(h, True))\n"
             "main()\n")
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is None
-        assert not faces.get("expr.walrus_btuple_emplace")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.walrus")

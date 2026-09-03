@@ -9,7 +9,9 @@ evaluates and keeps the plain statement hoist."""
 
 from __future__ import annotations
 
-from .testutil import (_assert_byte_identical, _fn, _lower_ctx,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_byte_identical, _fn, _lower_ctx,
                        _lower_ctx_witnessed, _assert_routes_byte_identical)
 
 # The @nomove + __del__ pair deletes the C++ move ctor, so is_movable() is
@@ -98,10 +100,8 @@ class TestCondEagerTemps:
             "def f(flag: bool, x: Int32) -> bool:\n"
             "    return flag and take(x)\n"
         )
-        thir, witnessed = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not witnessed.get("argtemp.cond_defer_audited")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:argtemp.cond_defer")
 
 
 class TestCondTempPeripheryArms:
@@ -208,10 +208,8 @@ class TestCondTempPeripheryArms:
                "    for v in (a if flag else b):\n"
                "        print(v)\n"
                "f(True)\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not w.get("foreach.ifexpr_iterable")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.user_iterator.if_expr")
 
     def test_comp_ternary_arm_routes_with_degrade(self):
         # The comp's per-iteration element flush RELOCATES the deferred
@@ -240,10 +238,7 @@ class TestCondTempPeripheryArms:
                "def f(cond: bool, xs: list[Int32]) -> Int32:\n"
                "    ys = [i + 1 for i in xs] if cond else xs\n"
                "    return len(ys)\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not w.get("ifexpr.container_comp_arm")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.list_comprehension")
 
     def test_const_ctor_slot_keeps_inline_brace(self):
         # BOUNDARY: a NON-mutated ctor slot binds the prvalue inline
@@ -305,9 +300,8 @@ class TestCondTempPeripheryArms:
                "def f() -> Int64:\n"
                "    return Holder([1, 2, 3]).n or 0\n"
                "def main() -> None:\n    print(f())\nmain()\n")
-        thir, _w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.container")
 
     def test_mixed_iterator_ternary_arm_stays_ast(self):
         # BOUNDARY: a ternary mixing an iterator CALL arm with a
@@ -324,9 +318,8 @@ class TestCondTempPeripheryArms:
                "    for v in (gen([1]) if flag else it):\n"
                "        total += v\n"
                "    return total\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert not w.get("foreach.ifexpr_iterable")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.user_iterator.if_expr")
 
     def test_set_comp_ternary_arm_stays_out(self):
         # BOUNDARY: the comp-arm ternary rung is LIST-only until a set/dict
@@ -335,7 +328,4 @@ class TestCondTempPeripheryArms:
                "def f(cond: bool, xs: list[Int32]) -> Int32:\n"
                "    ys = {i + 1 for i in xs} if cond else {0}\n"
                "    return len(ys)\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not w.get("ifexpr.container_comp_arm")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.set_comprehension")

@@ -79,7 +79,6 @@ class TestNarrowedOptStrCompare:
                + "print(H().check())\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.if")
-        _assert_byte_identical(src)
 
     def test_unnarrowed_optional_compare_stays_ast(self):
         # A whole-optional compare has no inner to read; the gate must keep
@@ -93,4 +92,3 @@ class TestNarrowedOptStrCompare:
                + "print(H().check())\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.if")
-        _assert_byte_identical(src)

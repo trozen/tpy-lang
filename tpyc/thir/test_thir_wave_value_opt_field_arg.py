@@ -5,7 +5,8 @@ the slot with no lift, shim or temp -- the field twin of the whole value-opt
 NAME pass-through rows. Corpus witness: http.client's two `connect` bodies
 (`socket.create_connection(addr, self.timeout)` at `float | None`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -16,13 +17,8 @@ _MOD = ("from tpy import Int32\n"
         "    return 0 if timeout is None else 1\n")
 
 
-def _fallback(src: str, extra_lib_dirs=None):
-    compiler, modules = _compile(src, extra_lib_dirs)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str, extra_lib_dirs=None):
+    return _reject_tally(src, extra_lib_dirs=extra_lib_dirs)
 
 
 class TestWholeValueOptFieldArg:
@@ -97,10 +93,9 @@ class TestWholeValueOptFieldArgBoundary:
                "def main() -> None:\n"
                "    print(Conn().go())\n"
                "main()\n")
-        _assert_rejects_at(_fallback(src, [tmp_path]),
+        _assert_rejects_at(_reject_tags(src, [tmp_path]),
                            "body:expr.method_call",
                            "method.qualcall.arg.optional")
-        _assert_byte_identical(src, extra_lib_dirs=[tmp_path])
 
     def test_pointer_repr_optional_field_keeps_its_lift(self, tmp_path):
         # A pointer-repr `Optional[record]` slot takes optional_to_ptr, a

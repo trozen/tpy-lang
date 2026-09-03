@@ -1,14 +1,12 @@
-"""Structural form validator: a second gate beside the whole-corpus byte-diff.
+"""Structural form validator: a lowering-time check the snapshots cannot make.
 
-The byte-parity gate is corpus-observational -- a node carrying a wrong `form`
-tag survives it unless some corpus case happens to observe the difference
-(proven by the F6 review round's THIRCoerce finding: a passthrough defaulting
-`form=VALUE` over a STORAGE source stayed byte-identical). As routing grows
-into the F3+/F4 rungs, where form drives real conversions, this lowering-time
-walk makes a form lie fail loudly at the function that carries it instead of
-waiting for a corpus witness.
+Snapshot parity is corpus-observational -- a node carrying a wrong `form` tag
+survives it unless some case happens to RENDER the difference (a passthrough
+defaulting `form=VALUE` over a STORAGE source emits identical C++). Wherever
+form drives a real conversion this walk makes a form lie fail loudly at the
+function that carries it, instead of waiting for a corpus witness.
 
-Node-local checks (F4 U1):
+Node-local checks:
   * `THIRFormConvert` must convert -- change the form or the (family-internal)
     result type. A no-op convert is a lie: emit would render a conversion
     helper around an already-converted value.
@@ -17,7 +15,7 @@ Node-local checks (F4 U1):
     the result is a view into the source's buffer whatever the source's form,
     so lowering sets BORROW itself.
 
-Sink-position checks (F4 U2 -- where borrow/storage conversions become
+Sink-position checks (where borrow/storage conversions become
 load-bearing across union slots):
   * A field write into a POINTER-LIFTED storage slot (pointer-repr Optional /
     pointer-variant union / pointer-repr tuple) never takes a BORROW value --
@@ -31,10 +29,11 @@ load-bearing across union slots):
   * A BORROW return value requires a borrow-legal return type: a non-value
     type (pointer/pointer-variant), a pointer-repr tuple, or a str/bytes VIEW
     (a `std::string_view` / span return is a legitimate borrow of a value
-    type).
-`THIRBytesLiteral`'s render verdict rides the `form` tag (the bespoke `owned`
-flag was folded in with U2's opening), so bytes literals sit on the validated
-axis like every other expression.
+    type) -- or else a borrow whose OWN type is a value record, whose `T&`
+    render copy-constructs into the by-value `T` slot.
+`THIRBytesLiteral`'s render verdict rides the `form` tag rather than a bespoke
+`owned` flag, so bytes literals sit on the validated axis like every other
+expression.
 
 Every lowered body is validated, whatever its shape: ordinary functions and
 constructors through `validate_function` / `validate_constructor`, and the
@@ -46,6 +45,7 @@ holds apart in seam tables rather than one linear body -- through
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 
 from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ..type_def_registry import (
@@ -115,8 +115,8 @@ def _check_node(owner: str, node: THIRNode) -> None:
             _fail(owner, node,
                   "dereferenced receiver behind an arrow member access")
     if isinstance(node, THIRCall):
-        # Explicit template args ride only the plain / imported spellings --
-        # the AST's native and cpp_template arms never emit them.
+        # Explicit template args ride only the plain / imported spellings: a
+        # native or `cpp_template` callee spells its own arguments.
         if node.template_args_cpp and (node.native_name is not None
                                        or node.cpp_template is not None):
             _fail(owner, node,
@@ -220,8 +220,7 @@ def _borrow_legal_return(rt) -> bool:
     # `Own[T]` with T an open type param: the C++ argument above is the same
     # at every instantiation (`val_or_cref_t<T>` -> `T` is the same NRVO /
     # implicit-move materialization), but a TypeParamRef is not a
-    # NominalType, so the row above misses it and the walk FAILS instead of
-    # falling back.
+    # NominalType, so without this row the walk would reject a legal return.
     if (isinstance(t, OwnType)
             and isinstance(unwrap_readonly(t.wrapped), TypeParamRef)):
         return True
@@ -267,6 +266,23 @@ def _pointer_lifted_storage(t) -> bool:
     return isinstance(t, TupleType) and t.has_pointer_repr_element()
 
 
+def _value_record_borrow(v: THIRExpr) -> bool:
+    """A BORROW whose own type is a VALUE record, so its render is a `T&` /
+    `const T&` lvalue (`ps[i]`, an lvalue ternary, a `T&`-returning call).
+
+    Such a value materializes into any slot that accepts a `T` -- the return
+    object copy-constructs from the reference with no spelled convert, exactly
+    as the non-value `Own[record]` row of `_borrow_legal_return` argues. That
+    row keys on the return TYPE alone, which cannot see this: a value record
+    returned by value is spelled `-> T`, so every borrow source at it reads as
+    a form lie. The pointer-lifted shapes a BORROW genuinely could not
+    initialize from are other types (Optional / variant / tuple), never a
+    plain record."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(v.result_type)))
+    return (isinstance(t, NominalType) and t.is_value_type()
+            and t.is_user_record)
+
+
 def _check_stmt(owner: str, stmt: THIRNode, return_type) -> None:
     if isinstance(stmt, THIRAssign):
         if (isinstance(stmt.target, THIRFieldAccess)
@@ -277,9 +293,46 @@ def _check_stmt(owner: str, stmt: THIRNode, return_type) -> None:
                   "(missing a borrow->storage convert)")
     elif isinstance(stmt, THIRReturn):
         if (stmt.value is not None and stmt.value.form is Form.BORROW
-                and not _borrow_legal_return(return_type)):
+                and not _borrow_legal_return(return_type)
+                and not _value_record_borrow(stmt.value)):
             _fail(owner, stmt,
                   f"BORROW return value for value-typed return {return_type}")
+
+
+def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
+                   return_type=None, *,
+                   argtemp_ok: bool = False,
+                   eager_only: bool = False) -> None:
+    """Walk one call-shaped argument list -- the call/ctor/method args, a
+    raise's ctor args, an await emplace's args.
+
+    All three are the same position: a temp there flushes at the enclosing
+    statement iff that statement is a flush point, and a temp's own SOURCE
+    ctor flushes its nested temps at the SAME point (`describe(Canvas(
+    Circle(5)))` -- __tmp_1 innermost-first, then __tmp_2), so the right
+    propagates through call-arg nesting."""
+    for a in args:
+        if isinstance(a, THIRArgTemp):
+            if not argtemp_ok:
+                _fail(owner, a, "THIRArgTemp under a non-flushable "
+                                "statement position")
+            if eager_only and a.movable is None and a.would_defer():
+                _fail(owner, a, "unaudited deferring THIRArgTemp under "
+                                "a conditional operand")
+            _walk(owner, a.init, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=eager_only)
+        elif isinstance(a, THIRUnionArgLift) and a.temp_cpp is not None:
+            # The temp-bearing lift hoists a decl like THIRArgTemp does, so
+            # it needs the same flush right.
+            if not argtemp_ok:
+                _fail(owner, a, "temp-bearing THIRUnionArgLift under a "
+                                "non-flushable statement position")
+            if a.value is not None:
+                _walk(owner, a.value, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=eager_only)
+        else:
+            _walk(owner, a, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=eager_only)
 
 
 def _walk(owner: str, node: THIRNode, return_type=None, *,
@@ -292,15 +345,15 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     operands). If and while CONDITIONS are also flushable: the emit places
     their temps (pre-`if` flush, the nested-elif block, the restructured
     `while (true)` loop head -- never a pre-loop stale snapshot). Anywhere
-    else (a loop-header iterable, a MIL cell) a temp has no flush point on
-    the AST path, so reaching one is a lowering bug.
+    else (a loop-header iterable, a MIL cell) a temp has no flush point at
+    all, so reaching one is a lowering bug.
 
     `eager_only` marks a CONDITIONAL operand position (a ternary arm, a
-    logical RHS): an AUDITED temp (movable fact mirrored off the AST
-    creator) is legal there -- the emit's conditional region defers or
-    keeps it eager exactly as the AST decides -- while an UNAUDITED temp
-    that might defer (`THIRArgTemp.would_defer`'s conservative guess) is a
-    lowering bug: its eager/deferred placement could diverge."""
+    logical RHS): an AUDITED temp -- one whose creator recorded the movable
+    fact -- is legal there, since the emit's conditional region places it
+    deferred or eager off that fact. An UNAUDITED temp that might defer
+    (`THIRArgTemp.would_defer`'s conservative guess) is a lowering bug: its
+    eager/deferred placement is not decidable here."""
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
@@ -335,35 +388,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             else:
                 _walk(owner, node.receiver, return_type,
                       argtemp_ok=argtemp_ok, eager_only=eager_only)
-        for a in node.args:
-            if isinstance(a, THIRArgTemp):
-                if not argtemp_ok:
-                    _fail(owner, a, "THIRArgTemp under a non-flushable "
-                                    "statement position")
-                if (eager_only and a.movable is None
-                        and a.would_defer()):
-                    _fail(owner, a, "unaudited deferring THIRArgTemp under "
-                                    "a conditional operand")
-                # A temp's SOURCE ctor flushes its own arg temps at the SAME
-                # statement point (`describe(Canvas(Circle(5)))` -- __tmp_1
-                # innermost-first, then __tmp_2), so nested temps under the
-                # init are legal when the outer temp is flushable.
-                _walk(owner, a.init, return_type, argtemp_ok=argtemp_ok,
-                      eager_only=eager_only)
-            elif (isinstance(a, THIRUnionArgLift)
-                    and a.temp_cpp is not None):
-                if not argtemp_ok:
-                    _fail(owner, a, "temp-bearing THIRUnionArgLift under a "
-                                    "non-flushable statement position")
-                if a.value is not None:
-                    _walk(owner, a.value, return_type, argtemp_ok=argtemp_ok,
-                          eager_only=eager_only)
-            else:
-                # A call-shaped arg's own args flush at the same statement
-                # point (allow_temps rides through nested calls at lowering),
-                # so the flush right propagates through call-arg nesting.
-                _walk(owner, a, return_type, argtemp_ok=argtemp_ok,
-                      eager_only=eager_only)
+        _walk_arg_list(owner, node.args, return_type, argtemp_ok=argtemp_ok,
+                       eager_only=eager_only)
         return
     if isinstance(node, THIRErrorReturnUnwrap):
         # The expression unwrap is TRANSPARENT for flushability: its call's
@@ -373,7 +399,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     if isinstance(node, (THIRErrorReturnBind, THIRErrorReturnDiscard)):
         # Statement-level unwrap blocks: the call renders and its temps
-        # flush before the block line (gen_stmt's single flush point), so
+        # flush before the block line (the statement has one flush point), so
         # the call is a flushable value position.
         _walk(owner, node.call, return_type, argtemp_ok=True)
         return
@@ -391,8 +417,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     if isinstance(node, THIRForIterProto):
         # The iterable renders as its own `__src` bind with a temps flush
-        # right before it (inside the rvalue brace scope -- the AST's
-        # for-each flush point), so it is a flushable value position. The
+        # right before it (inside the rvalue brace scope, the for-each flush
+        # point), so it is a flushable value position. The
         # begin/end for-each route stays temp-free: its iterable renders
         # into the loop header, which has no flush point.
         _walk(owner, node.iterable, return_type, argtemp_ok=True)
@@ -401,14 +427,14 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                 _walk(owner, child, return_type)
         return
     if isinstance(node, THIRPrint):
-        # A print statement is a flush position on the AST path (arg temps
+        # A print statement is a flush position (arg temps
         # hoist before the `std::cout` chain).
         for a in node.args:
             _walk(owner, a.expr, return_type, argtemp_ok=True)
         return
     if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl)):
-        # Both decl flavors are flush positions: the AST hoists a slot
-        # init's arg temps BEFORE the decl/`__slot_N` line.
+        # Both decl flavors are flush positions: a slot init's arg temps
+        # hoist BEFORE the decl / `__slot_N` line.
         if node.init is not None:
             _walk(owner, node.init, return_type, argtemp_ok=True)
         return
@@ -423,9 +449,9 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if isinstance(node, THIRSetItem):
         # The value AND the target's INDEX are flushable positions: the
         # write sits at a statement, so an index-call's arg temps hoist
-        # before the setitem line exactly like the value's (the AST's
-        # statement flush; threaded via the setitem arm's allow_temps
-        # target use). The RECEIVER stays temp-free -- the lowering never
+        # before the setitem line exactly like the value's (threaded via
+        # the setitem arm's allow_temps target use). The RECEIVER stays
+        # temp-free -- the lowering never
         # forwards flushability there, so a temp reaching it is a
         # lowering bug (the THIRAssign discipline).
         if isinstance(node.target, THIRSubscript):
@@ -458,27 +484,18 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             _walk(owner, node.value, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRRaise):
-        # `raise X(args)` flushes its ctor arg temps before the throw line
-        # (the mutated-ref-slot record rvalue), so its args are a flush
-        # position -- mirror the call-node arg loop (the args are the ctor's
-        # directly, with no intermediate THIRCtorCall node to carry them).
-        for a in node.args:
-            if isinstance(a, THIRArgTemp):
-                _walk(owner, a.init, return_type, argtemp_ok=True)
-            elif (isinstance(a, THIRUnionArgLift) and a.temp_cpp is not None):
-                if a.value is not None:
-                    _walk(owner, a.value, return_type)
-            else:
-                _walk(owner, a, return_type)
+        # `raise X(args)` flushes its ctor arg temps before the throw line, so
+        # the args are a flush position exactly like a call's. (They are the
+        # ctor's directly -- no intermediate THIRCtorCall node carries them.)
+        _walk_arg_list(owner, node.args, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRIfExpr):
         # Ternary ARMS evaluate lazily: only a NON-DEFERRING temp may hoist
-        # there (the AST's non-movable arm hoists it eagerly at the
-        # statement; a deferring temp would need the conditional-region
-        # render THIR does not carry). The CONDITION evaluates exactly once
-        # unconditionally, so it inherits the enclosing flush right
-        # (`Gate __tmp_1 = Gate(true);` before
-        # `((check(__tmp_1)) ? (1) : (0))` -- the AST hoist).
+        # there, hoisted eagerly at the statement; a deferring temp would
+        # need a conditional-region render THIR does not carry. The
+        # CONDITION evaluates exactly once unconditionally, so it inherits
+        # the enclosing flush right (`Gate __tmp_1 = Gate(true);` hoists
+        # before `((check(__tmp_1)) ? (1) : (0))`).
         for child in _iter_children(node):
             if child is node.cond:
                 _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
@@ -490,8 +507,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if isinstance(node, THIRChainedCompareStmtExpr):
         # Operands 0 and 1 always evaluate; every later one sits behind a
         # passed compare, so inits[2:] are conditional-operand positions --
-        # the ternary-arm rule, mirrored (the lowering-time cond_eager check
-        # is the primary gate; this keeps the structural net symmetric).
+        # the ternary-arm rule again (the lowering-time cond_eager check is
+        # the primary gate; this keeps the structural net symmetric).
         for idx, init in enumerate(node.inits):
             _walk(owner, init, return_type, argtemp_ok=argtemp_ok,
                   eager_only=(True if idx >= 2 else eager_only))
@@ -509,7 +526,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     # The flush right propagates through EXPRESSION nesting (binop operands,
     # coerce wraps, ...): every sub-position of a flushable value expression
-    # flushes at the same statement on the AST path. Statement nodes reset it
+    # flushes at the same statement. Statement nodes reset it
     # -- each statement handler above grants the right per position.
     for child in _iter_children(node):
         _walk(owner, child, return_type,
@@ -585,16 +602,9 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     # walked at the looser right: a temp reaching one of the four temp-free
     # seams, where the skeleton has no flush point, is NOT caught.
     for args in body.await_args.values():
-        for a in args:
-            # The tuple IS the emplace's arg list, so each entry is walked
-            # the way the call-node arm walks a call's args.
-            if isinstance(a, THIRArgTemp):
-                _walk(owner, a.init, argtemp_ok=True)
-            elif isinstance(a, THIRUnionArgLift) and a.temp_cpp is not None:
-                if a.value is not None:
-                    _walk(owner, a.value, argtemp_ok=True)
-            else:
-                _walk(owner, a, argtemp_ok=True)
+        # The tuple IS the emplace's arg list, so it is walked the way the
+        # call-node arm walks a call's args.
+        _walk_arg_list(owner, args, argtemp_ok=True)
     for expr in body.suspend_exprs.values():
         _walk(owner, expr, argtemp_ok=True)
     for expr in body.region_exprs.values():

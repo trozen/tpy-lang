@@ -16,6 +16,8 @@ from .nodes import (
     THIRStrSlice, THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _lower_ctx_witnessed, _fn, _PRELUDE,
     _assert_byte_identical, _assert_routes_byte_identical,
 )
@@ -322,11 +324,11 @@ class TestStrReceiverMethods:
 
 
 class TestStrValuesEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -353,7 +355,6 @@ class TestStrValuesEmit:
         thir = _lower(self.SRC)
         for name in ("greet", "pick", "owned_chain", "eq_test", "main"):
             assert _fn(thir, name) is not None, name
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
 
     def test_owned_init_wrap_byte_identical(self):
         # The decl-init view->owned copy (std::string u = std::string(v);):
@@ -372,7 +373,6 @@ class TestStrValuesEmit:
         assert f is not None
         decl = f.body[0]
         assert isinstance(decl.init, THIRFormConvert)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_overload_impl_bool_truthiness_folds(self):
         # A bool-literal-only group lowers per stub; `if x:` folds through
@@ -712,12 +712,11 @@ class TestFString:
 
 
 class TestFStringEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -742,7 +741,6 @@ class TestFStringEmit:
         # call-arg slice (a pre-S2 frontier, not an f-string gap).
         for name in ("use", "f"):
             assert _fn(thir, name) is not None, name
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
 
     CONV_SRC = (
         "from tpy import Char, Int8, Int32, Float32\n"
@@ -759,8 +757,6 @@ class TestFStringEmit:
     def test_fstring_conv_spec_byte_identical(self):
         thir = _lower(self.CONV_SRC)
         assert _fn(thir, "f") is not None
-        assert (self._cpp(self.CONV_SRC, thir=True)
-                == self._cpp(self.CONV_SRC, thir=False))
 
     def test_fstring_faces_witnessed(self):
         # Pin that the conv/spec/char rows reach their faces -- a refactor
@@ -926,11 +922,11 @@ class TestCharConcatRepeat:
 
 
 class TestStrConcatEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -980,11 +976,8 @@ class TestStrConcatEmit:
                      "main"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_shapes(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "std::string c = (::tpy::str_concat(a, b));" in cpp
         assert "c += a;" in cpp          # str += statement
         assert "c += b;" in cpp          # x = x + y peephole
@@ -1310,11 +1303,11 @@ class TestStrSubscriptSliceIter:
 
 
 class TestStrSubscriptSliceIterEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1357,11 +1350,8 @@ class TestStrSubscriptSliceIterEmit:
         for name in ("first", "count_x", "find_x", "trim", "views", "main"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return ::tpy::__getitem__(s, 0);" in cpp
         assert "char c = *__beg_0;" in cpp                       # Char loop var
         assert "if ((c == 'x')) {" in cpp                        # char literal
@@ -1374,12 +1364,8 @@ class TestStrSubscriptSliceIterEmit:
         'def g() -> None:\n    for ch in "":\n        print(ch)\n'
         "f()\ng()\n")
 
-    def test_str_literal_iter_byte_identical(self):
-        assert (self._cpp(self.STR_LIT_ITER, thir=True)
-                == self._cpp(self.STR_LIT_ITER, thir=False))
-
     def test_str_literal_iter_emit_wrap(self):
-        cpp = self._cpp(self.STR_LIT_ITER, thir=True)
+        cpp = self._cpp(self.STR_LIT_ITER)
         assert 'auto __obj_0 = std::string_view("abc");' in cpp
         assert 'auto __obj_0 = std::string_view("");' in cpp
 
@@ -1435,11 +1421,8 @@ class TestStrSubscriptSliceIterEmit:
                      "non_name", "iter_call", "char_at", "main"):
             assert _fn(thir, name) is not None, name
 
-    def test_s4_leftovers_byte_identical(self):
-        assert self._cpp(self.SRC2, thir=True) == self._cpp(self.SRC2, thir=False)
-
     def test_s4_leftovers_emit_arms(self):
-        cpp = self._cpp(self.SRC2, thir=True)
+        cpp = self._cpp(self.SRC2)
         assert ("std::string t = ::tpy::str_stepped_slice(s, "
                 "::tpy::Slice{std::nullopt, std::nullopt, 2});") in cpp
         assert ("::tpy::str_stepped_slice(s, "
@@ -1468,11 +1451,11 @@ class TestStrSubscriptSliceIterEmit:
 # --- by-value slice-object param slot) ---
 
 class TestSliceCtorCallArg:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1516,22 +1499,17 @@ class TestSliceCtorCallArg:
             "def f(items: list[Int32]) -> None:\n    use(items, basic_slice(1, 3))\n")
         assert _fn(thir, "f") is None
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
-
 class TestCrossCellEmit:
     """Compositions ACROSS the S2/S3/S4 cells (developed in parallel worktrees
     and merged): a slice view consumed inline as a concat operand and as an
     f-string arg, and slice-then-iterate. The per-cell byte-identical tests
     can't see a merge regression between cells; these can."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1564,11 +1542,6 @@ class TestCrossCellEmit:
         ret = _fn(thir, "cut_join").body[-1]
         assert isinstance(ret.value, THIRCoerce)
         assert ret.value.form is Form.STORAGE
-
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
-
 
 # --- Cross-type str-family coercions (str <-> StrView <-> String) ---
 
@@ -1659,8 +1632,7 @@ class TestStrCrossTypeCoercions:
             compiler, modules = _compile(src)
             entry = _entry(modules)
             _, cpp = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=thir_on))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             return cpp
 
         cpp = cpp_for(True)
@@ -1709,20 +1681,17 @@ class TestStrCrossTypeCoercions:
                "def pick(x: StrView | Int32) -> Int32:\n    return 1\n"
                'def caller() -> Int32:\n    return pick("lit")\n'
                "def caller2(s: str) -> Int32:\n    return pick(s)\n")
-        thir = _lower(src)
-        assert _fn(thir, "caller") is not None
-        assert _fn(thir, "caller2") is not None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:sig.overload_set.narrow_param")
 
 
 
 class TestStrCrossTypeCoercionEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1750,7 +1719,6 @@ class TestStrCrossTypeCoercionEmit:
                      "calls", "slice_compare", "string_arg_pass", "take_view",
                      "take_string"):
             assert _fn(thir, name) is not None, name
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
 
 
 
@@ -1902,11 +1870,11 @@ class TestDictStrContainers:
 
 
 class TestDictStrContainersEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1959,11 +1927,8 @@ class TestDictStrContainersEmit:
                      "vals", "main"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return ::tpy::__getitem__(d, k);" in cpp
         assert "std::string_view k = *__beg_0;" in cpp        # str key loop var
         assert '::tpy::dict_pop_default(d, "gone", 0)' in cpp
@@ -2015,14 +1980,13 @@ class TestStrFieldBinopOperands:
         compiler, modules = _compile(src)
         entry = _entry(modules)
 
-        def cpp(thir: bool):
+        def cpp():
             hpp, out = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=thir))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             return hpp + out
 
-        thir_cpp = cpp(True)
-        assert thir_cpp == cpp(False)
+        thir_cpp = cpp()
+        assert thir_cpp == cpp()
         assert ('return (::tpy::str_concat("[base] ", this->message));'
                 in thir_cpp)
         assert "return (s == this->message);" in thir_cpp
@@ -2064,7 +2028,7 @@ class TestNarrowedOptViewConcat:
         compiler, modules = _compile(self.SRC)
         _, cpp = compiler.generate_code_to_strings(
             _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert '(::tpy::str_concat("p=", (*t)))' in cpp
         assert '(::tpy::str_concat("l=", (*t)))' in cpp
 

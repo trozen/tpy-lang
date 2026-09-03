@@ -7,6 +7,8 @@ ptr-repr Optional slot."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical, _top_level,
 )
@@ -72,9 +74,8 @@ class TestOptOwnRecordNameArgSlots:
                "    s.take(p)\n"
                "    print(p.x)\n"
                "main()\n")
-        _, faces = _lower_ctx_witnessed(src)
-        assert faces.get("move.opt_own_last_use", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.opt_own_copy")
 
 
 class TestMarkerNoneValueOptDefaultFill:
@@ -214,6 +215,5 @@ class TestOptPtrCallPassFace:
                "    e = Edge(make(True))\n"
                "    print(e.target is None)\n"
                "main()\n")
-        _, faces = _lower_ctx_witnessed(src)
-        assert faces.get("optptr.call_pass", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.optional")

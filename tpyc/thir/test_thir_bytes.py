@@ -14,6 +14,8 @@ from .nodes import (
     THIRSubscript, THIRVarDecl,
 )
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _lower, _lower_ctx, _fn, _assert_byte_identical,
     _assert_routes_byte_identical, _lower_ctx_witnessed, _thir_ctx,
     _thir_ctx_witnessed,
@@ -165,11 +167,11 @@ class TestBytesValues:
 
 
 class TestBytesValuesEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -206,11 +208,8 @@ class TestBytesValuesEmit:
                      "main"):
             assert _fn(thir, name) is not None, name
 
-    def test_bytes_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         # The view->owned STORAGE convert (::tpy::bytes_copy) -- reachable for
         # the first time in this cell -- at both sinks:
         assert "return ::tpy::bytes_copy(b);" in cpp                # return
@@ -241,9 +240,9 @@ class TestBytesValuesEmit:
         f = _fn(thir, "f")
         assert f is not None
         assert isinstance(f.body[0].init, THIRFormConvert)
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "std::vector<uint8_t> u = ::tpy::bytes_copy(a);" in cpp
-        assert cpp == self._cpp(src, thir=False)
+        assert cpp == self._cpp(src)
 
 
 # --- the bytes tail: subscript / slices / iteration / concat / aug-assign ---
@@ -439,11 +438,11 @@ class TestBytesTailGate:
 
 
 class TestBytesTailEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -502,11 +501,8 @@ class TestBytesTailEmit:
                      "iter_view", "cat", "aug"):
             assert _fn(thir, name) is not None, name
 
-    def test_bytes_tail_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         # Subscript: the native dunder, and the bounds-safe operator[] branch.
         assert "return ::tpy::bytes_getitem(b, i);" in cpp
         assert "b[static_cast<std::size_t>(i)]" in cpp
@@ -612,10 +608,8 @@ class TestBytearrayRefAlias:
                "def main() -> None:\n"
                "    f(bytearray(b\"a\"), bytearray(b\"bc\"), True)\n"
                "main()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert w.get("decl.bytearray_alias", 0) == 0
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestBytearrayRvalueCtorArg:
@@ -671,9 +665,8 @@ class TestBytearrayRvalueCtorArg:
                + "    h = OwnHolder(bytearray(b\"xy\"))\n"
                + "    print(len(h.data))\n"
                + "f()\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert w.get("ctor.bytearray_rvalue", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_record_nonf1")
 
 
 class TestBytesNeDerivedNegation:
@@ -803,10 +796,8 @@ class TestBytesSliceFieldWrite:
                "    h = Holder()\n"
                "    h.set_ba(b\"hello\")\n"
                "    print(len(h.ba))\n")
-        _assert_byte_identical(src)
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.assign:assign.field_write_shape": 1,
-                        "ctor:ctor.mil_field.nominal.call": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_view_field_from_slice_stays_ast(self):
         # A `BytesView` FIELD is the view side of the family -- no owned sink,
@@ -822,10 +813,8 @@ class TestBytesSliceFieldWrite:
                "    h = Holder()\n"
                "    h.set_v(x)\n"
                "    print(len(h.v))\n")
-        _assert_byte_identical(src)
-        _ctx, fell = _thir_ctx(src)
-        assert fell == {"body:stmt.assign:assign.field_write_shape": 1,
-                        "ctor:ctor.mil_field.nominal.bytesliteral": 1}, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
 
 class TestBytearrayValueSlotDecl:
@@ -876,10 +865,8 @@ class TestBytearrayValueSlotDecl:
         src = ("def f(p: bytes) -> None:\n"
                "    ba: bytearray = p\n"
                "    print(len(ba))\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not w.get("decl.bytearray_view_copy")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_name_alias_stays_on_alias_cascade(self):
         # BOUNDARY: `ba2 = ba` keeps the REF_ALIAS bind -- the value-slot

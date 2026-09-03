@@ -50,7 +50,7 @@ from ...codegen_cpp.context import (
     contains_named_expr, escape_cpp_name, is_lvalue_iterable,
     loop_var_binding)
 from ...codegen_cpp.types import resolve_pending_container
-from ..fallback import ThirUnsupported
+from ..reject import ThirUnsupported
 from ..faces import witness as _witness
 from ..nodes import (
     THIRComprehension, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRMove)
@@ -119,10 +119,9 @@ class _CompRoute:
 def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
     """A user record the record emitter gives synthesized begin()/end()
     (records.py: no explicit begin/end member, has `__span__`, any `__iter__`
-    returns SpanIter): the AST comp loop calls `.begin()`/`.end()` on it
-    unconditionally, so the begin/end comp render is byte-identical. Records
-    outside the synthesis condition keep rejecting -- their comp C++ has no
-    corpus witness."""
+    returns SpanIter): the comp loop calls `.begin()`/`.end()` on it
+    unconditionally. Records outside the synthesis condition keep rejecting
+    -- their comp C++ has no corpus witness."""
     ri = analyzer.registry.get_record_for_type(it_type)
     if ri is None or ri.is_native:
         return False
@@ -138,9 +137,9 @@ def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
     return True
 
 def _comp_sized_iterable(t: TpyType) -> bool:
-    # Mirror of `_is_sized_type` over the admitted iterable families (Span /
-    # varargs never reach this comprehension route; str/bytes are not sized on
-    # the AST side either, so no reserve fires for them).
+    # The admitted iterable families whose size is known up front, so the
+    # comp can reserve (Span / varargs never reach this comprehension route;
+    # str/bytes are not sized, so no reserve fires for them).
     t = unwrap_readonly(t)
     return (is_array(t) or is_list(t) or is_dict(t) or is_set(t)
             or is_dict_view(t))
@@ -153,7 +152,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     iterables the container classifiers admit, and `d.values()`/`d.keys()` dict
     views (`d.items()` for the tuple-unpack form). Owned-move element sources
     (`owns_elements`), field/subscript/call iterables, and narrowed-Optional
-    iterables stay on the AST path (C3/C4 rows)."""
+    iterables are outside the slice: None, and the caller rejects."""
     kind = _COMP_KINDS.get(type(init))
     if kind is None:
         return None
@@ -170,9 +169,9 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         if not _eligible_scalar(counter):
             return None
         if len(it.args) == 3:
-            # 3-arg range: the AST's _gen_comp_range_loop falls back to a
-            # begin/end loop over the Range object (an rvalue capture, never
-            # sized). Bounds render against the counter slot like the 1/2-arg
+            # 3-arg range is a begin/end loop over the Range object (an
+            # rvalue capture, never sized). Bounds render against the
+            # counter slot like the 1/2-arg
             # arms, so they classify the same way.
             return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                               it_type=analyzer.get_expr_type(it), et=counter,
@@ -198,17 +197,18 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         elif gen.unpack_vars is None and not owns:
             # A container-returning METHOD call iterable (`[n for n in
             # os.listdir(tmp) if ..]` -- module-qualified calls parse as
-            # method calls): the for-each TpyMethodCall fallback's comp
-            # twin. The call renders inside the `__obj_N` capture and its
-            # own lowering re-validates callee/args; a borrow return is a
-            # C++ lvalue (`auto&` capture), an Own return an owning rvalue.
+            # method calls): the comp twin of the for-each catch-all
+            # method-call arm. The call renders inside the `__obj_N`
+            # capture and its own lowering re-validates callee/args; a
+            # borrow return is a C++ lvalue (`auto&` capture), an Own
+            # return an owning rvalue.
             ret = analyzer.get_expr_type(it)
             if not _nonvalue_container_ret(ret):
                 # The module-qualified generator-factory twin of the
                 # TpyCall genfac leg (`[x for x in itertools.islice(
                 # itertools.count(), 4)]`): the owning `auto __obj_N`
                 # capture of the frame rvalue, begin/end iteration --
-                # the AST's comp loop is unconditionally begin/end,
+                # the comp loop is unconditionally begin/end,
                 # callee-kind-blind, so the overload-seam-aware verdict
                 # serves (a stub fi carries is_generator=False).
                 if not _genfac_like_call(it, analyzer):
@@ -239,7 +239,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             # C3 field iterable: `recv.items` off an F1-record / proven
             # Optional-ptr receiver. The route types on the field's DECLARED
             # type (codegen's get_resolved_type source), so a narrowed
-            # Optional/union field (the AST's `(*...)` unwrap) is not
+            # Optional/union field (which would need a `(*...)` unwrap) is not
             # iterable at that type and rejects below.
             if not _field_receiver_ok(it, declared, analyzer):
                 return None
@@ -270,7 +270,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     elif (isinstance(it, TpyArrayLiteral) and not owns
           and gen.unpack_vars is None and it.elements):
         # A LIST-LITERAL iterable (`[len(x) for x in ["a", "bb"]]`): the
-        # AST captures the BRACED init-list itself
+        # capture is the BRACED init-list itself
         # (`auto __obj_N = {"a", "bb"};` -- no container spelling, so the
         # element type comes from sema) and iterates begin/end; the
         # init-list is sized, so the reserve fires like a container's.
@@ -314,8 +314,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
             lvalue = _call_iterable_lvalue(it, analyzer)
     elif isinstance(it, TpyCall) and owns:
         # An Own[T]-yielding generator source (`widgets(3)`), the owned-move
-        # comprehension. The generator is iterated via begin/end (the AST's
-        # comprehension loop emits them unconditionally -- so `is_native_iterable`
+        # comprehension. The generator is iterated via begin/end (the comp
+        # loop emits them unconditionally -- so `is_native_iterable`
         # is bypassed for this arm; `get_iterable_element_type` below is the
         # iterability gate). The lvalue verdict rides the shared
         # `is_lvalue_iterable` (a protocol/generator return is a by-value rvalue
@@ -334,9 +334,9 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         return None
     # The owned-generator call arm iterates via begin/end; every other arm
     # requires a NativeIterable source -- or a user record with SYNTHESIZED
-    # begin/end (a Spannable conformer), which the AST's unconditional
-    # begin/end comp loop serves the same way. The synth family carries no
-    # storage-form registration (the AST's register_loop_var_storage_form
+    # begin/end (a Spannable conformer), which the unconditional begin/end
+    # comp loop serves the same way. The synth family carries no
+    # storage-form registration (`register_loop_var_storage_form`
     # early-returns on non-native-iterable sources), so elements that would
     # need one -- and unpack heads -- keep rejecting.
     synth_src = False
@@ -371,13 +371,13 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
                 types.append(None)
                 continue
             # A str element target COPIES the stored element (`std::string k =
-            # std::get<i>(tup);` -- the AST's is_value_type branch over the
+            # std::get<i>(tup);` -- the value-type branch over the
             # tuple's OWNED element spelling), unlike the for-each unpack's
             # view binding; the owned declared type keeps the target's reads
             # STORAGE-form (bare inserts). An F1-record target BORROWS with
             # the ref binding keyed on const_loop_var alone (`auto& r =` /
-            # `const auto& p =` -- the AST's `_emit_inline_tuple_unpack`
-            # spells ref_binding for every non-value target).
+            # `const auto& p =` -- the inline tuple unpack spells a ref
+            # binding for every non-value target).
             if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
                     or _f1_record(
                         unwrap_readonly(unwrap_send_sync(tt)),
@@ -400,8 +400,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     # binds the loop var through the SAME shared loop_var_binding, so any
     # resolved element renders identically; the element/key/value/filter reads
     # of the var route recursively through expression lowering. Only an unresolved
-    # pending element (spelled before the AST's resolve_type concretizes it)
-    # stays on the AST path. A ptr-repr Optional[F1-record] element rides the
+    # pending element (spelled before `resolve_type` concretizes it)
+    # rejects. A ptr-repr Optional[F1-record] element rides the
     # storage-opt registration in _lower_comprehension (the for-STATEMENT
     # container leg's comp twin).
     if not (_for_each_elem_binding_ok(et)
@@ -417,29 +417,29 @@ def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     # widening keys to enum/bytes/record is the container-literal cell's
     # separate key-family concern -- a record key isn't hashable, an enum/bytes
     # key rides a later row). Char slots ride the same targeted element render
-    # as scalars (gen_expr_deref(elem, Char) -- comp elements ARE target-typed,
-    # unlike list-literal elements).
+    # as scalars (comp elements ARE target-typed, unlike list-literal
+    # elements).
     return (_eligible_scalar(slot) or _eligible_char(slot)
             or _owned_str_slot(slot, analyzer))
 
 def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
                        allow_container: bool = False) -> bool:
     """The list/set element + dict VALUE result slot whose
-    `_lower_container_elem` render is element-SHAPE-independent, so ANY routed
-    element expr into it is byte-identical -- the compositional twin of the
-    for-each loop-var classifier on the append/insert side. The wrap keys on the
-    element's FORM, not its node kind:
+    `_lower_container_elem` render is element-SHAPE-independent, so ANY
+    element expr lowered into it renders the same -- the compositional twin
+    of the for-each loop-var classifier on the append/insert side. The wrap
+    keys on the element's FORM, not its node kind:
 
     - value scalar / Char -- bare / target-typed literal retype;
     - owned str / bytes slot -- a BORROW source copies (`std::string(x)` /
       `::tpy::bytes_copy`), a STORAGE/literal source lands bare;
     - enum -- a value type, bare;
-    - F1-record -- a name derefs/moves off the same movable_locals facts the
-      AST reads, an rvalue lands bare (no owned-slot wrap for records).
+    - F1-record -- a name derefs/moves off the same movable_locals facts,
+      an rvalue lands bare (no owned-slot wrap for records).
 
-    The SHAPE-sensitive families stay on the AST path (`_lower_container_elem`
-    branches on the element NODE for them, so a general routed element could
-    diverge): Optional (`None` -> `std::nullopt` vs a scalar value), value-tuple
+    The SHAPE-sensitive families reject (`_lower_container_elem` branches on
+    the element NODE for them, so a shape-blind element render would be
+    wrong): Optional (`None` -> `std::nullopt` vs a scalar value), value-tuple
     (a tuple LITERAL only), nested container (an Array LITERAL only), union, and
     a str/bytes VIEW slot (owned-only here).
 
@@ -467,8 +467,8 @@ def _unpack_target_cpps(unpack_types, lc: '_LowerCtx',
                         const_loop_var: bool = True) -> tuple:
     """The per-target decl spellings of a comp unpack head: None for `_`
     discards, the ref binding for F1-record targets (`const auto&` /
-    `auto&`, keyed on const_loop_var exactly like the AST's
-    `_emit_inline_tuple_unpack` ref_binding), the rendered type otherwise.
+    `auto&`, keyed on const_loop_var alone, like the inline tuple unpack's
+    ref binding), the rendered type otherwise.
     Shared by the begin_end and array_source arms."""
     ref = "const auto&" if const_loop_var else "auto&"
     return tuple(
@@ -648,8 +648,8 @@ def _comp_array_route(
             kind="list", loop="array_range", counter_type=counter,
             it_type=None, et=counter, iterable_lvalue=True,
             sized_reserve=False, unpack_types=None)
-    # Array-SOURCE indexing arm: `_gen_array_comprehension`'s non-range branch
-    # borrows the source once (`__obj_N`) and indexes it per slot. Reuse the
+    # Array-SOURCE indexing arm: the non-range Array comprehension borrows
+    # the source once (`__obj_N`) and indexes it per slot. Reuse the
     # begin/end name/field classifier for the loop-var binding fact, then
     # require a statically-sized Array source (the only shape sema demotes to
     # Array). A view result off the source rebinds it_type in _comp_route.
@@ -693,8 +693,8 @@ def _lower_array_comprehension(
     # is a fresh local -- pointer-shadowed globals scrub for that walk
     # only; the range bounds evaluate in the enclosing scope. allow_temps:
     # the emit flushes element temps into the lambda body before the
-    # `return` (`auto __tmp_N = i;` ahead of `Box(std::move(__tmp_N))` --
-    # the AST's per-iteration flush), so the element is a flush position.
+    # `return` (`auto __tmp_N = i;` ahead of `Box(std::move(__tmp_N))`),
+    # so the element is a flush position.
     with _scrubbed_pointers(lc, ptr_shadow):
         element = _lower_comp_container_elem(
             init.element_expr, elem_t, lc, body_declared, allow_temps=True)
@@ -720,8 +720,8 @@ def _lower_array_source_comprehension(
     """The array_from_index SOURCE arm: borrow a sized Array source once
     (`__obj_N`, lvalue-verdict binding) inside a `({...})` prelude, then index
     it per slot (`E var = __obj_N[__i_N];` value binding / `auto&& var = ...`
-    borrow) -- `_gen_array_comprehension`'s non-range branch. The element
-    renders through the shared per-slot wrap after the loop-var binding."""
+    borrow) -- the non-range Array comprehension. The element renders
+    through the shared per-slot wrap after the loop-var binding."""
     analyzer = lc.analyzer
     gen = init.generator
     it = gen.iterable
@@ -766,8 +766,8 @@ def _lower_array_source_comprehension(
     )
 
 def _comp_result_type(t: 'TpyType | None', analyzer) -> TpyType:
-    # `_resolve_int_literal`'s mirror: sema stamps the result element/key/value
-    # types on the node; a still-literal int resolves to the default int.
+    # Sema stamps the result element/key/value types on the node; a
+    # still-literal int resolves to the default int.
     assert t is not None
     if isinstance(t, IntLiteralType):
         return analyzer.ctx.default_int_type
@@ -781,17 +781,17 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
     (dict VALUE, list/set element, Array slot). A list/Array container slot
     is element-SHAPE-sensitive, so only the two vetted sources route: a
     container LITERAL -- rendered self-describing (`std::array<int32_t, 2>{...}`,
-    mirroring the AST's `typed_brace_init`: the insert/brace target is a
+    via the `typed_brace_init` prefix: the insert/brace target is a
     template, a bare brace-init cannot deduce) -- and a nested COMPREHENSION
     (`_lower_container_elem`'s comp arm; its `({...})` stmt-expr is already
-    self-describing, the AST's typed_brace_init no-ops on it). Every other slot
+    self-describing, so typed_brace_init no-ops on it). Every other slot
     family keeps the shape-independent element render (`_lower_container_elem`).
 
     `typed_brace` (the dict VALUE only) spells the container literal
     self-describing (`std::array<int32_t, 2>{...}`) because `insert_or_assign`
     is a template that cannot deduce a bare brace. A list/set element
     (`push_back`) and an array-lambda return already have a declared target
-    type, so their brace stays bare -- matching the AST."""
+    type, so their brace stays bare."""
     if not _container_family_slot(vt):
         return _lower_container_elem(e, vt, lc, body_declared,
                                      allow_temps=allow_temps)
@@ -826,16 +826,15 @@ def _comp_pointer_shadow(gen, lc) -> frozenset:
     not shadowable -- their read is a fixed qualified name, so the body
     would read the shadowed global -- and stay out of this set (the
     route's special check keeps rejecting them only if they are also
-    pointers; a non-pointer spelled global never reached the special
-    check on either path). Empty outside module scope: a comp var
+    pointers; a non-pointer spelled global never reaches the special
+    check). Empty outside module scope: a comp var
     shadowing a pointer LOCAL keeps the special-check reject.
 
     A shadow name the ITERABLE itself references (`[x + 1 for x in x]`)
     stays OUT of the set, so the route's special check keeps rejecting it:
-    the AST emits the iterable read BARE against the pointer-slot global
+    the iterable read would land BARE against the pointer-slot global
     there (`auto& __obj_N = x;` on a `std::vector<T>*` -- ill-formed
-    C++, see the BUGS.md comprehension self-shadow entry), and a broken
-    oracle must keep falling back, not get silently fixed."""
+    C++, see the BUGS.md comprehension self-shadow entry)."""
     if not lc.top_level_scope:
         return frozenset()
     names = (set(gen.unpack_vars) if gen.unpack_vars is not None
@@ -866,12 +865,11 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
                            body_declared: dict[str, TpyType], gen,
                            *, is_last_sink: bool) -> 'THIRExpr':
     """Lower one sink (list/set element, dict value) of an owned-move
-    comprehension -- `_gen_comp_owned_elem` + `_move_comp_sink` under
-    `_comp_owned_move_scope`. The move set is restricted to THIS comp's loop var
+    comprehension. The move set is restricted to THIS comp's loop var
     (the loop var is rebound each iteration, so moving it is sound; an outer
     movable would multi-move). A bare-loop-var LAST sink moves UNCONDITIONALLY
     (structurally the last use, sequenced after any earlier read); an
-    earlier/derived sink defers to the ordinary `_maybe_move` last-use gate."""
+    earlier/derived sink defers to the ordinary last-use move gate."""
     # Whole-set REPLACEMENT for this one sink render -- an expression-position
     # override, not a lexical scope, so it stays a manual single-set swap
     # rather than a branch_scope (context.py's _BRANCH_SCOPED_SETS).
@@ -896,10 +894,9 @@ def _lower_comprehension(
         declared: dict[str, TpyType],
         pointers: AbstractSet[str]) -> THIRComprehension:
     """Build the THIRComprehension node from its classified route. The
-    container spelling composes from the node's sema-stamped result types
-    exactly like `_gen_list/dict/set_comprehension`; elements/keys/values
-    lower through the S5 per-slot owned-str wrap (`_lower_container_elem`,
-    target-typed like the AST's `gen_expr_deref(elem, elem_type)`)."""
+    container spelling composes from the node's sema-stamped result types;
+    elements/keys/values lower through the S5 per-slot owned-str wrap
+    (`_lower_container_elem`), target-typed against the slot."""
     analyzer = lc.analyzer
     loc = getattr(init, "loc", None)
     ptr_shadow = _comp_pointer_shadow(init.generator, lc)
@@ -929,14 +926,14 @@ def _lower_comprehension(
     else:
         body_declared[gen.var] = route.et
     # A comprehension loop var over a container of pointer-repr tuples reads
-    # STORAGE form, exactly as the for-statement loop var does -- the AST
-    # registers it at comp-scope entry (`register_loop_var_storage_form`) so the
-    # element consumer sees it. Without the mirror the element wrap re-lifts an
+    # STORAGE form, exactly as the for-statement loop var does -- registered
+    # at comp-scope entry (`register_loop_var_storage_form`) so the element
+    # consumer sees it. Without the registration the element wrap re-lifts an
     # already-storage read.
     #
     # Membership makes EVERY read of the name in the body STORAGE form (the Form
     # verdict in `expressions.py`), not just the element wrap -- filters and
-    # subscripts included, which is what the AST does too.
+    # subscripts included.
     #
     # PARTIAL against `register_loop_var_storage_form`, each part unreachable
     # today via a gate elsewhere rather than anything here, so widening any of
@@ -954,7 +951,7 @@ def _lower_comprehension(
         comp_storage_var = gen.var
         lc.storage_tuple_locals.add(gen.var)
     # A storage-optional unpack TARGET registers for the body walk (the
-    # storage_form_optional_locals mirror -- its reads render the bare
+    # `storage_form_optional_locals` counterpart -- its reads render the bare
     # storage optional, `T*` slots lift via optional_to_ptr), and pops
     # with it exactly like the loop-var storage-form registration above.
     comp_opt_vars: list[str] = []
@@ -971,7 +968,7 @@ def _lower_comprehension(
         # items]` over `list[P | None]`): binds the STORAGE-form
         # `std::optional<P>` and registers like the for-STATEMENT container
         # leg. Same const fence: a const-bound source's consumers spell
-        # `const P*` (the unmirrored const twin).
+        # `const P*`, a twin with no lowered render.
         _cs_src = (gen.iterable.obj
                    if isinstance(gen.iterable, TpyMethodCall)
                    else gen.iterable)
@@ -995,8 +992,8 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
                               body_declared, gen, analyzer, loc, pointers,
                               ptr_shadow: frozenset = frozenset()):
     """The comprehension body build, split out so the loop-var storage-form
-    registration above can scope itself symmetrically (mirroring the AST's
-    comp-scope enter/exit)."""
+    registration above can scope itself symmetrically around the comp
+    scope's enter/exit."""
     _witness(f"comp.{route.kind}")
     _witness(f"comp.{route.loop}")
     if gen.conditions:
@@ -1060,8 +1057,9 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
             else:
                 # Element temps flush PER-ITERATION into the loop body (the
                 # emit's element checkpoint/flush_since window), so the
-                # list/set element is a flushable position -- the AST hoists
-                # `take(Probe(c, i))`-style arg temps right above push_back.
+                # list/set element is a flushable position:
+                # `take(Probe(c, i))`-style arg temps hoist right above
+                # push_back.
                 # Dict key/value sinks keep the default (no emit window
                 # there).
                 element = _lower_comp_container_elem(
@@ -1089,7 +1087,7 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
         _witness("comp.range3")
         iterable = _lower_range_object(gen.iterable, lc, declared)
     elif isinstance(gen.iterable, TpyFieldAccess):
-        # The non-value field read (storage form) -- gen_expr_deref's plain
+        # The non-value field read (storage form) -- the plain
         # `recv.field` / `recv->field` render.
         _witness("comp.field_iter")
         iterable = _lower_field_source(gen.iterable, lc, declared)
@@ -1098,7 +1096,7 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
             _witness("comp.genfac_source")
         # allow_temps: the source-call's own arg temps (`int32_t __tmp_N =
         # 8;` a generic factory's ref-slot literal) flush BEFORE the comp's
-        # enclosing statement, exactly where the AST hoists them.
+        # enclosing statement.
         iterable = _lower_expr(
             gen.iterable, lc, declared,
             use=_ExprUse(result=_ExprResultUse.ITERABLE, allow_temps=True))
@@ -1144,8 +1142,8 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
 
 def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
                       self_receiver) -> str:
-    """Mirror ExpressionGenerator._genexpr_outer_captures: the `&local, ` prefix
-    for the outer names a genexpr lambda reads. Refs come from the element
+    """The `&local, ` capture prefix for the outer names a genexpr lambda
+    reads. Refs come from the element
     (+ filter conditions, + `extra_refs` for the IIFE's iterable refs); keep only
     function locals not shadowed by the comprehension scope; `self` maps to the
     captured `this`."""
@@ -1168,13 +1166,13 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
 
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                    declared: dict[str, TpyType]) -> THIRGenExpr:
-    """Lower a generator expression to the make_generator render
-    (`_gen_generator_expression`). Slice: scalar/Char/str loop-var bindings
+    """Lower a generator expression to the make_generator render.
+    Slice: scalar/Char/str loop-var bindings
     (or the tuple-unpack head) over an LVALUE bare-name container / a
     NON-LVALUE container literal / a range() source (delegated to
     `_lower_genexpr_range`'s counter lambda), with optional &&-joined
-    filter conditions. Everything else raises ThirUnsupported so the
-    enclosing body falls back to AST."""
+    filter conditions. Everything else raises ThirUnsupported, rejecting
+    the enclosing body."""
     analyzer = lc.analyzer
     gen = expr.generator
     loc = getattr(expr, "loc", None)
@@ -1194,7 +1192,8 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         raise ThirUnsupported("genexpr.iterable_shape")
     it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it_type)))
     # dict deferred: its `*__beg` yields a key/value pair, so the scalar
-    # loop-var binding would need the AST's key-extraction shape (a later rung).
+    # loop-var binding would need a key-extraction shape that is not
+    # lowered yet.
     if not (is_list(it_type) or is_set(it_type)
             or is_array(it_type) or is_span(it_type)):
         raise ThirUnsupported("genexpr.iterable_shape")
@@ -1226,7 +1225,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                 types.append(None)
                 continue
             # A str target COPIES the stored element (`std::string k =
-            # std::get<i>(tup);` -- the AST's is_value_type branch over the
+            # std::get<i>(tup);` -- the value-type branch over the
             # tuple's OWNED element spelling), so its reads stay
             # STORAGE-form; the comp unpack head carries the same disjunct.
             if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
@@ -1268,17 +1267,16 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     if yield_uses_borrow_slot(elem_type):
         # A record element yields through the reference-preserving
         # `::tpy::val_or_ref<T>` slot (`make_generator<val_or_ref<Node>>`,
-        # `std::optional<val_or_ref<Node>>(n)`) -- the AST's borrow-slot
-        # spelling; the loop-var name feeds the wrap bare.
+        # `std::optional<val_or_ref<Node>>(n)`); the loop-var name feeds
+        # the wrap bare.
         slot_cpp = f"::tpy::val_or_ref<{lc.render_type(elem_type)}>"
     else:
         slot_cpp = lc.render_type(elem_type)
     try:
         with _scrubbed_pointers(lc, _comp_pointer_shadow(gen, lc)):
             # allow_temps: the emit's yield_lines flushes element temps
-            # into the lambda body per iteration (the AST's
-            # _emit_iter_temps flush), so the element is a flush position
-            # -- the range flavor's twin (dualgen-verified identical).
+            # into the lambda body per iteration, so the element is a
+            # flush position -- the range flavor's twin.
             element = _lower_expr(expr.element_expr, lc, body_declared,
                                   use=_ExprUse(allow_temps=True))
             # Filter conditions render inside the lambda body against the
@@ -1333,11 +1331,11 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
 def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
                          lc: '_LowerCtx',
                          declared: dict[str, TpyType]) -> THIRGenExpr:
-    """The RANGE-source counter lambda (_gen_genexpr_counter_lambda): the
-    bounds move into init-captures cast to the counter type, the loop var
+    """The RANGE-source counter lambda: the bounds move into
+    init-captures cast to the counter type, the loop var
     binds `{counter} {var} = __i++;` (2-arg) / `= __i;` + `__i += __step;`
     (3-arg, with the step-nonzero and fixed-int overflow checks). Bounds
-    lower as gen_expr_deref against the counter type; non-scalar counters
+    lower target-typed against the counter type; non-scalar counters
     reject."""
     analyzer = lc.analyzer
     gen = expr.generator
@@ -1366,8 +1364,7 @@ def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
     slot_cpp = lc.render_type(elem_type)
     # allow_temps: the emit's yield_lines flushes element (and condition)
     # temps into the lambda body per iteration (`Box<int32_t> __tmp_N =
-    # ...;` ahead of the yield -- the AST's _emit_iter_temps flush), so
-    # both are flush positions.
+    # ...;` ahead of the yield), so both are flush positions.
     with _scrubbed_pointers(lc, _comp_pointer_shadow(gen, lc)):
         element = _lower_expr(expr.element_expr, lc, body_declared,
                               use=_ExprUse(allow_temps=True))

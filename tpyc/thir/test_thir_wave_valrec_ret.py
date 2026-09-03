@@ -251,8 +251,7 @@ class TestSelfAtValueUnionArg:
         _assert_routes_byte_identical(src)
         compiler, modules = _compile(src)
         hpp, _ = compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                    thir_codegen=True))
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False))
         assert "__tmp_1 = (*this);" in hpp
         assert "return sink(__tmp_1);" in hpp
 
@@ -283,8 +282,7 @@ class TestSelfAtValueUnionArg:
         _assert_routes_byte_identical(src)
         compiler, modules = _compile(src)
         hpp, _ = compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                    thir_codegen=True))
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False))
         assert "__tmp_1 = (*this);" in hpp
         assert "return Sink::of(__tmp_1);" in hpp
 

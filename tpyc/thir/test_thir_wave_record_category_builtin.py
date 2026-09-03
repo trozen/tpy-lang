@@ -61,7 +61,7 @@ class TestRecordCategoryBuiltinRoutes:
         # cannot see -- Waker is declared in another module, so the cross
         # module qualification arm is the one that spells it.
         ctx, witnessed, fallback = _thir_ctx_witnessed(_SRC)
-        assert fallback == {}
+        assert not fallback
         assert witnessed.get("ctor.cross_module", 0) > 0
 
     def test_the_protocol_sink_decides_the_by_value_record_slot(self):
@@ -70,7 +70,7 @@ class TestRecordCategoryBuiltinRoutes:
         compiler, modules = _compile(_SRC)
         from ..codegen_cpp.context import CodeGenOptions
         compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(thir_codegen=True))
+            _entry(modules), options=CodeGenOptions())
         reached = arg_table.reached(compiler)
         assert reached.get(("protocol", "value_record_rvalue"), 0) > 0
 

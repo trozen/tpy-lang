@@ -13,23 +13,21 @@ from .testutil import (
 _BI_PRELUDE = "from tpy import Int32, Float64\n"
 
 
-def _cpp(src: str, thir: bool, default_int: str = "Int32"):
+def _cpp(src: str, default_int: str = "Int32"):
     compiler, modules = _compile(src, default_int=default_int)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
-def _hpp_cpp(src: str, thir: bool):
+def _hpp_cpp(src: str):
     """Header + source together -- inline (record-method) bodies emit in the
     hpp, so a byte-identity check over cpp alone is blind to them."""
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -63,11 +61,8 @@ class TestBigIntValues:
         for name in ("grow", "mixed", "seed", "main"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         # literal wraps at call-arg slots (bare literals into BigInt params)
         assert "grow(::tpy::BigInt(10), ::tpy::BigInt(32))" in cpp
         assert "::tpy::BigInt z = ::tpy::BigInt(0);" in cpp  # annotated decl
@@ -121,13 +116,9 @@ class TestTargetTypedLiteralBoundaries:
         # ::tpy::BigInt(3) wrap, no 1.5f suffix (unlike free-call args).
         thir = _lower_ctx(self.METHOD_SRC)
         assert _fn(thir, "use") is not None
-        cpp = _cpp(self.METHOD_SRC, thir=True)
+        cpp = _cpp(self.METHOD_SRC)
         assert "a.take(3)" in cpp
         assert "a.add(1.5)" in cpp
-
-    def test_method_literal_args_byte_identical(self):
-        assert (_hpp_cpp(self.METHOD_SRC, thir=True)
-                == _hpp_cpp(self.METHOD_SRC, thir=False))
 
     LIST_SRC = (
         "from tpy import Float32\n"
@@ -143,12 +134,8 @@ class TestTargetTypedLiteralBoundaries:
         # ARRAY's and dict/set elements DO thread and wrap).
         thir = _lower(self.LIST_SRC)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(self.LIST_SRC, thir=True)
+        cpp = _cpp(self.LIST_SRC)
         assert "{1.0, 2.5}" in cpp
-
-    def test_list_literal_elements_byte_identical(self):
-        assert (_cpp(self.LIST_SRC, thir=True)
-                == _cpp(self.LIST_SRC, thir=False))
 
     def test_int32_min_literal_takes_int64_arm(self):
         # -2147483648 (INT32_MIN) folds via the negation arm and is the one
@@ -160,9 +147,8 @@ class TestTargetTypedLiteralBoundaries:
         )
         thir = _lower(src)
         assert _fn(thir, "main") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "::tpy::BigInt(static_cast<int64_t>(-2147483648LL))" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_huge_literals_take_from_str_arm(self):
         src = (
@@ -174,10 +160,10 @@ class TestTargetTypedLiteralBoundaries:
         )
         thir = _lower(src)
         assert _fn(thir, "main") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert '::tpy::BigInt::from_str("18446744073709551616")' in cpp
         assert '::tpy::BigInt::from_str("-9223372036854775809")' in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)
 
 
 class TestDeepConstNarrowSubject:
@@ -204,13 +190,9 @@ class TestDeepConstNarrowSubject:
     def test_const_pointee_spelling(self):
         # `which` is emitted inline in the header (a record method), so the
         # spelling assertion reads hpp + cpp together.
-        both = _hpp_cpp(self.SRC, thir=True)
+        both = _hpp_cpp(self.SRC)
         assert "std::holds_alternative<const Dog*>(a)" in both
         assert "*std::get<const Dog*>(a)" in both
-
-    def test_byte_identical(self):
-        assert _hpp_cpp(self.SRC, thir=True) == _hpp_cpp(self.SRC, thir=False)
-
 
 class TestBigIntNarrowIndex:
     """Runtime-BigInt subscript indices / slice bounds / del keys take the
@@ -263,7 +245,7 @@ class TestBigIntNarrowIndex:
         assert w.get("narrow.slice_bound", 0) >= 4
 
     def test_emit_spellings(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "::tpy::__getitem__(xs, k.to_fixed_check<int32_t>())" in cpp
         assert (".to_fixed_check<int32_t>())" in cpp
                 and "((k) + (::tpy::BigInt(1))).to_fixed_check<int32_t>()" in cpp)
@@ -280,9 +262,6 @@ class TestBigIntNarrowIndex:
         assert ("::tpy::BasicSlice{k.to_fixed_check<int32_t>(), "
                 "std::nullopt}") in cpp
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_bounds_safe_index_narrows_inside_cast(self):
         # Bounds-proven BigInt index: the narrow lands INSIDE the
         # static_cast<std::size_t> operator[] form.
@@ -295,9 +274,8 @@ class TestBigIntNarrowIndex:
         )
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "xs[static_cast<std::size_t>(k.to_fixed_check<int32_t>())]" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_declared_key_width(self):
         # The narrow width comes from the receiver's DECLARED key type:
@@ -328,13 +306,11 @@ class TestBigIntNarrowIndex:
             "    rec(Table(), 3)\n"
             "main()\n"
         )
-        cpp = _cpp(src, thir=True, default_int="BigInt")
+        cpp = _cpp(src, default_int="BigInt")
         assert "::tpy::__getitem__(d, k.to_fixed_check<int64_t>())" in cpp
         assert "::tpy::__setitem__(d, k, " in cpp
         assert "::tpy::__delitem__(d, k)" in cpp
         assert "t[k]" in cpp
-        assert _cpp(src, thir=True, default_int="BigInt") == _cpp(
-            src, thir=False, default_int="BigInt")
 
     def test_literal_bigint_slice_bound_stays_ast(self):
         # A literal slice bound under a BigInt default: the AST wraps the bare
@@ -385,17 +361,13 @@ class TestBigIntAugAssignNarrow:
         assert w.get("narrow.aug_value", 0) >= 3
 
     def test_emit_spellings(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("m = ::tpy::add_check<int32_t>(m, "
                 "(b).to_fixed_check<int32_t>());") in cpp
         assert ("w = ::tpy::sub_check<int64_t>(w, "
                 "(b).to_fixed_check<int64_t>());") in cpp
         assert ("a.n = ::tpy::add_check<int32_t>(a.n, "
                 "(b).to_fixed_check<int32_t>());") in cpp
-
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
 
 class TestBigIntEnumFromValueNarrow:
     """`E(x)` with a runtime-BigInt arg: `({0}).to_fixed_check<U>()` over the
@@ -422,14 +394,11 @@ class TestBigIntEnumFromValueNarrow:
         assert w.get("narrow.enum_arg", 0) >= 2
 
     def test_emit_spellings(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("::tpy::EnumUtil<Color>::from_value("
                 "(v).to_fixed_check<int32_t>())") in cpp
         assert ("::tpy::EnumUtil<Color>::from_value("
                 "(((v) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>())") in cpp
-
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_literal_bigint_arg_stays_ast(self):
         # A literal arg resolving BigInt (BigInt default): the AST wraps the
@@ -473,14 +442,11 @@ class TestBigIntRangeCounter:
         assert w.get("range.bigint_counter", 0) >= 2
 
     def test_emit_spellings(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "::tpy::BigInt __stop_0 = n;" in cpp
         assert "for (::tpy::BigInt i = 0; i < __stop_0; ++i) {" in cpp
         assert "::tpy::BigInt __start_0 = a;" in cpp
         assert "for (::tpy::BigInt j = __start_0; j < __stop_0; ++j) {" in cpp
-
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_literal_bounds_bigint_default(self):
         # Literal bounds under a BigInt default inline with the elem-slot
@@ -496,12 +462,10 @@ class TestBigIntRangeCounter:
         )
         thir = _lower(src, default_int="BigInt")
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True, default_int="BigInt")
+        cpp = _cpp(src, default_int="BigInt")
         assert "for (::tpy::BigInt i = 0; i < ::tpy::BigInt(3); ++i) {" in cpp
         assert ("for (::tpy::BigInt j = ::tpy::BigInt(2); "
                 "j < ::tpy::BigInt(5); ++j) {") in cpp
-        assert (_cpp(src, thir=True, default_int="BigInt")
-                == _cpp(src, thir=False, default_int="BigInt"))
 
 
 class TestBigIntDefaultArrayElements:
@@ -523,12 +487,10 @@ class TestBigIntDefaultArrayElements:
         thir = _lower(src, default_int="BigInt")
         assert _fn(thir, "arr") is not None
         assert _fn(thir, "lst") is not None
-        cpp = _cpp(src, thir=True, default_int="BigInt")
+        cpp = _cpp(src, default_int="BigInt")
         assert ("{::tpy::BigInt(10), ::tpy::BigInt(20), "
                 "::tpy::BigInt(30)}") in cpp
         assert "{10, 20, 30}" in cpp
-        assert (_cpp(src, thir=True, default_int="BigInt")
-                == _cpp(src, thir=False, default_int="BigInt"))
 
     def test_float32_array_elements_take_suffix(self):
         src = (
@@ -540,9 +502,8 @@ class TestBigIntDefaultArrayElements:
         )
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "{1.5f, 2.5f}" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestBothLiteralBinopFold:

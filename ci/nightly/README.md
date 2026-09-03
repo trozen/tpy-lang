@@ -31,19 +31,6 @@ without parallelism); the native-macOS row instead runs over SSH.
 
 ## Config notes
 
-- `thir-stdlib-fallback` is a `script` row, not a pytest row: it runs
-  `scripts/thir_migration/thir_stdlib_fallback.py --max-fallback N`, which
-  exits non-zero when stdlib THIR fallback EXCEEDS N. Beating the threshold
-  passes, so routing progress never needs a config edit; lowering N is a
-  deliberate reviewed step. **Its N counts differently from the pre-merge
-  gate's** -- this script dedupes bodies by bare name (collapsing overloads
-  and same-named methods) where `tests/test_thir_stdlib_gate.py` counts every
-  body, so the two thresholds are NOT interchangeable and "aligning" them
-  silently drops coverage. See TODO.md's counting-key entry.
-- What this row uniquely buys, now that the pre-merge gate also ratchets
-  fallback: it compiles 88 SEPARATE entry programs, so it catches a stdlib
-  module that no longer compiles STANDALONE. The gate's single mega-entry
-  compiles everything together and structurally cannot see that.
 - The 24.04 clang rows are clang-19 and clang-20 (both official updates
   archive), NOT the distro default clang-18: clang 18 defines
   `__cpp_concepts` as 201907, which keeps libstdc++'s `<expected>` disabled,
@@ -68,16 +55,6 @@ without parallelism); the native-macOS row instead runs over SSH.
   row and bumping `cpython`; these rows install no C++ toolchain at all --
   `--no-exec` builds nothing and skips the exec-cache prewarm, so it needs
   no compiler.
-- The `thir-stdlib` row is the wide half of the THIR stdlib oracle: it runs
-  the full corpus with `--thir-stdlib`, so every `lib/tpy` module is
-  re-emitted through THIR and byte-diffed against the same run's AST output.
-  `tests/test_thir_stdlib_gate.py` covers the same property pre-merge, but
-  only over `import <mod>` entry programs -- that never instantiates a
-  generic monomorphization or a resumable frame, which lower only at
-  emission time under a corpus that calls them. Front-end only: it sets
-  `no_exec`, so the runner passes `--no-exec --no-cpy` and the row installs
-  no C++ toolchain (`no_exec` is the explicit key for a comp-only row that
-  is not part of the CPython-version axis).
 - The system-deps row exercises `--dep-mode pcre2=system,mbedtls=system`
   against the distro's libpcre2-dev/libmbedtls-dev. Ubuntu 24.04 ships
   mbedTLS 2.28 (the mainstream-LTS branch); the ssl shim supports it

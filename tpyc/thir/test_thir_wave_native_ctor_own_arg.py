@@ -6,7 +6,8 @@ position-blind. Only the decl/value slot and the ctor member-init list
 carried it. Corpus witness: tpy.sync's `Condvar.__init__`
 (`unsafe_take(_RawCondvar())`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
 
@@ -28,12 +29,11 @@ def _emit(src: str):
     compiler, modules = _compile(src)
     compiler.generate_code_to_strings(
         _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback), dict(compiler._thir_face_witnesses)
+                                                comment_line_numbers=False))
+    return dict(compiler._thir_face_witnesses)
 
 
-def _fallback(src: str):
+def _reject_tags(src: str):
     return _emit(src)[0]
 
 
@@ -62,13 +62,13 @@ class TestNativeCtorAtOwnSlot:
                    + "main()\n")
 
     def test_native_callee_own_slot_routes_witnessed(self):
-        _, witnesses = _emit(self.NATIVE_SLOT)
+        witnesses = _emit(self.NATIVE_SLOT)
         assert witnesses.get("ctor.native_plain", 0) >= 1
         assert witnesses.get("own.record_rvalue", 0) >= 1
         _assert_routes_byte_identical(self.NATIVE_SLOT)
 
     def test_nested_user_ctor_arg_routes(self):
-        _, witnesses = _emit(self.NESTED_CTOR)
+        witnesses = _emit(self.NESTED_CTOR)
         assert witnesses.get("ctor.native_plain", 0) >= 1
         _assert_routes_byte_identical(self.NESTED_CTOR)
 
@@ -104,6 +104,5 @@ class TestNativeCtorAtOwnSlotBoundary:
                + "    h = H()\n"
                + "    print(1)\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "ctor:expr.call",
-                           "call.native_arg.own")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:expr.call:call.native_arg.own")

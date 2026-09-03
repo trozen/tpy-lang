@@ -6,6 +6,8 @@ boundaries that must keep falling back."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _fn,
     _lower_ctx,
@@ -124,8 +126,8 @@ class TestPolyPtrSubjects:
             "        return 1\n"
             "    return 0\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_binop.&&.scalar_scalar:truthy.call_nonbool")
 
     def test_spelled_subject_member_call_dot(self):
         # In-branch reads through the spelled `(*__e_ptr)` alias use `.`

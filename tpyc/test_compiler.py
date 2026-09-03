@@ -9,6 +9,8 @@ from .compiler import Compiler, BuildLayout
 from .compilation_context import activate_compiler
 from .codegen_cpp import CodeGenOptions
 from .diagnostics import SemanticError
+from .thir.lower import iter_module_callables
+from .thir.reject import is_bodyless_binding
 from .typesys import (
     INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID, BYTEARRAY,
     PtrType, make_span, make_list, make_dict, make_array, OptionalType,
@@ -95,14 +97,13 @@ class TestCompilerFromSource:
 
 
 
-class TestThirScoping:
-    """The per-module THIR scoping gate (compiler.py `_generate_code_impl`):
-    with thir_codegen on, USER modules route THIR while non-user (stdlib)
-    modules stay on the AST path. Guards against a silent scope inversion --
-    the byte-diff can't catch that (THIR output is byte-identical to AST
-    regardless of routing), so this asserts the routing DECISION, not output."""
+class TestThirRouting:
+    """THIR is the author for EVERY module -- user code, lib/tpy and the
+    stdlib alike. That is a routing DECISION the snapshot compare cannot see
+    on its own: a module that stopped lowering would still have to emit
+    something, so the routing claim needs its own assertion."""
 
-    def test_user_routes_thir_stdlib_stays_ast(self, tmp_path):
+    def test_every_module_routes_thir_by_default(self, tmp_path):
         src_file = tmp_path / "main.py"
         src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
@@ -110,18 +111,31 @@ class TestThirScoping:
         entry = next(m for m in modules if m.is_entry_point)
         for m in modules:
             compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
+                                   entry_module_name=entry.name)
+        # Compared against an INDEPENDENTLY derived candidate set rather than
+        # against "at least one body somewhere": a module whose bodies stopped
+        # being THIR's would still emit, and a per-module count > 0 is silent
+        # about the ones that did not.
         routed = compiler._thir_routed_names
-        # The user entry actually routed THIR bodies -- guards against a silent
-        # all-AST fall-through (THIR never running for user code).
-        assert routed.get(entry.name), "user entry module routed no THIR bodies"
-        # No non-user (stdlib) module routed THIR -- the scoping gate holds; an
-        # inversion would surface a stdlib module here.
+        expected = {}
         for m in modules:
-            if not compiler.is_user_module(m):
-                assert not routed.get(m.name), (
-                    f"non-user module {m.name!r} routed THIR -- scoping gate failed")
+            plain = [fn.name for fn, _self
+                     in iter_module_callables(m.ast, m.analyzer)
+                     # Resumable and simple-generator bodies lower at their
+                     # frame seams and key their own caches, so they are not
+                     # in this map; a bodyless binding has nothing to lower.
+                     if not (is_bodyless_binding(fn) or fn.is_async
+                             or fn.is_generator)]
+            if plain:
+                expected[m.name] = plain
+        assert entry.name in expected, "fixture entry defines no plain callable"
+        non_user = [m.name for m in modules if not compiler.is_user_module(m)]
+        assert any(name in expected for name in non_user), (
+            "fixture compiled no library module with a body -- test is vacuous")
+        missing = sorted(name for name in expected if not routed.get(name))
+        assert not missing, (
+            f"modules with bodies but no THIR routing: {missing} -- their "
+            "bodies were emitted by something other than THIR")
 
     def test_real_codegen_closes_the_witness_journal(self, tmp_path):
         """Codegen leaves no journal open, so a witness recorded after the last
@@ -145,19 +159,18 @@ class TestThirScoping:
         for m in modules:
             compiler.generate_code(m, tmp_path / "out",
                                    entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
+                                   )
         assert compiler._thir_face_witnesses, "no face witnessed -- test is vacuous"
         assert compiler._thir_face_journal is None, (
             "witness journal left OPEN after codegen -- a routed branch is "
             "missing its commit_attempt(), so these witnesses are exposed to "
             "the next attempt's rollback")
 
-    def test_thir_all_modules_lifts_the_stdlib_gate(self, tmp_path):
-        """The A5 / stdlib-oracle knob: `thir_all_modules` routes non-user
-        modules too. Asserts the routing DECISION (the sibling test pins the
-        default scoped behaviour); without it the stdlib surface can be neither
-        measured nor byte-diffed at a case's own instantiations and
-        options, which no committed snapshot covers."""
+    def test_clean_body_lowers_every_user_callable(self, tmp_path):
+        """A fully-lowerable user body leaves nothing on a second author: every
+        callable in the module has a THIR entry after codegen, which is what
+        makes the emitted C++ THIR's rather than something the skeleton
+        improvised."""
         src_file = tmp_path / "main.py"
         src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
         compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
@@ -165,78 +178,8 @@ class TestThirScoping:
         entry = next(m for m in modules if m.is_entry_point)
         for m in modules:
             compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True,
-                                                          thir_all_modules=True))
-        routed = compiler._thir_routed_names
-        non_user = [m.name for m in modules if not compiler.is_user_module(m)]
-        assert any(routed.get(name) for name in non_user), (
-            "thir_all_modules routed no non-user module -- the gate did not lift")
-
-    def test_clean_body_has_zero_fallback(self, tmp_path):
-        """The THIR ratchet's PASS condition: a fully-routable user body records
-        zero fallback -- so an unmarked case built from it has thir_ratchet_fell
-        == 0 and does not trip the comp-phase failure. The fallback>0 side is
-        exercised live by every no_thir-marked corpus case, so this only pins the
-        clean side (stable: a trivial arithmetic body stays routable forever)."""
-        src_file = tmp_path / "main.py"
-        src_file.write_text("def f(x: int) -> int:\n    return x + 1\n\nprint(f(1))\n")
-        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
-        modules = compiler.compile()
-        entry = next(m for m in modules if m.is_entry_point)
-        for m in modules:
-            compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
-        # User-scoped: stdlib is forced to AST, so this counts only user bodies.
-        assert sum(compiler._thir_fallback.values()) == 0, (
-            f"clean body recorded fallback: {compiler._thir_fallback}")
-
-    def test_unmigrated_body_records_fallback(self, tmp_path):
-        """The THIR ratchet's FIRE signal: a user body outside the THIR slice
-        records a fallback (sum(_thir_fallback) > 0), so an UNMARKED case using
-        it trips the comp-phase ratchet. Pins the >0 side (the pass side is
-        test_clean_body_has_zero_fallback) so an inverted/broken fallback counter
-        can't slip through -- no corpus case can exercise the fire side, since
-        unmarked <=> already clean. Uses a nested-def rebind-slot shape; if
-        that ever migrates, swap in another un-migrated construct."""
-        src_file = tmp_path / "main.py"
-        # A nested def whose local is first declared in an `if`/`else`: the
-        # slot rides `THIRIf.hoist_slots`, whose owner name the nested-def
-        # shadow exemption cannot read, so the enclosing-slot disjunct still
-        # fires. The same residue is pinned directly by
-        # test_thir_lambda_hoist.py -- swap both when it migrates. (Three
-        # earlier fixtures -- `async def f(): return None`, a nested-def-only
-        # rebind, then a nested def reserving its own slot -- all migrated.)
-        src_file.write_text(
-            "from tpy import Int32\n"
-            "class P:\n"
-            "    v: Int32\n"
-            "    def __init__(self, v: Int32) -> None:\n"
-            "        self.v = v\n"
-            "def f(flag: Int32) -> Int32:\n"
-            "    def g(k: Int32) -> Int32:\n"
-            "        if k > 0:\n"
-            "            p = P(k)\n"
-            "        else:\n"
-            "            p = P(0)\n"
-            "        p = P(k * 10)\n"
-            "        return p.v\n"
-            "    p = P(1)\n"
-            "    if flag > 0:\n"
-            "        p = P(99)\n"
-            "    return p.v + g(flag)\n"
-            "print(f(1))\n")
-        compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
-        modules = compiler.compile()
-        entry = next(m for m in modules if m.is_entry_point)
-        for m in modules:
-            compiler.generate_code(m, tmp_path / "out",
-                                   entry_module_name=entry.name,
-                                   options=CodeGenOptions(thir_codegen=True))
-        assert sum(compiler._thir_fallback.values()) > 0, (
-            "un-migrated body recorded no fallback -- either the construct "
-            "was migrated (swap in another) or the fallback counter broke")
+                                   entry_module_name=entry.name)
+        assert compiler._thir_routed_names.get(entry.name) == frozenset({"f"})
 
 
 class TestCodegenStateIsolation:

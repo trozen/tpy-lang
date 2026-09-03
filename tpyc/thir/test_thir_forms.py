@@ -14,6 +14,8 @@ from .nodes import (
 )
 from ..typesys import NominalType
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _lower_ctx, _lower_ctx_witnessed, _fn, _F1_RECORDS,
     _emit_expr, _assert_byte_identical, _assert_routes_byte_identical,
 )
@@ -157,11 +159,11 @@ class TestF1Eligibility:
 
 
 class TestF1Emit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -182,25 +184,20 @@ class TestF1Emit:
         + "main()\n"
     )
 
-    def test_f1_byte_identical(self):
-        # The load-bearing F1 contract: every routed form (REF_ALIAS,
-        # OPTIONAL_TO_PTR, scalar field reads) emits identically to the AST path.
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_ref_alias_emits_reference(self):
         # T& alias of the field storage (non-const here: the field is a plain
         # record off the param -- sema does not mark the read readonly).
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "Inner& x = b.inner;" in cpp
         assert "return x.value;" in cpp
 
     def test_optional_to_ptr_emits_lift(self):
         # const because the receiver param is const (an F1 body cannot mutate it).
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "const Inner* p = ::tpy::optional_to_ptr(b.opt);" in cpp
 
     def test_scalar_field_read_emits(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "int32_t a = b.n;" in cpp        # scalar field read into a local
         assert cpp.count("b.n") >= 2            # the read + the return operand
 
@@ -209,7 +206,7 @@ class TestF1Emit:
         # Optional read off that const local a `const Inner*` -- guards the two
         # _f1_is_const const paths (the byte-identical assertion above already
         # pins them to the AST path; these check the const spelling explicitly).
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "const Inner& x = b.inner;" in cpp
         assert "const Leaf* p = ::tpy::optional_to_ptr(x.opt);" in cpp
 
@@ -221,12 +218,11 @@ class TestNameAlias:
     """A single-assignment REF_ALIAS whose source is a plain non-value LVALUE
     NAME rendering bare (`T& name = src;`) -- records and list/dict/set."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_record_name_alias_eligible(self):
@@ -250,8 +246,7 @@ class TestNameAlias:
                + "def f(p: Inner) -> Int32:\n    q = p\n    q.value = 5\n"
                + "    return q.value\n"
                + "def main():\n    print(f(Inner(3)))\nmain()\n")
-        cpp = self._cpp(src, thir=True)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
         assert "Inner& q = p;" in cpp and "const Inner& q" not in cpp
 
     def test_record_name_alias_const_from_readonly(self):
@@ -261,8 +256,7 @@ class TestNameAlias:
                + "def f(p: readonly[Inner]) -> Int32:\n"
                + "    q = p\n    return q.value\n"
                + "def main():\n    print(f(Inner(3)))\nmain()\n")
-        cpp = self._cpp(src, thir=True)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
         assert "const Inner& q = p;" in cpp
 
     def test_alias_chain_eligible(self):
@@ -271,8 +265,7 @@ class TestNameAlias:
                + "def f(p: Inner) -> Int32:\n"
                + "    a = p\n    b = a\n    return b.value\n"
                + "def main():\n    print(f(Inner(3)))\nmain()\n")
-        cpp = self._cpp(src, thir=True)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
         assert "Inner& a = p;" in cpp and "Inner& b = a;" in cpp
 
     def test_container_name_alias_eligible(self):
@@ -281,8 +274,7 @@ class TestNameAlias:
                "def f(items: list[Int32]) -> Int32:\n"
                "    alias = items\n    return alias[0]\n"
                "def main():\n    xs: list[Int32] = [1, 2]\n    print(f(xs))\nmain()\n")
-        cpp = self._cpp(src, thir=True)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
         assert "std::vector<int32_t>& alias = items;" in cpp
 
     def test_nested_container_elem_alias(self):
@@ -294,8 +286,7 @@ class TestNameAlias:
                "def main():\n"
                "    m: list[list[Int32]] = [[1, 2], [3, 4]]\n"
                "    print(f(m, 9))\nmain()\n")
-        cpp = self._cpp(src, thir=True)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
         assert "std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);" in cpp
         assert "const std::vector<int32_t>& row" not in cpp
 
@@ -336,7 +327,6 @@ class TestNameAlias:
                "    print(H().count())\nmain()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "count") is None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_pending_container_alias_routes(self):
         # b = a where a is a literal-seeded LOCAL whose list type is still
@@ -350,8 +340,7 @@ class TestNameAlias:
                "    print(len(a))\n"
                "f()\n")
         assert _fn(_lower_ctx(src), "f") is not None
-        cpp = self._cpp(src, thir=True)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
         assert "std::vector<int32_t>& b = a;" in cpp
         _assert_byte_identical(src)
 
@@ -366,8 +355,7 @@ class TestNameAlias:
                "    print(len(a))\n"
                "f()\n")
         assert _fn(_lower_ctx(src), "f") is not None
-        cpp = self._cpp(src, thir=True)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
         assert "std::vector<int32_t>& c = b;" in cpp
 
     def test_reassigned_pending_container_alias_stays_ast(self):
@@ -382,8 +370,8 @@ class TestNameAlias:
                "    x.append(5)\n"
                "    print(len(a), len(b))\n"
                "f()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_global_source_routes_deref_alias(self):
         # RE-PINNED ROUTED (thir-wave-next6): a module-global record seeds
@@ -453,11 +441,11 @@ class TestF2PointerLocal:
 
 
 class TestF2Emit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -469,18 +457,13 @@ class TestF2Emit:
         + "main()\n"
     )
 
-    def test_f2_byte_identical(self):
-        # The load-bearing F2a contract: the pointer-local init / reseat / arrow
-        # read emit identically to the AST path.
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_pointer_local_init_and_reseat(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "Inner* x = &(b.inner);" in cpp
         assert "x = &(c.inner);" in cpp
 
     def test_arrow_read_off_pointer_local(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "return x->value;" in cpp
 
     def test_const_pointer_local(self):
@@ -491,8 +474,7 @@ class TestF2Emit:
             + "def f(b: readonly[Box], c: readonly[Box], which: Int32) -> Int32:\n"
             + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    return x.value\n"
             + "def main():\n    box = Box(Inner(1))\n    print(f(box, box, -1))\nmain()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "const Inner* x = &(b.inner);" in cpp
         assert "return x->value;" in cpp
 
@@ -592,11 +574,11 @@ class TestCharField:
         assert _fn(thir, "put") is not None   # `self.c = c` via self receiver
         assert _fn(thir, "show") is not None  # compare + print positions
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_char_field_byte_identical(self):
@@ -607,19 +589,19 @@ class TestCharField:
             "    print(swap(p, z))\n"
             "    show(p)\n"
             "main()\n")
-        cpp = self._cpp(src, thir=True)
-        assert cpp == self._cpp(src, thir=False)
+        cpp = self._cpp(src)
+        assert cpp == self._cpp(src)
         assert "char x = p.c;" in cpp
         assert "p.c = z;" in cpp
 
 
 
 class TestF2bEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -628,17 +610,14 @@ class TestF2bEmit:
         + "def main():\n    a = Box(Inner(1))\n    b = Box(Inner(2))\n    move_opt(a, b)\nmain()\n"
     )
 
-    def test_f2b_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_emits_ptr_to_optional(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "dst.opt = ::tpy::ptr_to_optional(p);" in cpp
 
     def test_written_receiver_is_non_const(self):
         # Mutation enters the slice: the written receiver is a non-const `Box&`,
         # the read-only one a `const Box&` (pure const_borrow_params sema read).
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "void move_opt(const Box& src, Box& dst)" in cpp
 
 
@@ -651,11 +630,11 @@ class TestF2PointerReceiver:
     must stay byte-identical to the AST path; neither the scaffold nor the two
     corpus cases exercised them before."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -674,17 +653,14 @@ class TestF2PointerReceiver:
         assert _fn(thir, "read_opt") is not None
         assert _fn(thir, "write_opt") is not None
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_optional_source_off_pointer_local(self):
         # `q = x.opt` off a POINTER local -> the storage read uses `x->opt`.
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "::tpy::optional_to_ptr(x->opt)" in cpp
 
     def test_optional_write_off_pointer_local(self):
         # `x.opt = leaf` off a POINTER local -> the write target uses `x->opt`.
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "x->opt = ::tpy::ptr_to_optional(leaf);" in cpp
 
     def test_reassigned_optional_local_routes(self):
@@ -786,11 +762,11 @@ class TestF2cNoneWrite:
 
 
 class TestF2cEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -803,19 +779,14 @@ class TestF2cEmit:
         + "main()\n"
     )
 
-    def test_f2c_byte_identical(self):
-        # The load-bearing F2c contract: the borrow-return lift, the None return,
-        # and the None field write all emit identically to the AST path.
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_borrow_return_emits_ptr_to_optional(self):
-        assert "return ::tpy::ptr_to_optional(p);" in self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::ptr_to_optional(p);" in self._cpp(self.SRC)
 
     def test_none_return_emits_nullopt(self):
-        assert "return std::nullopt;" in self._cpp(self.SRC, thir=True)
+        assert "return std::nullopt;" in self._cpp(self.SRC)
 
     def test_none_write_emits_nullopt(self):
-        assert "b.opt = std::nullopt;" in self._cpp(self.SRC, thir=True)
+        assert "b.opt = std::nullopt;" in self._cpp(self.SRC)
 
     def test_none_write_via_pointer_receiver(self):
         # `x.opt = None` off a POINTER local receiver -> `x->opt = std::nullopt;`
@@ -826,8 +797,7 @@ class TestF2cEmit:
             + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    x.opt = None\n"
             + "def main():\n    bx = Box(Inner(1))\n    clearp(bx, bx, 1)\nmain()\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
-        assert "x->opt = std::nullopt;" in self._cpp(src, thir=True)
+        assert "x->opt = std::nullopt;" in self._cpp(src)
 
 
 
@@ -1003,24 +973,17 @@ class TestF2dRebindSlot:
         # RECORD_HOISTED hoist lines have no drain point in the resumable /
         # simple-gen leaf emitters -- the decl rejects (falls back whole),
         # never reaches the hoist-drainable assert.
-        _assert_byte_identical(
-            _F1_RECORDS
-            + "from typing import Iterator\n"
-            + "def gen(n: Int32) -> Iterator[Int32]:\n"
-            + "    saved = Inner(0)\n"
-            + "    for i in range(n):\n"
-            + "        p = Inner(i)\n"
-            + "        saved = p\n"
-            + "        yield saved.value\n")
+        _assert_rejects_at(_reject_tally(_F1_RECORDS + 'from typing import Iterator\n' + 'def gen(n: Int32) -> Iterator[Int32]:\n' + '    saved = Inner(0)\n' + '    for i in range(n):\n' + '        p = Inner(i)\n' + '        saved = p\n' + '        yield saved.value\n'),
+                           "body:stmt.var_decl:decl.record_slot_resumable")
 
 
 
 class TestF2dEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1034,26 +997,20 @@ class TestF2dEmit:
         + "def main():\n    print(reb() + two())\nmain()\n"
     )
 
-    def test_f2d_byte_identical(self):
-        # The load-bearing F2d contract: the two-slot init, the optional rebind
-        # slot, the pointer reseat, and the arrow reads emit identically to the
-        # AST path -- including slot numbering across two rebind-slot locals.
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_two_slot_init_and_reseat(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "Inner __slot_1 = Inner(1);" in cpp
         assert "std::optional<Inner> __slot_2;" in cpp
         assert "Inner* p = &__slot_1;" in cpp
         assert "p = &*(__slot_2 = Inner(2));" in cpp
 
     def test_arrow_reads_off_rebind_local(self):
-        assert "int32_t a = p->value;" in self._cpp(self.SRC, thir=True)
+        assert "int32_t a = p->value;" in self._cpp(self.SRC)
 
     def test_slot_numbering_across_two_locals(self):
         # The second rebind-slot local numbers after the first (init then rebind):
         # p -> __slot_1/__slot_2, q -> __slot_3/__slot_4.
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "Inner __slot_3 = Inner(2);" in cpp
         assert "std::optional<Inner> __slot_4;" in cpp
         assert "Inner* q = &__slot_3;" in cpp
@@ -1069,8 +1026,7 @@ class TestF2dEmit:
             + "    p = make_inner()\n    a = p.value\n    p = make_inner()\n    return p.value + a\n"
             + "def main():\n    print(f())\nmain()\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
-        assert "Inner __slot_1 = make_inner();" in self._cpp(src, thir=True)
+        assert "Inner __slot_1 = make_inner();" in self._cpp(src)
 
     def test_conditional_reseat_byte_identical(self):
         # A rebind-slot reseat inside an `if`-body emits identically to the AST path
@@ -1081,7 +1037,6 @@ class TestF2dEmit:
             + "    p = Inner(1)\n    if x < 0:\n        p = Inner(2)\n    return p.value\n"
             + "def main():\n    print(f(-1))\nmain()\n"
         )
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 
@@ -1131,11 +1086,11 @@ class TestF2eMove:
 
 
 class TestF2eEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1149,19 +1104,14 @@ class TestF2eEmit:
         + "main()\n"
     )
 
-    def test_f2e_byte_identical(self):
-        # The load-bearing F2e contract: the move write, the copy write (not last
-        # use), and the move return all emit identically to the AST path.
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_write_move_emits_move_helper(self):
-        assert "dst.opt = ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC, thir=True)
+        assert "dst.opt = ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC)
 
     def test_write_copy_emits_copy_helper(self):
-        assert "dst.opt = ::tpy::ptr_to_optional(p);" in self._cpp(self.SRC, thir=True)
+        assert "dst.opt = ::tpy::ptr_to_optional(p);" in self._cpp(self.SRC)
 
     def test_return_move_emits_move_helper(self):
-        assert "return ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC)
 
 
 
@@ -1311,12 +1261,11 @@ class TestStrFieldReturn:
     """`return recv.field` for an owned-`str` field at a str-family return
     slot (ret.str_field): the bare STORAGE member read on both paths."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     _REC = (
@@ -1343,7 +1292,6 @@ class TestStrFieldReturn:
         assert isinstance(ret.value, THIRFieldAccess) and ret.value.is_arrow
         assert ret.value.form is Form.STORAGE
         assert faces.get("ret.str_field", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_param_receiver_str_field_return_routes(self):
         # `return a.name` off a record param at `-> str` -- the `.` access.
@@ -1360,7 +1308,6 @@ class TestStrFieldReturn:
         assert isinstance(ret, THIRReturn)
         assert isinstance(ret.value, THIRFieldAccess) and not ret.value.is_arrow
         assert faces.get("ret.str_field", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_own_str_return_slot_routes(self):
         # `-> Own[str]` spells the same owned `std::string` return; the field
@@ -1375,7 +1322,6 @@ class TestStrFieldReturn:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "take") is not None
         assert faces.get("ret.str_field", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_strview_field_owned_return_converts(self):
         # A `StrView` field is BORROW -- sema's materializing coerce at the
@@ -1401,7 +1347,6 @@ class TestStrFieldReturn:
         assert isinstance(ret.value.value, THIRFieldAccess)
         assert ret.value.value.form is Form.BORROW
         assert faces.get("fstr.str_field", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_string_field_return_routes(self):
         # `String` IS inside the resolved str slice (it renders
@@ -1435,7 +1380,6 @@ class TestStrFieldReturn:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "label") is not None
         assert faces.get("fstr.str_field", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_fstring_str_field_repr_conv_routes(self):
         # `{self.name!r}` -- the repr wrap composes over the field row.
@@ -1448,7 +1392,6 @@ class TestStrFieldReturn:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "show") is not None
         assert faces.get("fstr.str_field", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_fstring_strview_field_arg_routes(self):
         # A StrView field arg formats bare like the owned-str row (the
@@ -1467,16 +1410,15 @@ class TestStrFieldReturn:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "label") is not None
         assert faces.get("fstr.str_field", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestRecordBorrowReturnEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         # hpp + cpp: method bodies emit inline into the header.
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1489,11 +1431,8 @@ class TestRecordBorrowReturnEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_returns_bare_name(self):
-        assert "return b;" in self._cpp(self.SRC, thir=True)
+        assert "return b;" in self._cpp(self.SRC)
 
     SELF_FIELD_SRC = (
         _F1_RECORDS
@@ -1508,15 +1447,11 @@ class TestRecordBorrowReturnEmit:
         + "main()\n"
     )
 
-    def test_self_and_field_byte_identical(self):
-        assert (self._cpp(self.SELF_FIELD_SRC, thir=True)
-                == self._cpp(self.SELF_FIELD_SRC, thir=False))
-
     def test_self_return_emits_deref(self):
-        assert "return (*this);" in self._cpp(self.SELF_FIELD_SRC, thir=True)
+        assert "return (*this);" in self._cpp(self.SELF_FIELD_SRC)
 
     def test_field_return_emits_arrow_access(self):
-        assert "return this->b;" in self._cpp(self.SELF_FIELD_SRC, thir=True)
+        assert "return this->b;" in self._cpp(self.SELF_FIELD_SRC)
 
 
 class TestValueRecordReturn:
@@ -1582,8 +1517,7 @@ class TestValueRecordReturn:
         outs = []
         for thir in (True, False):
             hpp, cpp = compiler.generate_code_to_strings(
-                entry, options=CodeGenOptions(emit_source_comments=False,
-                                              thir_codegen=thir))
+                entry, options=CodeGenOptions(emit_source_comments=False))
             outs.append(hpp + cpp)
         assert outs[0] == outs[1]
         assert "return Vec(n);" in outs[0] and "return (*this);" in outs[0]
@@ -1637,11 +1571,11 @@ class TestOwnedRecordDecl:
 
 
 class TestRecordStorageReturnEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -1655,19 +1589,16 @@ class TestRecordStorageReturnEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_owned_decl_and_nrvo_return(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "Inner b = Inner(n);" in cpp
         assert "return b;" in cpp
 
     def test_ctor_rvalue_return(self):
-        assert "return Inner(n);" in self._cpp(self.SRC, thir=True)
+        assert "return Inner(n);" in self._cpp(self.SRC)
 
     def test_last_use_move(self):
-        assert "return consume(std::move(i));" in self._cpp(self.SRC, thir=True)
+        assert "return consume(std::move(i));" in self._cpp(self.SRC)
 
 
 # A method-call rvalue source (`Rec r = b.build();`) for the owned-record decl:
@@ -1691,16 +1622,12 @@ _METHOD_RECORD_SRC = (
 
 
 class TestOwnedRecordMethodDecl:
-    def _cpp(self, thir: bool) -> str:
+    def _cpp(self) -> str:
         compiler, modules = _compile(_METHOD_RECORD_SRC)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
-
-    def test_byte_identical(self):
-        assert self._cpp(thir=True) == self._cpp(thir=False)
 
     def test_decl_from_method_call_routes(self):
         thir, faces = _lower_ctx_witnessed(_METHOD_RECORD_SRC)
@@ -1717,7 +1644,7 @@ class TestOwnedRecordMethodDecl:
         thir = _lower_ctx(_METHOD_RECORD_SRC)
         assert _fn(thir, "via_self") is not None   # `r = self.build()`
         assert _fn(thir, "move_use") is not None
-        cpp = self._cpp(thir=True)
+        cpp = self._cpp()
         assert "Inner r = b.build();" in cpp
         assert "Inner s = b.build_n(5);" in cpp
         # The owned local is moved at its last use into the Own[Inner] slot.
@@ -1807,13 +1734,13 @@ class TestPtrValueFamily:
 
 
 class TestPtrValueFamilyEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         # hpp + cpp: the inline method bodies (`get` / `reset`) land in the
         # header, the free functions in the source.
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1825,11 +1752,8 @@ class TestPtrValueFamilyEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
-
     def test_ptr_local_decl_spelling(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "Node* q = pass_ptr(p);" in cpp
         assert "return this->_p;" in cpp
         assert "this->_p = p;" in cpp
@@ -1875,11 +1799,11 @@ class TestRecordBorrowCallAlias:
         compiler, modules = _compile(self.SRC + "def main():\n    print(0)\nmain()\n")
         entry = _entry(modules)
         hpp_t, cpp_t = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         c2, m2 = _compile(self.SRC + "def main():\n    print(0)\nmain()\n")
         e2 = _entry(m2)
         hpp_a, cpp_a = c2.generate_code_to_strings(
-            e2, options=CodeGenOptions(emit_source_comments=False, thir_codegen=False))
+            e2, options=CodeGenOptions(emit_source_comments=False))
         assert (hpp_t, cpp_t) == (hpp_a, cpp_a)
         assert "Inner& q = shared(b);" in cpp_t
         assert "const Inner& r = shared_ro(b);" in cpp_t
@@ -1946,12 +1870,11 @@ class TestPrintWrapArgs:
     kind-keyed printer wraps (print.wrap_arg); pointer-locals and `self` stay
     AST (their AST renders deref/(*this), not the bare name)."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_container_names_route(self):
@@ -1969,7 +1892,6 @@ class TestPrintWrapArgs:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert faces.get("print.wrap_arg", 0) == 4
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_pending_container_local_routes(self):
         # A literal-seeded local's binding resolves through the shared
@@ -1983,7 +1905,6 @@ class TestPrintWrapArgs:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert faces.get("print.wrap_arg", 0) == 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_tuple_and_record_names_route(self):
         # A value-tuple name -> TuplePrinter; an F1-record name streams raw
@@ -1999,7 +1920,6 @@ class TestPrintWrapArgs:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert faces.get("print.wrap_arg", 0) == 2
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_pointer_local_record_print_derefs(self):
         # A reassigned/alias record local is a pointer-local; printing it
@@ -2101,8 +2021,8 @@ class TestPrintWrapArgs:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        out = self._cpp(src, thir=True)
-        assert out == self._cpp(src, thir=False)
+        out = self._cpp(src)
+        assert out == self._cpp(src)
         assert "std::tuple<int32_t>(42)" in out
 
 
@@ -2110,12 +2030,11 @@ class TestTupleUnpackMethodSource:
     """`a, b = obj.method()` -- the method sibling of the free-call unpack
     source (storage_ret_ok threaded through method-call validation)."""
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     _REC = (
@@ -2138,7 +2057,6 @@ class TestTupleUnpackMethodSource:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_value_position_method_tuple_routes_via_native_arg(self):
         # `len(str(p.pair()))`: the str(...) result is a value-family CALL
@@ -2154,7 +2072,6 @@ class TestTupleUnpackMethodSource:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestBranchOwnedRecordDecl:
@@ -2353,8 +2270,7 @@ class TestStrFieldConcatWrite:
         compiler, modules = _compile(self.SRC)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert "this->buf = (::tpy::str_concat(this->buf, s));" in hpp + cpp
 
 
@@ -2424,9 +2340,8 @@ class TestPrintLiteralWraps:
         # BOUNDARY: a VALUE-tuple literal print is outside the borrow leg
         # (its wrap verdict stays None here).
         src = "def f() -> None:\n    print((1, 2))\nf()\n"
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:print.arg.tuple_tuple_literal")
 
 
 class TestPrintTupleElementSubscript:

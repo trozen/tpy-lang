@@ -27,8 +27,9 @@ name -- a list here would only drift from them.
   relocatable / primitive-value trait"
 - Generic-record auto-derive bug (`_work.md`; file the BUGS.md entry
   with a repro when picked up)
-- Complete the THIR migration: whole-body fallback -> 0 and the
-  AST-codegen deletion cutover (doctrine in CLAUDE.md / IR_DESIGN.md)
+- THIR migration -- SHIPPED (fallback -> 0, then the AST-codegen
+  deletion). Residual track: TODO: "The post-cutover fix queue: shapes
+  that are now compile errors"
 
 ## 0.6.0 (queued features; details in TODO.md / `_work.md` where tracked)
 

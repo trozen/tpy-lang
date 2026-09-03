@@ -4,15 +4,14 @@ The C++ binding shape of a single-assignment non-value local -- a `T&` alias of
 an lvalue storage source, or a `T*` lifted from a storage-form `Optional[ref]`
 via `optional_to_ptr` -- is a pure function of the resolved local type plus the
 per-function prescan facts (reassigned / hoisted / move-through). It is decided
-today inside `_gen_var_decl_code`'s indirection cascade; this module lifts that
-decision into one helper so the legacy AST codegen path and THIR lowering reach
-it identically (the same shared-helper pattern as `resolve_stmt_binding_type`).
+in one helper here, so every caller reaches it identically (the same
+shared-helper pattern as `resolve_stmt_binding_type`).
 
-The single-assignment slice (`T&` / `optional_to_ptr` `T*`) is rung F1; a
-reassigned-but-lvalue-sourced plain non-value local is rung F2's reseatable
-`T*` pointer-local (`POINTER`). Every other binding shape -- rvalue/rebind-slot
-locals, tuples, unions, generic slots -- returns `OTHER` and stays on the
-caller's existing path.
+The modeled slice is the single-assignment `T&` / `optional_to_ptr` `T*` shape
+plus the reseatable `T*` pointer-local (`POINTER`) of a reassigned but
+lvalue-sourced plain non-value local. Every other binding shape --
+rvalue/rebind-slot locals, tuples, unions, generic slots -- returns `OTHER` and
+is the caller's own.
 """
 
 from __future__ import annotations
@@ -57,19 +56,14 @@ class LocalBinding(Enum):
                              an rvalue (`T __slot_N = ...; T* x = &__slot_N;`),
                              with the `std::optional<T>` rebind-slot pre-decl
                              when the name is rvalue-reassigned. The Optional
-                             sibling of REBIND_SLOT; used by THIR lowering only
-                             (the AST path treats any non-REF_ALIAS verdict as a
-                             pointer-local and picks its arms inline).
+                             sibling of REBIND_SLOT.
       * `STORAGE_TUPLE_ALIAS` -- `auto&& name = <lvalue storage tuple>` aliasing a
-                             pointer-repr tuple's storage (F3); single-assignment.
-                             Used by THIR lowering only (`is_storage_tuple_alias_decl`);
-                             the AST path decides this arm inline in `_gen_var_decl_code`.
+                             pointer-repr tuple's storage; single-assignment.
+                             Decided by `is_storage_tuple_alias_decl`.
       * `PTR_VARIANT`     -- `std::variant<[const] A*, [const] B*>` pointer-variant
-                             local of a non-value union (F4 U2): a bare copy of a
+                             local of a non-value union: a bare copy of a
                              borrow-form source, or a `to_[const_]ptr_variant` lift
                              of a value-variant lvalue (a union field); reseatable.
-                             Used by THIR lowering only; the AST path decides these
-                             arms inline in `_gen_ptr_variant_local_init`.
       * `OTHER`           -- any other binding; the caller's existing path owns it
                              (single-assignment rvalue value-locals, tuples,
                              generic slots, value types).
@@ -149,13 +143,11 @@ def is_storage_tuple_alias_decl(
 ) -> bool:
     """A pointer-repr tuple local bound `auto&& name = <lvalue storage tuple>`,
     aliasing the source's storage (CPython shares the elements); single-assignment
-    only. Mirrors `_gen_var_decl_code`'s storage-form-tuple alias arm
-    (`statements.py`, the `auto&&` return) over the three lvalue source shapes the
-    AST admits there -- FieldAccess, Subscript, and a Name that is itself a
-    storage-form tuple local. The reassigned BORROW_TUPLE fall-over rides a later
-    F3 cell.
+    only. Three lvalue source shapes are admitted -- FieldAccess, Subscript,
+    and a Name that is itself a storage-form tuple local. The reassigned
+    BORROW_TUPLE fall-over is not admitted here.
 
-    The source-shape test mirrors the AST's `is_storage_form_source`: a field read
+    The source-shape test follows `is_storage_form_source`: a field read
     and a container subscript are unconditionally storage sources, while a NAME is
     one only when it already aliases storage. `storage_tuple_locals` supplies that
     membership; passing None admits the two unconditional shapes only, so a caller
@@ -166,14 +158,13 @@ def is_storage_tuple_alias_decl(
     incrementally during the same lowering walk (a name joins it only once its own
     alias decl has been lowered), which is exactly what makes the Name arm an
     alias-of-an-alias test rather than a type test. Callers add their own receiver /
-    element / const checks (THIR lowering gates the receiver, the F1 tuple slice, and
-    rejects const sources on the non-field shapes). The whole-corpus byte-diff is the
-    anti-drift net against the AST arm above.
+    element / const checks (THIR lowering gates the receiver and the tuple
+    slice, and rejects const sources on the non-field shapes).
 
     The init must be BARE (no coerce peel): THIR lowering reads `init.obj` directly
     and the eligibility gate likewise admits only a bare access, so admitting a
     coerce-wrapped source here would let the two diverge. A coerce-wrapped tuple
-    read stays on the AST path until a later F3 cell handles it on both sides."""
+    read is not admitted here."""
     if init is None or target_type is None:
         return False
     if name in reassigned or name in hoisted or name in move_through:
@@ -205,13 +196,9 @@ def classify_local_binding(
     slice (hoisted / move-through / rvalue-sourced locals, tuples / unions /
     protocols / generic slots, value types).
 
-    Callers consult this only *after* their own guards -- the legacy path inside
-    `_gen_var_decl_code`'s indirection cascade (the tuple / protocol / generic
-    branches have already not fired), THIR lowering after its eligibility gate --
-    so the guard-chain shapes need not be re-derived here.
-
-    The AST path treats every non-`REF_ALIAS` result as a pointer-local, so
-    splitting `POINTER` out of the old `OTHER` is transparent to it.
+    Callers consult this only *after* their own guards -- THIR lowering after
+    its eligibility gate -- so the guard-chain shapes need not be re-derived
+    here.
     """
     if init is None or target_type is None:
         return LocalBinding.OTHER
@@ -222,15 +209,13 @@ def classify_local_binding(
         # None-literal and rvalue inits take the slot-hoist pointer-local
         # machinery (reassigned or not: the rebind-slot pre-decl is keyed on
         # rvalue_reassigned at the consumer). THIR lowering sub-gates the
-        # admitted init/reseat shapes; the AST path treats the verdict like
-        # any non-REF_ALIAS binding (its own arms decide the render).
+        # admitted init/reseat shapes.
         if isinstance(init, TpyNoneLiteral) or is_rvalue_source(analyzer, init):
             return LocalBinding.OPT_PTR_SLOT
         # A reassigned optional off an LVALUE init binds the same
         # OPTIONAL_TO_PTR lift as the single-assignment shape; its reseats
         # ride the pointer-local reseat arms (lvalue lift / nullptr /
-        # inline-rvalue slot). Transparent to the AST caller, which treats
-        # every non-REF_ALIAS verdict as a pointer-local.
+        # inline-rvalue slot).
         if reads_storage_form_optional(analyzer, init):
             return LocalBinding.OPTIONAL_TO_PTR
         return LocalBinding.OTHER
@@ -244,6 +229,6 @@ def classify_local_binding(
                     else LocalBinding.OTHER)
         # An lvalue source binds a `T&` alias (single-assignment) or a reseatable
         # `T*` pointer-local (reassigned); both lift the lvalue storage to a borrow
-        # at the binding site (the reseat to later lvalues is F2a).
+        # at the binding site.
         return LocalBinding.POINTER if is_reassigned else LocalBinding.REF_ALIAS
     return LocalBinding.OTHER

@@ -10,11 +10,10 @@ from ..codegen_cpp import CodeGenOptions
 _PRELUDE = "from typing import Callable\nfrom tpy import Int32\n"
 
 
-def _gen(src: str, thir: bool):
+def _gen(src: str):
     compiler, modules = _compile(src)
     hpp, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=thir))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return compiler, hpp + cpp
 
 
@@ -22,10 +21,9 @@ def _assert_routes_identical(src: str, *names: str) -> str:
     thir = _lower_ctx(src)
     for n in names:
         assert _fn(thir, n) is not None, n
-    _, ast_out = _gen(src, thir=False)
-    compiler, thir_out = _gen(src, thir=True)
+    _, ast_out = _gen(src)
+    compiler, thir_out = _gen(src)
     assert ast_out == thir_out
-    assert not any(k.startswith("body:") for k in compiler._thir_fallback)
     return thir_out
 
 
@@ -82,10 +80,9 @@ class TestAsyncFactoryWrap:
             "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "pick") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not compiler._thir_fallback, dict(compiler._thir_fallback)
         assert ("return [](int32_t __a0) -> "
                 "std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { "
                 "return ::tpy::make_adapter<::tpystd::coro::Cancellable"

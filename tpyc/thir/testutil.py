@@ -42,26 +42,8 @@ def _lower_ctx(source: str):
         return lower_module(entry.ast, entry.analyzer)
 
 
-def _assert_no_fallback(compiler, source: str) -> None:
-    """Fail unless every body in `source` ROUTED.
-
-    A pin that claims routing but whose body silently fell back cannot fail:
-    the AST re-emits that body, so render-string and byte-identity assertions
-    pass either way. That is how five dead pins reached review on one branch.
-
-    Module-wide, deliberately blunt: it cannot tell WHICH body fell back, so a
-    fixture carrying a deliberately-unroutable sibling trips it. Use it via
-    `_assert_routes_byte_identical` on a fixture written to route end to end."""
-    fell = getattr(compiler, "_thir_fallback", {})
-    total = sum(fell.values())
-    assert total == 0, (
-        f"the pin claims routing but {total} body/bodies fell back "
-        f"({dict(fell)}) -- the assertions would pass on AST output alone.\n"
-        f"source:\n{source}")
-
-
 def _rejects_at(reasons, landmark: str) -> bool:
-    """Whether any fallback reason rejects at `landmark`.
+    """Whether any reject reason rejects at `landmark`.
 
     A reason may carry the blocking shape as a `:`-suffix, so testing a
     landmark by exact key or exact equality goes VACUOUS the moment its gate
@@ -76,25 +58,19 @@ def _rejects_at(reasons, landmark: str) -> bool:
 
 def _assert_rejects_at(fallback, landmark: str, shape: str | None = None,
                        count: int | None = None) -> None:
-    """Assert a boundary pin's body stayed on the AST path, at `landmark` and
-    -- when `shape` is given -- for exactly that blocking shape.
+    """Assert a boundary pin's body was REJECTED at `landmark` and -- when
+    `shape` is given -- for exactly that blocking shape.
 
     Pass the shape wherever the pin claims a NAMED reject. Landmark alone is
     satisfied when the gate under test happily admitted and something
     unrelated further down rejected instead, so a pin without it survives the
-    exact regression it exists to catch, and cannot distinguish "stays AST for
-    the reason claimed" from "stays AST at all". Omit it only where the claim
-    really is just "this lands on the fallback boundary rather than escaping".
+    exact regression it exists to catch, and cannot distinguish "rejects for
+    the reason claimed" from "rejects at all". Omit it only where the claim
+    really is just "this lands on the reject boundary rather than escaping".
 
-    Spelling the whole tally instead (`== {key: n}`) makes the pin fail
-    whenever any unrelated body in the fixture changes status, and the cheap
-    repair is to re-record whatever the run printed -- which is how a pin
-    stops asserting what it was written for. Claim only the landmark under
-    test.
-
-    `fallback` is a tally, a bare collection of reasons, or one reason;
-    `count` claims the number of rejecting bodies, and is worth spelling only
-    where multiplicity is itself the point."""
+    `fallback` is a reason -> count mapping, a bare collection of reasons, or
+    one reason; `count` claims the number of rejecting bodies, and is worth
+    spelling only where multiplicity is itself the point."""
     reasons = [fallback] if isinstance(fallback, str) else list(fallback)
     matched = [r for r in reasons if _rejects_at([r], landmark)]
     assert matched, (
@@ -118,8 +94,8 @@ def _lower_ctx_witnessed(source: str, extra_lib_dirs=None,
     """_lower_ctx plus the per-face witness counts the run recorded
     (faces.py, `compiler._thir_face_witnesses`). Lets a unit pin that its
     shape actually reaches the gate/lowering face it exercises -- without
-    the pin, a refactor can silently un-witness a face while routing and
-    the byte-diff both stay green."""
+    the pin, a refactor can silently un-witness a face while the snapshots
+    stay green."""
     from ..compilation_context import activate_compiler
     compiler, modules = _compile(source, extra_lib_dirs,
                                  default_int=default_int)
@@ -135,13 +111,8 @@ def _fn(thir, name):
 
 def _assert_byte_identical(source: str, default_int: str = "Int32",
                            extra_lib_dirs=None, comments: bool = True):
-    """Compile `source` through both codegen paths and assert the emitted
-    (.hpp, .cpp) are byte-identical.
-
-    Byte-identity ALONE proves nothing about routing -- a fallback emits the
-    AST verbatim, so this passes either way. That is fine for a reject-unit
-    (where identity IS the claim); a pin that claims its shape ROUTES must use
-    `_assert_routes_byte_identical` instead.
+    """Compile `source` and return the emitted `(hpp, cpp)`, asserting that
+    nothing rejected.
 
     The source-comment echo is ON by default, matching what the corpus runs
     with: comment TRIVIA divergences are invisible without it, since a
@@ -151,151 +122,127 @@ def _assert_byte_identical(source: str, default_int: str = "Int32",
     from ..codegen_cpp.context import CodeGenOptions
     compiler, modules = _compile(source, extra_lib_dirs,
                                  default_int=default_int)
-    entry = _entry(modules)
-    ast = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=comments,
-                                      comment_line_numbers=False,
-                                      thir_codegen=False))
-    thir = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=comments,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    assert thir == ast
-    return thir
+    return compiler.generate_code_to_strings(
+        _entry(modules),
+        options=CodeGenOptions(emit_source_comments=comments,
+                               comment_line_numbers=False))
 
 
-def _assert_routes_byte_identical(source: str, default_int: str = "Int32",
-                                  extra_lib_dirs=None, comments: bool = True):
-    """`_assert_byte_identical` PLUS the routing claim: every body in `source`
-    lowered through THIR. The pair is the minimum honest pin for a new arm --
-    identity alone is satisfied by a whole-body fallback, so without the
-    routing half a pin cannot fail. Write the fixture to route end to end; put
-    the shapes that must keep rejecting in their own reject-unit."""
-    from ..codegen_cpp.context import CodeGenOptions
-    thir = _assert_byte_identical(source, default_int, extra_lib_dirs,
-                                  comments)
+# The two names are one helper now: with a single author "routes" and "emits
+# without raising" are the same claim.
+_assert_routes_byte_identical = _assert_byte_identical
+
+
+def _strict_reject(source: str, default_int: str = "Int32",
+                   extra_lib_dirs=None):
+    """Emit `source` and return the `ThirRejectError` it raised, plus the
+    one-element reason list `_assert_rejects_at` reads.
+
+    Fails if nothing rejects: a shape that has since started lowering must
+    break the pin rather than leave it asserting a diagnostic no program
+    produces."""
+    from ..codegen_cpp.context import CodeGenOptions, ThirRejectError
     compiler, modules = _compile(source, extra_lib_dirs,
                                  default_int=default_int)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=comments,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    _assert_no_fallback(compiler, source)
-    return thir
-
-
-def _constant_positions(source: str, default_int: str = "Int32",
-                        extra_lib_dirs=None, comments: bool = True):
-    """The routing lens for the two NON-BODY constant positions (class
-    constants, `Final` global initializers).
-
-    Returns `(routed, ast_rendered, fallback)`: the constant names THIR
-    rendered, the names the AST `gen_expr` fallback rendered, and the
-    fallback tally. The AST set comes from spying on the exact `gen_expr`
-    call each position falls back to, so a pin built on it fails when the
-    skeleton stops calling THIR -- byte-identity and an empty fallback dict
-    are both satisfied by a fallback, and so can claim routing without
-    being able to fail.
-
-    The emitted (.hpp, .cpp) are asserted byte-identical across the two
-    paths on the way, since a routed constant that renders differently is
-    the failure this position exists to prevent."""
-    from ..codegen_cpp.context import CodeGenOptions
-    from ..codegen_cpp.expressions import ExpressionGenerator
-    opts = dict(emit_source_comments=comments, comment_line_numbers=False)
-    compiler, modules = _compile(source, extra_lib_dirs,
-                                 default_int=default_int)
-    entry = _entry(modules)
-    ast = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(thir_codegen=False, **opts))
-    seen: set[int] = set()
-    original = ExpressionGenerator.gen_expr
-
-    def spy(self, expr, target_type=None):
-        seen.add(id(expr))
-        return original(self, expr, target_type)
-
-    ExpressionGenerator.gen_expr = spy
     try:
-        thir = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(thir_codegen=True, **opts))
-    finally:
-        ExpressionGenerator.gen_expr = original
-    assert thir == ast, "routed constant diverged from the AST oracle"
-    routed: set[str] = set()
-    ast_rendered: set[str] = set()
-    for name, init in _constant_inits(entry):
-        (ast_rendered if id(init) in seen else routed).add(name)
-    return routed, ast_rendered, dict(compiler._thir_fallback)
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False))
+    except ThirRejectError as err:
+        return err, _reject_reasons(err)
+    raise AssertionError(
+        "nothing rejected -- the shape now lowers, so the pin no longer "
+        f"covers the diagnostic it names.\nsource:\n{source}")
 
 
-def _constant_inits(entry):
-    """(name, initializer expression) for every constant position in the
-    entry module -- `Final` globals first, then each record's class
-    constants."""
-    from ..parse.nodes import TpyVarDecl
-    out = []
-    for stmt in entry.ast.top_level_stmts:
-        if isinstance(stmt, TpyVarDecl) and stmt.is_final and stmt.init:
-            out.append((stmt.name, stmt.init))
-    for record in entry.ast.all_records():
-        info = entry.analyzer.registry.get_record(record.name)
-        if info is None:
-            continue
-        for cc_name, cc_fld in info.class_constants.items():
-            if cc_fld.default_expr is not None:
-                out.append((cc_name, cc_fld.default_expr))
-    return out
+def _reject_tally(source: str, default_int: str = "Int32",
+                  extra_lib_dirs=None) -> dict[str, int]:
+    """The `component:reason` tags emitting `source` reports, counted.
+
+    Empty when nothing rejects, so a pin can read it either way. The attempt
+    driver raises at the FIRST rejecting body, so it never holds more than one
+    key -- a pin that needs the reasons of several bodies at once has to drive
+    lowering body by body instead."""
+    from ..codegen_cpp.context import CodeGenOptions, ThirRejectError
+    compiler, modules = _compile(source, extra_lib_dirs,
+                                 default_int=default_int)
+    try:
+        compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False,
+                                   comment_line_numbers=False))
+    except ThirRejectError as err:
+        return {r: 1 for r in _reject_reasons(err)}
+    return {}
+
+
+def _reject_reasons(err) -> list[str]:
+    """The `component:reason` list a reject-observing helper hands to
+    `_assert_rejects_at`. One element: a reject raises at the first body that
+    fails, so at most one is ever recorded per emit."""
+    if err.component is None or err.reason is None:
+        return []
+    return [f"{err.component}:{err.reason}"]
 
 
 def _top_level(source: str, default_int: str = "Int32",
                extra_lib_dirs=None):
     """Lower a module's `__tpy_init` body through the REAL generator seeding
     (the global-type map only the generator builds) and return
-    (thir_top_level_or_None, face witnesses, fallback tally).
+    `(thir_top_level_or_None, face witnesses, reasons)`.
 
     A routing pin asserts the first is not None; a boundary pin asserts it IS
-    None and names the `top_level:` reject in the tally."""
-    from ..codegen_cpp.context import CodeGenOptions
+    None and names the `top_level:` reject in `reasons`. The reject raises, so
+    `reasons` holds at most one entry and the THIR is None exactly when it is
+    non-empty."""
+    from ..codegen_cpp.context import CodeGenOptions, ThirRejectError
     compiler, modules = _compile(source, extra_lib_dirs,
                                  default_int=default_int)
     entry = _entry(modules)
-    ctx = compiler.collect_thir(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return (ctx.thir_top_level, dict(compiler._thir_face_witnesses),
-            dict(compiler._thir_fallback))
+    try:
+        ctx = compiler.collect_thir(
+            entry, options=CodeGenOptions(emit_source_comments=False))
+    except ThirRejectError as err:
+        return None, dict(compiler._thir_face_witnesses), _reject_reasons(err)
+    return ctx.thir_top_level, dict(compiler._thir_face_witnesses), []
 
 
 def _thir_ctx(source: str, default_int: str = "Int32", extra_lib_dirs=None):
     """The seeded codegen ctx (`thir_functions` / `thir_simple_gens` /
-    `thir_resumables`) plus the fallback tally.
+    `thir_resumables`), or None when a body rejected, plus the reject reasons.
 
     The routing view for a body the plain `_fn` lens cannot see: the generator
     leaf seams key their own maps, and neither they nor `_thir_routed_bodies`
-    (functions + constructors only) move when such a body routes."""
-    from ..codegen_cpp.context import CodeGenOptions
+    (functions + constructors only) move when such a body lowers. The reject
+    raises, so `reasons` holds at most one entry and the ctx is None exactly
+    when it is non-empty."""
+    from ..codegen_cpp.context import CodeGenOptions, ThirRejectError
     compiler, modules = _compile(source, extra_lib_dirs,
                                  default_int=default_int)
-    ctx = compiler.collect_thir(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=True))
-    return ctx, dict(compiler._thir_fallback)
+    try:
+        ctx = compiler.collect_thir(
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False))
+    except ThirRejectError as err:
+        return None, _reject_reasons(err)
+    return ctx, []
 
 
 def _thir_ctx_witnessed(source: str, default_int: str = "Int32",
                         extra_lib_dirs=None):
     """`_thir_ctx` plus the face witnesses -- the CONSTRUCTOR-side sibling of
     `_lower_ctx_witnessed`, which lowers free functions only and so cannot see
-    a face a ctor MIL row records."""
-    from ..codegen_cpp.context import CodeGenOptions
+    a face a ctor MIL row records. Returns `(ctx_or_None, witnesses,
+    reasons)`."""
+    from ..codegen_cpp.context import CodeGenOptions, ThirRejectError
     compiler, modules = _compile(source, extra_lib_dirs,
                                  default_int=default_int)
-    ctx = compiler.collect_thir(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=True))
-    return (ctx, dict(compiler._thir_face_witnesses),
-            dict(compiler._thir_fallback))
+    try:
+        ctx = compiler.collect_thir(
+            _entry(modules), options=CodeGenOptions(emit_source_comments=False))
+    except ThirRejectError as err:
+        return None, dict(compiler._thir_face_witnesses), _reject_reasons(err)
+    return ctx, dict(compiler._thir_face_witnesses), []
 
 
 def _lower_ctor(source: str, record_name: str, extra_lib_dirs=None):
@@ -322,10 +269,8 @@ def _ctor_tail(ctor) -> str:
 
 
 def _raised_in_lowering(err) -> bool:
-    """Whether a THIR lowering frame raised `err`. Both paths share one
-    message builder, so the text cannot say which layer decided -- and a pin
-    that only matches the text passes just as well when the body fell back
-    and the other path raised."""
+    """Whether a THIR lowering frame raised `err` -- as opposed to the
+    skeleton, which shares the same message builder."""
     tb = err.__traceback__
     while tb is not None:
         if tb.tb_frame.f_globals.get("__name__", "").startswith(

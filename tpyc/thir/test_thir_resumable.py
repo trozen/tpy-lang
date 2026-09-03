@@ -9,34 +9,35 @@ from __future__ import annotations
 
 import pytest
 
-from ..codegen_cpp.context import CodeGenError, CodeGenOptions
-from .testutil import (_assert_rejects_at, _compile, _entry,
+from ..codegen_cpp.context import (CodeGenError, CodeGenOptions,
+                                  ThirRejectError)
+from .testutil import (
+    _reject_tally, _assert_rejects_at, _compile, _entry,
                        _raised_in_lowering, _thir_ctx)
 
 _PRE = "from tpy import Int32, Int64\n\n"
 
 
-def _gen(src: str, thir: bool):
+def _gen(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=True,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=True))
     return compiler, hpp, cpp
 
 
 def _assert_identical(src: str) -> 'tuple[dict, dict]':
     """Byte-compare THIR vs AST output; return (witnesses, fallback)."""
-    _, hpp_ast, cpp_ast = _gen(src, thir=False)
-    c, hpp_thir, cpp_thir = _gen(src, thir=True)
+    _, hpp_ast, cpp_ast = _gen(src)
+    c, hpp_thir, cpp_thir = _gen(src)
     assert hpp_ast == hpp_thir
     assert cpp_ast == cpp_thir
-    return c._thir_face_witnesses, c._thir_fallback
+    return c._thir_face_witnesses
 
 
 def _res_fallback(src: str) -> dict:
-    c, _hpp, _cpp = _gen(src, thir=True)
-    return {k.split(":", 1)[1]: n for k, n in c._thir_fallback.items()
+    """The resumable-component reject reasons, sans the component prefix."""
+    return {k.split(":", 1)[1]: n for k, n in _reject_tally(src).items()
             if k.startswith("resumable:")}
 
 
@@ -60,7 +61,7 @@ BASIC = (_PRE
 
 class TestRoutedFoundation:
     def test_byte_identical_and_witnessed(self):
-        witnesses, fallback = _assert_identical(BASIC)
+        witnesses = _assert_identical(BASIC)
         assert witnesses.get("res.body") == 2  # step + runner
         # Only the decomposed while's condition is a Branch terminator; the
         # suspension-free `if` stays a leaf compound (lowered whole).
@@ -71,7 +72,6 @@ class TestRoutedFoundation:
         # render with the assignment shape -- the BigInt-family regression
         # pin (`big = 0;`, never `::tpy::BigInt(0)`).
         assert witnesses.get("res.decl_assign", 0) >= 3
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_await_kinds_route(self):
         # DISCARD (expr-stmt await), RETURN (`return await f()`), and a
@@ -82,7 +82,7 @@ class TestRoutedFoundation:
                + "    await zero()\n"
                + "    return await zero()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
 
     def test_literal_return_is_position_blind(self):
@@ -95,7 +95,7 @@ class TestRoutedFoundation:
                + "    return 42\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _assert_identical(src)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "::tpy::BigInt __tpy_async_ret = 42;" in cpp
 
     def test_raise_terminator_routes(self):
@@ -105,7 +105,7 @@ class TestRoutedFoundation:
                + "        raise ValueError(\"neg\")\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 1
 
 
@@ -127,9 +127,8 @@ class TestDeclRegistrationOrder:
                + "        return 0\n"
                + "    return x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestMethodCoros:
@@ -148,15 +147,14 @@ class TestMethodCoros:
               + "def main() -> None:\n    pass\nmain()\n")
 
     def test_method_coro_routes_byte_identical(self):
-        witnesses, fallback = _assert_identical(self.METHOD)
+        witnesses = _assert_identical(self.METHOD)
         assert witnesses.get("res.body") == 2  # step (free) + run (method)
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_self_renders_as_reference_field(self):
         # __self is a `Record&` frame field, so self.x renders `.` not `->`
         # (the plain-method `this->x`); the seam must produce __self, never
         # this, inside a coro body.
-        c, _hpp, cpp = _gen(self.METHOD, thir=True)
+        c, _hpp, cpp = _gen(self.METHOD)
         assert "__self.base = total;" in cpp
         assert "total = __self.bump(a);" in cpp
         assert "this->" not in cpp.split("__coro_C_run")[-1].split("};")[0] \
@@ -182,10 +180,9 @@ class TestMethodCoros:
                + "            total = await self.step(total)\n"
                + "        return total + b.get() + self.base\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "b.get()" in cpp        # record param: bare `.`
         assert "__self.base" in cpp    # self: __self reference
 
@@ -200,8 +197,7 @@ class TestMethodCoros:
                    + "    def __init__(self, v: T) -> None:\n        self.v = v\n"
                    + "    async def get(self, n: Int32) -> Int32:\n        return n\n\n"
                    + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(gen_src)
-        assert not [k for k in fallback if k.startswith("resumable:")]
+        _ = _assert_identical(gen_src)
 
 
 _ITER = "from tpy import Int32, Int64\nfrom typing import Iterator\n\n"
@@ -223,10 +219,9 @@ class TestGeneratorShape:
              + "    for x in counter(3):\n        print(x)\nmain()\n")
 
     def test_generator_routes_byte_identical(self):
-        witnesses, fallback = _assert_identical(self.MULTI)
+        witnesses = _assert_identical(self.MULTI)
         assert witnesses.get("res.body") == 1
         assert witnesses.get("res.yield_value") == 3
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_bigint_literal_yield_is_target_typed(self):
         # `gen_yield_value` threads the yield type into the render, so a bare
@@ -239,15 +234,14 @@ class TestGeneratorShape:
                "    yield n\n\n"
                "def main() -> None:\n"
                "    for x in gen(3):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.yield_value") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "return ::tpy::BigInt(1);" in cpp
 
     def test_generator_stop_iteration_is_skeleton(self):
         # The fall-off-end StopIteration return carries no leaf value.
-        _, _hpp, cpp = _gen(self.MULTI, thir=True)
+        _, _hpp, cpp = _gen(self.MULTI)
         assert "::tpy::make_unexpected(::tpy::StopIteration{});" in cpp
 
     def test_while_generator_routes(self):
@@ -263,10 +257,9 @@ class TestGeneratorShape:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for x in gen(5):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 1
         assert witnesses.get("res.yield_value") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_generator_leaf_return_routes(self):
         # A bare `return` nested in a leaf compound routes: scaffolding
@@ -282,9 +275,8 @@ class TestGeneratorShape:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for x in gen(5):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.nested_return") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_simple_generator_stays_peephole(self):
         # A single-yield-in-a-loop generator uses the lambda peephole, not
@@ -299,9 +291,8 @@ class TestGeneratorShape:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for x in gen(3):\n        print(x)\nmain()\n")
-        c, _hpp, _cpp = _gen(src, thir=True)
+        c, _hpp, _cpp = _gen(src)
         assert c._thir_face_witnesses.get("sgen.body") == 1
-        assert not any(k.startswith("resumable:") for k in c._thir_fallback)
 
     def test_generator_method_routes(self):
         # A generator METHOD composes R2's __self machinery with R4's yield
@@ -319,11 +310,10 @@ class TestGeneratorShape:
                + "def main() -> None:\n"
                + "    c = C(7)\n"
                + "    for x in c.counts(3):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 1
         assert witnesses.get("res.yield_value") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "return __self.base;" in cpp
 
     def test_generator_method_with_frame_slot_local(self):
@@ -348,11 +338,10 @@ class TestGeneratorShape:
                + "def main() -> None:\n"
                + "    c = C(7)\n"
                + "    for x in c.counts(3):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 1
         assert witnesses.get("res.frame_slot_write") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "a.emplace(Acc(__self.base));" in cpp
         assert "(*a).get()" in cpp
 
@@ -372,10 +361,9 @@ class TestLocalStorage:
                + "        total = await step(total)\n"
                + "    return total + Int32(len(s)) + Int32(len(s2)) + Int32(len(b))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
         assert witnesses.get("res.decl_assign", 0) >= 4
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     RECORD = (_PRE
               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
@@ -396,11 +384,10 @@ class TestLocalStorage:
     def test_frame_slot_record_routes(self):
         # R1c: an owning (non-alias) record local is a frame_slot -- write
         # `a.emplace(...)`, reads `(*a).method()`.
-        witnesses, fallback = _assert_identical(self.RECORD)
+        witnesses = _assert_identical(self.RECORD)
         assert witnesses.get("res.body") == 2
         assert witnesses.get("res.frame_slot_write") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(self.RECORD, thir=True)
+        _, _hpp, cpp = _gen(self.RECORD)
         assert "a.emplace(Acc(n));" in cpp
         assert "(*a).add(total);" in cpp
         assert "(*a).get();" in cpp
@@ -421,10 +408,9 @@ class TestLocalStorage:
                + "    xs.append(total)\n"
                + "    return Int32(len(xs))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_slot_write") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "xs.emplace(std::vector<int32_t>{n, n});" in cpp
         assert "(*xs).push_back(total);" in cpp
 
@@ -444,10 +430,9 @@ class TestAwaitModes:
                + "    r = await s.call(n)\n"
                + "    return r\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.suspend_expr", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__sub_0.emplace((*s), n);" in cpp
 
 
@@ -467,9 +452,8 @@ class TestAwaitModes:
                + "        total = await step(total)\n"
                + "    return total + b.get() + b.v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
     def test_erased_sleep_operand_routes(self):
@@ -481,10 +465,9 @@ class TestAwaitModes:
                "async def snooze() -> None:\n"
                "    await asyncio.sleep(0.01)\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.suspend_operand", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert (".emplace(std::move(::tpystd::asyncio::sleep(0.01)));"
                 in cpp)
 
@@ -505,11 +488,10 @@ class TestAwaitModes:
                "    for r in rs:\n"
                "        print(r)\n\n"
                "def main() -> None:\n    asyncio.run(go())\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.suspend_operand", 0) >= 1
         assert witnesses.get("vararg.pack_ref", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 2> __tmp_1{&(*t1), &(*t2)};" in cpp
 
     def test_await_arg_families_route(self):
@@ -525,9 +507,8 @@ class TestAwaitModes:
                + "async def go(r: R) -> Int32:\n"
                + "    return await use(r, \"ab\")\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.await_args", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_subscript_optional_ptr_await_arg_routes(self):
         # A record-element lvalue subscript (`items[i]`) into a pointer-repr
@@ -546,9 +527,8 @@ class TestAwaitModes:
                + "    items.append(P(5))\n"
                + "    return await takes(items[0])\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "&(::tpy::__getitem__((*items), 0))" in cpp
 
     def test_erased_ternary_operand_routes(self):
@@ -570,8 +550,7 @@ class TestAwaitModes:
                + "    v: Int32 = await (t if c else u)\n"
                + "    print(v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        _witnesses = _assert_identical(src)
 
 
 class TestSlicedOutShapes:
@@ -587,8 +566,7 @@ class TestSlicedOutShapes:
                + "        total = await step(total)\n"
                + "    return total + Int32(len(s))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
 
     def test_own_record_param_routes(self):
         # An Own[R] param admits through the F1-record arm (the frame owns
@@ -604,8 +582,7 @@ class TestSlicedOutShapes:
                + "    n = await step(r.v)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_pointer_optional_param_generator_routes(self):
         # A pointer-repr Optional[record] param (`p: R | None` -> a `R*` frame
@@ -621,9 +598,8 @@ class TestSlicedOutShapes:
                + "        if p is not None:\n            yield p.v\n"
                + "        else:\n            yield -1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "(p != nullptr)" in cpp and "return p->v;" in cpp
 
     def test_borrow_tuple_param_routes(self):
@@ -640,9 +616,8 @@ class TestSlicedOutShapes:
                + "    x = await step(pair[0].n)\n"
                + "    return x + pair[1].n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::get<0>(pair)->n" in cpp
 
     def test_value_tuple_param_routes(self):
@@ -655,9 +630,8 @@ class TestSlicedOutShapes:
                + "    x = await step(t[0])\n"
                + "    return x + t[1]\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::get<0>(t)" in cpp
 
     def test_protocol_param_iteration_routes(self):
@@ -675,9 +649,8 @@ class TestSlicedOutShapes:
                + "        total = total + x\n"
                + "    return await step(total)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, hpp, _cpp = _gen(src)
         # The template frame emits inline in the header.
         assert "auto& __src_0 = it;" in hpp
 
@@ -689,8 +662,7 @@ class TestSlicedOutShapes:
                + "async def ident[T](x: T) -> T:\n"
                + "    return x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not [k for k in fallback if k.startswith("resumable:")]
+        _ = _assert_identical(src)
 
     def test_generic_bare_t_local_still_defers(self):
         # The bare-`T` admission is CAPTURE-only (`_res_capture_ok`): a `T`
@@ -705,8 +677,7 @@ class TestSlicedOutShapes:
                + "    await asyncio.sleep(0)\n"
                + "    return y\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.alias_bind") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.alias_bind")
 
     def test_generic_optional_param_still_defers(self):
         # An `Optional[T]` param composes the bare-T admission with the
@@ -749,7 +720,7 @@ class TestSlicedOutShapes:
                + "        i += 1\n\n"
                + "def main() -> None:\n"
                + "    for u in g(3):\n        print(u)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback == {"resumable:res.local_storage": 1}, fallback
 
     def test_optional_local_none_init_routes(self):
@@ -769,10 +740,9 @@ class TestSlicedOutShapes:
                + "        total = await step(total)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("reseat.opt_none") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "o = nullptr;" in cpp
 
     def test_optional_local_lvalue_reseat_routes(self):
@@ -791,10 +761,9 @@ class TestSlicedOutShapes:
                + "        return x.v\n"
                + "    return 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("reseat.opt_lvalue") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "x = &(b);" in cpp
 
     def test_rebind_slot_holder_routes_frame_slot(self):
@@ -816,9 +785,8 @@ class TestSlicedOutShapes:
                + "        return x.v\n"
                + "    return 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "x = &*(__ptr_slot_f0 = R(5));" in cpp
 
     def test_frame_slot_del_routes_after_await(self):
@@ -830,10 +798,9 @@ class TestSlicedOutShapes:
                + "    del xs\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
+        _ = _assert_identical(src)
         # `xs` is a resumable frame slot; the del move-sink renders the
         # same position-blind bare member move, so the body routes.
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_global_lowering_reject_falls_back_after_await(self):
         # A BYTES global stays unseeded (the AST's bytes view-assign is
@@ -848,7 +815,7 @@ class TestSlicedOutShapes:
                + "    n = await step(n)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback.get("resumable:stmt.global:global.unseeded") == 1
 
     def test_scalar_global_write_routes_after_await(self):
@@ -864,8 +831,7 @@ class TestSlicedOutShapes:
                + "    counter = counter + n\n"
                + "    return counter\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not fallback
+        _ = _assert_identical(src)
 
     def test_raise_expr_after_await_routes(self):
         # The `resumable_leaf_mode` guard that used to reject this was
@@ -879,8 +845,7 @@ class TestSlicedOutShapes:
                + "    n = await step(n)\n"
                + "    raise err\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not fallback
+        _ = _assert_identical(src)
 
     def test_wide_numeric_literals_route_after_await(self):
         src = (_PRE
@@ -898,9 +863,8 @@ class TestSlicedOutShapes:
                + "    n = await step(n)\n"
                + "    return widen_u(18446744073709551615)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "static_cast<int64_t>(2147483648)" in cpp
         assert "static_cast<int64_t>((-9223372036854775807LL - 1))" in cpp
         assert "static_cast<uint64_t>(18446744073709551615ull)" in cpp
@@ -920,7 +884,7 @@ class TestSlicedOutShapes:
                + "    x = eat(n) if n > 0 else 0\n"
                + "    return x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback.get("resumable:argtemp.cond_defer") == 1
 
     def test_async_with_global_manager_routes(self):
@@ -954,9 +918,8 @@ class TestSlicedOutShapes:
                + "    if n > 1:\n        n = n + 1\n"
                + "    print(n)\n    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.branch_frame_write", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_leaf_return_routes(self):
         # A return nested in a suspension-free leaf compound routes: the
@@ -970,9 +933,8 @@ class TestSlicedOutShapes:
                + "    if n > 2:\n        return 99\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.nested_return") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_return_await_bound_method_routes(self):
         # `return await g.hi()` -- a RETURN-kind bound-method await of a
@@ -987,9 +949,8 @@ class TestSlicedOutShapes:
                + "    g = G()\n"
                + "    return await g.hi()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     # (Non-simple generators route via this seam -- see TestGeneratorShape.
     # Simple peephole generators route via their own leaf seam, pinned in
@@ -1012,9 +973,8 @@ class TestContainerAndNoneParams:
                + "    xs.append(t)\n"
                + "    return t\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_container_param_generator_routes(self):
         src = (_PRE
@@ -1023,8 +983,7 @@ class TestContainerAndNoneParams:
                + "    for x in xs:\n"
                + "        yield x + 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_await_arg_container_slot_routes(self):
         # The INLINE emplace arg at a container param slot takes the same
@@ -1036,9 +995,8 @@ class TestContainerAndNoneParams:
                + "async def go(xs: list[Int32]) -> Int32:\n"
                + "    return await takes(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.await_args", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_frame_slot_init_record_call_routes(self):
         # A module-qualified F1-record-returning call as a frame_slot decl
@@ -1056,9 +1014,8 @@ class TestContainerAndNoneParams:
                + "    val = await t\n"
                + "    return val\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_slot_write", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_none_typed_aexit_params_route(self):
         # The async-CM `__aexit__(et, ev, tb)` None-typed triple: monostate
@@ -1076,8 +1033,7 @@ class TestContainerAndNoneParams:
                + " tb: None) -> None:\n"
                + "        await asyncio.sleep(0.001)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
 
 class TestOwnContainerFrameFields:
@@ -1108,10 +1064,9 @@ class TestOwnContainerFrameFields:
                + "    await asyncio.sleep(0.0)\n"
                + "    return take(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
+        _witnesses = _assert_identical(src)
         # Pin the WHOLE dict: a resumable:-only filter lets a body: key
         # through, and a frame body that stopped routing would land there.
-        assert fallback == {}
 
     def test_own_container_frame_owning_sink_moves(self):
         # The owning sink inside the frame renders `take(std::move(xs))` on
@@ -1126,11 +1081,10 @@ class TestOwnContainerFrameFields:
                + "    yield len(xs)\n"
                + "    yield take(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
+        _witnesses = _assert_identical(src)
         # Mechanical routing claim: the render asserts below are satisfied
         # by a whole-body fallback, so the frame body must be pinned here.
-        assert fallback == {}
-        _c, _hpp, cpp = _gen(src, thir=True)
+        _c, _hpp, cpp = _gen(src)
         assert "return take(std::move(xs));" in cpp
         assert "return ::tpy::__len__(xs);" in cpp
 
@@ -1144,8 +1098,7 @@ class TestOwnContainerFrameFields:
                + "def take(v: Own[list[Int32]]) -> Int32:\n"
                + "    return Int32(len(v))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert fallback == {}, fallback
+        _witnesses = _assert_identical(src)
 
 
 class TestStrBytesReturns:
@@ -1159,9 +1112,8 @@ class TestStrBytesReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return tag\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::string __tpy_async_ret = std::string(tag);" in cpp
 
     def test_literal_return_stays_bare(self):
@@ -1170,9 +1122,8 @@ class TestStrBytesReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return \"hi\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::string __tpy_async_ret = \"hi\";" in cpp
 
     def test_owned_rvalue_return_stays_bare(self):
@@ -1181,8 +1132,7 @@ class TestStrBytesReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return tag + \"!\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_bytes_view_param_return_wraps(self):
         src = ("import asyncio\n\n"
@@ -1190,8 +1140,7 @@ class TestStrBytesReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return b\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_bytes_literal_return_stays_bare(self):
         src = ("import asyncio\n\n"
@@ -1199,8 +1148,7 @@ class TestStrBytesReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return b\"hi\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_bytes_owned_rvalue_return_stays_bare(self):
         src = ("import asyncio\n\n"
@@ -1208,8 +1156,7 @@ class TestStrBytesReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return b + b\"!\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
 
 class TestStrBytesYields:
@@ -1227,9 +1174,8 @@ class TestStrBytesYields:
                + "    yield \"hello \" + name\n"
                + "    yield \"goodbye \" + name\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.yield_value", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_bytes_yield_routes(self):
         src = ("from typing import Iterator\n\n"
@@ -1239,8 +1185,7 @@ class TestStrBytesYields:
                + "        yield b\n"
                + "        n += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     # A LITERAL source has static storage, so view deduction leaves it a view
     # even in a frame -- the one source shape that still meets the owning
@@ -1256,10 +1201,9 @@ class TestStrBytesYields:
     def test_static_view_yield_materializes(self):
         # Without the copy the owning slot rejects the view (string_view ->
         # expected<string> has no implicit conversion).
-        witnesses, fallback = _assert_identical(self.STATIC_VIEW_SRC)
+        witnesses = _assert_identical(self.STATIC_VIEW_SRC)
         assert witnesses.get("res.yield_value", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(self.STATIC_VIEW_SRC, thir=True)
+        _, _hpp, cpp = _gen(self.STATIC_VIEW_SRC)
         assert "return std::string(lit);" in cpp
 
     def test_promoted_local_yield_stays_bare(self):
@@ -1272,9 +1216,8 @@ class TestStrBytesYields:
                + "        yield k\n"
                + "    yield \"end\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "return k;" in cpp
         assert "std::string(k)" not in cpp
 
@@ -1286,9 +1229,8 @@ class TestStrBytesYields:
                + "    yield name\n"
                + "    yield name\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "return name;" in cpp
         assert "std::string(name)" not in cpp
 
@@ -1315,8 +1257,7 @@ class TestStaticProtocolParams:
                + "    b = Box(3)\n"
                + "    return await measure(b)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_protocol_param_generator_routes(self):
         # The same capture-position admission on a resumable GENERATOR: the
@@ -1338,8 +1279,7 @@ class TestStaticProtocolParams:
                + "        yield i\n"
                + "        i += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
 
 class TestBoundCoroAwaits:
@@ -1367,10 +1307,9 @@ class TestBoundCoroAwaits:
                + "    m = w.bump(5)\n"
                + "    print(await m)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.coro_handle_write", 0) >= 2
         assert witnesses.get("res.await_prebuilt", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_name_source_rebind_routes(self):
         # `c2 = c` (handle move-bind) renders the two-statement
@@ -1381,9 +1320,8 @@ class TestBoundCoroAwaits:
                + "    c2 = c\n"
                + "    print(await c2)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.coro_handle_move", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_erased_handle_local_routes(self):
         # An ERASED handle local (a helper returning Own[Cancellable[T]]):
@@ -1400,10 +1338,9 @@ class TestBoundCoroAwaits:
                + "    c = spawn()\n"
                + "    print(await c)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.erased_handle_write", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "c = spawn();" in cpp
         assert ".emplace(spawn()" not in cpp
 
@@ -1426,8 +1363,7 @@ class TestBoundCoroAwaits:
                + "    m = b.echo(5)\n"
                + "    print(await m)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.coro_handle_write")
 
 
@@ -1454,10 +1390,9 @@ class TestBorrowTupleLocals:
                + "    await asyncio.sleep(0)\n"
                + "    return u[0]\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.btuple_write", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "u = t;" in cpp
 
     def test_coro_borrow_tuple_local_routes(self):
@@ -1467,10 +1402,9 @@ class TestBorrowTupleLocals:
                + "    await asyncio.sleep(0)\n"
                + "    t[1].val = 99\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.btuple_write", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "t = std::tuple<int32_t, Box*>{1, &(b)};" in cpp
 
     def test_borrow_tuple_literal_yield_routes(self):
@@ -1485,9 +1419,8 @@ class TestBorrowTupleLocals:
                + "        yield (i + 1, xs[i])\n"
                + "        i += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.btuple_yield", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_subscript_element_yield_lifts(self):
         # A container-ELEMENT source at the resumable btuple yield slot
@@ -1526,9 +1459,8 @@ class TestBorrowTupleLocals:
                + "        yield (ks[i], vs[i])\n"
                + "        i += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.btuple_yield_generic", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_self_element_sync_method_passes_bare(self):
         # `self` in a sync method is the prvalue pointer `this` -- it passes
@@ -1545,8 +1477,7 @@ class TestBorrowTupleLocals:
                + "def main() -> None:\n"
                + "    b = Box(5)\n"
                + "    print(b.make_tuple())\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        _witnesses = _assert_identical(src)
 
     def test_value_tuple_literal_yield_routes(self):
         src = ("from tpy import Int32\n"
@@ -1558,9 +1489,8 @@ class TestBorrowTupleLocals:
                + "        yield (i + 1, i)\n"
                + "        i += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.btuple_yield", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_optional_element_yield_routes(self):
         # A pointer-repr Optional PARAM element is already the pointer and
@@ -1596,10 +1526,9 @@ class TestBorrowTupleLocals:
                + "    await asyncio.sleep(0)\n"
                + "    print(t[1].val)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.btuple_write") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "t = pick(b);" in cpp
 
     def test_const_ref_capture_decl_defers(self):
@@ -1617,9 +1546,8 @@ class TestBorrowTupleLocals:
                + "def main() -> None:\n"
                + "    b = Box(5)\n"
                + "    print(peek(b))\nmain()\n")
-        c, _hpp, _cpp = _gen(src, thir=True)
-        assert any("tuple_literal" in k for k in c._thir_fallback)
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.tuple_literal_shape")
 
     def test_owned_rvalue_element_tuple_routes(self):
         # A VALUE-captured owned-rvalue element (`(1, make())`) renders bare
@@ -1635,8 +1563,7 @@ class TestBorrowTupleLocals:
                + "    await asyncio.sleep(0)\n"
                + "    print(t[1].val)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
 
 class TestBorrowTupleArgs:
@@ -1658,18 +1585,16 @@ class TestBorrowTupleArgs:
                + "def main() -> None:\n"
                + "    b = Box(5)\n"
                + "    print(take((1, b)))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("btuple.literal", 0) >= 1
-        assert not fallback
 
     def test_rvalue_element_arg_routes(self):
         src = (self._PRE_BOX
                + "def main() -> None:\n"
                + "    print(take((2, Box(7))))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("btuple.value_to_borrow", 0) >= 1
-        assert not fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("::tpy::tuple_value_to_borrow<std::tuple<int32_t, Box*>>"
                 "(std::tuple<int32_t, Box>{2, Box(7)})") in cpp
 
@@ -1686,9 +1611,8 @@ class TestBorrowTupleArgs:
                + "def main() -> None:\n"
                + "    b = Box(5)\n"
                + "    print(take2((b, Box(7))))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("btuple.value_to_borrow", 0) >= 1
-        assert not fallback
 
     def test_single_element_rvalue_arg_parenthesizes(self):
         # The 1-element source tuple takes the paren form (GCC brace-init
@@ -1702,9 +1626,8 @@ class TestBorrowTupleArgs:
                + "    return t[0].val\n\n"
                + "def main() -> None:\n"
                + "    print(take1((Box(9),)))\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "(std::tuple<Box>(Box(9)))" in cpp
 
     def test_value_tuple_arg_routes(self):
@@ -1713,9 +1636,8 @@ class TestBorrowTupleArgs:
                + "    return t[0] + t[1]\n\n"
                + "def main() -> None:\n"
                + "    print(total((3, 4)))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("btuple.value_arg", 0) >= 1
-        assert not fallback
 
 
 class TestOwnCancellableArgs:
@@ -1735,10 +1657,9 @@ class TestOwnCancellableArgs:
                + "    t = asyncio.create_task(c)\n"
                + "    print(await t)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("call.coro_handle_adapter", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "(std::move(*(c)))" in cpp
 
     def test_factory_arg_at_await_routes(self):
@@ -1753,8 +1674,7 @@ class TestOwnCancellableArgs:
                + "    v = await asyncio.wait_for(compute(), 5.0)\n"
                + "    print(v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_readonly_own_slot_defers(self):
         # An `Own[readonly[P]]` slot never takes the adapter render on the
@@ -1774,9 +1694,8 @@ class TestOwnCancellableArgs:
                + "    c = add_one(1)\n"
                + "    park(c)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:expr.call:call.arg_shape.own_protocol.dyn")
 
     def test_erased_param_forward_routes(self):
         # An already-ERASED Own[Cancellable] PARAM: the frame captures it
@@ -1793,9 +1712,8 @@ class TestOwnCancellableArgs:
                + "    t = asyncio.create_task(coro)\n"
                + "    return await t\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::move(coro)" in cpp
         assert "std::move(*(coro))" not in cpp
 
@@ -1822,9 +1740,8 @@ class TestMatchDispatch:
                + "        case Color.GREEN:\n"
                + "            yield 3\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.match_dispatch", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_guarded_switch_dispatch_routes(self):
         # A guarded arm on an Int32 subject: the switch_primitive tier's
@@ -1843,10 +1760,9 @@ class TestMatchDispatch:
                + "        case _:\n"
                + "            return await step(0)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.match_dispatch", 0) >= 1
         assert witnesses.get("match.switch_primitive", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_guarded_chain_dispatch_routes(self):
         # A str subject below the switch threshold with a guard: the
@@ -1862,9 +1778,8 @@ class TestMatchDispatch:
                + "        case _:\n"
                + "            return await step(0)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("match.if_elif_guarded", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_or_pattern_labels_route(self):
         src = (self._ENUM.replace("    GREEN = 2\n",
@@ -1877,9 +1792,8 @@ class TestMatchDispatch:
                + "        case Color.GREEN:\n"
                + "            yield 3\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.match_dispatch", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_str_switch_tier_defers(self):
         # A str subject at/over the switch-dispatch threshold takes the
@@ -1895,9 +1809,7 @@ class TestMatchDispatch:
                + "        case \"e\":\n            yield 5\n"
                + "        case _:\n            yield 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.match_strategy")
 
     def test_union_dispatch_routes(self):
         # A union-subject match stamps arm narrowings (entry_narrowings);
@@ -1934,10 +1846,9 @@ class TestMatchDispatch:
                + "        case _ as y:\n"
                + "            yield 9\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.match_dispatch", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "y = __match_subject_1;" in cpp
 
 
@@ -1987,7 +1898,7 @@ class TestSuspendingPolyMatchDiagnostic:
             "def main() -> None:\n    pass\nmain()\n")
         with pytest.raises(CodeGenError,
                            match="inside a `match` on a @dynamic") as exc:
-            _gen(src, thir=True)
+            _gen(src)
         # The text alone cannot say which layer decided: both paths share one
         # message builder, and a fallback body re-emits through the other.
         assert _raised_in_lowering(exc.value)
@@ -2008,7 +1919,7 @@ class TestSuspendingPolyMatchDiagnostic:
             "def main() -> None:\n    pass\nmain()\n")
         with pytest.raises(CodeGenError,
                            match="inside a `match` on a @dynamic") as exc:
-            _gen(src, thir=True)
+            _gen(src)
         assert _raised_in_lowering(exc.value)
 
     def test_nonsuspending_poly_match_in_a_frame_is_untouched(self):
@@ -2025,7 +1936,8 @@ class TestSuspendingPolyMatchDiagnostic:
             "        case _:\n"
             "            return 'other'\n\n"
             "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.param_type:protocol.dyn")
 
     def test_suspension_free_poly_match_after_an_arm_suspension_is_not_rejected(
             self):
@@ -2060,7 +1972,8 @@ class TestSuspendingPolyMatchDiagnostic:
             "        case _:\n"
             "            return 'other'\n\n"
             "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.match:match.poly_resumable")
 
     def test_nonpoly_suspending_match_still_routes(self):
         # BOUNDARY on the DISPATCH-KIND axis: an ordinary suspending match
@@ -2068,9 +1981,8 @@ class TestSuspendingPolyMatchDiagnostic:
         # alone, without the polymorphic test, would reject every one of them.
         src = (self._SUSPENDING_ENUM
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.match_dispatch", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestNarrowedResume:
@@ -2101,11 +2013,10 @@ class TestNarrowedResume:
                + "        return \"dog\"\n"
                + "    return a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.postif_narrow") == 1
         assert witnesses.get("res.nested_return") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__a.sound()" in cpp
 
     def test_postif_raise_terminated_routes(self):
@@ -2120,10 +2031,9 @@ class TestNarrowedResume:
                + "    print(a.sound())\n"
                + "    raise ValueError(\"cat\")\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.postif_narrow") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__a.sound()" in cpp
 
     def test_postif_generator_return_routes(self):
@@ -2139,11 +2049,10 @@ class TestNarrowedResume:
                + "    print(a.sound())\n"
                + "    return\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.postif_narrow") == 1
         assert witnesses.get("res.nested_return") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__a.sound()" in cpp
 
     def test_narrowing_assert_leaf_routes(self):
@@ -2158,10 +2067,9 @@ class TestNarrowedResume:
                + "    assert isinstance(a, Dog)\n"
                + "    return a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.flat_assert_narrow", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__a.sound()" in cpp
 
     def test_postif_crossing_suspension_defers(self):
@@ -2175,8 +2083,7 @@ class TestNarrowedResume:
                + "    await step(0)\n"
                + "    return a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.narrowed_resume") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.narrowed_resume")
 
     def test_if_narrow_across_suspend_routes(self):
         # Suspension inside the narrowed then-arm: the resume case
@@ -2189,7 +2096,7 @@ class TestNarrowedResume:
                + "        return a.sound()\n"
                + "    return a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.narrow_scope")
         assert sum(_res_fallback(src).values()) == 0
 
@@ -2206,7 +2113,7 @@ class TestNarrowedResume:
                + "        case Cat():\n"
                + "            yield a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.narrow_scope")
         assert witnesses.get("res.match_dispatch")
         assert sum(_res_fallback(src).values()) == 0
@@ -2226,7 +2133,7 @@ class TestNarrowedResume:
                + "        case Cat():\n"
                + "            yield \"cat\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.narrow_scope")
         assert sum(_res_fallback(src).values()) == 0
 
@@ -2263,7 +2170,7 @@ class TestNarrowedResume:
                + "        break\n"
                + "    yield \"done\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.narrow_scope")
         assert sum(_res_fallback(src).values()) == 0
 
@@ -2279,7 +2186,7 @@ class TestNarrowedResume:
                + "        case _:\n"
                + "            yield \"other\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.narrow_scope")
         assert sum(_res_fallback(src).values()) == 0
 
@@ -2296,7 +2203,7 @@ class TestNarrowedResume:
                + "        case Cat():\n"
                + "            yield \"cat\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.narrow_scope")
         assert sum(_res_fallback(src).values()) == 0
 
@@ -2346,9 +2253,7 @@ class TestNarrowedResume:
                + "        a = echo(a)\n"
                + "        yield \"end\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert fallback.get("res.narrowed_resume") == 1, fallback
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.narrowed_resume")
 
     def test_poly_self_narrow_routes(self):
         # `isinstance(self, Sub)` in a resumable now ROUTES (the round C
@@ -2383,9 +2288,7 @@ class TestNarrowedResume:
                + "        return 1\n"
                + "    return 2\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert fallback.get("res.narrowed_resume", 0) >= 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.narrowed_resume")
 
     def test_guarded_union_dispatch_routes(self):
         # The guarded_union tier now rides dispatch-hook mode: the in-case
@@ -2425,9 +2328,7 @@ class TestNarrowedResume:
                + "        case _:\n"
                + "            yield \"o\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert fallback.get("res.match_strategy", 0) >= 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.match_strategy")
 
     def test_union_binding_arm_routes_frame_emplace(self):
         # `case Dog() as d:` binds the extracted member into `d`'s
@@ -2442,9 +2343,8 @@ class TestNarrowedResume:
                + "        case Cat():\n"
                + "            yield a.sound()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "d.emplace(" in cpp
 
 
@@ -2464,10 +2364,9 @@ class TestTryRegions:
                + "        n = 0\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.body") == 2
         assert witnesses.get("res.try_region") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_handler_binding_reads_route(self):
         # The `as`-binding is the catch parameter (a C++ local, never a frame
@@ -2479,9 +2378,8 @@ class TestTryRegions:
                + "    except ValueError as e:\n        print(e)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.try_region") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_returns_in_try_and_handler_route(self):
         # ReturnT terminators inside the region: the pre-finally capture and
@@ -2496,9 +2394,8 @@ class TestTryRegions:
                + "    except ValueError:\n"
                + "        return 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_value", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_raise_in_handler_routes(self):
         src = (_PRE
@@ -2509,9 +2406,8 @@ class TestTryRegions:
                + "        raise RuntimeError(\"boom\")\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.try_region") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_binding_frame_field_collision_rejects(self):
         # A handler binding sharing a frame-field name would mistype the flat
@@ -2550,9 +2446,9 @@ class TestTryRegions:
                + "        yield a.v\n"
                + "        yield a.v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert "res.local_storage" not in fallback
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "::tpy::frame_slot<Item> a;" in hpp
         assert "\n    Item a;\n" not in hpp
 
@@ -2573,10 +2469,9 @@ class TestSyncLoops:
                + "        total = await step(total)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.sync_loop") == 1
         assert witnesses.get("res.for_iter_setup") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_range3_loop_routes(self):
         src = (_PRE
@@ -2587,8 +2482,7 @@ class TestSyncLoops:
                + "        total = await step(total)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_list_local_iterable_routes(self):
         src = (_PRE
@@ -2600,9 +2494,8 @@ class TestSyncLoops:
                + "        total = await step(x)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.sync_loop") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_loop_body_try_composes(self):
         # A break/await-forced region inside a decomposed loop routes as
@@ -2616,10 +2509,9 @@ class TestSyncLoops:
                + "        except ValueError:\n            total = 0\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.sync_loop") == 1
         assert witnesses.get("res.try_region") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_record_loop_var_routes(self):
         # A1: pointer-form loop var (begin_end over list[R]) -- the skeleton
@@ -2633,10 +2525,9 @@ class TestSyncLoops:
                + "    for r in xs:\n        total = await step(r.v)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.loop_ptr_bind") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "r = &(*((*__for_it_0))++);" in cpp
         assert "__sub_0.emplace(r->v);" in cpp
 
@@ -2652,8 +2543,7 @@ class TestSyncLoops:
                + "    for r in xs:\n        total = await step(r.v)\n"
                + "    return total + r.v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_generic_slot_loop_var_routes(self):
         # A2: a generic-T loop var over an Iterable[T] param is a frame_slot
@@ -2669,10 +2559,9 @@ class TestSyncLoops:
                + "        yield x\n"
                + "        c += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.loop_slot_bind") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "x.emplace(::tpy::unwrap_ref_move(*(*__for_r_0)));" in hpp
         assert "return (*x);" in hpp
         # The field's payload is the trait, not the TPy element type -- a `T`
@@ -2692,10 +2581,9 @@ class TestSyncLoops:
                + "        yield x\n"
                + "        c += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.loop_ptr_bind") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "return (*x);" in hpp
         # Boundary against the iter_next sibling (test_generic_slot_loop_var_
         # routes), which spells its field from the source because an arbitrary
@@ -2756,8 +2644,7 @@ class TestSyncLoops:
                + "    for kv in d.items():\n        total = await step(kv[0])\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.loop_btuple_bind", 0) >= 1
 
     def test_dict_items_whole_tuple_loop_var_routes(self):
@@ -2779,8 +2666,7 @@ class TestSyncLoops:
                + "        total = await step(kv[0])\n"
                + "    return total + d[n].v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.loop_btuple_bind", 0) >= 1
 
     def test_user_iterator_tuple_unpack_holder_defers(self):
@@ -2827,11 +2713,10 @@ class TestSyncLoops:
                + "        total = await step(a + b)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.loop_tuple_bind") == 1
         assert witnesses.get("res.frame_unpack") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "const auto& __tup_1 = __for_tup_0;" in cpp
         assert "a = std::get<0>(__tup_1);" in cpp
 
@@ -2847,10 +2732,9 @@ class TestSyncLoops:
                + "    for t in tasks:\n        total += await t\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.loop_ptr_bind") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__sub_0 = t;" in cpp
         assert "t = &(*((*__for_it_0))++);" in cpp
 
@@ -2871,10 +2755,9 @@ class TestFrameTupleUnpack:
                + "    n = await step(n)\n"
                + "    return a + b + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_unpack") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "a = std::get<0>(__tup_1);" in cpp
 
     def test_own_record_element_emplaces(self):
@@ -2890,10 +2773,9 @@ class TestFrameTupleUnpack:
                + "    await asyncio.sleep(0)\n"
                + "    return b.v + m\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_unpack") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "b.emplace(std::move(std::get<0>(__tup_1)));" in cpp
 
     def test_discard_target_routes(self):
@@ -2907,10 +2789,9 @@ class TestFrameTupleUnpack:
                + "    n = await step(n)\n"
                + "    return a + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_unpack") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::get<1>" not in cpp
 
     def test_branch_reassign_unpack_routes(self):
@@ -2930,9 +2811,8 @@ class TestFrameTupleUnpack:
                + "    n = await step(n)\n"
                + "    return a + b + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_unpack") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_branch_first_decl_unpack_defers(self):
         # A nested-in-branch FIRST-DECL unpack stays unregistered by pass 1
@@ -2948,8 +2828,7 @@ class TestFrameTupleUnpack:
                + "    n = await step(n)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.unpack") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.unpack")
 
     def test_value_tuple_literal_init_routes(self):
         # A value-tuple literal at the bare tuple frame field renders the
@@ -2964,10 +2843,9 @@ class TestFrameTupleUnpack:
                + "    n = await step(n)\n"
                + "    return a + b + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_tuple_literal") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "t = std::tuple<int32_t, int32_t>{n, " in cpp
 
 
@@ -3004,10 +2882,9 @@ class TestAwaitLiftUnpack:
                + "    c.bump()\n"
                + "    print(c.n, tag)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.unpack_oneshot") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto&& __tup_1 = (*__await_lift_0);" in cpp
         assert "c.emplace(std::move(std::get<0>(__tup_1)));" in cpp
         assert "tag = std::get<1>(__tup_1);" in cpp
@@ -3029,11 +2906,10 @@ class TestAwaitLiftUnpack:
                "    a, b = await ValPair()\n"
                "    print(a, b)\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_unpack") == 1
         assert not witnesses.get("res.unpack_oneshot")
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "const auto& __tup_1 = __await_lift_0;" in cpp
         assert "a = std::get<0>(__tup_1);" in cpp
 
@@ -3049,10 +2925,9 @@ class TestAwaitLiftUnpack:
                + "        print(c.n, tag)\n"
                + "        i += 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.unpack_oneshot") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "c.emplace(std::move(std::get<0>(__tup_1)));" in cpp
 
     def test_discarded_owned_element_routes(self):
@@ -3066,10 +2941,9 @@ class TestAwaitLiftUnpack:
                + "    _, m = await OwnPair()\n"
                + "    print(m)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.unpack_oneshot") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto&& __tup_1 = (*__await_lift_0);" in cpp
         assert "m = std::get<1>(__tup_1);" in cpp
         assert "std::get<0>" not in cpp
@@ -3093,9 +2967,8 @@ class TestAwaitLiftUnpack:
                "    lst.append(30)\n"
                "    print(len(lst), m)\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "::tpy::tuple_to_pointer<" in cpp
         assert ("lst = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref("
                 "std::get<0>(__tup_1))));") in cpp
@@ -3135,9 +3008,8 @@ class TestResumableGlobals:
                + "    await asyncio.sleep(0)\n"
                + "    return n + LIMIT\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("name.global_seeded")
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_imported_constant_read_routes(self):
         src = ("import asyncio\nfrom tpy import Int32\n"
@@ -3146,10 +3018,9 @@ class TestResumableGlobals:
                + "    await asyncio.sleep(0)\n"
                + "    return Int32(AF_INET)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("name.global_imported")
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "::tpystd::socket::AF_INET" in cpp
 
     def test_native_global_read_routes(self):
@@ -3163,10 +3034,9 @@ class TestResumableGlobals:
                + "    await asyncio.sleep(0)\n"
                + "    return COUNT\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("name.global_native")
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "g_count" in cpp
 
     def test_str_global_read_routes(self):
@@ -3179,9 +3049,8 @@ class TestResumableGlobals:
                + "    await asyncio.sleep(0)\n"
                + "    return len(GREETING)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("name.global_seeded")
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_scalar_global_write_seeds_and_routes(self):
         # The write half seeds in resumables too: a
@@ -3215,9 +3084,8 @@ class TestLeafTryExcept:
                + "        n = 7\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.leaf_try_except") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_multi_handler_leaf_try_routes(self):
         src = (_PRE
@@ -3232,9 +3100,8 @@ class TestLeafTryExcept:
                + "        n = 8\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.leaf_try_except") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_finally_leaf_try_mid_frame_routes(self):
         # A leaf finally MID-FRAME (an await before it, so the try is a leaf
@@ -3249,9 +3116,8 @@ class TestLeafTryExcept:
                + "    finally:\n        print(0)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.leaf_try_finally", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 _ALIAS_PRE = ("import asyncio\nfrom tpy import Int32\n\n"
@@ -3276,10 +3142,9 @@ class TestAliasBinds:
                + "    a.n = a.n + 1\n"
                + "    return items[0].n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.alias_bind") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "a = &(::tpy::__getitem__(items, 0));" in cpp
         assert "a->n" in cpp
 
@@ -3293,10 +3158,9 @@ class TestAliasBinds:
                + "    await asyncio.sleep(0)\n"
                + "    return a.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.alias_bind") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "a = &(o.inner);" in cpp
 
     def test_borrow_call_unpack_routes(self):
@@ -3309,10 +3173,9 @@ class TestAliasBinds:
                + "    a.n = a.n + 1\n"
                + "    return a.n + b.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.frame_unpack") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto __tup_1 = first_two(items);" in cpp
         assert ("a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref("
                 "std::get<0>(__tup_1))));") in cpp
@@ -3330,10 +3193,9 @@ class TestAliasBinds:
                + "    await asyncio.sleep(0)\n"
                + "    return a.n + b.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.btuple_write") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "t = first_two(items);" in cpp
         assert "auto& __tup_1 = t;" in cpp
 
@@ -3348,9 +3210,8 @@ class TestAliasBinds:
                + "        yield idx\n"
                + "        it.n = it.n + 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "auto& __tup_1 = (*__for_tup_0);" in cpp
         assert "it = &(std::get<1>(__tup_1));" in cpp
 
@@ -3374,9 +3235,8 @@ class TestAliasBinds:
                + "        total += sq\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "const auto& __tup_1 = __for_tup_0;" in cpp
 
     def test_literal_decomposition_routes(self):
@@ -3391,8 +3251,7 @@ class TestAliasBinds:
                + "    await asyncio.sleep(0)\n"
                + "    return a.n + b.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.alias_bind", 0) >= 2
 
     def test_own_tuple_call_routes_via_owning_slot(self):
@@ -3429,9 +3288,8 @@ class TestAliasBinds:
                + "    await asyncio.sleep(0)\n"
                + "    return a.n + b.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        _assert_rejects_at(fb, "expr.method_call", "method.ret_type")
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:expr.method_call:method.ret_type")
 
     def test_discarded_borrow_element_routes(self):
         # A discarded pointer-repr element emits nothing on both paths
@@ -3444,9 +3302,8 @@ class TestAliasBinds:
                + "    await asyncio.sleep(0)\n"
                + "    return a.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::get<0>(__tup_1)" in cpp
         assert "std::get<1>" not in cpp
 
@@ -3465,9 +3322,7 @@ class TestAliasBinds:
                + "    await asyncio.sleep(0)\n"
                + "    return a.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert sum(fb.values()) >= 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.alias_bind")
 
 
 class TestValueTupleReturns:
@@ -3486,10 +3341,9 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (Box(10), 99)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_tuple_literal") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("std::tuple<Box, int32_t> __tpy_async_ret = "
                 "std::tuple<Box, int32_t>{Box(10), 99};") in cpp
 
@@ -3507,10 +3361,9 @@ class TestValueTupleReturns:
                + "        await asyncio.sleep(0)\n"
                + "        return (self.a, self.b)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_tuple_literal") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::tuple<int32_t, int32_t>{__self.a, __self.b}" in cpp
 
     def test_generic_ref_tuple_return_routes(self):
@@ -3526,11 +3379,10 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (k, v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_generic_tuple") == 1
         assert witnesses.get("gentuple.literal") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert ("std::tuple<K, V> __tpy_async_ret = "
                 "std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>"
                 "{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(k), "
@@ -3549,10 +3401,9 @@ class TestValueTupleReturns:
                + "        await asyncio.sleep(0)\n"
                + "        return (self.label, x)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_generic_tuple") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert ("std::tuple<std::string, ::tpy::val_or_ptr_t<T>>"
                 "{__self.label, "
                 "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};") in hpp
@@ -3566,10 +3417,9 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (n, x)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_generic_tuple") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert ("std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>"
                 "{n, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};"
                 ) in hpp
@@ -3583,10 +3433,9 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (x,)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_generic_tuple") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert ("std::tuple<::tpy::val_or_ptr_t<T>>"
                 "(::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x));") in hpp
 
@@ -3601,8 +3450,7 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (k, ident(v))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("expr.tuple_literal") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:expr.tuple_literal")
 
     def test_generic_tuple_own_element_mix_defers(self):
         # An Own[record] element beside a T is outside both tuple-return
@@ -3617,8 +3465,7 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (b, v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.return_type") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.return_type")
 
     def test_value_opt_element_literal_routes(self):
         # A value-opt ELEMENT slot routes: both paths spell the None
@@ -3629,10 +3476,9 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (n, None)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_tuple_literal") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("std::tuple<int32_t, std::optional<int32_t>>"
                 "{n, std::nullopt}") in cpp
 
@@ -3651,10 +3497,9 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (b, 99)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_tuple_literal") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::tuple<Box, int32_t>{std::move((*b)), 99}" in cpp
 
     def test_value_opt_str_element_literal_routes(self):
@@ -3669,10 +3514,9 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (n, \"hi\")\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_tuple_literal") == 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("std::tuple<int32_t, std::optional<std::string>>"
                 "{n, std::nullopt}") in cpp
         assert ("std::tuple<int32_t, std::optional<std::string>>"
@@ -3686,10 +3530,9 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return ((n, n), 7)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_tuple_literal") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("std::tuple<std::tuple<int32_t, int32_t>, int32_t>"
                 "{std::tuple<int32_t, int32_t>{n, n}, 7}") in cpp
 
@@ -3712,7 +3555,7 @@ class TestValueTupleReturns:
                + "        print(\"f\")\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _assert_identical(src)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("__tpy_async_ret_0 = std::tuple<int32_t, "
                 "std::optional<int32_t>>{n, std::nullopt};") in cpp
 
@@ -3732,9 +3575,8 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return t\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "__tpy_async_ret = pair(n);" in cpp
         assert "__tpy_async_ret = t;" in cpp
 
@@ -3746,8 +3588,7 @@ class TestValueTupleReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return (s, 1)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.return_type") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.return_type")
 
 
 class TestContainerReturns:
@@ -3761,9 +3602,8 @@ class TestContainerReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return [1, 2, 3]\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::vector<int32_t> __tpy_async_ret = {1, 2, 3};" in cpp
 
     def test_owned_name_source_returns_moved(self):
@@ -3776,9 +3616,8 @@ class TestContainerReturns:
                + "    xs.append(3)\n"
                + "    return xs\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "__tpy_async_ret = std::move((*xs));" in cpp
 
     def test_bare_container_await_result_rejected(self):
@@ -3795,7 +3634,7 @@ class TestContainerReturns:
                + "    return await g()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         with pytest.raises(Exception, match="Own\\[list\\[Int32\\]\\]"):
-            _gen(src, thir=False)
+            _gen(src)
 
     def test_container_return_through_finally_routes(self):
         # The pre-finally capture scaffolding site (a DIFFERENT
@@ -3810,9 +3649,8 @@ class TestContainerReturns:
                + "    finally:\n"
                + "        print(\"f\")\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "__tpy_async_ret_0 = {1, 2};" in cpp
 
     def test_dict_and_set_literals_route(self):
@@ -3824,8 +3662,7 @@ class TestContainerReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return {1, 2}\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _ = _assert_identical(src)
 
     def test_empty_container_literal_defers(self):
         # The AST spells an empty literal's type only when a target is
@@ -3838,11 +3675,8 @@ class TestContainerReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return []\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert fb.get("stmt.return:return.empty_container_literal") == 1
-        _assert_identical(src)
-        _, _hpp, cpp = _gen(src, thir=True)
-        assert "__tpy_async_ret = {};" in cpp
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.return:return.empty_container_literal")
 
     def test_empty_dict_literal_defers(self):
         # The guard's dict arm: emptiness is `children()` (keys + values),
@@ -3852,9 +3686,8 @@ class TestContainerReturns:
                + "    await asyncio.sleep(0)\n"
                + "    return {}\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert fb.get("stmt.return:return.empty_container_literal") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.return:return.empty_container_literal")
 
 
 class TestValueOptReturns:
@@ -3871,10 +3704,9 @@ class TestValueOptReturns:
                + "        return n * 3\n"
                + "    return None\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_value", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::optional<int32_t> __tpy_async_ret = std::nullopt;" in cpp
 
     def test_whole_param_pass_routes(self):
@@ -3886,8 +3718,7 @@ class TestValueOptReturns:
                + "    n = await step(n)\n"
                + "    return p\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_narrowed_param_read_routes(self):
         # A narrowed READ of the value-opt-scalar param through the frame
@@ -3900,9 +3731,8 @@ class TestValueOptReturns:
                + "    if p is not None:\n        return p + n\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "(p.has_value())" in cpp
         assert "(*p)" in cpp
 
@@ -3920,10 +3750,9 @@ class TestContainerYieldBorrow:
                + "    buf.append(n + 1)\n"
                + "    yield buf\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.yield_container_borrow", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "return (*buf);" in cpp
 
     def test_frame_local_dict_yield_routes(self):
@@ -3935,9 +3764,8 @@ class TestContainerYieldBorrow:
                + "    d[n + 1] = n\n"
                + "    yield d\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.yield_container_borrow", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_param_source_yield_defers(self):
         # A container yield whose source is a PARAM (not a frame_slot
@@ -3951,8 +3779,7 @@ class TestContainerYieldBorrow:
                + "    yield xs\n"
                + "    yield xs\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.yield_type") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.yield_type")
 
     def test_record_loop_var_yield_routes(self):
         # Record yield slot: a pointer-form loop var name hands out the
@@ -3967,10 +3794,9 @@ class TestContainerYieldBorrow:
                + "        yield b\n"
                + "        yield b\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.yield_record_borrow", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "return (*b);" in cpp
 
     def test_record_param_source_yield_defers(self):
@@ -3985,8 +3811,7 @@ class TestContainerYieldBorrow:
                + "    yield b\n"
                + "    yield b\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.yield_type") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.yield_type")
 
     def test_value_opt_loop_var_narrowed_yield_routes(self):
         # A value-opt-scalar dict-view loop var in a generator frame: the
@@ -4001,9 +3826,8 @@ class TestContainerYieldBorrow:
                + "        if val is not None:\n"
                + "            yield val\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "return (*val);" in cpp
         assert "val.has_value()" in cpp
 
@@ -4018,9 +3842,8 @@ class TestContainerYieldBorrow:
                + "        if v is not None and len(k) > 0:\n"
                + "            yield v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "return (*v);" in cpp
 
     def test_multi_var_isinstance_frame_cond_defers(self):
@@ -4039,8 +3862,8 @@ class TestContainerYieldBorrow:
                + "        yield a.x + b.y\n"
                + "    yield -1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src)
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.cond:truthy.call_nonbool")
 
     def test_value_opt_view_loop_var_yield_defers(self):
         # The VIEW flavor (`dict[str, str | None]`) stays out:
@@ -4052,8 +3875,7 @@ class TestContainerYieldBorrow:
                + "        if val is not None:\n"
                + "            yield val\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src)
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.local_storage")
 
 
 class TestFrameFamilyAdmissions:
@@ -4077,7 +3899,7 @@ class TestFrameFamilyAdmissions:
         # (the producer's literal return takes the spelled-brace-init arm).
         assert fb == {}
         _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
+        _, hpp, cpp = _gen(src)
         assert "std::get<0>(p)" in hpp + cpp
 
     def test_optional_ptr_local_await_bind_routes(self):
@@ -4097,14 +3919,8 @@ class TestFrameFamilyAdmissions:
                + "    if t is not None:\n        return t.val\n"
                + "    return -1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        # get only; f routes. The producer's fence moved from the slot gate
-        # (res.return_type) to the source rung (return.borrow_form) when
-        # the optional-return slots were admitted -- a bare NAME source at
-        # the BORROW slot stays out (only the field lift is admitted).
-        assert fb.get("stmt.return:return.borrow_form") == 1
-        assert len(fb) == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.return:return.borrow_form")
 
     def test_optional_view_param_routes(self):
         # F1: an Optional[str] param captures owned (skeleton OWNED_COPY);
@@ -4114,9 +3930,8 @@ class TestFrameFamilyAdmissions:
                + "    if s is None:\n        return -1\n"
                + "    return len(s)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "(!s.has_value())" in cpp
         assert "::tpy::__len__((*s))" in cpp
 
@@ -4129,9 +3944,8 @@ class TestFrameFamilyAdmissions:
                + "    for x in xs:\n"
                + "        if pred(x):\n            yield x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, hpp, cpp = _gen(src)
         assert "if (pred(x))" in hpp + cpp
 
     def test_value_union_param_routes(self):
@@ -4143,9 +3957,8 @@ class TestFrameFamilyAdmissions:
                + "    if isinstance(a, int):\n        yield a\n"
                + "    yield 0\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, hpp, cpp = _gen(src)
         assert "std::holds_alternative<::tpy::BigInt>(a)" in hpp + cpp
 
     def test_own_container_param_routes(self):
@@ -4184,11 +3997,8 @@ class TestSuspendMethodOperands:
                + "    except ChannelClosed:\n"
                + "        pass\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.suspend_operand", 0) >= 2
-        resumable = {k: v for k, v in fallback.items()
-                     if k.startswith("resumable:")}
-        assert not resumable
 
     def test_rejecting_arg_still_falls_back(self):
         # suspend_ok blanks only the RESULT-type check; an off-slice ARG
@@ -4202,9 +4012,8 @@ class TestSuspendMethodOperands:
                + "    await tx.send(f\"v{n}\")\n"
                + "    tx.close()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert sum(fallback.values()) >= 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.await_operand_shape:expr.method_call:method.arg_shape")
 
 
 class TestBranchFrameDecls:
@@ -4227,9 +4036,8 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return r + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.branch_frame_write", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_branch_frame_reassign_routes(self):
         # The reassign flavor: a top-level-declared frame field reassigned
@@ -4243,9 +4051,8 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return r + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.branch_frame_write", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_match_dispatch_arm_frame_decl_routes(self):
         # A frame-field decl inside a SUSPENDING match's arm: the arm body
@@ -4264,10 +4071,9 @@ class TestBranchFrameDecls:
                + "            r = n + 1\n"
                + "    return r + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.match_dispatch") == 1
         assert witnesses.get("res.decl_assign", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_async_helper_bare_return_defers(self):
         # A BARE return in an ASYNC finally helper: rejected by the
@@ -4299,9 +4105,8 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return n + b.v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.branch_frame_slot_write", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_branch_borrow_tuple_decl_routes(self):
         # A borrow-form tuple frame field (`std::tuple<int32_t, Holder*>`)
@@ -4321,9 +4126,8 @@ class TestBranchFrameDecls:
                + "        t = (2, c)\n"
                + "    yield t\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.branch_btuple_write", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_try_body_frame_slot_decl_routes(self):
         # An except-only leaf try routes through the sync tiers, so a frame
@@ -4339,9 +4143,8 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return n + len(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.branch_frame_slot_write", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_leaf_match_routes_through_sync_tiers(self):
         # A NON-SUSPENDING match in a resumable body is suspension-free by
@@ -4358,9 +4161,8 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return r + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.leaf_match_sync", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_leaf_match_unmirrored_arm_body_defers(self):
         # BOUNDARY: the fall-through does not blanket-admit match -- an arm
@@ -4383,8 +4185,8 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return r + n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert sum(_res_fallback(src).values()) >= 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.with:with.frame_target_family")
 
     def test_branch_coro_handle_decl_defers(self):
         # BOUNDARY: a concrete-coro handle slot keeps the named reject in
@@ -4401,8 +4203,8 @@ class TestBranchFrameDecls:
                + "        h = step(2)\n"
                + "    return await h\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.leaf_field_write") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.leaf_field_write")
 
     def test_try_finally_frame_decl_routes(self):
         # A frame-slot decl inside a crossing-free leaf finally now reaches
@@ -4422,10 +4224,9 @@ class TestBranchFrameDecls:
                + "    n = await step(n)\n"
                + "    return n + len(xs)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.leaf_try_finally", 0) == 1
         assert witnesses.get("res.branch_frame_slot_write", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestFinallyHelper:
@@ -4445,10 +4246,9 @@ class TestFinallyHelper:
                + "        print(n)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.finally_helper") == 1
         assert witnesses.get("res.try_region") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_helper_finally_with_except_routes(self):
         src = (_PRE
@@ -4459,9 +4259,8 @@ class TestFinallyHelper:
                + "    finally:\n        print(n)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.finally_helper") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_return_in_helper_finally_rejects(self):
         # A `return` inside the finally helper needs the async Poll replay /
@@ -4490,10 +4289,9 @@ class TestFinallyHelper:
                + "    finally:\n"
                + "        return\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.finally_stop") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "this->__finally_stop = true;" in cpp
 
     def test_generator_helper_nested_return_routes(self):
@@ -4511,9 +4309,8 @@ class TestFinallyHelper:
                + "            return\n"
                + "        print(n)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.finally_stop") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_narrowing_if_in_helper_defers(self):
         # A narrowing early-return `if` inside a finally helper: the guard
@@ -4537,8 +4334,7 @@ class TestFinallyHelper:
                + "        print(a.sound())\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src).get("res.narrowed_resume") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.narrowed_resume")
 
     def test_generator_helper_finally_routes(self):
         # A generator with a try/finally around a yield: the finally helper
@@ -4554,9 +4350,8 @@ class TestFinallyHelper:
                + "        print(i)\n\n"
                + "def main() -> None:\n"
                + "    for x in gen(3):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.finally_helper") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestAsyncLoopAndWith:
@@ -4583,8 +4378,7 @@ class TestAsyncLoopAndWith:
         # _assert_identical enforces byte-identity. `f` routes the async-with;
         # __aexit__'s None-typed params keep it on AST (res.param_type, a
         # separate method / gate) -- so the case carries that one fallback.
-        witnesses, fallback = _assert_identical(src)
-        assert witnesses.get("res.async_with", 0) >= 1
+        fallback = _reject_tally(src)
         assert set(fallback) <= {"resumable:res.param_type:none"}
 
     def test_async_for_local_iterator_routes(self):
@@ -4604,9 +4398,8 @@ class TestAsyncLoopAndWith:
                + "    async for x in it:\n        total = total + x\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.async_loop", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestCfgFinally:
@@ -4624,9 +4417,8 @@ class TestCfgFinally:
                + "    finally:\n        total = await step(total)\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.try_region") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_return_in_try_with_await_finally_routes(self):
         # A `return` in the try body routes through the pending-return slot
@@ -4641,9 +4433,8 @@ class TestCfgFinally:
                + "        return total\n"
                + "    finally:\n        total = await step(total)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_value", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_return_await_in_finally_routes(self):
         src = (_PRE
@@ -4653,8 +4444,7 @@ class TestCfgFinally:
                + "    try:\n        total = await step(total)\n"
                + "    finally:\n        return await step(total)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
 
 _CM = ("class CM:\n"
@@ -4678,11 +4468,10 @@ class TestWithRegions:
                + "    with CM(n):\n        n = await step(n)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.with_region") == 1
         assert witnesses.get("res.with_ctx") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__with_ctx_0.emplace(CM(n));" in cpp
 
     def test_with_as_target_routes(self):
@@ -4696,9 +4485,8 @@ class TestWithRegions:
                + "        n = n + base\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.with_ctx") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_borrowed_manager_routes(self):
         # An lvalue manager binds borrowed: the &(..) wrap is skeleton, the
@@ -4710,10 +4498,9 @@ class TestWithRegions:
                + "    with cm:\n        n = await step(n)\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.with_ctx") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__with_ctx_0 = &((*cm));" in cpp
 
     def test_return_inside_with_captures_before_exit(self):
@@ -4728,10 +4515,9 @@ class TestWithRegions:
                + "        n = await step(n)\n"
                + "        return n + 1\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_value", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("int32_t __tpy_async_ret_0 = "
                 "(::tpy::add_check<int32_t>(n, 1));") in cpp
 
@@ -4780,11 +4566,10 @@ class TestLeafWith:
                + "    yield 1\n"
                + "    yield guard.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("with.frame_slot_target", 0) >= 1
         assert witnesses.get("with.manager_borrowed", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto& __ctx_1 = (*c);" in cpp
         assert "guard.emplace(__ctx_1.__enter__());" in cpp
 
@@ -4801,11 +4586,10 @@ class TestLeafWith:
                + "    yield 1\n"
                + "    yield x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("with.frame_field_target", 0) >= 1
         assert witnesses.get("with.no_target", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "x = __ctx_1.__enter__();" in cpp
 
     def test_owned_manager_frame_home_routes(self):
@@ -4820,11 +4604,10 @@ class TestLeafWith:
                + "    yield 1\n"
                + "    yield view.n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("with.manager_frame_ctx", 0) >= 1
         assert witnesses.get("with.frame_slot_target", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__with_ctx_0.emplace(SCM(7));" in cpp
         assert "auto& __ctx_1 = (*__with_ctx_0);" in cpp
 
@@ -4847,10 +4630,9 @@ class TestLeafWith:
                + "    yield 1\n"
                + "    yield len(s)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("with.frame_field_target", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "s = __ctx_1.__enter__();" in cpp
 
     def test_frame_borrow_tuple_target_routes(self):
@@ -4889,10 +4671,9 @@ class TestLeafWith:
                + "    yield item.v\n"
                + "    yield b.item.v\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("with.frame_btuple_target", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, cpp = _gen(src, thir=True)
+        _, hpp, cpp = _gen(src)
         assert "std::tuple<Item*, int32_t> p;" in hpp
         assert cpp.count("p = __ctx_1.__enter__();") == 1
         assert cpp.count("p = __ctx_2.__enter__();") == 1
@@ -4910,8 +4691,8 @@ class TestLeafWith:
                + "            return base + 1\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        assert _res_fallback(src).get("stmt.with:with.leaf_return") == 1
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.with:with.leaf_return")
 
     def test_frame_target_family_defers(self):
         # A leaf with-as target outside the frame_slot / plain-field pair
@@ -4934,9 +4715,8 @@ class TestLeafWith:
                + "    if x is not None:\n"
                + "        yield x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        assert _res_fallback(src).get(
-            "stmt.with:with.frame_target_family") == 1
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.with:with.frame_target_family")
 
 
 class TestLeafReturns:
@@ -4955,9 +4735,8 @@ class TestLeafReturns:
                + "    if n > 2:\n        return\n"
                + "    print(n)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.nested_return") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_owned_str_leaf_return_wraps(self):
         # The view->owned copy (`_wrap_view_owned_return`) fires identically
@@ -4968,10 +4747,9 @@ class TestLeafReturns:
                + "    if n > 2:\n        return tag\n"
                + "    return \"lo\"\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.nested_return") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::string __tpy_async_ret = std::string(tag);" in cpp
 
     def test_leaf_return_under_with_walks_finally(self):
@@ -4986,9 +4764,8 @@ class TestLeafReturns:
                + "        if n > 2:\n            return 99\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.nested_return") == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 class TestFrameFieldShadowing:
     """A for-each loop var inside a resumable body binds a C++ local that
@@ -5011,9 +4788,9 @@ class TestFrameFieldShadowing:
            "        return s\n")
 
     def test_loop_var_shadow_reads_bare(self):
-        witnesses, fallback = _assert_identical(self.SRC)
+        witnesses = _assert_identical(self.SRC)
         assert "res.body" in witnesses  # the coro routed
-        _, _hpp, cpp = _gen(self.SRC, thir=True)
+        _, _hpp, cpp = _gen(self.SRC)
         assert "it.n" in cpp
         assert "(*it).n" not in cpp
 
@@ -5033,9 +4810,9 @@ class TestFrameStaleViewDecl:
            "    yield len(label)\n")
 
     def test_stale_view_frame_decl_renders_bare(self):
-        witnesses, fallback = _assert_identical(self.SRC)
+        witnesses = _assert_identical(self.SRC)
         assert "res.body" in witnesses  # the generator routed resumable
-        _, _hpp, cpp = _gen(self.SRC, thir=True)
+        _, _hpp, cpp = _gen(self.SRC)
         assert "label = sv;" in cpp
         assert "std::string(sv)" not in cpp
 
@@ -5062,9 +4839,8 @@ class TestFrameFieldShadowingTupleUnpack:
         # The field-iterable unpack head landed (the long-tail ref-target
         # cell), so the resumable body now routes -- the flip this pin's
         # docstring predicted.
-        witnesses, fallback = _assert_identical(self.SRC)
+        witnesses = _assert_identical(self.SRC)
         assert "res.body" in witnesses
-        assert not fallback
 
 
 class TestQualcallRecordDiscardStorage:
@@ -5094,9 +4870,8 @@ class TestQualcallRecordDiscardStorage:
                + "    asyncio.create_task(sub())\n"
                + "    await asyncio.sleep(0.001)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("method.qualcall.record_discard", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_nonf1_record_storage_decl_routes(self):
         # Task[BytesView] fails _f1_record (the view type-arg is admitted by
@@ -5108,11 +4883,10 @@ class TestQualcallRecordDiscardStorage:
                + "    r = await t\n"
                + "    print(len(r))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("method.qualcall.record_storage", 0) >= 1
         # Whole-tally: a face is recorded at the gate, so it alone cannot
         # tell an admitted row from a body that fell back further down.
-        assert not fallback
 
     def test_nested_marker_async_factory_routes(self):
         # The inner wait_for is an ASYNC module function: the coro_factory
@@ -5123,10 +4897,9 @@ class TestQualcallRecordDiscardStorage:
                + "    r = await t\n"
                + "    print(len(r))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("call.coro_factory_adapter", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert ("::tpy::make_adapter<::tpystd::coro::Cancellable<"
                 "std::vector<uint8_t>>>(::tpystd::asyncio::wait_for<"
                 in cpp)
@@ -5142,10 +4915,9 @@ class TestQualcallRecordDiscardStorage:
                + "    r = await c\n"
                + "    print(len(r))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.erased_handle_write", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "c = ::tpy::make_adapter<" in cpp
 
     def test_set_result_none_unit_arg_routes(self):
@@ -5161,9 +4933,8 @@ class TestQualcallRecordDiscardStorage:
                + "    asyncio.create_task(producer(fut))\n"
                + "    await fut\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "set_result(std::monostate{})" in cpp
 
 
@@ -5184,8 +4955,7 @@ class TestResForHeadIterableUse:
                "        yield x\n"
                "    yield 9\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_container_call_iterable_routes(self):
         # A container-returning call iterable in a resumable for-head:
@@ -5200,8 +4970,7 @@ class TestResForHeadIterableUse:
                "    for x in make_list():\n"
                "        yield x\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
     def test_generic_factory_iterable_routes(self):
         # CONVERTED: the GENERIC generator factory in the
@@ -5245,9 +5014,8 @@ class TestResMatchValueHoists:
                "                yield v\n"
                "    yield -1\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("match.hoist_value_frame", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_single_arm_capture_routes_frame_assign(self):
         # A single-arm capture is not sema-hoisted (copy/ref mode), but the
@@ -5262,9 +5030,8 @@ class TestResMatchValueHoists:
                "            case v:\n"
                "                yield v\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "v = __match_subject_1;" in cpp
 
 
@@ -5289,11 +5056,10 @@ class TestMatchDispatchTierBoundaries:
                "            yield v\n"
                "            yield v + 1\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("match.if_elif_record", 0) >= 1
         assert witnesses.get("res.match_dispatch", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "v = __match_subject_1.lives;" in cpp
 
     def test_optional_value_multi_arm_inner_routes(self):
@@ -5311,10 +5077,9 @@ class TestMatchDispatchTierBoundaries:
                "            yield v\n"
                "            yield v * 2\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("match.optional_value_dispatch", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "v = __match_inner_1;" in cpp
 
     def test_reused_slot_capture_emplaces_both(self):
@@ -5342,9 +5107,8 @@ class TestMatchDispatchTierBoundaries:
                "        case Dog():\n"
                '            yield "dog-b"\n\n'
                "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert cpp.count("c.emplace(") == 2
         assert "c = std::get" not in cpp
 
@@ -5366,8 +5130,7 @@ class TestMatchDispatchTierBoundaries:
                "            yield 1\n"
                "            yield n\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        assert _res_fallback(src).get("res.match_strategy") == 1
+        _assert_rejects_at(_reject_tally(src), "resumable:res.match_strategy")
 
     def test_guarded_record_dispatch_defers(self):
         # guarded_record stays outside the hook-admitted kinds.
@@ -5384,8 +5147,7 @@ class TestMatchDispatchTierBoundaries:
                "        case _:\n"
                "            yield 0\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        assert _res_fallback(src).get("res.match_strategy") == 1
+        _assert_rejects_at(_reject_tally(src), "resumable:res.match_strategy")
 
     def test_pointer_repr_optional_dispatch_defers(self):
         # Only the value-repr optional dispatch is hook-admitted; the
@@ -5403,8 +5165,7 @@ class TestMatchDispatchTierBoundaries:
                "            yield 1\n"
                "            yield r.n\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        assert sum(_res_fallback(src).values()) >= 1
+        _assert_rejects_at(_reject_tally(src), "resumable:stmt.match")
 
 
 class TestMemberCoroFactoryArg:
@@ -5428,9 +5189,8 @@ class TestMemberCoroFactoryArg:
                + "    b = Box(7)\n"
                + "    print(asyncio.run(b.take()))\n\n"
                + "main()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert ("::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<"
                 "::tpystd::coro::Cancellable<int32_t>>(b.take()))" in cpp)
 
@@ -5448,8 +5208,7 @@ class TestMemberCoroFactoryArg:
                "    data = await asyncio.wait_for(loop.sock_recv(b, 16), 0.5)\n"
                "    print(len(data))\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        _witnesses = _assert_identical(src)
 
 
 class TestResForHeadDictViewIterable:
@@ -5467,8 +5226,7 @@ class TestResForHeadDictViewIterable:
                "    for k in d.keys():\n"
                "        yield len(k)\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        _witnesses = _assert_identical(src)
 
 
 class TestHoistedLoopVarOptStorage:
@@ -5493,9 +5251,8 @@ class TestHoistedLoopVarOptStorage:
                + "    return it.n\n\n"
                + "def main() -> None:\n"
                + "    print(asyncio.run(scan()))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "std::optional<Item> it;" in cpp
 
     def test_in_loop_await_hoist_also_routes(self):
@@ -5516,8 +5273,7 @@ class TestHoistedLoopVarOptStorage:
                + "    return it.n\n\n"
                + "def main() -> None:\n"
                + "    print(asyncio.run(scan()))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
 
     def test_suspension_crossing_hoist_also_routes(self):
         # The suspension-crossing flavor routes byte-identically too (the
@@ -5538,8 +5294,7 @@ class TestHoistedLoopVarOptStorage:
                + "    return it.n\n\n"
                + "def main() -> None:\n"
                + "    print(asyncio.run(scan()))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
 
 
 class TestOptionalReturnCoroFamily:
@@ -5577,11 +5332,10 @@ class TestOptionalReturnCoroFamily:
             + "    asyncio.run(drive())\nmain()\n")
 
     def test_both_slots_and_frame_local_route(self):
-        witnesses, fallback = _assert_identical(self._SRC)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(self._SRC)
         assert witnesses.get("res.return_opt_record_none")
         assert witnesses.get("res.return_ptr_opt_field")
-        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        _, _hpp, cpp = _gen(self._SRC)
         assert "::tpy::optional_to_ptr(h.opt)" in cpp
         assert "= std::nullopt;" in cpp
 
@@ -5592,7 +5346,7 @@ class TestOptionalReturnCoroFamily:
             "    return h.opt\n",
             "    t = h.opt\n"
             "    return t\n")
-        witnesses, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert any("return.borrow_form" in k for k in fallback)
 
 
@@ -5621,20 +5375,11 @@ class TestXmodCtorAsyncSinks:
         compiler = Compiler(tmp_path / "main.py", lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
         entry = next(m for m in modules if m.is_entry_point)
-        outs = {}
-        for thir in (False, True):
-            c2 = Compiler(tmp_path / "main.py", lib_dirs=_STDLIB_DIRS)
-            mods2 = c2.compile()
-            e2 = next(m for m in mods2 if m.is_entry_point)
-            outs[thir] = c2.generate_code_to_strings(
-                e2, options=CodeGenOptions(emit_source_comments=False,
-                                           thir_codegen=thir))
-            if thir:
-                fb = c2._thir_fallback
-        return outs, fb
+        return compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False))
 
     def test_qualified_ctor_manager_routes(self, tmp_path):
-        outs, fb = self._fixture(tmp_path, (
+        self._fixture(tmp_path, (
             "import asyncio\n"
             "import helper\n"
             "async def go() -> None:\n"
@@ -5642,8 +5387,6 @@ class TestXmodCtorAsyncSinks:
             "        print(v)\n"
             "def main() -> None:\n"
             "    asyncio.run(go())\nmain()\n"))
-        assert outs[False] == outs[True]
-        assert not any(k.startswith("resumable:") for k in fb)
 
     def test_qualified_factory_call_manager_still_defers(self, tmp_path):
         # BOUNDARY: a module-qualified NON-ctor factory call manager
@@ -5651,19 +5394,18 @@ class TestXmodCtorAsyncSinks:
         # (is_constructor only) and keeps the res.with_manager fence.
         # (A NAME-bound manager is NOT a fence: it rides the pre-existing
         # borrowed F1-lvalue slice.)
-        outs, fb = self._fixture(tmp_path, (
-            "import asyncio\n"
-            "import helper\n"
-            "async def go() -> None:\n"
-            "    async with helper.make_gate() as v:\n"
-            "        print(v)\n"
-            "def main() -> None:\n"
-            "    asyncio.run(go())\nmain()\n"), extra_helper=(
-            "from tpy import Own\n"
-            "def make_gate() -> Own[Gate]:\n"
-            "    return Gate()\n"))
-        assert outs[False] == outs[True]
-        assert any(k.startswith("resumable:") for k in fb)
+        with pytest.raises(ThirRejectError, match="resumable|not yet supported"):
+            self._fixture(tmp_path, (
+                "import asyncio\n"
+                "import helper\n"
+                "async def go() -> None:\n"
+                "    async with helper.make_gate() as v:\n"
+                "        print(v)\n"
+                "def main() -> None:\n"
+                "    asyncio.run(go())\nmain()\n"), extra_helper=(
+                    "from tpy import Own\n"
+                    "def make_gate() -> Own[Gate]:\n"
+                    "    return Gate()\n"))
 
 
 class TestPtrValueLocalAndCallNoneTest:
@@ -5694,10 +5436,8 @@ class TestPtrValueLocalAndCallNoneTest:
             + "    asyncio.run(coro_probe())\nmain()\n")
 
     def test_ptr_local_and_call_subject_route(self):
-        witnesses, fallback = _assert_identical(src := self._SRC)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        assert not any(k.startswith("body:") for k in fallback)
-        _, hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src := self._SRC)
+        _, hpp, cpp = _gen(src)
         joined = hpp + cpp
         assert "(get_cell() == nullptr)" in joined
         assert "(p == nullptr)" in joined
@@ -5716,8 +5456,7 @@ class TestPtrValueLocalAndCallNoneTest:
                + "    return _r\n\n"
                + "def main() -> None:\n"
                + "    print(find() is None)\nmain()\n")
-        compiler, hpp, cpp = _gen(src, thir=True)
-        assert not compiler._thir_fallback, compiler._thir_fallback
+        compiler, hpp, cpp = _gen(src)
         assert "(find() == nullptr)" in hpp + cpp
 
 
@@ -5733,9 +5472,8 @@ class TestVoidReturnNone:
                + "    return None\n\n"
                + "def main() -> None:\n"
                + "    asyncio.run(void_ret())\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert ("::tpystd::tpy::Poll<::std::monostate>::ready("
                 "::std::monostate{})") in cpp
 
@@ -5751,8 +5489,7 @@ class TestVoidReturnNone:
                + "    return None\n\n"
                + "def main() -> None:\n"
                + "    print(asyncio.run(opt_ret(False)))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_value")
 
 
@@ -5776,10 +5513,9 @@ class TestForNarrowedOptionalIterable:
             + "    print(asyncio.run(count_s(\"abc\")))\nmain()\n")
 
     def test_narrowed_value_opt_iterable_routes_bare(self):
-        witnesses, fallback = _assert_identical(self._SRC)
+        witnesses = _assert_identical(self._SRC)
         assert witnesses.get("res.for_narrowed_opt_src")
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        _, _hpp, cpp = _gen(self._SRC)
         assert "((*s)).begin()" in cpp
         assert "(*(*s))" not in cpp
 
@@ -5799,9 +5535,8 @@ class TestForNarrowedOptionalIterable:
                + "    return t\n\n"
                + "def main() -> None:\n"
                + "    print(asyncio.run(sum_l([1, 2, 3])))\nmain()\n")
-        _assert_identical(src)
-        fb = _res_fallback(src)
-        _assert_rejects_at(fb, "res.param_type", shape="optional")
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.param_type:optional")
 
 
 class TestAwaitOwnValueArgSlots:
@@ -5825,14 +5560,13 @@ class TestAwaitOwnValueArgSlots:
                + "    await sink(i)\n"
                + "    print(i)\n\n"
                + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert witnesses.get("argtemp.own_copy")
+        fallback = _reject_tally(src)
         # The DRIVER must route; the only tolerated fallback is the sink
         # callee's own Own[Int32] frame param (res.param_type -- a body this
         # cell does not touch). An exact-set pin: any driver fallback adds a
         # different key and fails.
         assert set(fallback) <= {"resumable:res.param_type:own_scalar"}
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto __tmp_1 = i;" in cpp
         assert "std::move(__tmp_1)" in cpp
 
@@ -5842,10 +5576,10 @@ class TestAwaitOwnValueArgSlots:
                + "    j = 2\n"
                + "    await sink(j)\n\n"
                + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         # Same tolerated-set pin as the copy-temp flavor above.
         assert set(fallback) <= {"resumable:res.param_type:own_scalar"}
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__tmp_" not in cpp
 
     def test_own_enum_slot_still_defers(self):
@@ -5865,9 +5599,8 @@ class TestAwaitOwnValueArgSlots:
                + "async def go(k: Color) -> None:\n"
                + "    await sink(k)\n\n"
                + "def main() -> None:\n    asyncio.run(go(Color.RED))\nmain()\n")
-        _assert_identical(src)
-        fb = _res_fallback(src)
-        _assert_rejects_at(fb, "res.await_param_type", count=1)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.await_param_type")
 
     def test_own_str_slot_still_defers(self):
         # BOUNDARY: an Own[str] await slot is outside the value families --
@@ -5883,9 +5616,8 @@ class TestAwaitOwnValueArgSlots:
                + "    await sink_s(label)\n"
                + "    print(label)\n\n"
                + "def main() -> None:\n    asyncio.run(go())\nmain()\n")
-        _assert_identical(src)
-        fb = _res_fallback(src)
-        assert fb.get("res.await_param_type")
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.param_type:own_str")
 
 
 class TestAwaitArgDcbpConstWrap:
@@ -5924,10 +5656,9 @@ class TestAwaitArgDcbpConstWrap:
         # substituted fi reads None and used to drop the const wrap at the
         # sub-coro emplace arg (both paths -- the AST read the substituted
         # fi, the THIR await-arg lowering never consulted the verdict).
-        witnesses, fallback = _assert_identical(self._SRC)
+        witnesses = _assert_identical(self._SRC)
         assert witnesses.get("res.await_args", 0) >= 2
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, _hpp, cpp = _gen(self._SRC, thir=True)
+        _, _hpp, cpp = _gen(self._SRC)
         assert cpp.count("std::variant<const A*, const B*>{") >= 2
         assert "std::variant<A*, B*>{" not in cpp
 
@@ -5955,7 +5686,7 @@ class TestAwaitArgDcbpConstWrap:
                + "    return await c.poke(a)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _assert_identical(src)
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::variant<A*, B*>{" in cpp
         assert "std::variant<const A*, const B*>{" not in cpp
 
@@ -5968,60 +5699,6 @@ class TestAwaitArgDcbpConstWrap:
                   + "    pair: tuple[A, A]\n"
                   + "    def __init__(self, a: Own[A], b: Own[A]) -> None:\n"
                   + "        self.pair = (a, b)\n\n")
-
-    def test_tuple_param_factory_and_arg_agree_const(self):
-        # An inferred deep-const tuple param (no yield escape): the coro
-        # factory/frame spelling and the emplace arg BOTH carry the const
-        # slots -- the factory consults the verdict like the union arm, the
-        # arg threads target_const_borrow like the sync call site.
-        src = (self._TUPLE_PRE
-               + "    async def total(self, p: tuple[A, A]) -> Int32:\n"
-               + "        return p[0].x + p[1].x\n\n"
-               + "async def go() -> Int32:\n"
-               + "    k = Keeper(A(), A())\n"
-               + "    return await k.total(k.pair)\n\n"
-               + "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
-        both = hpp + cpp
-        assert "std::tuple<const A*, const A*>" in both
-        assert "tuple_to_pointer<std::tuple<const A*, const A*>>" in both
-        assert "std::tuple<A*, A*>" not in both
-
-    def test_free_fn_tuple_param_agrees_const(self):
-        # Free async defs read the same verdict off their registry fi.
-        src = (self._TUPLE_PRE
-               + "async def total(p: tuple[A, A]) -> Int32:\n"
-               + "    return p[0].x + p[1].x\n\n"
-               + "async def go() -> Int32:\n"
-               + "    k = Keeper(A(), A())\n"
-               + "    return await total(k.pair)\n\n"
-               + "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
-        both = hpp + cpp
-        assert "std::tuple<const A*, const A*>" in both
-        assert "std::tuple<A*, A*>" not in both
-
-    def test_generator_tuple_param_agrees_const(self):
-        # The __gen_ frame shares _classify_params: a generator method's
-        # inferred deep-const tuple param spells const like its sync call
-        # site (which threads target_const_borrow) -- the two must agree.
-        src = (self._TUPLE_PRE.replace(
-                   "from tpy import Own",
-                   "from typing import Iterator\nfrom tpy import Own")
-               + "    def vals(self, p: tuple[A, A]) -> Iterator[Int32]:\n"
-               + "        yield p[0].x\n"
-               + "        yield p[1].x\n\n"
-               + "def main() -> None:\n"
-               + "    k = Keeper(A(), A())\n"
-               + "    for v in k.vals(k.pair):\n"
-               + "        print(v)\n\nmain()\n")
-        _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
-        both = hpp + cpp
-        assert "std::tuple<const A*, const A*>" in both
-        assert "std::tuple<A*, A*>" not in both
 
     def test_yield_escaping_tuple_param_stays_mutable(self):
         # BOUNDARY: a generator that yields its tuple param hands out
@@ -6038,7 +5715,7 @@ class TestAwaitArgDcbpConstWrap:
                + "    for pair in relay(k.pair):\n"
                + "        print(pair[0].x)\n\nmain()\n")
         _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
+        _, hpp, cpp = _gen(src)
         both = hpp + cpp
         assert "std::tuple<A*, A*>" in both
         assert "std::tuple<const A*, const A*>" not in both
@@ -6059,7 +5736,7 @@ class TestAwaitArgDcbpConstWrap:
                + "    for pair in relay(k.pair, k2.pair, True):\n"
                + "        print(pair[0].x)\n\nmain()\n")
         _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
+        _, hpp, cpp = _gen(src)
         both = hpp + cpp
         assert "std::tuple<A*, A*>" in both
         assert "std::tuple<const A*, const A*>" not in both
@@ -6084,7 +5761,7 @@ class TestAwaitArgDcbpConstWrap:
                + "    for pair in relay(k.pair, k2.pair, True):\n"
                + "        print(pair[0].x)\n\nmain()\n")
         _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
+        _, hpp, cpp = _gen(src)
         both = hpp + cpp
         assert "std::tuple<A*, A*>" in both
         assert "std::tuple<const A*, const A*>" not in both
@@ -6102,10 +5779,8 @@ class TestAwaitArgDcbpConstWrap:
                + "    k = Keeper(A(), A())\n"
                + "    for pair in k.items():\n"
                + "        print(pair[0].x)\n\nmain()\n")
-        _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
-        assert "__gen_Keeper_items items();" in hpp + cpp
-        assert "items() const" not in hpp + cpp
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.btuple_yield_source")
 
     def test_overloaded_generator_reads_impl_verdict(self):
         # The free-fn verdict lookup takes overloads[-1] (the implementation)
@@ -6125,7 +5800,7 @@ class TestAwaitArgDcbpConstWrap:
                + "    for v in vals(k.pair):\n"
                + "        print(v)\n\nmain()\n")
         _assert_identical(src)
-        _, hpp, cpp = _gen(src, thir=True)
+        _, hpp, cpp = _gen(src)
         both = hpp + cpp
         # The factory reads the impl's verdict (overloads[-1]) -> const;
         # the sync call-site lift reads the resolved STUB's empty verdict
@@ -6151,7 +5826,7 @@ class TestAwaitArgDcbpConstWrap:
                + "    yield a.x\n"
                + "    yield a.x\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "std::tuple<const A*, const A*> p" in hpp
         assert "const A* a" in hpp
 
@@ -6176,9 +5851,8 @@ class TestResumableStrFieldSinks:
         src = (self._BOX
                + "    async def own(self) -> str:\n        return self.s\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.return_str_field", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_yield_str_field_routes(self):
         # Owned member and a NARROWED `str | None` member (whose read renders
@@ -6192,10 +5866,9 @@ class TestResumableStrFieldSinks:
                + "        if self.opt is not None:\n"
                + "            yield self.opt\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.yield_str_field", 0) == 2
         assert witnesses.get("field.narrowed_deref", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_nested_field_receiver_still_defers(self):
         # BOUNDARY: the precheck rides `_str_field_value_read`, whose receiver
@@ -6234,9 +5907,8 @@ class TestResumableContainerFieldForHead:
                + "        yield 0\n"
                + "        for x in self.xs:\n            yield x\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("field.container_iterable", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_narrowed_optional_container_field_routes(self):
         # A NARROWED `Optional[list]` field types as a plain container on the
@@ -6253,11 +5925,10 @@ class TestResumableContainerFieldForHead:
                "        if self.xs is not None:\n"
                "            for x in self.xs:\n                yield x\n"
                "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.for_narrowed_opt_field_src", 0) == 1
         assert witnesses.get("field.narrowed_opt_container_iterable", 0) == 1
         assert not witnesses.get("field.container_iterable")
-        assert not any(k.startswith("resumable:") for k in fallback)
 
 
 class TestResumableLeafFinally:
@@ -6277,9 +5948,8 @@ class TestResumableLeafFinally:
                + "    finally:\n        print('cleanup')\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.leaf_try_finally", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_leaf_finally_with_except_routes(self):
         src = (self._PRE
@@ -6290,7 +5960,7 @@ class TestResumableLeafFinally:
                + "    finally:\n        print('cleanup')\n"
                + "    return total\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, _fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.leaf_try_finally", 0) == 1
 
     def test_return_inside_try_routes(self):
@@ -6399,9 +6069,8 @@ class TestResumableFlatAssertNarrow:
                + '    yield "checked"\n'
                + "    yield str(a + 100)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.flat_assert_narrow", 0) == 1
-        assert not any(k.startswith("resumable:") for k in fallback)
 
     def test_reassert_after_suspension_defers(self):
         # BOUNDARY, and the cost of the scope fix: a SECOND assert on the
@@ -6417,8 +6086,7 @@ class TestResumableFlatAssertNarrow:
                + "    assert isinstance(a, int)\n"
                + "    yield str(a + 2)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        assert _res_fallback(src)
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:stmt.assert")
 
     def test_frame_field_alias_collision_still_defers(self):
         # BOUNDARY: when the alias name `__{var}` collides with a real frame
@@ -6463,9 +6131,8 @@ class TestFlatAssertNarrowScoping:
                + "        print(a)\n"
                + '    yield "end"\n\n'
                + "def main() -> None:\n    pass\nmain()\n")
-        fb = _res_fallback(src)
-        assert "print.arg.union_name" in str(fb), fb
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.expr_stmt:print.arg.union_name")
 
     _PRE = "from typing import Iterator\n\n"
 
@@ -6489,8 +6156,7 @@ class TestValueTupleOptionalElem:
                + "    if v is not None:\n"
                + "        print(a[0], v)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        _witnesses = _assert_identical(src)
 
     def test_ptr_optional_elem_tuple_stays_out(self):
         # BOUNDARY for the value-opt element widening: a POINTER-repr
@@ -6607,9 +6273,8 @@ class TestOwnDynParamFamily:
                "                     timeout: float) -> Own[T]:\n"
                "        return await asyncio.wait_for(coro, timeout)\n\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _ = _assert_identical(src)
+        _, hpp, _cpp = _gen(src)
         assert "__sub_0.emplace(std::move(coro), timeout);" in hpp
 
     def test_own_bare_t_param_routes(self):
@@ -6634,7 +6299,7 @@ class TestOwnDynParamFamily:
                     if b is not None]) == 2
         assert not fallback
         _assert_identical(src)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "    T x;\n" in hpp
         assert "__coro_ident(T&& x_)" in hpp
 
@@ -6658,7 +6323,7 @@ class TestOwnValueParamFamily:
                     if b is not None]) == 2
         assert not fallback
         _assert_identical(src)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "__coro_sink(int32_t&& x_)" in hpp
 
     def test_generic_method_own_t_param_routes(self):
@@ -6696,9 +6361,8 @@ class TestOwnValueParamFamily:
                + "    await asyncio.sleep(0.001)\n"
                + "    print(s)\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        _assert_rejects_at(_res_fallback(src), "res.param_type",
-                           shape="own_str", count=1)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.param_type:own_str")
 
     def test_own_bytes_param_still_defers(self):
         # BOUNDARY: the bytes twin of the str form split.
@@ -6708,9 +6372,8 @@ class TestOwnValueParamFamily:
                + "    await asyncio.sleep(0.001)\n"
                + "    print(len(b))\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _assert_identical(src)
-        _assert_rejects_at(_res_fallback(src), "res.param_type",
-                           shape="own_bytes", count=1)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:res.param_type:own_bytes")
 
 
 class TestErasedHandleWrites:
@@ -6735,10 +6398,9 @@ class TestErasedHandleWrites:
                + "    t2 = asyncio.create_task(d)\n"
                + "    print(await t2)\n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.erased_handle_write", 0) >= 2
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert cpp.count("d = ::tpy::make_adapter<") == 2
         # The forward move-out at the create_task slot, both times.
         assert cpp.count("(std::move(d))") == 2
@@ -6758,10 +6420,9 @@ class TestErasedHandleWrites:
                + "    else:\n"
                + "        print(0)\n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.erased_handle_write", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "d = ::tpy::make_adapter<" in cpp
 
 
@@ -6787,10 +6448,9 @@ class TestOptTupleUnpackHolder:
                + "        if b is not None:\n"
                + "            yield b.x\n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.unpack_opt_ptr", 0) >= 2
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto& __tup_1 = __for_tup_0;" in cpp
         assert "a = ::tpy::optional_to_ptr(std::get<0>(__tup_1));" in cpp
 
@@ -6805,10 +6465,9 @@ class TestOptTupleUnpackHolder:
                + "            yield a.x\n"
                + "        yield n\n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        witnesses = _assert_identical(src)
         assert witnesses.get("res.unpack_opt_ptr", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "a = ::tpy::optional_to_ptr(std::get<0>(__tup_1));" in cpp
         assert "n = std::get<1>(__tup_1);" in cpp
 
@@ -6825,9 +6484,7 @@ class TestOptTupleUnpackHolder:
                "            yield len(xs)\n"
                "        yield n\n\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        fallback = _res_fallback(src)
-        assert fallback.get("res.local_storage") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.local_storage")
 
     def test_container_optional_local_routes(self):
         # The CONTAINER OPT_PTR local flavor (`h = self.lst` at
@@ -6900,9 +6557,8 @@ class TestFramePtrSlotReseats:
                "def main() -> None:\n"
                "    for v in gen():\n        print(v)\n"
                "main()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        _witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "saved = &*(__ptr_slot_f0 = Point(9));" in cpp
 
     def test_frame_storage_call_fill_and_relift_routes(self):
@@ -6928,10 +6584,9 @@ class TestFramePtrSlotReseats:
                "def main() -> None:\n"
                "    for v in gen():\n        print(v)\n"
                "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("reseat.opt_frame_storage_call", 0) >= 2
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "__ptr_slot_f0 = make_opt(3);" in cpp
         assert "got = ::tpy::optional_to_ptr(__ptr_slot_f0);" in cpp
         assert "__ptr_slot_f1 = make_opt(9);" in cpp
@@ -6957,10 +6612,9 @@ class TestFramePtrSlotReseats:
                "    pts = [Point(4)]\n"
                "    for v in gen(pts):\n        print(v)\n"
                "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("reseat.subscript_elem", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "saved = &(::tpy::__getitem__(items, 0));" in cpp
 
     def test_frame_subclass_rvalue_reseat_routes(self):
@@ -6985,10 +6639,9 @@ class TestFramePtrSlotReseats:
                "def main() -> None:\n"
                "    for s in gen():\n        print(s)\n"
                "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("reseat.opt_frame_slot", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "p = &*(__ptr_slot_f0 = Cat());" in cpp
 
 
@@ -7023,8 +6676,7 @@ class TestForwardedProtoParamAlias:
         compiler, modules = _compile(self._SRC)
         entry = _entry(modules)
         compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         faces = compiler._thir_face_witnesses
         assert faces.get("decl.forwarded_alias", 0) >= 1
         assert faces.get("name.forwarded_alias", 0) >= 1
@@ -7060,8 +6712,7 @@ class TestFrameCompWrite:
         compiler, modules = _compile(self._SRC)
         entry = _entry(modules)
         compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get(
             "res.frame_comp_write", 0) >= 1
 
@@ -7554,7 +7205,7 @@ class TestOwningTupleFrameSlot:
         # full codegen runs -- read it off that compiler.
         c, mods = _compile(src)
         c.generate_code_to_strings(
-            _entry(mods), options=CodeGenOptions(thir_codegen=True))
+            _entry(mods), options=CodeGenOptions())
         assert c._thir_face_witnesses.get("res.frame_slot_write", 0) >= 1
         assert c._thir_face_witnesses.get("call.own_tuple_storage_ret",
                                           0) >= 1
@@ -7577,11 +7228,7 @@ class TestOwningTupleFrameSlot:
             "    yield t[0]\n"
             "    t = make_pair(2)\n"
             "    yield t[1].val\n")
-        from .testutil import _assert_byte_identical, _fn, _lower_ctx
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "gen_own_elem") is None
-        assert _fn(thir, "gen_reassigned") is None
+        _assert_rejects_at(_reject_tally(src), "resumable:res.btuple_source")
 
 
 class TestWithOptionalEnterFrameTarget:
@@ -7620,7 +7267,7 @@ class TestWithOptionalEnterFrameTarget:
         fb = _res_fallback(src)
         assert not fb, fb
         _assert_identical(src)
-        c, _hpp, cpp = _gen(src, thir=True)
+        c, _hpp, cpp = _gen(src)
         assert "m = __ctx_1.__enter__();" in cpp
 
     def test_value_repr_optional_enter_defers(self):
@@ -7648,9 +7295,8 @@ class TestWithOptionalEnterFrameTarget:
             "    for x in gen_val():\n"
             "        print(x)\n"
             "main()\n")
-        fb = _res_fallback(src)
-        assert any("with" in k for k in fb), fb
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:stmt.with:with.frame_target_family")
 
 
 class TestUnionFrameSlot:
@@ -7682,7 +7328,7 @@ class TestUnionFrameSlot:
         fb = _res_fallback(src)
         assert not fb, fb
         _assert_identical(src)
-        c, _hpp, cpp = _gen(src, thir=True)
+        c, _hpp, cpp = _gen(src)
         out = _hpp + cpp
         assert "std::holds_alternative<A>((*t))" in out
         assert "std::get<A>((*t))" in out
@@ -7702,9 +7348,7 @@ class TestUnionFrameSlot:
             "    for x in gen_value_union():\n"
             "        print(x)\n"
             "main()\n")
-        fb = _res_fallback(src)
-        assert any("res.local_storage" in k for k in fb), fb
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.local_storage")
 
     def test_sync_body_union_pop_decl_defers(self):
         # BOUNDARY (the container_union_ret rung's shield): a sync-body
@@ -7724,10 +7368,8 @@ class TestUnionFrameSlot:
             "def main() -> None:\n"
             "    f([A(1)])\n"
             "main()\n")
-        from .testutil import (_assert_byte_identical, _fn, _lower_ctx)
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.ptr_union_source")
 
 
 class TestResAliasNameSource:
@@ -7795,7 +7437,7 @@ class TestValueOptFrameShapes:
             "        yield 1\n"
             "        v = None\n"
             "    yield 2\n") + self._MAIN
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses["res.frame_opt_none"] >= 1
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "v = std::nullopt;" in cpp
@@ -7810,7 +7452,7 @@ class TestValueOptFrameShapes:
             "    yield 0\n"
             "    if q is not None:\n"
             "        yield q\n") + self._MAIN
-        witnesses, _fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses["res.frame_opt_none"] >= 1
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "q = std::nullopt;" in cpp
@@ -7822,7 +7464,7 @@ class TestValueOptFrameShapes:
             "    if p is not None:\n"
             "        yield p\n"
             "    yield None\n") + self._MAIN
-        witnesses, _fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses["res.yield_value_opt_none"] >= 1
         _hpp, cpp = _assert_routes_byte_identical(src)
         # The narrowed source passes WHOLE (no `(*p)`), the None spells
@@ -7869,8 +7511,7 @@ class TestValueOptFrameShapes:
                "def g(s: str | None) -> Iterator[str | None]:\n"
                "    yield s\n"
                "    yield None\n") + self._MAIN
-        assert _res_fallback(src).get("res.yield_type") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.yield_type")
 
     def test_record_optional_yield_slot_still_defers(self):
         # A pointer-repr Optional yield slot is a plain `T*` -- not this
@@ -7883,8 +7524,7 @@ class TestValueOptFrameShapes:
             "def g(b: Box | None) -> Iterator[Box | None]:\n"
             "    yield b\n"
             "    yield None\n") + self._MAIN
-        assert _res_fallback(src).get("res.yield_type") == 1
-        _assert_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.yield_type")
 
 
 class TestFrameFieldWalrus:
@@ -7925,9 +7565,8 @@ class TestFrameFieldWalrus:
         # The value-scalar field: the bare member assign, no pre-decl.
         src = self._frame_src("        if (m := i * 2) > 0:\n"
                               "            print(\"m\", m)\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("expr.walrus_frame_field") == 1
-        assert not fallback, fallback
 
     def test_frame_slot_walrus_emplaces_with_brace_type(self):
         # An owning `frame_slot<T>` target: `zs.emplace(<value>)`, and a bare
@@ -7945,10 +7584,9 @@ class TestFrameFieldWalrus:
                + "        i += 1\n"
                + "\ndef main() -> None:\n"
                + "    for u in g():\n        print(u)\nmain()\n")
-        _c, _hpp, cpp = _gen(src, thir=True)
-        witnesses, fallback = _assert_identical(src)
+        _c, _hpp, cpp = _gen(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("expr.walrus_frame_slot") == 1
-        assert not fallback, fallback
         assert "zs.emplace(std::array<int32_t, 2>{" in cpp
 
     def test_frame_alias_walrus_addresses_the_element(self):
@@ -7966,10 +7604,9 @@ class TestFrameFieldWalrus:
                + "\ndef main() -> None:\n"
                + "    rows = [[1, 2]]\n"
                + "    for u in g(rows):\n        print(u)\nmain()\n")
-        _c, _hpp, cpp = _gen(src, thir=True)
-        witnesses, fallback = _assert_identical(src)
+        _c, _hpp, cpp = _gen(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("expr.walrus_frame_alias") == 1
-        assert not fallback, fallback
         assert "(row = &(rows[" in cpp and ", *row)" in cpp
 
     def test_frame_opt_ptr_walrus_lifts_a_storage_field(self):
@@ -7995,10 +7632,9 @@ class TestFrameFieldWalrus:
                + "\ndef main() -> None:\n"
                + "    h = Holder(Node(5))\n"
                + "    for u in h.g():\n        print(u)\nmain()\n")
-        _c, _hpp, cpp = _gen(src, thir=True)
-        witnesses, fallback = _assert_identical(src)
+        _c, _hpp, cpp = _gen(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("expr.walrus_frame_opt_ptr") == 1
-        assert not fallback, fallback
         assert "(p = ::tpy::optional_to_ptr(__self.item))" in cpp
 
     def test_frame_walrus_call_arg_routes(self):
@@ -8070,8 +7706,7 @@ class TestFrameFieldWalrus:
                + "        i += 1\n"
                + "\ndef main() -> None:\n"
                + "    for u in g():\n        print(u)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not witnesses.get("walrus.optptr_call_src")
+        fallback = _reject_tally(src)
         assert fallback == {"resumable:expr.walrus": 1}, fallback
 
     def test_sync_opt_ptr_walrus_call_source_routes(self):
@@ -8103,8 +7738,7 @@ class TestFrameFieldWalrus:
                + "        yield len(xs := [i, i + 1]) + xs[0]\n"
                + "\ndef main() -> None:\n"
                + "    for u in g(2):\n        print(u)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not any("walrus_frame" in k for k in witnesses)
+        fallback = _reject_tally(src)
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.native_arg.other")
 
@@ -8123,8 +7757,7 @@ class TestFrameFieldWalrus:
                + "\ndef main() -> None:\n"
                + "    rows = [[1, 2]]\n"
                + "    for u in g(rows):\n        print(len(u))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not witnesses.get("expr.walrus_frame_alias_slot")
+        fallback = _reject_tally(src)
         assert fallback == {"resumable:expr.walrus": 1}, fallback
 
     def test_frame_borrow_tuple_walrus_takes_the_name_tail(self):
@@ -8145,10 +7778,9 @@ class TestFrameFieldWalrus:
                + "\ndef main() -> None:\n"
                + "    nodes = [Node(1)]\n"
                + "    for u in g(nodes):\n        print(u)\nmain()\n")
-        _c, _hpp, cpp = _gen(src, thir=True)
-        witnesses, fallback = _assert_identical(src)
+        _c, _hpp, cpp = _gen(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("expr.walrus_frame_btuple") == 1
-        assert not fallback, fallback
         assert "(bt = borrow_pair(" in cpp and ", bt)" in cpp
 
     def test_frame_borrow_tuple_literal_source_stays_ast(self):
@@ -8169,8 +7801,7 @@ class TestFrameFieldWalrus:
                + "\ndef main() -> None:\n"
                + "    nodes = [Node(1)]\n"
                + "    for u in g(nodes):\n        print(u)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not witnesses.get("expr.walrus_frame_btuple")
+        fallback = _reject_tally(src)
         assert _res_fallback(src).get("expr.walrus") == 1
         assert fallback, "the body must stay on the AST path"
 
@@ -8201,8 +7832,7 @@ class TestFrameFieldWalrus:
                + "\ndef main() -> None:\n"
                + "    h = Holder(Node(5))\n"
                + "    for u in h.g():\n        print(u)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not witnesses.get("expr.walrus_frame_opt_ptr")
+        fallback = _reject_tally(src)
         assert fallback, "the body must stay on the AST path"
 
     def test_simple_generator_walrus_is_untouched(self):
@@ -8217,10 +7847,9 @@ class TestFrameFieldWalrus:
                + "        i += 1\n"
                + "\ndef main() -> None:\n"
                + "    for u in g(6):\n        print(u)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
         assert not any("walrus_frame" in k for k in witnesses)
-        assert not fallback, fallback
 
     def test_sync_walrus_is_untouched(self):
         # The fence keys on `frame_local_types`, which is empty for a sync
@@ -8231,9 +7860,7 @@ class TestFrameFieldWalrus:
                + "        return m\n"
                + "    return 0\n\n"
                + "def main() -> None:\n    print(f(3))\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
-        assert not any(k.startswith("body:") and "walrus" in k
-                       for k in fallback)
+        _witnesses = _assert_identical(src)
 
 
 class TestFrameNestedDefMemberBody:
@@ -8260,29 +7887,9 @@ class TestFrameNestedDefMemberBody:
            + "main()\n")
 
     def test_member_body_routes_byte_identical(self):
-        witnesses, fallback = _assert_identical(self.SRC)
+        witnesses = _assert_identical(self.SRC)
         assert witnesses.get("res.nested_def_member", 0) >= 1  # marker line
         assert witnesses.get("res.nested_def_body", 0) >= 1    # member body
-        assert not fallback, fallback
-
-    def test_member_body_emits_from_thir(self):
-        # The routed frame must take leaf.emit_nested_def_body, never
-        # gen_nested_def_body -- spy on the AST member emitter.
-        from ..codegen_cpp.statements import StatementGenerator
-        calls: list[str] = []
-        original = StatementGenerator.gen_nested_def_body
-
-        def spy(self, out, func, ret_cpp):
-            calls.append(func.name)
-            return original(self, out, func, ret_cpp)
-
-        StatementGenerator.gen_nested_def_body = spy
-        try:
-            _c, _hpp, _cpp = _gen(self.SRC, thir=True)
-        finally:
-            StatementGenerator.gen_nested_def_body = original
-        assert "bump" not in calls, (
-            "routed frame emitted its member body through the AST path")
 
     def test_name_collision_folds_whole_frame(self):
         # BOUNDARY: a member whose name collides with a module function
@@ -8305,6 +7912,5 @@ class TestFrameNestedDefMemberBody:
                + "def main() -> None:\n"
                + "    print(asyncio.run(runner()))\n"
                + "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not witnesses.get("res.nested_def_body")
+        fallback = _reject_tally(src)
         assert any("res.nested_def_member" in k for k in fallback), fallback

@@ -23,12 +23,11 @@ _ENUM_PRELUDE = (
 )
 
 
-def _cpp(src: str, thir: bool, extra_lib_dirs=None):
+def _cpp(src: str, extra_lib_dirs=None):
     compiler, modules = _compile(src, extra_lib_dirs)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -84,11 +83,8 @@ class TestEnumValues:
         assert m_decl.init.cpp_template == \
             "::tpy::EnumUtil<Prio>::from_value({0})"
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emit_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "Color x = Color::GREEN;" in cpp            # decl spelling
         assert "if ((c == Color::RED))" in cpp             # plain-enum compare
         # int-enum ordering casts both sides to the underlying type
@@ -110,9 +106,8 @@ class TestEnumValues:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "hot") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "(static_cast<int32_t>(p) >= n)" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_enum_for_each_iteration_routes(self):
         # `for c in Color:` ranges over the fixed EnumUtil<E>::members lvalue;
@@ -123,9 +118,8 @@ class TestEnumValues:
             + "def main():\n    show()\nmain()\n"
         )
         assert _fn(_lower_ctx(src), "show") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "::tpy::EnumUtil<Color>::members" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_enum_name_lookup_subscript_routes(self):
         # `Color[name]` -> ::tpy::EnumUtil<Color>::from_name(name); routes
@@ -136,9 +130,8 @@ class TestEnumValues:
             + "def main():\n    print(parse(\"RED\"))\nmain()\n"
         )
         assert _fn(_lower_ctx(src), "parse") is not None
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "::tpy::EnumUtil<Color>::from_name(" in cpp
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_cross_module_enum_routes_qualified(self, tmp_path):
         # A cross-module enum spells qualified (::tpyapp::m::E) in every
@@ -163,8 +156,8 @@ class TestEnumValues:
         decl = fn.body[0]
         assert isinstance(decl.init, THIREnumMember)
         assert decl.init.cpp == "::tpyapp::helper::Color::GREEN"
-        cpp = _cpp(src, thir=True, extra_lib_dirs=[tmp_path])
-        assert cpp == _cpp(src, thir=False, extra_lib_dirs=[tmp_path])
+        cpp = _cpp(src, extra_lib_dirs=[tmp_path])
+        assert cpp == _cpp(src, extra_lib_dirs=[tmp_path])
         assert ("::tpyapp::helper::Color x = "
                 "::tpyapp::helper::Color::GREEN;") in cpp
 
@@ -188,8 +181,8 @@ class TestEnumTruthiness:
         assert w.get("enum.truthy_int", 0) >= 2     # `while p:` + `not p`
 
     def test_emit_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         # A plain enum is always truthy, so the value folds to `true` while
         # the operand stays as a discard; IntEnum tests its underlying value.
         assert "if ((static_cast<void>(c), true)) {" in cpp
@@ -287,8 +280,8 @@ class TestIntEnumScalarOps:
         assert w.get("enum.neg", 0) == 1
 
     def test_emit_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         # Arithmetic casts the enum side to the underlying type (the
         # resolved-binop operand casts); the int side renders bare.
         assert ("int32_t x = (::tpy::add_check<int32_t>("
@@ -318,8 +311,8 @@ class TestEnumProps:
         assert decl.init.wrap == "static_cast<int32_t>({0})"
 
     def test_emit_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         assert "int32_t v = static_cast<int32_t>(c);" in cpp
         assert 'std::format("v={}", static_cast<int32_t>(c))' in cpp
 
@@ -359,8 +352,8 @@ class TestEnumProps:
         assert wrap.wrap == "::tpy::EnumUtil<Color>::name({0})"
 
     def test_name_emit_arms(self):
-        cpp = _cpp(self.NAME_SRC, thir=True)
-        assert cpp == _cpp(self.NAME_SRC, thir=False)
+        cpp = _cpp(self.NAME_SRC)
+        assert cpp == _cpp(self.NAME_SRC)
         # Owned-str sinks copy the view explicitly; view sinks stay bare.
         assert "return std::string(::tpy::EnumUtil<Color>::name(c));" in cpp
         assert ("std::string label = "
@@ -401,8 +394,8 @@ class TestNativeEnum:
         assert w.get("enum.repr_print", 0) >= 1
 
     def test_emit_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         assert "::ns::E x = ::ns::E::CppA;" in cpp          # decl + rename
         assert "std::cout << ::tpy::__repr__(e)" in cpp     # native print arm
         assert "static_cast<int32_t>(e)" in cpp             # .value
@@ -436,8 +429,8 @@ class TestNestedEnum:
         assert w.get("enum.nested_from_value", 0) == 1
 
     def test_emit_arms(self):
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         assert "Message::Kind x = Message::Kind::IMAGE;" in cpp
         assert ("Message::Kind y = "
                 "::tpy::EnumUtil<Message::Kind>::from_value(n);") in cpp

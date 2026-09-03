@@ -39,12 +39,12 @@ _CHAIN = (
 
 
 class TestFieldChainRead:
-    def _emit(self, src: str, thir: bool) -> str:
+    def _emit(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
             entry,
-            options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_routed(self):
@@ -52,11 +52,8 @@ class TestFieldChainRead:
         for name in ("f", "get_char", "local", "as_compare", "narrowed"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert self._emit(_CHAIN, thir=True) == self._emit(_CHAIN, thir=False)
-
     def test_emit_arms(self):
-        cpp = self._emit(_CHAIN, thir=True)
+        cpp = self._emit(_CHAIN)
         assert "return o.mid.inner.v;" in cpp          # param chain, `.`
         assert "return this->mid.inner.v;" in cpp      # self chain, `this->`
         assert "int32_t x = o.mid.inner.v;" in cpp     # local bind
@@ -138,8 +135,7 @@ class TestPtrValuedIntermediate:
         compiler, modules = _compile(_PTR_CHAIN)
         hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         out = hpp + cpp
         assert "return ::tpy::deref_check(this->s).a.q.flag;" in out
         assert "::tpy::deref_check(this->s).a.q.flag = v;" in out   # write
@@ -216,12 +212,12 @@ class TestFieldOverCallRead:
         "main()\n"
     )
 
-    def _emit(self, src: str, thir: bool) -> str:
+    def _emit(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
             entry,
-            options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_routed_and_witnessed(self):
@@ -230,11 +226,8 @@ class TestFieldOverCallRead:
             assert _fn(thir, name) is not None, name
         assert witnessed.get("field.call_recv", 0) >= 3
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_emit_postfix_member(self):
-        cpp = self._emit(self.SRC, thir=True)
+        cpp = self._emit(self.SRC)
         assert "return make(10, 20).x;" in cpp
         assert "return h.get().x;" in cpp
 
@@ -256,8 +249,7 @@ class TestFieldOverCallRead:
         thir, witnessed = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert witnessed.get("field.call_recv", 0) >= 1
-        assert "std::cout << make().s" in self._emit(src, thir=True)
-        assert self._emit(src, thir=True) == self._emit(src, thir=False)
+        assert "std::cout << make().s" in self._emit(src)
 
 
 class TestFieldOverTemplateCallRead:
@@ -290,8 +282,7 @@ class TestFieldOverTemplateCallRead:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         outs = [compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=t)) for t in (True,
+            entry, options=CodeGenOptions(emit_source_comments=False)) for t in (True,
                                                                      False)]
         assert outs[0] == outs[1]
         assert "(Temp(-7)).__abs__().v" in outs[0][1]

@@ -33,30 +33,26 @@ _PT = (
 )
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
 class TestOmittedDefaultCtor:
     def test_omit_all_defaults_routes(self):
         src = _CAT + "def make() -> Int32:\n    x = Cat(5)\n    return x.a\n"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "make") is not None
 
     def test_omit_one_default_routes(self):
         src = _CAT + "def make() -> Int32:\n    x = Cat(5, 9)\n    return x.b\n"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "make") is not None
 
     def test_full_arity_still_routes(self):
         src = _PT + "def make() -> Int32:\n    x = Pt(5, 9)\n    return x.a\n"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "make") is not None
 
     def test_omission_witnesses_face(self):
@@ -71,7 +67,7 @@ class TestOmittedDefaultCtor:
 
     def test_emitted_call_passes_only_provided_args(self):
         src = _CAT + "def make() -> Int32:\n    x = Cat(5)\n    return x.a\n"
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         # The default lives on the C++ ctor signature, not the call site.
         assert "Cat x = Cat(5);" in out
         assert "int32_t b = -1" in out
@@ -86,7 +82,6 @@ class TestOmittedDefaultCtor:
             "        self.a = a\n        self.b = b\n"
             "def make() -> Int32:\n    x = K(1)\n    return x.b\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "make") is not None
 
     def test_variadic_ctor_deferred(self):
@@ -97,7 +92,6 @@ class TestOmittedDefaultCtor:
             "    def __init__(self, a: Int32, *rest: Int32):\n        self.a = a\n"
             "def make() -> Int32:\n    x = Bag(1)\n    return x.a\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "make") is None
 
     def test_nested_omitted_default_ctor_arg(self):
@@ -108,5 +102,4 @@ class TestOmittedDefaultCtor:
             + "def take(c: Cat) -> Int32:\n    return c.a\n"
             + "def make() -> Int32:\n    return take(Cat(5))\n"
         )
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
         assert _fn(_lower_ctx(src), "make") is not None

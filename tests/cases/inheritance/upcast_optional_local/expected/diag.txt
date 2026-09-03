@@ -1,0 +1,1 @@
+main.py:23: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol

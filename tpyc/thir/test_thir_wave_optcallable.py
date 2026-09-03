@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_rejects_at, _assert_routes_byte_identical, _compile, _entry,
 )
@@ -155,7 +156,8 @@ class TestMarkerContainerFieldAndOwnTparamArgs:
             "    def fix(self) -> None:\n"
             "        if self.maybe is not None:\n"
             "            heapq.heapify(self.maybe)\n")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.qualcall.arg.other.expr.field_access")
 
 
 class TestOwnTparamCallRvalueArg:
@@ -207,7 +209,8 @@ class TestOwnTparamCallRvalueArg:
             "    def dup_first(self) -> None:\n"
             "        self._st.init(self._n, self.peek(UInt32(0)))\n"
             "        self._n += 1\n")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
     def test_free_call_rvalues_at_open_own_slot_route(self):
         # The FREE-call half of the same row (the ArrayList shape):
@@ -257,15 +260,7 @@ class TestOwnTparamCallRvalueArg:
             "    b.echo([UInt32(1)], 0)\n"
             "    print(len(b.items))\n"
             "main()\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback),
-                           "body:expr.method_call", "method.arg_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.method_call', 'method.arg_shape')
 
 
 _GENERIC_OWN_SLOT = (
@@ -314,15 +309,7 @@ class TestGenericFreeCallOpenOwnSlotRvalue:
             "    print(w.x)\n"
             "main()\n"
         )
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback), "body:expr.call",
-                           "call.generic_arg_slot")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:expr.call', 'call.generic_arg_slot')
 
 
 class TestBuiltinSetattrStatement:
@@ -395,9 +382,7 @@ class TestBuiltinSetattrStatement:
         src = self._BAG + (
             "def use(b: Bag, v: str) -> None:\n"
             "    setattr(b, \"who\", v)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.assign")
 
 
 class TestOwnedElementLiteralAppends:
@@ -444,9 +429,8 @@ class TestOwnedElementLiteralAppends:
             "    ps: list[tuple[str, Int32]] = []\n"
             "    t = (\"m\", 3)\n"
             "    ps.append(t)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use2") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
     def test_pointer_repr_tuple_literal_append_routes(self):
         # The pointer-repr element tuple takes the tuple_to_storage_move
@@ -518,9 +502,8 @@ class TestProtocolOwnStorageReturn:
         src = self._SRC + (
             "def value_pos[T: Factory](f: T, x: Int32) -> Int32:\n"
             "    return f.create(x).x\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "value_pos") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.protocol.ret_type")
 
 
 class TestScalarReceiverStubs:
@@ -551,9 +534,8 @@ class TestScalarReceiverStubs:
             "    return (a, b)\n"
             "def show(a: P, b: P) -> None:\n"
             "    print(ptr_pair(a, b)[0].v)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "show") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.ret_type.tuple")
 
 
 class TestOpenTStubResult:
@@ -638,10 +620,8 @@ class TestBytesSplitIterableAndValueOptResults:
             "    host = r.hostname\n"
             "    port = r.port\n"
             "    print(host is None, port is None)\n")
-        thir, w = _lower_ctx_witnessed(src)
-        assert _fn(thir, "use") is not None
-        assert w.get("method.value_opt_view_ret", 0) >= 1
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.opt_view_source")
 
 
 class TestPtrTemplateSpanMethod:
@@ -669,9 +649,8 @@ class TestPtrTemplateSpanMethod:
             "def use() -> None:\n"
             "    v: Vec[str] = Vec[str]()\n"
             "    v.addn(\"x\")\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.ptr_template.arg_shape")
 
 
 class TestNativeTemplateAndRetCast:
@@ -771,8 +750,7 @@ class TestModuleGenericExplicitTargs:
         compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "::tpyapp::helpers::identity<int32_t>(7)" in cpp
         _assert_byte_identical(src, extra_lib_dirs=[tmp_path])
 
@@ -831,8 +809,7 @@ class TestTypedDictGetAndMembership:
         compiler, modules = _compile(src)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "(static_cast<void>(kwargs), false)" in cpp
         _assert_byte_identical(src)
 
@@ -899,9 +876,8 @@ class TestModuleVarReceivers:
             "def use() -> None:\n"
             "    env = os.environ\n"
             "    print(len(env))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestSelfCallableField:

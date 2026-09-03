@@ -13,6 +13,8 @@ leg is reachable at the zero-argument form only.
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctor, _ctor_tail, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -119,8 +121,8 @@ class TestMilContainerDefaultBoundaries:
                "    items: list[Int32]\n"
                "    def __init__(self, xs: list[Int32]) -> None:\n"
                "        self.items = sorted(xs)\n")
-        assert _lower_ctor(src, "C") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.container.call")
 
     def test_own_container_param_arg_stays_ast(self):
         # BOUNDARY: the gate admits the shape, but `list(xs)` off an
@@ -135,5 +137,5 @@ class TestMilContainerDefaultBoundaries:
                "    ns: list[Int32] = [4, 5]\n"
                "    c = C(ns)\n"
                "    print(len(c.items))\n")
-        assert _lower_ctor(src, "C") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:expr.call:call.inst_arg_shape")

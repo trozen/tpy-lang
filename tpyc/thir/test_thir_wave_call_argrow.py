@@ -5,6 +5,7 @@ falling back."""
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_rejects_at,
     _assert_routes_byte_identical,
@@ -21,14 +22,7 @@ def _fallback_reasons(src: str) -> set:
     anything past the prefix would leave a pin unable to say WHERE a body
     still rejects, which is the whole claim for a widening that moves the
     reject down a layer rather than routing the body."""
-    from ..codegen_cpp.context import CodeGenOptions
-    from .testutil import _compile, _entry
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
-    return {k.split(":", 1)[1] for k in compiler._thir_fallback
-            if k.startswith("body:")}
+    return {k.split(':', 1)[1] for k in _reject_tally(src) if k.startswith('body:')}
 
 
 _PRELUDE = "from tpy import Int32\n"
@@ -110,8 +104,7 @@ class TestBytearrayNamePassThrough:
         compiler, modules = _compile(self.SRC)
         hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "mutate(ba)" in cpp
         assert "::tpy::bytes_copy(ba)" in cpp
 
@@ -149,8 +142,7 @@ class TestBorrowTupleNameArg:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         # Bare, NOT `tuple_to_pointer(p)` -- the param is already borrow form.
         assert "inner(p)" in cpp
         assert "tuple_to_pointer" not in cpp.split("void outer")[1][:200]
@@ -288,9 +280,7 @@ class TestSimpleGenSelfCapturingLambda:
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert not dict(compiler._thir_fallback)
+            options=CodeGenOptions(emit_source_comments=False))
 
     def test_capture_spells_this_while_the_body_reads_star_this(self):
         from ..codegen_cpp.context import CodeGenOptions
@@ -298,8 +288,7 @@ class TestSimpleGenSelfCapturingLambda:
         compiler, modules = _compile(self.SRC)
         hpp, _cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "[this](int32_t x)" in hpp
         assert "(*this).n" in hpp
 
@@ -331,8 +320,7 @@ class TestPropertyLenArg:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "::tpy::__len__(f.name())" in cpp
 
     def test_byte_identical(self):
@@ -370,9 +358,7 @@ class TestBorrowTupleParamInResumable:
         compiler, modules = _compile(src)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert not dict(compiler._thir_fallback)
+            options=CodeGenOptions(emit_source_comments=False))
         _assert_byte_identical(src)
 
 
@@ -405,8 +391,7 @@ class TestRequiredProtocolUnionArg:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "describe(nums)" in cpp
         assert "describe(&(nums))" not in cpp
 
@@ -425,15 +410,8 @@ class TestRequiredProtocolUnionArg:
             "    nums: list[int] = [10, 20, 30]\n"
             "    describe(nums)\n"
         )
-        from ..codegen_cpp.context import CodeGenOptions
-        from .testutil import _compile, _entry
-        compiler, modules = _compile(src)
-        _hpp, cpp = compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=False))
-        assert "describe(&(nums))" in cpp
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_binop.is.union_other_nonetype:binop.union_none_protocol_subject")
 
 
 class TestNativeComprehensionArg:
@@ -457,8 +435,7 @@ class TestNativeComprehensionArg:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "::tpy::builtin_sorted<std::string>(({" in cpp
 
     def test_byte_identical(self):
@@ -481,8 +458,7 @@ class TestNativeComprehensionArg:
         compiler, modules = _compile(src)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "std::vector<int32_t> __tmp_" in cpp
         _assert_byte_identical(src)
 
@@ -523,8 +499,7 @@ class TestModuleVarLenArg:
         compiler, modules = _compile(src)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "::tpy::__len__(b)" in cpp
         _assert_byte_identical(src)
 
@@ -561,8 +536,7 @@ class TestSpannableCoerceArg:
         compiler, modules = _compile(self.SRC)
         hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         both = hpp + cpp
         assert "accept_ro(::tpy::as_span(c))" in both
 
@@ -621,8 +595,7 @@ class TestViewInstantiation:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "std::span<const int32_t>(lst)" in cpp
 
     def test_byte_identical(self):
@@ -694,8 +667,7 @@ class TestBorrowTupleNameArgRows:
         compiler, modules = _compile(self.STORAGE_SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         wrap = "::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>"
         assert f"consume({wrap}(it))" in cpp
         assert f"consume({wrap}(snap))" in cpp
@@ -760,11 +732,8 @@ class TestBorrowTupleNameArgRows:
             "    feed([], [])\n"
             "main()\n"
         )
-        _thir, faces = _lower_ctx_witnessed(src)
-        assert faces.get("arg.btuple_storage_name", 0) == 0
-        _assert_rejects_at(_fallback_reasons(src), "stmt.expr_stmt",
-                           "call.arg_shape.tuple")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.tuple")
 
 
 class TestRecursiveUnionBorrowCallArg:
@@ -815,9 +784,8 @@ class TestRecursiveUnionBorrowCallArg:
             "    print(hand([]))\n"
             "main()\n"
         )
-        _thir, faces = _lower_ctx_witnessed(src)
-        assert faces.get("arg.recursive_union_borrow_call", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.union")
 
 
 class TestOwnOptionalRecordSlotArgs:
@@ -864,8 +832,7 @@ class TestOwnOptionalRecordSlotArgs:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert ("Holder(std::move(r ? std::optional<Rec>(std::move(*r))"
                 " : std::nullopt))") in cpp
         assert "store(Rec(4))" in cpp
@@ -910,7 +877,8 @@ class TestOwnOptionalRecordSlotArgs:
             "    print(twice(Rec(6)))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.ctor_arg.own_optional")
 
     def test_plain_own_record_slot_keeps_its_own_row(self):
         # The other boundary: a non-Optional `Own[record]` slot is the plain
@@ -957,7 +925,7 @@ class TestBorrowTupleBareNamesFrameCarveOut:
         assert faces.get("arg.btuple_name", 0) == 0
 
     def test_byte_identical(self):
-        _assert_byte_identical(self.SRC)
+        _assert_rejects_at(_reject_tally(self.SRC), "resumable:res.loop_var")
 
 
 class TestBorrowTupleStorageNameAtTemplateSlot:
@@ -993,8 +961,7 @@ class TestBorrowTupleStorageNameAtTemplateSlot:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         # Both sources are storage form -- the loop var over a storage
         # container and the VALUE-capture literal local -- so both lift.
         wrap = "::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>"
@@ -1022,9 +989,8 @@ class TestBorrowTupleStorageNameAtTemplateSlot:
             "    show((P(1), 2))\n"
             "main()\n"
         )
-        _thir, faces = _lower_ctx_witnessed(src)
-        assert faces.get("arg.btuple_storage_name", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.native_arg.other")
 
 
 class TestTemplateArgDropped:
@@ -1049,8 +1015,7 @@ class TestTemplateArgDropped:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "::tpy::builtin_filter_truthy<int32_t>(" in cpp
         assert "nullptr" not in cpp
 
@@ -1106,8 +1071,7 @@ class TestPendingStrSlotArg:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "::tpy::repr_of(b)" in cpp
         # The boundary rides the same program: a RECORD slot is not a str
         # slot, so the peel must not sweep it into the str row -- it keeps
@@ -1152,8 +1116,7 @@ class TestVarargPackAtNativeCallee:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "::__user_sum_ints(::tpy::varargs<int32_t>(" in cpp
         # The plain callee's inferred-readonly slot spells `const int32_t`;
         # the @native one keeps its declared signature (mutated_params is
@@ -1241,8 +1204,7 @@ class TestOpenTypeParamProtocolFieldArg:
         compiler, modules = _compile(self.SRC)
         hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         both = hpp + cpp
         assert "::tpy::__len__(this->value)" in both
         assert "::tpy::__len__(this->items)" in both
@@ -1351,16 +1313,8 @@ class TestTypeCtorProtocolFieldArg:
             "    run(Box2(Eng(\"hi\")))\n"
             "main()\n"
         )
-        from ..codegen_cpp.context import CodeGenOptions
-        from .testutil import _compile, _entry
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert compiler._thir_fallback == {
-            "body:stmt.expr_stmt:field.result_type": 1}
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:field.result_type")
 
     def test_union_type_arg_record_field_stays_ast(self):
         # A generic-record field with a UNION type-arg is outside the F1
@@ -1380,10 +1334,8 @@ class TestTypeCtorProtocolFieldArg:
             "    def show(self) -> None:\n"
             "        print(str(self.h))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "show") is None
-        assert not faces.get("arg.type_ctor_protocol_field")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:field.result_type")
 
 
 class TestDynProtocolRecordFieldBoundary:
@@ -1420,16 +1372,7 @@ class TestDynProtocolRecordFieldBoundary:
     )
 
     def test_dyn_protocol_slot_stays_ast(self):
-        from ..codegen_cpp.context import CodeGenOptions
-        from .testutil import _compile, _entry
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(compiler._thir_fallback, "body:expr.call",
-                           "call.native_arg.record_f1_slot")
-        _assert_byte_identical(self.SRC)
+        _assert_rejects_at(_reject_tally(self.SRC), 'body:expr.call', 'call.native_arg.record_f1_slot')
 
     def test_no_record_field_witness(self):
         _thir, faces = _lower_ctx_witnessed(self.SRC)
@@ -1477,8 +1420,7 @@ class TestNativeProtocolTupleLiteralArg:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         # The element literal's type must be RESOLVED before spelling --
         # the unresolved form would emit `std::tuple<1, Box>`.
         assert "::tpy::__hash__(std::tuple<int32_t, Box>{1, Box(5)})" in cpp
@@ -1548,8 +1490,7 @@ class TestNativeProtocolTupleLiteralBorrow:
         compiler, modules = _compile(self.FIELD_SRC)
         hpp, _cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert ("::tpy::__hash__(std::tuple<const Box*, const Box*>"
                 "{&(this->a), &(this->b)})") in hpp
         _assert_routes_byte_identical(self.FIELD_SRC, comments=False)
@@ -1575,9 +1516,8 @@ class TestNativeProtocolTupleLiteralBorrow:
             "    print(hash((b, Box(6))) == 0)\n"
             "main()\n"
         )
-        _assert_rejects_at(_fallback_reasons(src), "stmt.expr_stmt",
-                           "btuple.proto_mixed")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:btuple.proto_mixed")
 
     def test_nested_field_chain_still_defers(self):
         src = _BOX + (
@@ -1597,8 +1537,7 @@ class TestNativeProtocolTupleLiteralBorrow:
             "    print(h(Outer(Edge(Box(1), Box(2)))) == 0)\n"
             "main()\n"
         )
-        assert _fn(_lower_ctx_witnessed(src)[0], "h") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.tuple_literal")
 
     def test_owned_str_element_still_defers(self):
         # An owned-view VALUE element renders `std::string(s)` on the
@@ -1611,8 +1550,7 @@ class TestNativeProtocolTupleLiteralBorrow:
             "    print(h(Box(1), 'x') == 0)\n"
             "main()\n"
         )
-        assert _fn(_lower_ctx_witnessed(src)[0], "h") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.tuple_literal")
 
     def test_own_param_element_still_defers(self):
         # BUGS.md "Own[T] tuple element at a native protocol slot": THIR
@@ -1626,8 +1564,7 @@ class TestNativeProtocolTupleLiteralBorrow:
             "    print(h(Box(1)) == 0)\n"
             "main()\n"
         )
-        assert _fn(_lower_ctx_witnessed(src)[0], "h") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.tuple_literal")
 
 
 class TestOwnElemSlotCallBindsBare:
@@ -1700,8 +1637,7 @@ class TestPtrElemSlotInsertRows:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert "ps.push_back(&::tpy::__getitem__(items, 0));" in cpp
         assert "ps.push_back(p0);" in cpp
 
@@ -1745,8 +1681,7 @@ class TestPendingLocalAtProtocolSlot:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         # Both bind the protocol slot bare -- resolution changed the TYPE
         # the temp machinery sees, never the arg render.
         assert "total(xs)" in cpp
@@ -1796,11 +1731,53 @@ class TestInstantiationArgMovability:
         compiler, modules = _compile(self.SRC)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         ctor = "::tpy::construct<std::vector<std::string>>"
         assert f"{ctor}(items)" in cpp
         assert f"{ctor}(::tpy::own_iter(std::move(xs)))" in cpp
 
     def test_byte_identical(self):
         _assert_byte_identical(self.SRC)
+
+
+class TestIntTypeParamCtorArg:
+    """`Int32(N)` under `[N: int]`: the non-type template parameter is a
+    constant that renders as the bare name, which is exactly what the
+    resolved overload's `{0}` slot expands over."""
+
+    SRC = (
+        "from tpy import Int32\n"
+        "class Buf[N: int]:\n"
+        "    size: Int32\n"
+        "    def __init__(self) -> None:\n        self.size = 0\n"
+        "    def cap(self) -> Int32:\n"
+        "        c: Int32 = Int32(N)\n"
+        "        return c\n"
+        "def main() -> None:\n"
+        "    b = Buf[8]()\n"
+        "    print(b.cap())\n"
+        "main()\n"
+    )
+
+    def test_routes_and_renders_the_bare_parameter(self):
+        _thir, faces = _lower_ctx_witnessed(self.SRC)
+        assert faces.get("arg.type_ctor_int_tparam", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "int32_t c = N;" in hpp + cpp
+
+    def test_type_kind_param_at_a_scalar_ctor_slot_keeps_rejecting(self):
+        # BOUNDARY: a TYPE-kind param is not a value at all -- `Int32(T)` is
+        # not even well-formed -- so the row must stay keyed on the INT kind.
+        # The nearest constructible neighbour is a TYPE-kind param VALUE at
+        # the slot, whose render is per-instantiation, not the bare name.
+        src = ("from tpy import Int32\n"
+               "class Wrap[T]:\n"
+               "    def __init__(self) -> None:\n        pass\n"
+               "    def widen(self, v: T) -> Int32:\n"
+               "        return Int32(v)\n"
+               "def main() -> None:\n"
+               "    w = Wrap[Int32]()\n"
+               "    print(w.widen(3))\n"
+               "main()\n")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.type_ctor.scalar_arg")

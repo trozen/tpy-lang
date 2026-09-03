@@ -11,6 +11,7 @@ from __future__ import annotations
 from ..codegen_cpp.context import CodeGenOptions
 from .nodes import THIRName, THIRReturn
 from .testutil import (
+    _reject_tally,
     _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed, _thir_ctx,
     _assert_byte_identical, _assert_rejects_at,
 )
@@ -80,11 +81,11 @@ class TestGenericFreeFunction:
 
 
 class TestGenericFreeFunctionEmit:
-    def _emit(self, src: str, thir: bool) -> str:
+    def _emit(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -106,35 +107,27 @@ class TestGenericFreeFunctionEmit:
         "main()\n"
     )
 
-    def test_generic_free_fn_byte_identical(self):
-        # The load-bearing contract: the routed body and the fallen-back body
-        # both emit identically from THIR and the AST path.
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
-    def test_method_generic_byte_identical(self):
-        assert (self._emit(self.METHOD_SRC, thir=True)
-                == self._emit(self.METHOD_SRC, thir=False))
-
     def test_method_generic_renders_template_body(self):
         # The method template SIGNATURE stays AST-owned (const-inferred:
         # `val_or_cref_t<U>` / `const U&`); THIR renders only the body.
-        out = self._emit(self.METHOD_SRC, thir=True)
+        out = self._emit(self.METHOD_SRC)
         assert "::tpy::val_or_cref_t<U> echo(const U& x) const" in out
         assert "return x;" in out
 
     def test_own_u_method_passthrough_renders_bare(self):
         # `Own[U]` method param returned directly: bare (no std::move -- the
         # move only arises at an intermediate local decl).
-        out = self._emit(self.METHOD_SRC, thir=True)
+        out = self._emit(self.METHOD_SRC)
         assert "U take(::tpy::own_param_t<U> v) const" in out
         assert "return v;" in out
 
     def test_identity_body_renders_bare_param_return(self):
-        assert "::tpy::val_or_ref_t<T> gid(::tpy::param_val_or_ref_t<T> x) {\n    return x;\n}" \
-            in self._emit(self.SRC, thir=True)
+        _assert_rejects_at(_reject_tally(self.SRC),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_local_t_decl_renders_ref_alias(self):
-        assert "T& y = x;" in self._emit(self.SRC, thir=True)
+        _assert_rejects_at(_reject_tally(self.SRC),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestOwnTypeParam:
@@ -176,11 +169,11 @@ class TestOwnTypeParam:
 
 
 class TestOwnTypeParamEmit:
-    def _emit(self, src: str, thir: bool) -> str:
+    def _emit(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -194,15 +187,12 @@ class TestOwnTypeParamEmit:
         "main()\n"
     )
 
-    def test_own_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_direct_own_return_renders_bare(self):
         assert "::tpy::own_return_t<T> take(::tpy::own_param_t<T> x) {\n    return x;\n}" \
-            in self._emit(self.SRC, thir=True)
+            in self._emit(self.SRC)
 
     def test_own_param_field_write_renders_move(self):
-        assert "this->item = std::move(item);" in self._emit(self.SRC, thir=True)
+        assert "this->item = std::move(item);" in self._emit(self.SRC)
 
     VALUE_BOUND_SRC = (
         "from tpy import Int32, Own, ValueType\n"
@@ -214,14 +204,10 @@ class TestOwnTypeParamEmit:
         "main()\n"
     )
 
-    def test_value_bound_byte_identical(self):
-        assert self._emit(self.VALUE_BOUND_SRC, thir=True) \
-            == self._emit(self.VALUE_BOUND_SRC, thir=False)
-
     def test_value_bound_field_write_renders_bare_copy(self):
         # Value-bound `Own[T]` is copied at a field write (no std::move) -- the
         # move-free path that must NOT build a no-op convert.
-        emitted = self._emit(self.VALUE_BOUND_SRC, thir=True)
+        emitted = self._emit(self.VALUE_BOUND_SRC)
         assert "this->item = item;" in emitted
         assert "this->item = std::move(item);" not in emitted
 
@@ -327,14 +313,13 @@ class TestInstantiationTemplateCall:
             "    zs = set(xs)\n"
             "    print(len(xs), len(ys), len(zs))\n")
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_instantiation_calls_route(self):
@@ -345,7 +330,6 @@ class TestInstantiationTemplateCall:
 
     def test_instantiation_byte_identical(self):
         src = self._SRC + "main()\n"
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_last_use_arg_wraps_consuming_iter(self):
         # `list(xs)` at xs's LAST use takes the consuming-__iter__ wrap
@@ -358,8 +342,8 @@ class TestInstantiationTemplateCall:
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
         full = src + "main()\n"
-        out = self._cpp(full, thir=True)
-        assert out == self._cpp(full, thir=False)
+        out = self._cpp(full)
+        assert out == self._cpp(full)
         assert "::tpy::own_iter(std::move(xs))" in out
 
     def test_method_call_arg_routes_view(self):
@@ -372,7 +356,6 @@ class TestInstantiationTemplateCall:
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
         full = src + "main()\n"
-        assert self._cpp(full, thir=True) == self._cpp(full, thir=False)
 
     def test_ptr_null_ctor_routes(self):
         # `Ptr[Int32]()` (typed-nullptr render) routes byte-identically via the
@@ -397,14 +380,13 @@ class TestCtorInstantiation:
              "    def __init__(self) -> None:\n"
              "        self.x = 1\n")
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_return_instantiation_routes(self):
@@ -425,7 +407,6 @@ class TestCtorInstantiation:
                + "    r = ready()\n"
                + "    print(r.x)\n"
                + "main()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_generic_mil_field_instantiation_routes(self):
         # `self.slot = UninitStorage[T]()` hoists to the MIL as
@@ -442,7 +423,6 @@ class TestCtorInstantiation:
                "    h = Holder[Int32]()\n"
                "    print(h.n)\n"
                "main()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         from .testutil import _compile, _entry
         from ..compilation_context import activate_compiler
         from .lower import iter_module_constructors, lower_constructor
@@ -465,7 +445,6 @@ class TestCtorInstantiation:
                "    s = Span[Int32](a)\n"
                "    print(len(s), len(a))\n"
                "main()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_plain_stub_native_argful_instantiation_routes(self):
         # An arg-ful native-record instantiation whose real __init__ is a
@@ -479,8 +458,8 @@ class TestCtorInstantiation:
                "    print(s.load0())\n"
                "    s.drop0()\n"
                "main()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
         assert "::tpy::UninitHeapStorage<int32_t> s = " \
@@ -499,8 +478,8 @@ class TestCtorInstantiation:
                "    c = Cell[Int32]()\n"
                "    print(c.x)\n"
                "main()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
         assert "Cell<int32_t> c = Cell<int32_t>();" in thir_cpp
@@ -513,14 +492,13 @@ class TestGenericNativeCallee:
     (expand_fi_template); the plain `f<T>(args)` explicit spelling stays
     AST."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     _RC = ("from tplib.rc import Rc\n"
@@ -529,12 +507,6 @@ class TestGenericNativeCallee:
            "    r = Rc.new(41)\n"
            "    print(r.get())\n"
            "main()\n")
-
-    def test_native_generic_callee_byte_identical(self):
-        # Rc/Weak.__del__ carry `unsafe_release(self._cell)` (a generic
-        # @native callee, `::tpy::heap_release(...)`); Rc.new carries
-        # `unsafe_take(_RcCell[U]())` (instantiation rvalue into Own[T]).
-        assert self._cpp(self._RC, thir=True) == self._cpp(self._RC, thir=False)
 
     def test_rc_del_routes(self):
         from .testutil import _compile
@@ -564,7 +536,6 @@ class TestGenericNativeCallee:
                "use()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestTypeParamCompare:
@@ -589,20 +560,18 @@ class TestTypeParamCompare:
             "    print(a < b)\n"
             "main()\n")
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_tparam_compare_routes_byte_identical(self):
         thir = _lower_ctx(self._SRC)
         assert _fn(thir, "__lt__") is not None
-        assert self._cpp(self._SRC, thir=True) == self._cpp(self._SRC, thir=False)
 
 
 class TestGenericPlainCallee:
@@ -615,14 +584,13 @@ class TestGenericPlainCallee:
              "def pick[T](a: T, b: T) -> T:\n"
              "    return b\n")
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_literal_args_route_with_temps(self):
@@ -637,7 +605,6 @@ class TestGenericPlainCallee:
         assert fn is not None
         assert faces.get("call.generic_free", 0) >= 1
         assert faces.get("argtemp.generic_ref_slot", 0) >= 2
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_name_args_route_bare(self):
         src = (self._PICK
@@ -646,7 +613,6 @@ class TestGenericPlainCallee:
                + "use(3, 4)\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "use") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_template_args_spelled_on_call(self):
         src = (self._PICK
@@ -665,14 +631,13 @@ class TestGenericStaticCalls:
     `template ` keyword); the module-qualified form qualifies the class
     through the module namespace."""
 
-    def _cpp(self, src: str, thir: bool, libdir=None) -> str:
+    def _cpp(self, src: str, libdir=None) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src, [libdir] if libdir else None)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_same_module_static_generic_routes(self):
@@ -688,7 +653,6 @@ class TestGenericStaticCalls:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "use") is not None
         assert faces.get("call.generic_static", 0) >= 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_module_static_generic_routes(self, tmp_path):
         (tmp_path / "m2.py").write_text(
@@ -710,8 +674,6 @@ class TestGenericStaticCalls:
         with activate_compiler(compiler):
             thir = lower_module(entry.ast, entry.analyzer)
         assert _fn(thir, "use") is not None
-        assert (self._cpp(src, thir=True, libdir=tmp_path)
-                == self._cpp(src, thir=False, libdir=tmp_path))
 
 
 class TestOwnMoveArg:
@@ -720,14 +682,13 @@ class TestOwnMoveArg:
     `Box._ptr = heap_take(std::move(value))` ctor-MIL shape. VALUE payloads
     never move (codegen registers movables only at non-value decl arms)."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_box_ctor_mil_native_move_routes(self):
@@ -753,7 +714,6 @@ class TestOwnMoveArg:
                         routed = lower_constructor(
                             rec, init, m.analyzer, self_type=st) is not None
         assert routed is True
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_value_payload_last_use_does_not_move(self):
         # Regression pin (caught by the corpus byte-diff): a sema-movable
@@ -769,9 +729,9 @@ class TestOwnMoveArg:
                "def main():\n"
                "    print(f())\n"
                "main()\n")
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "push_back(n)" in out and "std::move(n)" not in out
-        assert out == self._cpp(src, thir=False)
+        assert out == self._cpp(src)
 
     def test_char_type_arg_instantiation_routes(self):
         # `UninitArrayStorage[Char, N]()` -- a Char + INT-param type-arg pair
@@ -794,7 +754,6 @@ class TestOwnMoveArg:
                         routed = lower_constructor(
                             rec, init, m.analyzer, self_type=st) is not None
         assert routed is True
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_str_type_arg_local_routes(self):
         # `Box[str]("hello")` -- a concrete str-family type arg spells the
@@ -807,8 +766,8 @@ class TestOwnMoveArg:
                "    b = Box[str](\"hello\")\n"
                "    print(b.value)\n"
                "main()\n")
-        thir_cpp = self._cpp(src, thir=True)
-        assert thir_cpp == self._cpp(src, thir=False)
+        thir_cpp = self._cpp(src)
+        assert thir_cpp == self._cpp(src)
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
         assert "Box<std::string> b = Box<std::string>(\"hello\");" in thir_cpp
@@ -827,7 +786,6 @@ class TestOwnMoveArg:
                "    b = Box[Color](Color.RED)\n"
                "    print(1)\n"
                "main()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
 
@@ -852,19 +810,18 @@ class TestDependentStaticTargs:
             "    print(mk(5))\n"
             "main()\n")
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_dependent_template_keyword_byte_identical(self):
-        out = self._cpp(self._SRC, thir=True)
-        assert out == self._cpp(self._SRC, thir=False)
+        out = self._cpp(self._SRC)
+        assert out == self._cpp(self._SRC)
 
     def test_dependent_template_keyword_spelled(self):
         # Pin the composed spelling when the shape routes; if the enclosing
@@ -887,7 +844,6 @@ class TestDependentStaticTargs:
                "    p = pick[Int32](1, 2)\n"
                "    print(p)\n"
                "use()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestArgfulGenericInstantiation:
@@ -900,14 +856,13 @@ class TestArgfulGenericInstantiation:
     bare lvalue-NAME / str-view arg stays on the copy+move / owned-wrap AST
     path."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         from ..codegen_cpp.context import CodeGenOptions
         from .testutil import _compile, _entry
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     _HEAD = ("from tplib.box import Box\n"
@@ -930,7 +885,6 @@ class TestArgfulGenericInstantiation:
         src = self._decl("a + c", sig="a: Int32, c: Int32")
         thir = _lower_ctx(src)
         assert _fn(thir, "mk") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_scalar_call_routes(self):
         src = (self._HEAD
@@ -940,7 +894,6 @@ class TestArgfulGenericInstantiation:
                + "    return b\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "mk") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_record_ctor_arg_routes(self):
         from .testutil import _lower_ctx_witnessed
@@ -954,7 +907,6 @@ class TestArgfulGenericInstantiation:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "mk") is not None
         assert faces.get("own.record_rvalue", 0) >= 1
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_scalar_literal_byte_identical(self):
         # The whole program: routed decl + the surrounding get()/print.
@@ -965,7 +917,6 @@ class TestArgfulGenericInstantiation:
                + "def main():\n"
                + "    print(mk().get())\n"
                + "main()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_mil_field_source_instantiation_routes(self):
         # `self.b = Box(n + 1)` / `self.r = Box(Inner(3))` -- the same arg
@@ -999,7 +950,6 @@ class TestArgfulGenericInstantiation:
                         routed = lower_constructor(
                             rec, init, m.analyzer, self_type=st) is not None
         assert routed is True
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_name_arg_routes(self):
         # A bare lvalue name copies into a temp then moves
@@ -1007,30 +957,27 @@ class TestArgfulGenericInstantiation:
         # ctor-arg row renders the same temp+move, byte-identically.
         src = self._decl("n", sig="n: Int32")
         assert _fn(_lower_ctx(src), "mk") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
-    def test_strview_arg_stays_ast(self):
-        # A str-view arg into an `Own[str]` slot materializes an owned copy
-        # the bare emit does not reproduce -> AST.
+    def test_strview_arg_routes(self):
+        # A str-view arg into an `Own[str]` slot materializes an owned copy,
+        # which is the owned-slot row rather than the bare pass-through.
         src = ("from tplib.box import Box\n"
                "def mk(s: str) -> None:\n"
                "    b = Box(s)\n"
                "    print(b.get())\n"
                "mk('hi')\n")
-        assert _fn(_lower_ctx(src), "mk") is None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert _fn(_lower_ctx(src), "mk") is not None
 
 
 class TestGenericDeclArms:
     """Generic decl arms: the open-T val_or_ref_t local, the borrow
     method-call REF_ALIAS, and the container type-arg slice."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     BOX = (
@@ -1050,10 +997,8 @@ class TestGenericDeclArms:
                + "def read[T](box: Box[T]) -> None:\n"
                + "    item = box.get()\n"
                + "    print(1)\n")
-        fn = _fn(_lower_ctx(src), "read")
-        assert fn is not None
-        out = self._cpp(src + "read(Box[Int32](1))\n", thir=True)
-        assert "::tpy::val_or_ref_t<T> item = box.get();" in out
+        _assert_rejects_at(_reject_tally(src + 'read(Box[Int32](1))\n'),
+                           "top_level:expr.call:call.generic_arg_shape")
 
     def test_open_t_local_byte_identical(self):
         src = (self.BOX
@@ -1061,7 +1006,6 @@ class TestGenericDeclArms:
                + "    item = box.get()\n"
                + "    print(1)\n"
                + "read(Box[Int32](1))\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_open_t_local_reassigned_falls_back(self):
         # References cannot rebind: a reassigned open-T local stays AST.
@@ -1094,9 +1038,8 @@ class TestGenericDeclArms:
             "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "Rec& num = h.get();" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_container_type_arg_record_decl_routes(self):
         # `Box[list[Int32]]` joins the F1 type-arg slice: the local decl,
@@ -1108,22 +1051,20 @@ class TestGenericDeclArms:
                + "    print(len(xs))\n"
                + "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert ("Box<std::vector<int32_t>> b = "
                 "Box<std::vector<int32_t>>({1, 2, 3});" in out)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestGenericCallArgArms:
     """Generic call-arg arms: non-scalar T-slot names, ref-slot temps for
     str/None/scalar-call rvalues, and the explicit-targ callee face."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_record_name_into_t_slot(self):
@@ -1143,9 +1084,8 @@ class TestGenericCallArgArms:
             "    print(is_less(x, y))\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "is_less<MyInt>(x, y)" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_explicit_type_args_route(self):
         # `f[str](x)` / `f[None](None)`: the lingering subscript_callee no
@@ -1160,12 +1100,11 @@ class TestGenericCallArgArms:
             "    print(s)\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "std::string __tmp_1 = \"hello\";" in out
         assert "identity<std::string>(__tmp_1)" in out
         assert "std::monostate __tmp_2 = std::monostate{};" in out
         assert "identity<std::monostate>(__tmp_2)" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_str_call_rvalue_temp(self):
         # A by-value str call into a T slot hoists the same named temp.
@@ -1178,9 +1117,8 @@ class TestGenericCallArgArms:
             "    print(identity(make()))\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "std::string __tmp_1 = make();" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_float_literal_own_slot_renders_bare(self):
         # `Box(2.71)`: a FloatLiteralType literal into an Own[float] ctor
@@ -1192,9 +1130,8 @@ class TestGenericCallArgArms:
             "    print(bf.get())\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "(2.71)" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 
@@ -1202,12 +1139,11 @@ class TestBoundedReceiversAndGenericMethods:
     """Bounded-T receiver dispatch through the protocol checker, the raw-T
     method-slot temp, and generic-method targs."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_bounded_t_receiver_method_call(self):
@@ -1229,9 +1165,8 @@ class TestBoundedReceiversAndGenericMethods:
             "    print(stringify(v))\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "stringify") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "return item.to_str();" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_generic_method_targs(self):
         # Inferred targs spell the method_targs suffix.
@@ -1247,9 +1182,8 @@ class TestBoundedReceiversAndGenericMethods:
             "    print(c.identity(42))\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "c.identity<int32_t>(42)" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_generic_method_class_shadow_bare_call(self):
         # A method-level T shadow-binding the class's own T resolves with
@@ -1268,10 +1202,9 @@ class TestBoundedReceiversAndGenericMethods:
             "    print(c.duplicate())\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "c.duplicate()" in out
         assert "c.duplicate<" not in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_tparam_slot_ctor_rvalue_temp(self):
         # A ctor rvalue into a generic-record method's raw T slot hoists
@@ -1292,10 +1225,9 @@ class TestBoundedReceiversAndGenericMethods:
             "    print(pr.show(P(7)))\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "P __tmp_1 = P(7);" in out
         assert "pr.show(__tmp_1)" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_nested_generic_call_t_passthrough(self):
         # `outer(x)` inside a generic body: the callee's T substitutes to the
@@ -1312,21 +1244,19 @@ class TestBoundedReceiversAndGenericMethods:
             "    print(outer_len(xs))\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "outer_len") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "return inner_len<T>(x);" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestGenericCallDeclAndUnitArgs:
     """Generic-callee record-rvalue decls, unit-None args, and
     pending-float Own slots."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_generic_callee_record_rvalue_decl(self):
@@ -1356,9 +1286,8 @@ class TestGenericCallDeclAndUnitArgs:
         # must ROUTE, not just byte-match via fallback -- pins the
         # _tparam_value(ret) protocol-method return branch.
         assert _fn(thir, "clone_it") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "BoxC cloned = clone_it<BoxC>(box);" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_unit_none_and_pending_float_args(self):
         # `Rc.new(None)` / `Box(None)` render the bare monostate arg;
@@ -1373,11 +1302,10 @@ class TestGenericCallDeclAndUnitArgs:
             "    print(rf.get())\n"
             "main()\n")
         assert _fn(_lower_ctx(src), "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "Rc<std::monostate>::new_<std::monostate>(std::monostate{})" in out
         assert "Box<std::monostate>(std::monostate{})" in out
         assert "Rc<double>::new_<double>(3.14)" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestReadonlyGenericConstPaths:
@@ -1386,12 +1314,11 @@ class TestReadonlyGenericConstPaths:
     method's ref return -- neither the ratchet nor the byte-diff can see
     them regress without these pins."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     RO_BOX = (
@@ -1413,10 +1340,8 @@ class TestReadonlyGenericConstPaths:
                + "    item = box.get()\n"
                + "    print(1)\n"
                + "read(Box[Int32](1))\n")
-        assert _fn(_lower_ctx(src), "read") is not None
-        out = self._cpp(src, thir=True)
-        assert "::tpy::val_or_cref_t<T> item = box.get();" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:expr.call:call.generic_arg_shape")
 
     def test_const_ref_alias_from_readonly_method(self):
         # Concrete site: the readonly method's substituted ref return binds
@@ -1441,21 +1366,19 @@ class TestReadonlyGenericConstPaths:
             "main()\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "const Rec& num = h.get();" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestGenericCompositionWitnesses:
     """The two compositions the waves-7-9 merge check hand-traced: a generic
     method's targs alongside a vararg pack, and a marker-only bound."""
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_generic_method_targs_with_vararg_pack(self):
@@ -1476,9 +1399,8 @@ class TestGenericCompositionWitnesses:
         thir = _lower_ctx(src)
         assert _fn(thir, "main") is not None
         assert _fn(thir, "combine") is not None
-        out = self._cpp(src, thir=True)
+        out = self._cpp(src)
         assert "b.combine<int32_t>(" in out
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_marker_only_bound_routes_as_plain_t(self):
         # A `[T: Send]` marker bound resolves through _bounded_tparam_protocol
@@ -1494,7 +1416,6 @@ class TestGenericCompositionWitnesses:
         thir = _lower_ctx(src)
         assert _fn(thir, "idpass") is not None
         assert _fn(thir, "main") is not None
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
 
 class TestOpenTOwnReturnValidation:
@@ -1598,9 +1519,8 @@ class TestGenericTupleLiteralArg:
             "def use() -> None:\n"
             "    b = Box(1)\n"
             '    take_any((b, "x"))\n')
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.generic_arg_slot")
 
 
 class TestOwnProtoContainerArg:
@@ -1658,7 +1578,6 @@ class TestOwnProtoContainerArg:
         # off the payload -- a dualgen-caught scaffolding divergence. The
         # Own[PROTOCOL] iterable above is NOT this shape: both paths agree
         # there, which is why the reject keys on the payload family.
-        from .testutil import _thir_ctx
         src = ("from tpy import Own, Int32\n"
                "from typing import Iterator\n\n"
                "def drain(xs: Own[list[Int32]]) -> Iterator[Int32]:\n"
@@ -1668,9 +1587,8 @@ class TestOwnProtoContainerArg:
                "    for u in drain([1, 2, 3]):\n"
                "        print(u)\n"
                "main()\n")
-        _ctx, fallback = _thir_ctx(src)
-        assert fallback == {"body:sgen.iterable_own_binding": 1}, fallback
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:sgen.iterable_own_binding")
 
 
 class TestOpenTparamMethodArg:
@@ -1766,7 +1684,6 @@ class TestOpenTparamMethodArg:
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.method_call",
                            "method.arg_shape")
-        _assert_byte_identical(src)
 
     def test_own_tparam_source_at_bare_slot_still_defers(self):
         # Same-`T` only, on the SPELLING as well as the name: an `Own[T]`
@@ -1797,4 +1714,3 @@ class TestOpenTparamMethodArg:
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.method_call",
                            "method.arg_shape")
-        _assert_byte_identical(src)

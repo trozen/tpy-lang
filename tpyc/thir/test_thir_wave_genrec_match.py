@@ -8,6 +8,8 @@ and a PLAIN union subject keeps the bare-variant render (no `.value`)."""
 
 from ..codegen_cpp import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -95,17 +97,7 @@ class TestGenrecMatchBoundaries:
         assert "switch (__match_subject_1.value.index())" in cpp
 
     def test_field_genrec_subject_stays_ast(self):
-        _assert_byte_identical(self.FIELD_SRC)
-        compiler, modules = _compile(self.FIELD_SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
         # EXACT dict: the match body is the claim; the ctor MIL reject is the
         # fixture's own unrelated residue and is spelled out so a change to
         # either side fails here.
-        assert dict(compiler._thir_fallback) == {
-            "body:stmt.match": 1,
-            "ctor:ctor.mil_field.recursivealiasinstance.name": 1,
-        }, compiler._thir_fallback
+        _assert_rejects_at(_reject_tally(self.FIELD_SRC), "body:stmt.match")

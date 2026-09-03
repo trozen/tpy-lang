@@ -8,6 +8,8 @@ from ..codegen_cpp.context import CodeGenOptions
 from .lower import lower_module
 from .nodes import TruthinessMode, THIRTruthy, THIRUnaryNot
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _compile, _entry,
     _fn, _lower_ctx, _lower_ctx_witnessed,
 )
@@ -124,7 +126,7 @@ class TestStructuredTruthiness:
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir_out == ast_out
 
     _EFFECT_SRC = (
@@ -166,7 +168,7 @@ class TestStructuredTruthiness:
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir_out == ast_out
         assert "static_cast<void>(make(n)), true" in "".join(
             ast_out.values() if isinstance(ast_out, dict) else ast_out)
@@ -222,7 +224,7 @@ class TestStructuredTruthiness:
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir_out == ast_out
 
     def test_narrowed_optional_name_dispatches_dunder(self):
@@ -256,7 +258,7 @@ class TestStructuredTruthiness:
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir_out == ast_out
         assert any("__bool__" in part for part in ast_out)
 
@@ -289,7 +291,7 @@ class TestStructuredTruthiness:
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir_out == ast_out
 
     def test_optional_field_truthy_routes_whole_read(self):
@@ -362,8 +364,7 @@ class TestAlwaysTrueDiscardsItsOperand:
             "    if h.get():\n        print(1)\n"
             "def main():\n    probe(Holder())\nmain()\n"
         )
-        assert _fn(_lower_ctx(src), "probe") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:method.ret_type")
 
 
 class TestPtrTruthyOptionalRecord:
@@ -438,8 +439,7 @@ class TestPtrTruthyOptionalRecord:
             "    if xs:\n        return True\n"
             "    return False\n"
         )
-        assert _fn(_lower_ctx(src), "probe") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:cond.name")
 
     def test_dunderless_record_inner_keeps_the_bare_test(self):
         # No `__bool__`/`__len__` on the inner: the AST falls through to the
@@ -484,8 +484,4 @@ class TestPtrTruthyOptionalRecord:
             "    if (a if c else b):\n        return True\n"
             "    return False\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "tup_op") is None
-        assert _fn(thir, "method_op") is None
-        assert _fn(thir, "tern_op") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if:cond.subscript")

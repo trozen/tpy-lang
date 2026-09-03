@@ -8,12 +8,11 @@ from .testutil import _compile, _entry, _fn, _lower, _lower_ctx
 _PRELUDE = "from typing import Any\nfrom tpy import Int32\n"
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -37,11 +36,8 @@ class TestAnyNarrowLowering:
         for name in ("dispatch", "tuple_form", "negated"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         assert ("if ((v.value.has_value() && "
                 "v.value.type() == typeid(::tpy::BigInt))) {") in out
         assert ("const ::tpy::BigInt& __v = "
@@ -65,10 +61,9 @@ class TestAnyNarrowLowering:
                + "        print(\"big\", a)\n")
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        out = _cpp(src, thir=True)
+        out = _cpp(src)
         assert ("&& (std::any_cast<const ::tpy::BigInt&>(a.value) > 3)"
                 in out)
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_compound_or_no_facts_routes(self):
         # A `||` spine installs nothing (Any has no complement fact); the
@@ -79,7 +74,6 @@ class TestAnyNarrowLowering:
                + "        print(\"either\")\n")
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_compound_two_any_leaves_reject(self):
         # Two Any-isinstance leaves -- the single-leaf gate keeps it AST
@@ -111,7 +105,6 @@ class TestAnyNarrowLowering:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "pick") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_global_subject_routes(self):
         # A module-global Any subject: the value-typed global reads bare,
@@ -125,7 +118,6 @@ class TestAnyNarrowLowering:
         )
         thir = _lower(src)
         assert _fn(thir, "f") is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_while_head_falls_back(self):
         # The while-isinstance-Any position is an excluded rung: the while
@@ -178,8 +170,8 @@ class TestAnyNarrowLowering:
             + "    elif isinstance(v, bool):\n"
             + "        if v:\n            print(\"y\")\n"
         )
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "std::cout << __v" in out
         assert "print_float" not in out
         assert "if (::tpy::to_bool(__v)) {" in out

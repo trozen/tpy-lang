@@ -37,9 +37,8 @@ from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
-    TpyCall, TpyName, TpyFieldAccess,
+    TpyCall, TpyName, TpyFieldAccess, TpyStmt,
 )
-from ..namespace import Namespace
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError
 from . import emit_prims
 from .param_const import decide_param_const, ParamConstDecision
@@ -51,7 +50,6 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
     from .protocols import ProtocolGenerator, ProtocolParamInfo
-    from .statements import StatementGenerator
 
 def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
     """Best-effort concrete type for a default expression, for overload narrowing.
@@ -115,8 +113,8 @@ def build_overload_narrowing(
 ) -> dict[str, TpyType]:
     """Build the overload_param_types map for dead-branch elim in a spec.
 
-    Shared by the AST per-stub specializers and THIR's per-stub lowering, so
-    both paths resolve the same facts from one map.
+    Shared by the per-stub signature specializer and THIR's per-stub lowering,
+    so both resolve the same facts from one map.
 
     - Stub-shadowed union impl params narrow to the stub's concrete member.
     - Stub-shadowed Optional impl params narrow to the stub's non-Optional
@@ -317,12 +315,10 @@ class FunctionGenerator:
         ctx: CodeGenContext,
         types: TypeResolver,
         protocols: ProtocolGenerator,
-        statements: StatementGenerator,
     ):
         self.ctx = ctx
         self.types = types
         self.protocols = protocols
-        self.statements = statements
 
     def _collect_fn_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[int, str, CallableType]]:
         """Collect Fn-typed parameters: returns (fn_index, param_name, fn_type)."""
@@ -446,7 +442,7 @@ class FunctionGenerator:
         Own[T] params are emitted as T&& (rvalue ref) for concrete T, or
         std::type_identity_t<T>&& for template T (prevents forwarding-ref
         deduction). Callers always pass std::move() at last use; non-last-use
-        copies are inserted by gen_call_arg with a warning.
+        copies are inserted at the call site with a warning.
 
         const_params: use to_cpp_const_param (const T& for generics). Needed
         for constructors and const method overloads that must accept temporaries.
@@ -1133,11 +1129,7 @@ class FunctionGenerator:
             params = self.gen_c_params(func.params)
             out.write(f'extern "C" {ret_type} {c_name}({params}) {{\n')
 
-            local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-            for pname, ptype in func.params:
-                local_ns.bind_variable(pname, ptype)
-            self.statements.gen_body(out, func.body, func.params, func.return_type,
-                                     func, local_ns, return_cpp=ret_type)
+            self.gen_body(out, func.body, func, return_cpp=ret_type)
             out.write("}\n")
             return
 
@@ -1176,17 +1168,7 @@ class FunctionGenerator:
                                            use_readonly_params=func.is_readonly, func=func))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
 
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        for pname, ptype in func.params:
-            local_ns.bind_variable(pname, ptype)
-        crp, dcbp = self._build_param_const_sets(
-            func.params, mp, rp, use_const_params=func.is_readonly,
-            addr_escapes_params=ae, use_readonly_params=func.is_readonly)
-        self.statements.gen_body(out, func.body, func.params, func.return_type,
-                                 func, local_ns,
-                                 const_ref_params=crp,
-                                 deep_const_borrow_params=dcbp,
-                                 return_cpp=ret_type)
+        self.gen_body(out, func.body, func, return_cpp=ret_type)
 
         out.write("}\n")
 
@@ -1217,10 +1199,6 @@ class FunctionGenerator:
                                  use_readonly_params=impl.is_readonly, func=impl)
         out.write(f"{ret_type} {escape_cpp_name(mangled)}({params}) {{\n")
 
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        for pname, ptype in impl.params:
-            local_ns.bind_variable(pname, ptype)
-
         # Inject literal narrowing facts for dead branch elimination.
         # Uses literal_overload_facts which survives reset_scope (same
         # pattern as overload_param_types).
@@ -1228,16 +1206,9 @@ class FunctionGenerator:
             if isinstance(stub_ptype, LiteralType):
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
-        crp, dcbp = self._build_param_const_sets(
-            impl.params, mp, rp, use_const_params=impl.is_readonly,
-            use_readonly_params=impl.is_readonly)
         self.ctx.thir_overload_key = (id(impl), id(stub))
         try:
-            self.statements.gen_body(out, impl.body, impl.params, stub.return_type,
-                                     impl, local_ns,
-                                     const_ref_params=crp,
-                                     deep_const_borrow_params=dcbp,
-                                     return_cpp=ret_type)
+            self.gen_body(out, impl.body, impl, return_cpp=ret_type)
         finally:
             self.ctx.literal_overload_facts = {}
             self.ctx.thir_overload_key = None
@@ -1303,10 +1274,6 @@ class FunctionGenerator:
             inline_kw = "inline " if in_header else ""
             out.write(f"{inline_kw}{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
 
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        for pname, ptype in stub.params:
-            local_ns.bind_variable(pname, ptype)
-
         # Request synthetic locals for missing impl params at the top of the body.
         self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
             missing_params, impl_defaults, start_idx=len(stub.params))
@@ -1316,16 +1283,9 @@ class FunctionGenerator:
         # equality-based dead-branch elim (if count == 0:) works alongside
         # isinstance-based elim (if x is None:).
         self._inject_literal_overload_facts(overload_types)
-        crp, dcbp = self._build_param_const_sets(
-            stub.params, mp, rp, use_const_params=stub.is_readonly,
-            use_readonly_params=stub.is_readonly)
         self.ctx.thir_overload_key = (id(impl), id(stub))
         try:
-            self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
-                                     impl, local_ns,
-                                     const_ref_params=crp,
-                                     deep_const_borrow_params=dcbp,
-                                     return_cpp=ret_type)
+            self.gen_body(out, impl.body, impl, return_cpp=ret_type)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
@@ -1784,11 +1744,6 @@ class FunctionGenerator:
             return
         out.write(f"{sig_line} {{\n")
 
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        if not static:
-            local_ns.bind_variable("self", NominalType(record_name))
-        for pname, ptype in method.params:
-            local_ns.bind_variable(pname, ptype)
         # Consuming methods on types with __del__: suppress destructor at method entry.
         # Walk the parent chain since __del__ may be inherited.
         if method.is_consuming and record_info is not None and self.ctx.record_or_ancestor_has_del(record_name):
@@ -1796,28 +1751,50 @@ class FunctionGenerator:
 
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
-        method_crp, method_dcbp = self._build_param_const_sets(
-            method.params, mp, rp, use_const_params,
-            addr_escapes_params=ae, use_readonly_params=method.is_readonly)
-        # ``self`` is const in any const method, including the
-        # auto_readonly_params_resolved clone where ``use_const_params``
-        # is False (its params already carry explicit ``readonly[T]``).
-        if const and not static:
-            method_crp.add("self")
-        self.statements.gen_body(out, method.body, method.params, method.return_type,
-                                 method, local_ns, indent_level=body_indent_level, is_method=True,
-                                 record_type_param_bounds=record_type_param_bounds,
-                                 const_ref_params=method_crp,
-                                 deep_const_borrow_params=method_dcbp,
-                                 owning_record_name=record_name if not static else None,
-                                 return_cpp=ret_type)
+        self.gen_body(out, method.body, method,
+                      indent_level=body_indent_level, return_cpp=ret_type)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")
 
-    def gen_body(self, *args, **kwargs) -> None:
-        """Delegate to StatementGenerator.gen_body()."""
-        self.statements.gen_body(*args, **kwargs)
+    def gen_body(self, out: TextIO, body: list[TpyStmt], func: TpyFunction,
+                 indent_level: int = 1, return_cpp: str | None = None) -> None:
+        """Emit one function/method body from its lowered THIR.
+
+        `body` is only the source range the function-level trailing-comment
+        walk scans; the emitted statements come from the lowering, not from it.
+        """
+        # Local import: `thir.emit` reaches back into `codegen_cpp`, so an
+        # eager import here would close a codegen_cpp <-> thir cycle.
+        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
+                                 emit_thir_body)
+        overload_key = self.ctx.thir_overload_key
+        if overload_key is not None:
+            # Per-stub specialization in flight: only the (impl, stub) entry
+            # may emit this body -- falling back to id(func) would hijack the
+            # specialization with the unspecialized lowering. Consume the key
+            # so nested bodies never see it.
+            self.ctx.thir_overload_key = None
+            thir_fn = self.ctx.thir_functions.get(overload_key)
+        else:
+            thir_fn = self.ctx.thir_functions.get(id(func))
+        if thir_fn is None:
+            raise CodeGenError(
+                f"internal error: no lowered body for '{func.name}'", func.loc)
+        emit_thir_body(out, thir_fn, indent_level,
+                       comments=CtxCommentSink(self.ctx),
+                       temps=CtxTempSink(self.ctx),
+                       with_counter=CtxCounter(self.ctx, "with_counter"),
+                       try_counter=CtxCounter(self.ctx, "try_except_counter"),
+                       finally_guard_counter=CtxCounter(
+                           self.ctx, "finally_guard_counter"),
+                       return_cpp=return_cpp)
+        # A folded-terminating per-stub body suppresses the trailing-comment
+        # walk: the emitted stmts come from a then_body, so scanning forward
+        # from the TpyIf's line would pick up dead-branch comments.
+        if not thir_fn.suppress_trailing_comments:
+            self.ctx.emit_block_trailing_comments(
+                out, body, INDENT * indent_level)
 
     def seed_param_locals(self, *args, **kwargs) -> None:
         """Delegate to the shared emit primitive."""
@@ -1934,24 +1911,14 @@ class FunctionGenerator:
             out.write(f"extern {cpp_type}* {stmt.name};\n")
 
     def _gen_final_init_expr(self, stmt: TpyVarDecl, var_type: TpyType) -> str:
-        """Generate the initializer expression for a Final global."""
-        init = self._thir_final_init_expr(stmt, var_type)
-        if init is not None:
-            return init
-        return self.statements.expressions.gen_expr(stmt.init, var_type)
-
-    def _thir_final_init_expr(self, stmt: TpyVarDecl,
-                              var_type: TpyType) -> 'str | None':
-        """Render a Final global's initializer through THIR, or None when it
-        did not lower. The name itself is excluded from its own scope: sema
-        rejects a self- or forward-reference, so admitting it would seed a
-        binding no initializer can legally read."""
-        if not self.ctx.thir_codegen:
-            return None
+        """Render a Final global's initializer through THIR. The name itself
+        is excluded from its own scope: sema rejects a self- or
+        forward-reference, so admitting it would seed a binding no initializer
+        can legally read."""
         # `thir.constants` imports `thir.emit`, so an eager import here would
-        # be a codegen_cpp <-> thir cycle; `thir.fallback` only rides along.
+        # be a codegen_cpp <-> thir cycle; `thir.reject` only rides along.
         from ..thir.constants import final_global_scope, lower_constant
-        from ..thir.fallback import begin_attempt, commit_attempt, fold_attempt
+        from ..thir.reject import begin_attempt, commit_attempt, reject_attempt
         scope = final_global_scope(
             self.ctx.analyzer,
             (n for n in self.ctx.final_globals if n != stmt.name))
@@ -1962,9 +1929,10 @@ class FunctionGenerator:
             render_type_stored=self.types.type_to_cpp_stored,
             render_resolve=self.types.resolve_type)
         if init is None:
-            fold_attempt("final_global")
-        else:
-            commit_attempt()
+            reject_attempt("final_global",
+                           where=f"in the initializer of '{stmt.name}'",
+                           loc=stmt.loc)
+        commit_attempt()
         return init
 
     def gen_final_global_header(self, out: TextIO, stmt: TpyVarDecl) -> None:
@@ -2046,24 +2014,19 @@ class FunctionGenerator:
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
 
-        if self.ctx.thir_top_level is not None:
-            # THIR dual-mode, the gen_body seam's module-init twin: slots
-            # spell `static __global_slot_N` at this scope. The ctx seeding
-            # above still runs -- gen_main and the record/global emitters read
-            # it after this call.
-            from ..thir.emit import (emit_thir_body, CtxCommentSink,
-                                     CtxCounter, CtxTempSink)
-            emit_thir_body(out, self.ctx.thir_top_level, 1,
-                           comments=CtxCommentSink(self.ctx),
-                           temps=CtxTempSink(self.ctx),
-                           with_counter=CtxCounter(self.ctx, "with_counter"),
-                           try_counter=CtxCounter(self.ctx,
-                                                  "try_except_counter"),
-                           finally_guard_counter=CtxCounter(
-                               self.ctx, "finally_guard_counter"),
-                           global_scope=True)
-        else:
-            self.statements._gen_buffered_body(out, stmts, track_stmt_line=True)
+        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
+                                 emit_thir_body)
+        # `global_scope`: slots spell `static __global_slot_N` at this scope.
+        # The ctx seeding above still runs -- gen_main and the record/global
+        # emitters read it after this call.
+        emit_thir_body(out, self.ctx.thir_top_level, 1,
+                       comments=CtxCommentSink(self.ctx),
+                       temps=CtxTempSink(self.ctx),
+                       with_counter=CtxCounter(self.ctx, "with_counter"),
+                       try_counter=CtxCounter(self.ctx, "try_except_counter"),
+                       finally_guard_counter=CtxCounter(
+                           self.ctx, "finally_guard_counter"),
+                       global_scope=True)
 
         self.ctx.current_ns = None
         if has_user_main:

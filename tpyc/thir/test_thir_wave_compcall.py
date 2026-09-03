@@ -7,6 +7,8 @@ return) keep rejecting."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -66,5 +68,4 @@ class TestCompCallIterable:
                "    xs = [kv for kv in d.items()]\n"
                "    print(len(xs))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.list_comp")

@@ -79,7 +79,6 @@ class TestNarrowedOptBytesConcat:
                "print(build(b\"x\"))\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.var_decl")
-        _assert_byte_identical(src)
 
     def test_narrowed_bytes_repeat_stays_ast(self):
         # `*` is the repeat arm, which pins its bytes side through the
@@ -92,4 +91,3 @@ class TestNarrowedOptBytesConcat:
                "print(build(b\"x\", 2))\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.return")
-        _assert_byte_identical(src)

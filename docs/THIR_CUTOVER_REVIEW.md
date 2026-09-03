@@ -97,29 +97,49 @@ The evidence sections stand unchanged.
 2. Commit 1 per D4: flip `thir_codegen` to the default, regenerate the
    snapshots, prove `git diff tests/cases` is EMPTY. Lifting
    `_thir_flag_conflict` in `tests/conftest.py` is the first step.
+   DONE 2026-09-02.
 3. Make a body-boundary reject a diagnostic, behind `--thir-strict`: a
    `CodeGenError` carrying the source line and the reject tag instead of
    the fallback. Default off until commit 2; pin the wording with unit
    tests and an `error_*` case now. Running the corpus with the flag on
-   lists exactly the bodies that would break.
+   lists exactly the bodies that would break. DONE 2026-09-02, as
+   `ThirRejectError` (a `CodeGenError` subclass, so a harness comparing
+   both paths' verdicts does not read it as a disagreement) behind
+   `--thir-strict`, with the wording, location and fold positions pinned
+   in `tpyc/thir/test_thir_strict.py`. The `error_*` case is deferred to
+   the deletion unit: while the fallback still exists the case would
+   need the option, and the diagnostic it pins changes wording when
+   `--thir-strict` goes away.
 4. Run `dualgen.py` once at all three integer widths on the tree about
    to be deleted; it needs both authors and has no successor.
+   DONE 2026-09-02.
 5. Commit 2: delete the four AST body emitters and the migration
-   scaffolding -- the full teardown list is the ledger's Gate D4
-   inventory, sections D and E (the two committed gates, the
-   `conftest.py` overlay and ratchet machinery, the audits, the
-   error-path gate, the interop overlay, `fallback.py`, `shape.py`, the
-   migration scripts and the two nightly rows). Remove the
-   `--thir-strict` option so strict is the only behaviour, touch no
-   `expected/` file, and rewrite CLAUDE.md's THIR contract bullets that
-   go false ("AST is the oracle", "THIR is off under
-   `--update-snapshots`", the detector count). The detector-successor designs (M1, M2, B1) are
-   not built; they were insurance for a staged window.
-6. Fix rejects as they surface, from the everyday-shape list and
-   `program_verdicts.json`; each ends as supported (with a corpus case),
-   a deliberate diagnostic, or a filed defect. Phase 2's zero-churn
-   restructuring can start the same week, since the committed snapshots
-   stay the oracle.
+   scaffolding. **DONE 2026-09-03.** What went: the four emitters, both
+   audits (`move_audit.py`, `binding_audit.py`), the two committed gates
+   (`codegen_cpp/test_cutover_gate.py`, `tests/test_thir_stdlib_gate.py`),
+   the `conftest.py` oracle pass / ratchet / dial / marker machinery and
+   the seven `--thir-*` options, the error-path diagnostic-author gate,
+   the interop overlay, the reject TALLY, and the migration scripts and
+   two nightly rows. What stayed, against this step's original wording:
+   `reject.py` is `fallback.py` trimmed to the reject module (it keeps
+   `ThirUnsupported`, the reject-reason journal and the reject error
+   builder -- only the tally dies); `shape.py` stays as a module with its
+   per-run recording removed; `faces.py` stays with its zero-witness
+   report printing unconditionally; and `scripts/thir_migration/review/`
+   stays in place as the fix queue. `--thir-strict` and
+   `CodeGenOptions.thir_codegen`/`thir_strict` are gone -- strict is the
+   only behaviour. No `expected/` file was touched. The
+   detector-successor designs (M1, M2, B1) were not built; they were
+   insurance for a staged window. The ledger's closing entry records the
+   diffstat and the retired detectors.
+6. **The live queue.** Fix rejects as they surface, from the
+   everyday-shape list below and `program_verdicts.json`; each ends as
+   supported (with a corpus case), a deliberate diagnostic, or a filed
+   defect. The per-site bins in `scripts/thir_migration/review/` are the
+   working list: `bins_*.json` (402 BREAKS rows with a reproducer under
+   `probes/<slice>/`) plus the `BREAKS_AT_CUTOVER` entries of
+   `program_verdicts.json`. Phase 2's zero-churn restructuring can
+   proceed in parallel, since the committed snapshots stay the oracle.
 
 ### Evidence
 
@@ -270,17 +290,21 @@ Read the zero as validated at Int32 only.
 - **`dualgen.py` -- run it once more immediately before commit 2**, all
   three integer widths, on a tree that has not moved much since the
   2026-09-01 sweep. It is the only instrument that has found the
-  out-of-corpus divergence class and has no successor.
-- **`faces.py` -- needs the user's decision** (Phase 2, F7).
+  out-of-corpus divergence class and has no successor. **DONE 2026-09-02**
+  (three populations, ~5,300 programs, tree `1be2cf003`; the tables are in
+  the ledger). The tool needed two authors and was deleted with them.
+- **`faces.py` -- needs the user's decision** (Phase 2, F7). **Decided
+  2026-09-02: it stays**, with its zero-witness report printing
+  unconditionally.
 
 (Written for the staged-window draft; with the decision above only the
-`dualgen` run survives as a precondition. Kept because the per-detector
-reasoning is what a later reader will ask for.)
+`dualgen` run survived as a precondition, and it is discharged. Kept
+because the per-detector reasoning is what a later reader will ask for.)
 
 ### Census: the program corpora cannot see the reject surface
 
-`thir_reject_reach.py --population both` (corpus + stdlib, tree
-`c8c9268ac`). NAME THE KEY: TODO.md and the ledger's Gate D4 section H
+A reject-reachability sweep over both populations (corpus + stdlib, tree
+`c8c9268ac`; the sweep tool was deleted with the migration scripts). NAME THE KEY: TODO.md and the ledger's Gate D4 section H
 quote `--population all` at 2026-09-01 as 283 reached / 372 never; that
 figure adds the `units` population, the THIR unit tests, which reach a
 site ON PURPOSE (a boundary pin exists to hit it). The table below is

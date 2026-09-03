@@ -4,6 +4,7 @@ frame-resident name keeps its member-assign arms."""
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -19,8 +20,8 @@ def _codegen_facts(source: str):
     compiler.generate_code_to_strings(
         _entry(modules),
         options=CodeGenOptions(emit_source_comments=True,
-                               comment_line_numbers=False, thir_codegen=True))
-    return compiler._thir_face_witnesses, compiler._thir_fallback
+                               comment_line_numbers=False))
+    return compiler._thir_face_witnesses
 
 
 # A while loop nested inside a for loop keeps `end` off the frame: the AST
@@ -59,8 +60,7 @@ main()
 
 
 def test_branch_reassign_of_block_local_routes():
-    faces, fallback = _codegen_facts(BLOCK_LOCAL)
-    assert fallback == {}
+    faces = _codegen_facts(BLOCK_LOCAL)
     assert faces.get("res.branch_block_local", 0) >= 1
 
 
@@ -104,8 +104,7 @@ main()
 
 
 def test_branch_reassign_of_frame_field_keeps_member_assign():
-    faces, fallback = _codegen_facts(FRAME_BACKED)
-    assert fallback == {}
+    faces = _codegen_facts(FRAME_BACKED)
     assert faces.get("res.branch_frame_write", 0) >= 1
     assert faces.get("res.branch_block_local", 0) == 0
     _assert_routes_byte_identical(FRAME_BACKED)
@@ -146,8 +145,7 @@ main()
 
 
 def test_str_block_local_branch_reassign_routes():
-    faces, fallback = _codegen_facts(STR_BLOCK_LOCAL)
-    assert fallback == {}
+    faces = _codegen_facts(STR_BLOCK_LOCAL)
     assert faces.get("res.branch_block_local", 0) >= 1
     _assert_routes_byte_identical(STR_BLOCK_LOCAL)
 
@@ -185,7 +183,7 @@ main()
 
 
 def test_async_leaf_branch_block_local_routes():
-    faces, _fallback = _codegen_facts(ASYNC_BLOCK_LOCAL)
+    faces = _codegen_facts(ASYNC_BLOCK_LOCAL)
     assert faces.get("res.branch_block_local", 0) >= 1
     _assert_routes_byte_identical(ASYNC_BLOCK_LOCAL)
 
@@ -218,5 +216,5 @@ main()
 
 
 def test_branch_coro_handle_bind_stays_ast():
-    _faces, fallback = _codegen_facts(CORO_HANDLE_BRANCH)
+    fallback = _reject_tally(CORO_HANDLE_BRANCH)
     _assert_rejects_at(fallback, "resumable:res.leaf_field_write")

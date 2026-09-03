@@ -10,6 +10,8 @@ keeps rejecting."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -84,10 +86,8 @@ class TestRecordMethodUnionNoneArg:
             "    d = {'a': 'b'}\n"
             "    print(s.go(d))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        assert not faces.get("unionlift.member")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.arg_shape")
 
 
 class TestBytesUnionBoundaries:
@@ -101,10 +101,8 @@ class TestBytesUnionBoundaries:
             "def main() -> None:\n"
             "    send(['a', 'b'])\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        assert not faces.get("unionlift.dict_literal_temp")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.union")
 
     def test_readonly_union_slot_dict_literal_still_defers(self):
         # A readonly slot's spelling is unwitnessed for the literal temp --
@@ -118,10 +116,8 @@ class TestBytesUnionBoundaries:
             "def main() -> None:\n"
             "    send({'user': 'ann'})\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        assert not faces.get("unionlift.dict_literal_temp")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.union")
 
     def test_bytes_union_isinstance_body_routes(self):
         # The narrowing bodies over the same subject now ride the widened

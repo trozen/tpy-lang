@@ -7,6 +7,8 @@ chained bytes element read it unmasked)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -77,9 +79,8 @@ class TestUnionBytesLiteralTemp:
                "def main() -> None:\n"
                "    send(Sink(), b\"xy\")\n"
                "main()\n")
-        _, faces = _lower_ctx_witnessed(src)
-        assert faces.get("unionlift.bytes_literal_temp", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
 
 class TestBytesOwnedSlotArg:
@@ -170,6 +171,5 @@ class TestChainedBytesElemRead:
                "    xs: list[list[bytes]] = [[b\"hi\"]]\n"
                "    peek(xs)\n"
                "main()\n")
-        thir, _ = _lower_ctx_witnessed(src)
-        assert _fn(thir, "peek") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.recv.subscript")

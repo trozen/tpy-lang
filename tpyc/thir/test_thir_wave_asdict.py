@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx_witnessed, _fn, _assert_routes_byte_identical,
     _compile, _entry,
 )
@@ -18,14 +20,12 @@ def _assert_identical(src: str) -> 'tuple[dict, dict]':
     """Byte-compare THIR vs AST output; return (witnesses, fallback)."""
     compiler, modules = _compile(src)
     a_h, a_c = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=True,
-                                                thir_codegen=False))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=True))
     c2, modules2 = _compile(src)
     t_h, t_c = c2.generate_code_to_strings(
-        _entry(modules2), options=CodeGenOptions(emit_source_comments=True,
-                                                 thir_codegen=True))
+        _entry(modules2), options=CodeGenOptions(emit_source_comments=True))
     assert (a_h, a_c) == (t_h, t_c)
-    return c2._thir_face_witnesses, c2._thir_fallback
+    return c2._thir_face_witnesses
 
 
 class TestContainerCtorValueSink:
@@ -180,7 +180,7 @@ class TestCompDictElement:
             "def main() -> None:\n"
             "    pack([1], {\"k\": 2})\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback
 
 
@@ -211,8 +211,7 @@ class TestOptTupleYield:
         "main()\n")
 
     def test_opt_tuple_yield_routes(self):
-        w, fallback = _assert_identical(self._SRC)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        w = _assert_identical(self._SRC)
         assert w.get("btuple.elem_optptr", 0) >= 1
 
     def test_subscript_elem_yield_routes(self):
@@ -232,8 +231,7 @@ class TestOptTupleYield:
             "    for a, b in firsts([P(1)]):\n"
             "        print(a is None, b is None)\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback
+        w = _assert_identical(src)
         assert w.get("btuple.elem_optptr", 0) >= 2
 
 
@@ -340,13 +338,12 @@ class TestCoroHandleMove:
     # residue -- both probed 2026-08-06.
 
     def test_handle_move_routes(self):
-        w, fallback = _assert_identical(self._SRC)
+        w = _assert_identical(self._SRC)
         assert w.get("res.coro_handle_move", 0) >= 1
-        assert not any(k.startswith("resumable:") for k in fallback)
         c2, modules2 = _compile(self._SRC)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "d.emplace(std::move(*c));" in (_h + cpp)
         assert "c.reset();" in (_h + cpp)
 
@@ -400,13 +397,12 @@ class TestPtrUnionDeclSources:
         "main()\n")
 
     def test_union_decl_sources_route(self):
-        w, fallback = _assert_identical(self._SRC)
+        w = _assert_identical(self._SRC)
         assert w.get("subscript.value_union_elem", 0) >= 1
-        assert not fallback, fallback
         c2, modules2 = _compile(self._SRC)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         both = _h + cpp
         assert "to_const_ptr_variant(this->inner.pet)" in both
         # The non-readonly sibling method takes the mutable lift.
@@ -429,12 +425,11 @@ class TestOwnContainerLiteralFreeArg:
                "def main() -> None:\n"
                "    consume({\"a\": 1})\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert ("consume(::tpy::ordered_map<std::string, int32_t>"
                 "({{\"a\", 1}}));" in cpp)
 
@@ -449,8 +444,7 @@ class TestOwnContainerLiteralFreeArg:
                "def main() -> None:\n"
                "    read({\"a\": 1})\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
 
 
 class TestSliceObjectFieldRead:
@@ -488,9 +482,8 @@ class TestSliceObjectFieldRead:
         "main()\n")
 
     def test_slice_field_read_routes(self):
-        w, fallback = _assert_identical(self._SRC)
+        w = _assert_identical(self._SRC)
         assert w.get("field.slice_recv", 0) >= 1
-        assert not fallback, fallback
 
 
 class TestLiteralTupleOrdering:
@@ -508,8 +501,7 @@ class TestLiteralTupleOrdering:
         "main()\n")
 
     def test_literal_tuple_ordering_routes(self):
-        w, fallback = _assert_identical(self._SRC)
-        assert not fallback, fallback
+        w = _assert_identical(self._SRC)
 
 
 class TestErBindHoistedOptional:
@@ -551,16 +543,15 @@ class TestErBindHoistedOptional:
             "            p = Point.parse(3)\n"
             "        else:\n"
             "            p = Point.parse(5)\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, fallback
 
     def test_hoisted_optional_bind_routes(self):
-        w, fallback = _assert_identical(self._SRC)
-        assert not fallback, fallback
+        w = _assert_identical(self._SRC)
         c2, modules2 = _compile(self._SRC)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "std::optional<Point> p;" in cpp
         assert "p = ::tpy::unwrap_ref_move(*__try_tmp_" in cpp
 
@@ -587,9 +578,8 @@ class TestPointeePtrReseat:
         "main()\n")
 
     def test_pointee_ptr_reseat_routes(self):
-        w, fallback = _assert_identical(self._SRC)
+        w = _assert_identical(self._SRC)
         assert w.get("reseat.opt_ptr_copy", 0) >= 1
-        assert not fallback
 
 
 class TestOwnValueParamRead:
@@ -628,8 +618,7 @@ class TestOwnValueParamRead:
             "def main() -> None:\n"
             "    f([1, 3], [2, 4])\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("move.own_last_use", 0) >= 1
 
 
@@ -650,8 +639,7 @@ class TestFrameSlotDel:
         "def main() -> None:\n    asyncio.run(go())\nmain()\n")
 
     def test_frame_slot_del_routes(self):
-        w, fallback = _assert_identical(self._SRC)
-        assert not any(k.startswith("resumable:") for k in fallback)
+        w = _assert_identical(self._SRC)
 
     def test_narrowed_param_del_routes_via_skip(self):
         # A narrowed PARAM del is INTERIOR to the skip ladder: a param is
@@ -669,8 +657,7 @@ class TestFrameSlotDel:
             "def main() -> None:\n"
             "    f(Box(1))\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
 
 
 class TestPtrDeclAdjacentShapes:
@@ -697,8 +684,7 @@ class TestPtrDeclAdjacentShapes:
             "def main() -> None:\n"
             "    print(use())\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
 
     def test_callable_field_lambda_literal_routes(self):
         src = (
@@ -712,8 +698,7 @@ class TestPtrDeclAdjacentShapes:
             "    c = C()\n"
             "    print(c.cb(4))\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
 
 
 class TestOptPtrAliasSource:
@@ -814,7 +799,7 @@ class TestTupleKeyedDict:
             "def main() -> None:\n"
             "    f()\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback
 
 
@@ -859,8 +844,7 @@ class TestCompAtUnionSlot:
             "def main() -> None:\n"
             "    build([1])\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback
+        w = _assert_identical(src)
         assert w.get("comp.union_member_source", 0) >= 1
 
 
@@ -899,7 +883,7 @@ class TestUnionDictMemberLiteral:
             "def main() -> None:\n"
             "    build()\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback
 
 class TestOwnScalarCoerceCast:
@@ -921,14 +905,13 @@ class TestOwnScalarCoerceCast:
                "    take(big)\n"
                "    print(take(big))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("call.own_coerce_cast", 0) >= 1
         assert w.get("call.copy_scalar", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "take((big).to_fixed_check<int32_t>())" in cpp
         assert "(::tpy::BigInt(big)).to_fixed_check<int32_t>()" in cpp
 
@@ -958,10 +941,8 @@ class TestOwnScalarCoerceCast:
                "    global_source()\n"
                "    copy_of_field(H())\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        # Exactly the two field-source bodies fall back; global_source
-        # (and main) route.
-        assert sum(fallback.values()) == 2, fallback
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.own_scalar")
 
     def test_narrowed_optional_source_stays_ast(self):
         # BOUNDARY (probed divergent before the declared-scalar guard):
@@ -976,7 +957,7 @@ class TestOwnScalarCoerceCast:
                "def main() -> None:\n"
                "    f(100)\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the narrowed source to fall back"
 
 
@@ -1006,8 +987,7 @@ class TestLambdaBorrowTupleReturn:
         "main()\n")
 
     def test_btuple_lambda_routes(self):
-        w, fallback = _assert_identical(self._SRC)
-        assert not fallback, fallback
+        w = _assert_identical(self._SRC)
         assert w.get("lambda.btuple_ret", 0) >= 1
         assert w.get("call.lambda_btuple_ret", 0) >= 1
         assert w.get("print.record_subscript", 0) >= 1
@@ -1016,7 +996,7 @@ class TestLambdaBorrowTupleReturn:
         c2, modules2 = _compile(self._SRC)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "-> std::tuple<std::string, Point*> { return label<Point>(" \
             in cpp
         assert "<< ::tpy::__getitem__(d, k)" in cpp
@@ -1038,7 +1018,7 @@ class TestLambdaBorrowTupleReturn:
             "    for k in d:\n"
             "        print(k, d[k])\n"
             "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the tuple-literal lambda body to fall back"
 
 
@@ -1073,14 +1053,13 @@ class TestGenrecAliasInstanceArgs:
         "main()\n")
 
     def test_alias_instance_args_route(self):
-        w, fallback = _assert_identical(self._SRC)
-        assert not fallback, fallback
+        w = _assert_identical(self._SRC)
         assert w.get("arg.ru_wrapper_borrow_call", 0) >= 1
         assert w.get("own.record_rvalue", 0) >= 1
         c2, modules2 = _compile(self._SRC)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "(::tpystd::tplib::box::Box<Tree<::tpy::BigInt>>"\
             "(std::move(tree)))" in cpp
         assert "leaf_count<::tpy::BigInt>(h.data.get())" in cpp
@@ -1104,7 +1083,7 @@ class TestGenrecAliasInstanceArgs:
                "    h = Holder(Box(seed))\n"
                "    print(\"ok\")\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the local-alias nested arg to fall back"
 
     def test_call_receiver_subscript_print_stays_ast(self):
@@ -1123,7 +1102,7 @@ class TestGenrecAliasInstanceArgs:
                "def main() -> None:\n"
                "    print(get_ps()[0])\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the call-receiver flavor to fall back"
 
 
@@ -1155,13 +1134,12 @@ class TestUnionValueLiftArg:
                + "    method_flavor(xs, A(1))\n"
                + "    free_flavor(A(2))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.union_value_lift", 0) >= 2
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "consume(::tpy::to_value_variant<std::variant<A, B>>(p))" \
             in cpp
         assert "xs.push_back(::tpy::to_value_variant<std::variant<A, B>>" \
@@ -1177,8 +1155,7 @@ class TestUnionValueLiftArg:
                + "def main() -> None:\n"
                + "    elem_bound([A(1)])\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.union_value_lift", 0) == 0
 
     def test_narrowed_name_stays_ast(self):
@@ -1191,7 +1168,7 @@ class TestUnionValueLiftArg:
                + "def main() -> None:\n"
                + "    narrowed_inside(A(2))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the narrowed flavor to fall back"
 
 
@@ -1217,13 +1194,12 @@ class TestContainerPropertyReceiver:
                + "    c.items.append(4)\n"
                + "    print(c.items)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("method.recv.container_property", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "c.items().push_back(4);" in cpp
 
     def test_record_property_recv_stays_ast(self):
@@ -1246,7 +1222,7 @@ class TestContainerPropertyReceiver:
                "    c.p.bump()\n"
                "    print(c.p.x)\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the record-property receiver to fall back"
 
     def test_set_property_recv_routes(self):
@@ -1265,8 +1241,7 @@ class TestContainerPropertyReceiver:
                "    c.tags.add(4)\n"
                "    print(len(c.tags))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("method.recv.container_property", 0) >= 1
 
 
@@ -1291,7 +1266,7 @@ class TestUnionValueLiftContainerArgBoundary:
                "def main() -> None:\n"
                "    copy_all([A(1)])\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        w = _assert_identical(src)
         assert w.get("arg.union_value_lift", 0) == 0
 
 
@@ -1312,13 +1287,12 @@ class TestProtocolConceptAssert:
                "    xs: list[Int32] = [1, 2, 3]\n"
                "    print(total_of(xs))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("assert.protocol_concept", 0) >= 1
         c2, modules2 = _compile(src)
         hpp, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "Spannable<T_items, int32_t>)) ::tpy::raise_assertion_error();" \
             in (hpp + cpp)
 
@@ -1338,13 +1312,12 @@ class TestOptvalElemCopySetitem:
                "    f(xs, 1)\n"
                "    print(len(xs))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("setitem.optval_elem_copy", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "::tpy::__setitem__(items, i, ::tpy::__getitem__(items, 0))" \
             in cpp
 
@@ -1357,7 +1330,7 @@ class TestOptvalElemCopySetitem:
                "    f(xs, 5)\n"
                "    print(len(xs))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the scalar source to fall back"
 
     def test_downstream_peephole_rides_the_retype(self):
@@ -1378,8 +1351,7 @@ class TestOptvalElemCopySetitem:
                "    xs: list[Int32] = [1, 2, 3]\n"
                "    print(total(xs))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("assert.protocol_concept", 0) >= 1
 
     # No resumable boundary pin: a generator taking the protocol-union
@@ -1403,8 +1375,7 @@ class TestOptvalElemCopyCrossType:
                "    f(xs, ys)\n"
                "    print(len(xs))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("setitem.optval_elem_copy", 0) >= 1
 
     # No cross-TYPE reject pin: sema rejects the cross-type element
@@ -1435,13 +1406,12 @@ class TestNestedContainerElementRows:
         "main()\n")
 
     def test_three_rows_route(self):
-        w, fallback = _assert_identical(self._SRC)
-        assert not fallback, fallback
+        w = _assert_identical(self._SRC)
         assert w.get("setitem.container_move", 0) >= 1
         c2, modules2 = _compile(self._SRC)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert '::tpy::__setitem__(g, "a", std::move(a));' in cpp
         assert 'push(::tpy::__getitem__(g, "a"), 7);' in cpp
         assert 'auto& __obj_0 = ::tpy::__getitem__(g, "a");' in cpp
@@ -1457,8 +1427,8 @@ class TestNestedContainerElementRows:
                "    a.append(2)\n"
                "    print(len(g[\"a\"]))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert w.get("setitem.container_move", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.container_value_shape")
 
 
 class TestSteppedSliceOverload:
@@ -1488,16 +1458,8 @@ class TestSteppedSliceOverload:
                "    sp = w[0:5:2]\n"
                "    print(len(sp))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        # The simplified impl body keeps its own overload fence; the pin
-        # claims the CALLER (the stepped-slice dispatch site) routes.
-        assert list(fallback) == ["body:sig.overload_set.narrow_param"], \
-            fallback
-        c2, modules2 = _compile(src)
-        hpp, cpp = c2.generate_code_to_strings(
-            _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
-        assert "w.__getitem__(::tpy::Slice{0, 5, 2})" in (cpp + hpp)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:sig.overload_set.narrow_param")
 
     def test_negative_step_renders(self):
         src = ("from typing import overload\n"
@@ -1520,14 +1482,8 @@ class TestSteppedSliceOverload:
                "    sp = w[0:5:-1]\n"
                "    print(len(sp))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert list(fallback) == ["body:sig.overload_set.narrow_param"], \
-            fallback
-        c2, modules2 = _compile(src)
-        hpp, cpp = c2.generate_code_to_strings(
-            _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
-        assert "w.__getitem__(::tpy::Slice{0, 5, -1})" in (cpp + hpp)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:sig.overload_set.narrow_param")
 
     def test_variable_step_bound_routes(self):
         # Probed, not assumed: an int-VARIABLE step is a supported bound
@@ -1555,7 +1511,7 @@ class TestSteppedSliceOverload:
                "    sp = w[0:5:st]\n"
                "    print(len(sp))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert list(fallback) == ["body:sig.overload_set.narrow_param"], \
             fallback
 
@@ -1579,14 +1535,13 @@ class TestOwnTupleParamSubscript:
                "    t = (a, 7)\n"
                "    print(consume(t))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        w = _assert_identical(src)
         # The caller's tuple-NAME arg routes too since the Own-tuple arg
         # rows landed (wave 28); the whole program is clean.
-        assert not fallback, fallback
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "std::get<0>(p).n" in cpp
         assert "std::get<1>(p)" in cpp
 
@@ -1611,13 +1566,12 @@ class TestNativeOptptrArg:
                "    print(repr(opt_some))\n"
                "    print(repr(opt_none))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.native_protocol_optptr", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "::tpy::repr_of((*opt_some))" in cpp
         assert "::tpy::repr_of(opt_none)" in cpp
 
@@ -1639,10 +1593,9 @@ class TestNativeOptptrArg:
                "    t = (a, \"x\")\n"
                "    print(consume(t))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        w = _assert_identical(src)
         # The caller's tuple-NAME arg routes too since the Own-tuple arg
         # rows landed (wave 28); the whole program is clean.
-        assert not fallback, fallback
 
 
 class TestNestedCtorValueOptArgs:
@@ -1664,15 +1617,14 @@ class TestNestedCtorValueOptArgs:
                "    print(describe(Dog(None)))\n"
                "    print(describe(Dog(\"rex\")))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         # This flavor rides the DIRECT loop (the statement flushes); the
         # restricted-tail witness is the flipped corpus case
         # match/poly_field_none, held by the ratchet.
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "Dog(std::nullopt)" in cpp
         assert 'Dog("rex")' in cpp
 
@@ -1702,13 +1654,12 @@ class TestBorrowCallTernaryReseat:
                + "def main() -> None:\n"
                + "    f(True)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("reseat.borrow_call_ternary", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "b = &(((flag) ? (g.itself()) : (h.itself())));" in cpp
 
     def test_mixed_arm_ternary_stays_ast(self):
@@ -1721,7 +1672,7 @@ class TestBorrowCallTernaryReseat:
                + "def main() -> None:\n"
                + "    f(True)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the mixed-arm ternary to fall back"
 
     def test_value_ctor_arm_ternary_stays_ast(self):
@@ -1735,7 +1686,7 @@ class TestBorrowCallTernaryReseat:
                + "def main() -> None:\n"
                + "    f(True)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the ctor-arm ternary to fall back"
 
     def test_container_borrow_call_ternary_unreachable(self):
@@ -1759,7 +1710,7 @@ class TestBorrowCallTernaryReseat:
                "def main() -> None:\n"
                "    f(True)\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the container flavor to fall back"
 
     def test_name_arg_nested_value_opt_stays_ast(self):
@@ -1779,7 +1730,7 @@ class TestBorrowCallTernaryReseat:
                "def main() -> None:\n"
                "    use(True, \"rex\")\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
+        w = _assert_identical(src)
         assert w.get("ctor.nested_none_value_opt", 0) == 0
 
 
@@ -1809,13 +1760,12 @@ class TestOwnTupleArgForms:
                + "def main() -> None:\n"
                + "    print(f(Box(1)))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.own_tuple_borrow_lift", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "sink(::tpy::tuple_to_storage<" in cpp
 
     def test_storage_form_moves(self):
@@ -1826,13 +1776,12 @@ class TestOwnTupleArgForms:
                + "def main() -> None:\n"
                + "    print(f(Box(1)))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("move.own_tuple", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "sink(std::move(pair))" in cpp
 
     def test_still_live_storage_stays_ast(self):
@@ -1846,7 +1795,7 @@ class TestOwnTupleArgForms:
                + "def main() -> None:\n"
                + "    print(f(Box(1)))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the still-live storage form to fall back"
 
 
@@ -1865,8 +1814,7 @@ class TestCopyIterForHead:
                "def main() -> None:\n"
                "    use([1, 2, 3])\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("foreach.copy_iter_call", 0) >= 1
 
     def test_own_iter_stays_ast(self):
@@ -1880,7 +1828,7 @@ class TestCopyIterForHead:
                "def main() -> None:\n"
                "    use()\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected own_iter for-head to fall back"
 
     def test_literal_elem_stays_ast(self):
@@ -1891,7 +1839,7 @@ class TestCopyIterForHead:
                "    for x in copy_iter([1, 2, 3]):\n"
                "        print(x)\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected literal-elem copy_iter to fall back"
 
 
@@ -1914,8 +1862,7 @@ class TestQualCtorProtocolTemp:
                + "    s = io.StringIO(\"qr\")\n"
                + "    print(use(s))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("argtemp.protocol", 0) >= 1
 
     def test_dyn_slot_stays_ast(self):
@@ -1932,7 +1879,7 @@ class TestQualCtorProtocolTemp:
                "def main() -> None:\n"
                "    print(use(io.StringIO(\"ab\")))\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the dyn-slot ctor arg to fall back"
 
 
@@ -1951,12 +1898,11 @@ class TestBytearrayAugConcat:
                "    got += chunk\n"
                "    print(bytes(got).decode())\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "got = ::tpy::bytes_concat(got, chunk)" in cpp
 
     def test_param_target_stays_ast(self):
@@ -1968,7 +1914,7 @@ class TestBytearrayAugConcat:
                "    g = bytearray()\n"
                "    use(g)\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the param target to fall back"
 
     def test_bytearray_value_operand_routes(self):
@@ -1983,8 +1929,7 @@ class TestBytearrayAugConcat:
                "    b2 = bytearray(b\"zz\")\n"
                "    use(b2)\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("binop.bytearray_operand", 0) >= 1
 
 
@@ -2018,13 +1963,12 @@ class TestUnionFieldWriteSources:
                + "    z.pet = np\n"
                + "    print(np.name)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("field_write.union_name_lift", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "z.pet = ::tpy::to_value_variant<" in cpp
 
     def test_call_source_routes(self):
@@ -2035,8 +1979,7 @@ class TestUnionFieldWriteSources:
                + "    z.pet = identity(np)\n"
                + "    print(np.name)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("call.union_value_lift_ret", 0) >= 1
 
     def test_member_typed_sink_keeps_fence(self):
@@ -2049,7 +1992,7 @@ class TestUnionFieldWriteSources:
                + "    np: Dog | Cat = Cat(\"w\")\n"
                + "    take_cat(np)\n"
                + "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the member-typed sink to keep the fence"
 
 
@@ -2071,13 +2014,12 @@ class TestStubContainerCallArg:
                "    a.update(copy(b))\n"
                "    print(len(a), len(b))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.container_call_rvalue", 0) >= 2
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "::tpy::dict_update(a, make_dict())" in cpp
 
     def test_mismatched_family_not_admitted(self):
@@ -2092,8 +2034,7 @@ class TestStubContainerCallArg:
                "    xs.extend(make_list())\n"
                "    print(len(xs))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.container_call_rvalue", 0) == 0
 
     def test_set_update_call_routes(self):
@@ -2110,8 +2051,7 @@ class TestStubContainerCallArg:
                "    s.update(copy_of(s2))\n"
                "    print(len(s))\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.container_call_rvalue", 0) >= 1
 
     def test_own_elem_slot_stays_ast(self):
@@ -2125,7 +2065,7 @@ class TestStubContainerCallArg:
                "    rows.append(make_list())\n"
                "    print(len(rows))\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the Own-elem slot call arg to fall back"
 
 
@@ -2155,14 +2095,13 @@ class TestPrintKwargsTail:
                + "    print(\"c\", flush=False)\n"
                + "    print(s.n)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("print.kw_flush", 0) >= 1
         assert w.get("print.file_name_sink", 0) >= 2
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert '<< "\\n" << std::flush;' in cpp
         assert '::tpy::as_ostream(s) << "\\n";' in cpp
         assert '"c" << "\\n";' in cpp
@@ -2173,7 +2112,7 @@ class TestPrintKwargsTail:
         src = ("def main() -> None:\n"
                "    print(end=\"\")\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected empty print with end= to fall back"
 
 
@@ -2202,13 +2141,12 @@ class TestPtrOptSelfReturn:
                + "    if r is not None:\n"
                + "        print(r.v)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ret.ptr_opt_self", 0) >= 1
         c2, modules2 = _compile(src)
         h, _cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "return this;" in h
 
     def test_plain_self_return_routes(self):
@@ -2224,8 +2162,7 @@ class TestPtrOptSelfReturn:
                + "    n = Node(4)\n"
                + "    print(n.bump().v)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ret.ptr_opt_self", 0) == 0
 
 
@@ -2264,13 +2201,12 @@ class TestCopyPtrVariant:
                + "    copy_param(Dog(\"A\"))\n"
                + "    copy_assigned()\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("call.copy_ptr_variant", 0) >= 2
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)" in cpp
 
     def test_plain_record_copy_row_intact(self):
@@ -2283,8 +2219,7 @@ class TestCopyPtrVariant:
                + "    d.name = \"x\"\n"
                + "    print(d2.name)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("decl.copy_record", 0) >= 1
         assert w.get("call.copy_ptr_variant", 0) == 0
 
@@ -2300,8 +2235,7 @@ class TestCopyPtrVariant:
                + "def main() -> None:\n"
                + "    use(Dog(\"B\"))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("call.copy_ptr_variant", 0) >= 1
 
 
@@ -2325,13 +2259,12 @@ class TestOwnStorageTupleNameReturn:
                "    r = f(Box(3))\n"
                "    print(r[1])\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ret.own_storage_tuple_name", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "return pair;" in cpp
 
     def test_value_tuple_name_row_intact(self):
@@ -2342,8 +2275,7 @@ class TestOwnStorageTupleNameReturn:
                "def main() -> None:\n"
                "    print(f()[0])\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ret.own_storage_tuple_name", 0) == 0
 
 
@@ -2370,13 +2302,12 @@ class TestOwnElemTupleLiteralArg:
                + "    print(read_owned((copy(a), 4)))\n"
                + "    print(a.n)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.own_elem_tuple_literal", 0) >= 2
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "read_owned(std::tuple<A, int32_t>{A(1), 2})" in cpp
 
     def test_movable_name_elem_moves(self):
@@ -2387,13 +2318,12 @@ class TestOwnElemTupleLiteralArg:
                + "    a = A(3)\n"
                + "    print(read_owned((a, 4)))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("arg.own_elem_tuple_literal", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "{std::move(a), 4}" in cpp
 
     def test_ternary_elem_stays_ast(self):
@@ -2405,7 +2335,7 @@ class TestOwnElemTupleLiteralArg:
                + "def main() -> None:\n"
                + "    use(True)\n"
                + "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the ternary member to fall back"
 
     def test_readonly_borrow_tuple_return_stays_ast(self):
@@ -2428,7 +2358,7 @@ class TestOwnElemTupleLiteralArg:
                "    h = Holder(Container(7))\n"
                "    print(h.get_pair()[1])\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the readonly borrow-tuple return to defer"
 
 
@@ -2458,13 +2388,12 @@ class TestPtrRecvRecordGetitem:
                + "    acc = make()\n"
                + "    print(acc[0].name)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("subscript.record_getitem", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "(*acc)[0].name" in cpp
 
     def test_bare_subscript_ptr_recv_stays_ast(self):
@@ -2478,7 +2407,7 @@ class TestPtrRecvRecordGetitem:
                + "    it = acc[0]\n"
                + "    print(it.name)\n"
                + "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the bare ptr-recv subscript to fall back"
 
     def test_plain_receiver_row_intact(self):
@@ -2487,12 +2416,11 @@ class TestPtrRecvRecordGetitem:
                + "    xs = make()\n"
                + "    print(xs[0].name)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "xs[0].name" in cpp
         assert "(*xs)" not in cpp
 
@@ -2529,13 +2457,12 @@ class TestAssignNarrowedUnionMethodRecv:
                + "    print(c.area())\n"
                + "    print(c.scaled(2))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("method.assign_narrowed_union", 0) >= 2
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "(*std::get<Circle*>(c)).area()" in cpp
 
     def test_isinstance_narrowed_stays_on_alias_arms(self):
@@ -2548,7 +2475,7 @@ class TestAssignNarrowedUnionMethodRecv:
                + "def main() -> None:\n"
                + "    use(Circle(2.0))\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
+        w = _assert_identical(src)
         assert w.get("method.assign_narrowed_union", 0) == 0
 
 
@@ -2578,13 +2505,12 @@ class TestF3StrElemTuple:
                + "    s, q = to_pair(p)\n"
                + "    print(s, q.x)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ret.btuple_literal", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert ("std::tuple<std::string, Point*>{"
                 "::tpy::fixed_to_str<int32_t>(p.x), &(p)}" in cpp)
 
@@ -2603,7 +2529,7 @@ class TestF3StrElemTuple:
                "    t = to_pair(\"k\", p)\n"
                "    print(t[0], t[1].x)\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the view-element tuple to keep deferring"
 
 
@@ -2637,13 +2563,12 @@ class TestValueOptViewFieldReturn:
                + "    o = Outer()\n"
                + "    print(o.get())\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ret.value_opt_view_field", 0) >= 1
         c2, modules2 = _compile(src)
         h, _cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "return sub->value;" in h
 
     def test_view_field_stays_ast(self):
@@ -2659,7 +2584,7 @@ class TestValueOptViewFieldReturn:
                + "    o = Outer()\n"
                + "    print(o.get_view())\n"
                + "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the view field to keep deferring"
 
 
@@ -2694,14 +2619,13 @@ class TestMilTupleCallAndMoveElem:
                + "    l = L(Box(2))\n"
                + "    print(h.t[0], l.pair[0])\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("mil.tuple_storage_call", 0) >= 1
         assert w.get("mil.ptr_tuple_literal", 0) >= 1
         c2, modules2 = _compile(src)
         h, _cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert ": t(make_pair(5))" in h
         assert "{1, std::move(b)}" in h
 
@@ -2719,7 +2643,7 @@ class TestMilTupleCallAndMoveElem:
                + "    m = M(Box(3))\n"
                + "    print(m.pair[0], m.other.v)\n"
                + "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the copy-of-Own-param elem to defer"
 
 
@@ -2750,12 +2674,11 @@ class TestBaseInitCtorDefaultArg:
                + "def main() -> None:\n"
                + "    print(Passing(1).v)\n"
                + "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         c2, modules2 = _compile(src)
         h, _cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert ": Base(a, Fixed(5), 2)" in h
 
     def test_record_name_ctor_arg_stays_ast(self):
@@ -2768,7 +2691,7 @@ class TestBaseInitCtorDefaultArg:
                + "def main() -> None:\n"
                + "    print(Holder(1, Fixed(3)).v)\n"
                + "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the field-read ctor arg to defer"
 
 
@@ -2787,13 +2710,12 @@ class TestBytesViewLitTernary:
                "    print(opt_or_default(b\"xy\").decode())\n"
                "    print(opt_or_default(None).decode())\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ifexpr.bytes_view_lit", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert ("::tpy::bytes_copy((((b.has_value())) ? ((*b)) : "
                 "(::tpy::bytes_literal_owned(\"none\", 4))))" in cpp)
 
@@ -2806,7 +2728,7 @@ class TestBytesViewLitTernary:
                "def main() -> None:\n"
                "    print(f(True, b\"ab\").decode())\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the plain-param mix to defer"
 
     def test_lit_call_mix_stays_ast(self):
@@ -2820,7 +2742,7 @@ class TestBytesViewLitTernary:
                "def main() -> None:\n"
                "    print(pick(b\"a\", True).decode())\n"
                "main()\n")
-        _w, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the literal+call mix to defer"
 
 
@@ -2843,13 +2765,12 @@ class TestDiscardSubscriptStmt:
                "    c.n += 5\n"
                "    print(items[2].n)\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("expr_stmt.subscript_discard", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "    ::tpy::__getitem__(items, 0);" in cpp
 
     def test_slice_discard_stays_ast(self):
@@ -2860,7 +2781,7 @@ class TestDiscardSubscriptStmt:
                "    _ = xs[0:2]\n"
                "    print(len(xs))\n"
                "main()\n")
-        w, _fallback = _assert_identical(src)
+        w = _assert_identical(src)
         assert w.get("expr_stmt.subscript_discard", 0) == 0
 
 
@@ -2882,13 +2803,12 @@ class TestOwnTupleParamReturn:
                "    a, b = relay((A(3), A(4)))\n"
                "    print(a.n, b.n)\n"
                "main()\n")
-        w, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        w = _assert_identical(src)
         assert w.get("ret.own_tuple_param", 0) >= 1
         c2, modules2 = _compile(src)
         _h, cpp = c2.generate_code_to_strings(
             _entry(modules2), options=CodeGenOptions(
-                emit_source_comments=True, thir_codegen=True))
+                emit_source_comments=True))
         assert "    return p;" in cpp
 
 
@@ -2919,7 +2839,6 @@ class TestRecordGetitemGlobalSlotReceiver:
         assert "(*g)[2]" in cpp
 
     def test_pointer_local_receiver_defers(self):
-        from .testutil import _assert_byte_identical, _lower_ctx
         src = self._PRE + (
             "def ptr_local(flag: bool) -> None:\n"
             "    if flag:\n"
@@ -2928,6 +2847,5 @@ class TestRecordGetitemGlobalSlotReceiver:
             "        h = Grid(2)\n"
             "    print(h[3])\n"
             "ptr_local(True)\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "ptr_local") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:subscript.record_getitem")

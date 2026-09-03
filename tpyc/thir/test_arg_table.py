@@ -308,6 +308,7 @@ class TestMarkerSinkSplit:
             "own_record_rvalue",
             "own_tparam_call_rvalue",
             "copy_record_own",
+            "str_owned_slot",
             "own_move",
             "own_lvalue",
             "optional_ptr",
@@ -368,7 +369,7 @@ class TestMarkerSinkSplit:
     def test_own_cells_are_the_ones_the_ladder_prefixed(self):
         assert _MARKER_OWN_ROWS == frozenset({
             "own_record_rvalue", "own_tparam_call_rvalue", "copy_record_own",
-            "own_move", "own_lvalue", "own_union_ctor",
+            "own_move", "own_lvalue", "own_union_ctor", "str_owned_slot",
             "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
             "own_container_literal"})
 
@@ -465,6 +466,7 @@ class TestPlainSinkShape:
             "callable_object",
             "shared_pass_through",
             "container_field_pass",
+            "container_module_var",
             "value_union_temp",
             "record_rvalue_temp",
             "str_owned_slot",
@@ -715,7 +717,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 47
+        assert len(set(plain) - set(generic)) == 48
         assert {"callable_field", "value_union_temp", "record_rvalue_temp",
                 "str_owned_slot", "bytes_owned_slot", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
@@ -1056,7 +1058,7 @@ class TestRecordMethodSinkShape:
         # step cannot fill one and call it a transcription.
         plain = {r.row for r in _PLAIN_ARG_SINK.rows}
         mine = {r.row for r in _RECORD_METHOD_ARG_SINK.rows}
-        assert len(plain - mine) == 43
+        assert len(plain - mine) == 44
         assert {"shared_pass_through", "callable_field", "str_owned_slot",
                 "bytes_owned_slot", "own_coerce_cast", "container_literal",
                 "ref_param_dictset_literal", "covariant_temp",
@@ -1448,6 +1450,7 @@ class TestRecordCtorSinkShape:
             "none_value_opt",
             "none_unit",
             "tparam_name_pass",
+            "str_owned_slot",
             "own_move",
             "own_lvalue",
             "own_move_source_slice",
@@ -1478,6 +1481,7 @@ class TestRecordCtorSinkShape:
             "own_union_ctor",
             "protocol_union",
             "protocol_union_literal_temp",
+            "protocol_union_iter_temp",
             "own_optional_record_rvalue",
             "value_record_rvalue",
             "value_union_temp",
@@ -1570,6 +1574,7 @@ class TestRecordCtorSinkShape:
             ("container_literal", "_x_not_mutated"),
             ("union_ctor_temp", "_x_temps_ok"),
             ("protocol_union_literal_temp", "_x_temps_ok"),
+            ("protocol_union_iter_temp", "_x_temps_ok"),
             ("value_union_temp", "_x_temps_ok"),
         ]
         assert [(r.row, r.extra.__name__) for r in _CTOR_NESTED_ARG_SINK.rows
@@ -1621,12 +1626,12 @@ class TestRecordCtorNestedIsNotADirectPrefix:
 
     def test_the_direct_cells_absent_from_nested_are_named_and_counted(self):
         # Absence-preserving: the flush-less nested position admits only
-        # temp-FREE renders, so 46 direct cells are simply absent. The count
+        # temp-FREE renders, so 48 direct cells are simply absent. The count
         # is what closes the gap -- naming a subset leaves the unnamed
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 46
+        assert len(direct - nested) == 48
         assert {"mutated_container_literal", "str_pass_through",
                 "shared_pass_through", "own_lvalue", "own_bytes_literal",
                 "container_literal", "own_container_literal",
@@ -1634,6 +1639,7 @@ class TestRecordCtorNestedIsNotADirectPrefix:
                 "optional_ptr", "protocol_slot_ctor", "tuple_literal",
                 "lambda", "func_ref", "record_rvalue_temp_ctor",
                 "protocol_union", "protocol_union_literal_temp",
+                "protocol_union_iter_temp",
                 "own_opt_container_ptr", "opt_own_record_name",
                 } <= (direct - nested)
 
@@ -1684,10 +1690,11 @@ class TestRecordCtorSharedAndNewRows:
             "own_genrec_literal",
             "protocol_union",
             "protocol_union_literal_temp",
+            "protocol_union_iter_temp",
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 31
+        assert len([r for r in rows if r in others]) == 32
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

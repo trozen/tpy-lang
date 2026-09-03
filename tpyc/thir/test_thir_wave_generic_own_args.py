@@ -27,7 +27,8 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
+from .testutil import (
+    _reject_tally, _lower_ctx, _lower_ctx_witnessed, _fn,
                        _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _thir_ctx)
 
@@ -277,8 +278,8 @@ class TestGenericOpenProtocolSlot:
             "def use[T](b: Bag[T]) -> T:\n"
             "    return read(b)\n"
         )
-        assert _fn(_lower_ctx(src), "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.generic_arg_slot")
 
 
 class TestNestedGenericCallTempRide:
@@ -457,9 +458,8 @@ class TestGenericOptOwnSlot:
                + "    print(take_optional(b, 99))\n"
                + "    print(b.value)\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.opt_own_copy")
 
 
 class TestGenericOwnBytesSlot:
@@ -519,7 +519,6 @@ class TestGenericOwnBytesSlot:
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.generic_arg_shape")
-        _assert_byte_identical(src)
 
     def test_owned_bytes_local_name_stays_ast(self):
         # BOUNDARY: an owned STORAGE local at the same slot rides the AST's
@@ -532,7 +531,6 @@ class TestGenericOwnBytesSlot:
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.generic_arg_shape")
-        _assert_byte_identical(src)
 
     def test_str_sibling_call_rvalue_stays_ast(self):
         # BOUNDARY: the str family's owned-slot rows are not in this sink at
@@ -548,7 +546,6 @@ class TestGenericOwnBytesSlot:
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.generic_arg_shape")
-        _assert_byte_identical(src)
 
 
 class TestGenericOwnCompositeSlot:
@@ -663,8 +660,6 @@ class TestGenericOwnCompositeSlot:
         )
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call", "call.generic_arg_slot")
-        hpp, _cpp = _assert_byte_identical(src)
-        assert "auto __tmp_1 = xs;" in hpp
 
     def test_field_read_at_the_same_slot_stays_ast(self):
         # BOUNDARY: the field twin of the param row -- same borrow form,
@@ -683,8 +678,6 @@ class TestGenericOwnCompositeSlot:
         )
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call", "call.generic_arg_slot")
-        hpp, _cpp = _assert_byte_identical(src)
-        assert "auto __tmp_1 = this->items;" in hpp
 
     def test_flushless_position_stays_ast(self):
         # BOUNDARY: a condition is no flush point, so the copy temp has
@@ -705,8 +698,6 @@ class TestGenericOwnCompositeSlot:
         )
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.if", "call.generic_arg_slot")
-        hpp, _cpp = _assert_byte_identical(src)
-        assert "auto __tmp_1 = ys;" in hpp
 
 
 class TestGenericOwnCtorSlotCallRvalue:
@@ -767,8 +758,6 @@ class TestGenericOwnCtorSlotCallRvalue:
         _ctx, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call",
                            "call.ctor_arg.own_generic")
-        hpp, _cpp = _assert_byte_identical(src)
-        assert "Box2<T>(h.get())" in hpp
 
     def test_container_literal_element_position_routes_too(self):
         # The element of a container literal still carries the enclosing

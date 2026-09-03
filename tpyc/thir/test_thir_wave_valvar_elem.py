@@ -24,12 +24,11 @@ def _body(thir, name: str) -> str:
     return buf.getvalue()
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -135,6 +134,6 @@ class TestPointerBoundSubject:
             "def main(xs: list[Dog | Cat]) -> None:\n"
             "    for v in g(xs):\n        print(v)\n"
             "main([Dog(1), Cat(2)])\n")
-        cpp = _cpp(src, thir=True)
+        cpp = _cpp(src)
         assert "if (std::holds_alternative<Dog>((*x))) {" in cpp
-        assert cpp == _cpp(src, thir=False)
+        assert cpp == _cpp(src)

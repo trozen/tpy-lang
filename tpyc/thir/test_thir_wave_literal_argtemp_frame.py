@@ -11,6 +11,8 @@ AST's inline render and stays rejected."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -70,9 +72,8 @@ class TestFrameLiteralBoundaries:
             "def main() -> None:\n"
             "    print(sum(gen_vals({'a': 1, 'b': 2})))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.container")
 
     def test_plain_readonly_nonempty_literal_still_defers(self):
         # A PLAIN callee's readonly slot binds the literal INLINE on the
@@ -85,6 +86,5 @@ class TestFrameLiteralBoundaries:
             "def main() -> None:\n"
             "    print(take_ro([1, 2, 3]))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.container")

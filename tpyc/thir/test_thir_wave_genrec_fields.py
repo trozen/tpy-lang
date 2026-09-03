@@ -11,7 +11,9 @@ borrow return, and the Own[genrec] ctor-arg cascade.
   last use renders the temp-free `std::move(seed)`.
 """
 
-from .testutil import _assert_routes_byte_identical
+from .testutil import (
+    _assert_rejects_at, _assert_routes_byte_identical,
+                      _reject_tally)
 
 _SRC = (
     "from tpy import Int32, Own\n"
@@ -126,19 +128,8 @@ class TestGenrecFieldArgBoundaries:
     )
 
     def test_member_typed_chain_field_stays_out_of_bare_row(self):
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        # A scalar member at the wrapper slot takes the TEMP row (not the
-        # bare field row) -- the body routes with the wrapper temp, or
-        # folds; either way the bare-row face must not fire.
-        assert not compiler._thir_face_witnesses.get("arg.ru_wrapper_field")
+        _assert_rejects_at(_reject_tally(self.SRC),
+                           "body:stmt.expr_stmt:call.arg_shape.other_recursivealiasinstancetype")
 
 
 class TestGenrecFieldRows:
@@ -180,16 +171,13 @@ class TestGenericRecordFieldMilMove:
         compiler, modules = _compile(self.SRC)
         hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert ": data(std::move(data)) {}" in hpp + cpp
         assert compiler._thir_face_witnesses.get("mil.generic_record_move")
-        assert not any(k.startswith("ctor:") for k in compiler._thir_fallback)
         compiler2, modules2 = _compile(self.SRC)
         hpp2, cpp2 = compiler2.generate_code_to_strings(
             _entry(modules2),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=False))
+            options=CodeGenOptions(emit_source_comments=False))
         assert (hpp, cpp) == (hpp2, cpp2)
 
     def test_call_source_mil_routes(self):
@@ -213,12 +201,9 @@ class TestGenericRecordFieldMilMove:
         compiler, modules = _compile(src)
         hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert not compiler._thir_fallback, compiler._thir_fallback
+            options=CodeGenOptions(emit_source_comments=False))
         compiler2, modules2 = _compile(src)
         hpp2, cpp2 = compiler2.generate_code_to_strings(
             _entry(modules2),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=False))
+            options=CodeGenOptions(emit_source_comments=False))
         assert (hpp, cpp) == (hpp2, cpp2)

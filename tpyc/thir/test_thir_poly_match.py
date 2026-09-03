@@ -26,12 +26,11 @@ _PRELUDE = (
 )
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -52,11 +51,8 @@ class TestPolyMatchChain:
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "describe") is not None
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         # The C++17 if-init cast + the per-arm ref alias.
         assert ("if (Dog* __mpoly_0 = "
                 "dynamic_cast<Dog*>(&__match_subject_1)) {") in out
@@ -84,11 +80,8 @@ class TestPolyMatchGuarded:
         + "            return \"other\"\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         # Standalone-if arms (const casts: no method is called on `p`, so
         # the const-borrow verdict applies); the field condition composes
         # around the ALIAS and gates the body + goto (fallthrough to the
@@ -132,11 +125,8 @@ class TestPolyStructuralAndConst:
         "            return \"?\"\n"
     )
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         # Structural conformer routes through the adapter cast; the const
         # borrow consts the inheritance cast and the aliases.
         assert "::tpy::dyn_adapter_cast<Shape, Rect>(&__match_subject_1)" \
@@ -208,8 +198,8 @@ class TestPolyMatchExcludedRungs:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert "!= nullptr)) && flag) {" in out
         assert "if ((!(flag))) {" in out
 

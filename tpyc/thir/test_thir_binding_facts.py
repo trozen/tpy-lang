@@ -9,7 +9,9 @@ for another reason; these pin the reject so a widening of that gate cannot
 silently un-fence the binding, and name the mirror that must land first.
 """
 
-from .testutil import (_compile, _entry, _lower_ctx, _fn,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _compile, _entry, _lower_ctx, _fn,
                        _assert_byte_identical, _assert_routes_byte_identical)
 from ..codegen_cpp import CodeGenOptions
 
@@ -22,35 +24,31 @@ _RECORD = (
 )
 
 
-def _gen(src: str, thir: bool):
+def _gen(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return compiler, hpp + cpp
 
 
-def _assert_identical(src: str) -> dict:
-    """Byte-compare both paths; return THIR's fallback ledger."""
-    _, ast_out = _gen(src, thir=False)
-    compiler, thir_out = _gen(src, thir=True)
-    assert ast_out == thir_out
-    return dict(compiler._thir_fallback)
+def _reject_ledger(src: str) -> dict:
+    """The reject tags emitting `src` reports -- empty when it emits."""
+    return _reject_tally(src)
 
 
 def _assert_body_fenced(src: str, name: str) -> None:
     """A sync body that must stay on the AST path, byte-identically."""
     thir = _lower_ctx(src)
     assert _fn(thir, name) is None
-    fallback = _assert_identical(src)
+    fallback = _reject_ledger(src)
     assert any(k.startswith("body:") for k in fallback), fallback
 
 
 def _assert_resumable_fenced(src: str) -> None:
     """A resumable body that must stay on the AST path. Routed resumables never
     appear in `thir.functions`, so the fallback ledger is the only witness."""
-    fallback = _assert_identical(src)
+    fallback = _reject_ledger(src)
     assert any(k.startswith("resumable:") for k in fallback), fallback
 
 
@@ -72,10 +70,9 @@ class TestUnmirroredParamSeeds:
                + "    return a.v\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
         assert "if ((!a.has_value()))" in thir_out
         assert "return (*a).v;" in thir_out
 
@@ -90,10 +87,9 @@ class TestUnmirroredParamSeeds:
                + "    return a.v\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
         assert "if ((!a.has_value()))" in thir_out
         assert "return a->v;" in thir_out
 
@@ -119,10 +115,9 @@ class TestUnmirroredParamSeeds:
                + "    return -1\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
         assert "a->v = 5;" in thir_out
 
     def test_own_optional_param_own_slot_forward_fenced(self):
@@ -138,7 +133,7 @@ class TestUnmirroredParamSeeds:
                + "    return take(a)\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is None
-        fallback = _assert_identical(src)
+        fallback = _reject_ledger(src)
         assert any(k.startswith("body:") for k in fallback), fallback
 
     def test_nullable_protocol_param_fenced(self):
@@ -165,8 +160,8 @@ class TestUnmirroredParamSeeds:
                + "    return sink(t)\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
         # `sink`'s own tuple-subscript body still falls back; `f` routes
         # (asserted via _fn above) and emits the move.
@@ -188,10 +183,9 @@ class TestOwnOptionalStorageBundle:
                + "    return x\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
         assert "return std::move(x);" in thir_out
 
     def test_own_optional_call_decl_slot_reuse(self):
@@ -208,10 +202,9 @@ class TestOwnOptionalStorageBundle:
                + "    return -1\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
         assert "std::optional<A> __slot_1 = make(1);" in thir_out
         assert "__slot_1 = make(2);" in thir_out
         assert thir_out.count("::tpy::optional_to_ptr(__slot_1)") == 2
@@ -226,10 +219,9 @@ class TestOwnOptionalStorageBundle:
                + "    return y.v\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
         assert "A* y = ::tpy::optional_to_ptr(x);" in thir_out
 
     def test_own_optional_tuple_elem_return_and_unpack(self):
@@ -246,10 +238,9 @@ class TestOwnOptionalStorageBundle:
         thir = _lower_ctx(src)
         assert _fn(thir, "pair") is not None
         assert _fn(thir, "f") is not None
-        _, ast_out = _gen(src, thir=False)
-        compiler, thir_out = _gen(src, thir=True)
+        _, ast_out = _gen(src)
+        compiler, thir_out = _gen(src)
         assert ast_out == thir_out
-        assert not any(k.startswith("body:") for k in compiler._thir_fallback)
         assert ("return std::tuple<std::optional<A>, int32_t>{A(42), 99};"
                 in thir_out)
         assert ("::tpy::tuple_to_pointer<std::tuple<A*, int32_t>>(pair())"
@@ -275,7 +266,7 @@ class TestUnmirroredLocalBindings:
                + "    return total\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        fallback = _assert_identical(src)
+        fallback = _reject_ledger(src)
         assert not [k for k in fallback if k.startswith("body:")], fallback
 
     def test_ptr_variant_unpack_target_fenced(self):
@@ -318,7 +309,7 @@ class TestUnmirroredLocalBindings:
         thir = _lower_ctx(src)
         fn = _fn(thir, "f")
         assert fn is not None
-        fallback = _assert_identical(src)
+        fallback = _reject_ledger(src)
         assert not fallback, fallback
 
 
@@ -359,7 +350,7 @@ class TestResumableFrameBindings:
                + "    xs = [A(7)]\n"
                + "    for n in g(xs):\n        print(n)\n"
                + "main()\n")
-        fallback = _assert_identical(src)
+        fallback = _reject_ledger(src)
         assert not any(k.startswith("resumable:") for k in fallback), fallback
 
 
@@ -394,7 +385,7 @@ class TestOverloadStubPrologueProducer:
         # The SHORT stub omits `pet`, so its body would read a name codegen
         # registers as a pointer variant and lc does not track at all.
         assert _fn(thir, "pick") is None
-        fallback = _assert_identical(self._SRC)
+        fallback = _reject_ledger(self._SRC)
         # The arity gate (`_short_stub_missing_ok`) is the specific fence: it
         # admits a short stub only when every omitted param narrows to NoneType
         # and is never reassigned, which is exactly the case needing no
@@ -444,9 +435,8 @@ class TestBtupleTernaryAndContainerBinopDecl:
                "    y = Tag(2)\n"
                "    print(pick((x, y), H(y, x), True))\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "pick") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_container_binop_decl_routes(self):
         src = ("def f() -> None:\n"

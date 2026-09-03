@@ -7,7 +7,8 @@ AST render is NOT the plain copy (rebound targets, borrow returns)."""
 
 from __future__ import annotations
 
-from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_routes_byte_identical,
                        _compile, _entry)
 
 
@@ -16,9 +17,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 _REC = (
@@ -42,8 +42,7 @@ class TestRvalueStorageDecl:
             "    print(len(bs))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "std::vector<Box> bs = make();" in out
         assert faces.get("decl.rvalue_storage_call", 0) >= 1
         _assert_byte_identical(src)
@@ -56,8 +55,7 @@ class TestRvalueStorageDecl:
             "    print(top.val)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "Box top = ::tpy::pop_back(heap);" in out
         _assert_byte_identical(src)
 
@@ -74,9 +72,8 @@ class TestRvalueStorageDecl:
             "    print(len(bs))\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert fallback
-        _assert_byte_identical(src)
 
 
 class TestValueRecordAndSpanSlots:
@@ -95,8 +92,7 @@ class TestValueRecordAndSpanSlots:
             "    print(q.first, q.second)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "Pair<int32_t> q = p;" in out
         _assert_byte_identical(src)
 
@@ -113,8 +109,7 @@ class TestValueRecordAndSpanSlots:
             "    print(len(s))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "std::span<Box> s = ::tpy::as_mut_span(b);" in out
         _assert_byte_identical(src)
 
@@ -129,8 +124,7 @@ class TestReceiverChains:
             "    print(len(groups))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert ("::tpy::dict_setdefault(groups, \"a\", "
                 "std::vector<int32_t>{}).push_back(1);") in out
         assert faces.get("method.recv.container_method", 0) >= 1
@@ -155,8 +149,7 @@ class TestReceiverChains:
             "    print(o.get().log)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "o.get().log.push_back(4);" in out
         assert "::tpy::ListPrinter(o.get().log)" in out
         _assert_byte_identical(src)
@@ -176,8 +169,7 @@ class TestReceiverChains:
             "    print(len(ns))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "::tpy::__getitem__(ns, 0).kids.push_back(7);" in out
         _assert_byte_identical(src)
 
@@ -201,8 +193,7 @@ class TestNestedDefSelfCapture:
             "    print(a.total)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "auto feed = [&bonus, &k, this]() {" in out
         # The captured receiver keeps rendering through `this` in the body.
         assert "this->total = ::tpy::add_check<int32_t>(this->total," in out
@@ -229,8 +220,7 @@ class TestNestedDefSelfCapture:
             "        print(v)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "int32_t __gen_Acc_each::bump() {" in out
         assert "[this]" not in out
         _assert_byte_identical(src)
@@ -260,8 +250,7 @@ class TestPtrUnionReturns:
             "    print(1)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "    return &(d);" in out
         assert faces.get("ret.narrowed_union_addr", 0) >= 1
         _assert_byte_identical(src)
@@ -277,8 +266,7 @@ class TestPtrUnionReturns:
             "    print(1)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "        return &(__pet);" in out
         _assert_byte_identical(src)
 
@@ -292,8 +280,7 @@ class TestPtrUnionReturns:
             "    print(1)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "    return u;" in out
         _assert_byte_identical(src)
 
@@ -312,8 +299,7 @@ class TestCallableReturn:
             "    print(g(4))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "    return f;\n" in out
         assert faces.get("ret.callable_name", 0) >= 1
         _assert_byte_identical(src)
@@ -334,7 +320,7 @@ class TestCallableReturn:
             "    print(g(4))\n"
             "main()\n"
         )
-        out, faces, _fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert faces.get("ret.callable_name", 0) == 0
         assert "    return inner;\n" in out
         _assert_byte_identical(src)
@@ -356,8 +342,7 @@ class TestRecordBinopDecl:
             "    print(r.bits)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "Flags r = ((4) | (f));" in out
         assert faces.get("decl.rvalue_storage_call", 0) >= 1
         _assert_byte_identical(src)
@@ -381,8 +366,7 @@ class TestRecordBinopDecl:
             "    print(c.n)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert fallback == {}, fallback
+        out, faces = _gen_thir(src)
         assert "const Acc& c = ((a) + (b));" in out
         assert faces.get("decl.dunder_borrow_alias", 0) >= 1
         _assert_routes_byte_identical(src)
@@ -405,8 +389,7 @@ class TestUnionNarrowBindingVerdict:
             "    print(1)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "std::holds_alternative<Dog>(u)" in out
         _assert_byte_identical(src)
 
@@ -423,8 +406,7 @@ class TestUnionNarrowBindingVerdict:
             "    print(1)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "std::holds_alternative<Dog*>(u)" in out
         _assert_byte_identical(src)
 
@@ -451,8 +433,7 @@ class TestUnionNarrowBindingVerdict:
             "    print(1)\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        _out, _faces = _gen_thir(src)
         _assert_byte_identical(src)
 
     def test_for_each_element_union_match_extracts_by_value(self):
@@ -471,8 +452,7 @@ class TestUnionNarrowBindingVerdict:
             "    print(1)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "auto& __case_0 = std::get<1>(__match_subject_1);" in out
         _assert_byte_identical(src)
 
@@ -488,7 +468,6 @@ class TestUnionNarrowBindingVerdict:
             "    print(1)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "*std::get<" in out
         _assert_byte_identical(src)

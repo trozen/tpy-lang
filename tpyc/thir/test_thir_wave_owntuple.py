@@ -6,6 +6,8 @@ borrow+Own call source (`ref, owned = split(p)`)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _fn, _assert_byte_identical,
     _assert_routes_byte_identical, _lower_ctx_witnessed,
 )
@@ -94,8 +96,8 @@ class TestOwnRecordTuple:
                "    pp = two()\n"
                "    print(pp[0][0].fd)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_mixed_borrow_own_call_source_routes(self):
         # `split(p) -> tuple[Point, Own[Point]]` returns
@@ -156,8 +158,8 @@ class TestOwnRecordTuple:
                + "    ref, owned = h.split()\n"
                + "    print(ref.x, owned.x)\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.ret_type")
 
     def test_mixed_own_union_element_stays_ast(self):
         # An `Own[union]` element needs a value-variant -> ptr-variant bind
@@ -177,8 +179,8 @@ class TestOwnRecordTuple:
                + "    if isinstance(owned, Point):\n"
                + "        print(owned.x)\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.slot_type")
 
     def test_mixed_tuple_name_source_stays_ast(self):
         # A NAME holding the mixed tuple is a STORAGE local, whose holder
@@ -191,8 +193,7 @@ class TestOwnRecordTuple:
                + "    ref, owned = t\n"
                + "    print(ref.x, owned.x)\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.tuple_unpack")
 
     def test_own_tuple_ternary_source_stays_ast(self):
         # A TERNARY source of an Own-element tuple is outside the
@@ -210,5 +211,4 @@ class TestOwnRecordTuple:
                "    a, b = t1 if len('x') == 1 else t2\n"
                "    print(a.val, b.val)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.tuple_unpack")

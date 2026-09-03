@@ -147,9 +147,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, dict(compiler._thir_fallback)
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp
 
 
 class TestPtrElementPassesBare:
@@ -163,8 +162,7 @@ class TestPtrElementPassesBare:
                + "def use(items: list[T]) -> Int32:\n"
                + "    p: Ptr[T] = items[0]\n"
                + "    return take((p, 10))\n")
-        out, fallback = _gen_thir(src)
-        assert not fallback
+        out = _gen_thir(src)
         assert "take(std::tuple<T*, int32_t>{p, 10})" in out
         _assert_byte_identical(src)
 
@@ -172,8 +170,7 @@ class TestPtrElementPassesBare:
         src = (_PTR_T
                + "def use(p: Ptr[T]) -> Int32:\n"
                + "    return take((p, 10))\n")
-        out, fallback = _gen_thir(src)
-        assert not fallback
+        out = _gen_thir(src)
         assert "take(std::tuple<T*, int32_t>{p, 10})" in out
         _assert_byte_identical(src)
 
@@ -183,8 +180,7 @@ class TestPtrElementPassesBare:
         src = (_PTR_T
                + "def use(ps: list[Ptr[T]]) -> Int32:\n"
                + "    return take((ps[0], 10))\n")
-        out, fallback = _gen_thir(src)
-        assert not fallback
+        out = _gen_thir(src)
         assert ("take(std::tuple<T*, int32_t>"
                 "{::tpy::__getitem__(ps, 0), 10})") in out
         _assert_byte_identical(src)
@@ -198,8 +194,7 @@ class TestPtrElementPassesBare:
                + "    return take((p, 10))\n").replace(
                    "from tpy import Int32, Ptr\n",
                    "from tpy import Int32, Ptr, readonly\n")
-        out, fallback = _gen_thir(src)
-        assert not fallback
+        out = _gen_thir(src)
         assert "take(std::tuple<T*, int32_t>{p, 10})" in out
         _assert_byte_identical(src)
 
@@ -210,8 +205,7 @@ class TestPtrElementPassesBare:
                + "def use() -> Int32:\n"
                + "    n = T(5)\n"
                + "    return take((n, 10))\n")
-        out, fallback = _gen_thir(src)
-        assert not fallback
+        out = _gen_thir(src)
         assert "take(std::tuple<T*, int32_t>{&(n), 10})" in out
         _assert_byte_identical(src)
 
@@ -226,8 +220,7 @@ class TestPtrElementPassesBare:
                               "    return t[1]\n")
                + "def use(p: Ptr[T]) -> Int32:\n"
                + "    return take((p, 10))\n")
-        out, fallback = _gen_thir(src)
-        assert not fallback
+        out = _gen_thir(src)
         assert "take(std::tuple<T*, int32_t>{p, 10})" in out
         assert "{&(p), 10}" not in out
         _assert_byte_identical(src)
@@ -243,8 +236,7 @@ class TestPtrElementPassesBare:
                + "    return n.x\n"
                + "def use(p: Ptr[T]) -> Int32:\n"
                + "    return f(p)\n")
-        out, fallback = _gen_thir(src)
-        assert not fallback
+        out = _gen_thir(src)
         assert "return f(p);" in out
         assert "f(&(p))" not in out
         _assert_byte_identical(src)

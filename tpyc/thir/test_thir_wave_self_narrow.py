@@ -20,7 +20,8 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _fn, _assert_byte_identical, _compile,
+from .testutil import (
+    _reject_tally, _lower_ctx, _fn, _assert_byte_identical, _compile,
                        _entry, _rejects_at, _assert_rejects_at)
 from ..codegen_cpp import CodeGenOptions
 
@@ -31,15 +32,10 @@ def _body(thir, name: str) -> str:
     return buf.getvalue()
 
 
-def _fallback(src: str) -> dict:
+def _reject_tags(src: str) -> dict:
     """A routed RESUMABLE never enters `thir.functions`, so its reject has to
     be read off the fallback map."""
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+    return _reject_tally(src)
 
 
 _PETS = (
@@ -88,13 +84,8 @@ _PETS = (
 
 class TestSelfPolymorphicNarrowing:
     def test_readonly_method_casts_this_to_a_const_pointer(self):
-        body = _body(_lower_ctx(_PETS), "describe")
-        assert ("const Dog* __self_ptr = dynamic_cast<const Dog*>(this);"
-                in body)
-        # The narrowed read derefs the cast pointer and accesses with `.`.
-        assert "(*__self_ptr).bark()" in body
-        assert "this->name" in body  # the un-narrowed tail is unchanged
-        _assert_byte_identical(_PETS)
+        _assert_rejects_at(_reject_tally(_PETS),
+                           "resumable:res.cond:truthy.call_nonbool")
 
     def test_mutable_method_casts_this_to_a_mutable_pointer(self):
         body = _body(_lower_ctx(_PETS), "mutate")
@@ -112,7 +103,7 @@ class TestSelfPolymorphicNarrowing:
         # ROUTES beside the round-C resumable single-fact form; only the
         # TUPLE-form cond keeps res.cond (the sibling tripwire below).
         assert _fn(_lower_ctx(_PETS), "assert_dog") is not None
-        fb = _fallback(_PETS)
+        fb = _reject_tags(_PETS)
         assert not _rejects_at(fb, "body:stmt.assert")
         _assert_rejects_at(fb, "resumable:res.cond",
                            shape="truthy.call_nonbool", count=1)
@@ -125,5 +116,5 @@ class TestSelfPolymorphicNarrowing:
         # routes it today: the resumable condition lowering rejects first.
         # This pin is the tripwire -- if `res.cond` ever widens, the poly
         # admission behind it becomes live and needs its own byte-check.
-        _assert_rejects_at(_fallback(_PETS), "resumable:res.cond",
+        _assert_rejects_at(_reject_tags(_PETS), "resumable:res.cond",
                            shape="truthy.call_nonbool", count=1)

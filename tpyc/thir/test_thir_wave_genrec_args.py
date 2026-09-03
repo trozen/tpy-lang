@@ -13,7 +13,9 @@ rows rekeyed on `_wrapper_union_like`.
   `declared[name]` that kept every later use rejecting).
 """
 
-from .testutil import _assert_routes_byte_identical
+from .testutil import (
+    _assert_rejects_at, _assert_routes_byte_identical,
+                      _reject_tally)
 
 _TREE = (
     "from tpy import Int32\n"
@@ -151,8 +153,6 @@ class TestGenrecComparePair:
     def test_nongeneric_wrapper_pair_stays_ast(self):
         # BOUNDARY: the NON-generic wrapper pair has no corpus witness --
         # the arm keys RecursiveAliasInstanceType only.
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = (
             "from tpy import Int32\n"
             "type Json = None | bool | Int32 | str | list[Json]\n"
@@ -162,15 +162,8 @@ class TestGenrecComparePair:
             "    print(a == b)\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestGenrecOwnTupleRows:
@@ -199,8 +192,6 @@ class TestGenrecOwnTupleRows:
     def test_own_tuple_decl_slot_stays_ast(self):
         # BOUNDARY: the Own-genrec-tuple LOCAL decl slot has no bare-copy
         # read arm (the TODO-43 fence) -- keeps rejecting.
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = (
             "from tpy import Int32, Own\n"
             "type Tree[T] = T | list[Tree[T]]\n"
@@ -211,15 +202,8 @@ class TestGenrecOwnTupleRows:
             "    print(1)\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestProtocolMethodGenrecRows:
@@ -264,8 +248,7 @@ class TestProtocolMethodGenrecRows:
         compiler, modules = _compile(self.SRC)
         compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get(
             "method.protocol_genrec_storage_ret")
 
@@ -319,8 +302,6 @@ class TestGenrecDictViewIteration:
     def test_items_unpack_stays_ast(self):
         # BOUNDARY: an items() unpack whose targets are genrec-typed rides
         # the tuple-unpack REF-target branch -- unmirrored, falls back.
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = (
             "from tpy import Int32\n"
             "type DictTree[K, V] = V | dict[K, DictTree[K, V]]\n"
@@ -338,15 +319,8 @@ class TestGenrecDictViewIteration:
             "    print(pairs(t))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:tuple.ref_target")
 
 
 class TestGenrecDictViewBoundaries:
@@ -379,8 +353,6 @@ class TestGenrecDictViewBoundaries:
         # BOUNDARY: `d.values()` over `dict[K, V]` with a PLAIN open V --
         # the genrec elem predicate rejects (elem not a genrec instance),
         # and no other family admits the open pair; the body falls back.
-        from ..codegen_cpp import CodeGenOptions
-        from .testutil import _assert_byte_identical, _compile, _entry
         src = (
             "from tpy import Int32\n"
             "def count_vals[K, V](d: dict[K, V]) -> Int32:\n"
@@ -392,15 +364,8 @@ class TestGenrecDictViewBoundaries:
             "    print(count_vals({\"a\": 1}))\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback), (
-            compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.method_call_shape")
 
 
 class TestGenericOwnListLiteralArg:

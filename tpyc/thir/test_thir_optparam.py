@@ -13,7 +13,9 @@ from .nodes import (
     THIRTruthy, THIROptViewArg, THIROptionalPtrArg, THIRReturn,
     THIRUnaryNot, THIRWhile,
 )
-from .testutil import (_compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _compile, _entry, _fn, _lower_ctx, _lower_ctx_witnessed,
                        _assert_byte_identical, _assert_routes_byte_identical)
 
 _PRELUDE = (
@@ -424,7 +426,7 @@ class TestGateRejects:
             entry, options=CodeGenOptions(emit_source_comments=False))
         thir_out = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
+                emit_source_comments=False))
         assert thir_out == ast_out
 
 
@@ -569,12 +571,11 @@ class TestValueReprOptionalParam:
 
 
 class TestValueReprOptionalParamEmit:
-    def _emit(self, src: str, thir: bool):
+    def _emit(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -600,11 +601,8 @@ class TestValueReprOptionalParamEmit:
         "def main():\n    print(narrowed(3))\nmain()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_renders(self):
-        out = self._emit(self.SRC, thir=True)
+        out = self._emit(self.SRC)
         assert "if ((!p.has_value()))" in out
         assert "return (!p.has_value());" in out
         assert "return (p.has_value());" in out
@@ -986,12 +984,11 @@ class TestValueReprOptionalBytesEmit:
     Optional[bytes] param+return is byte-identical to the AST path, and the
     view->owned shim spells `::tpy::bytes_copy` (not `std::string`)."""
 
-    def _emit(self, src: str, thir: bool):
+    def _emit(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1003,22 +1000,18 @@ class TestValueReprOptionalBytesEmit:
         "def main():\n    print(forward(b\"z\") is None)\nmain()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_renders(self):
-        out = self._emit(self.SRC, thir=True)
+        out = self._emit(self.SRC)
         assert "b ? std::make_optional(::tpy::bytes_copy(*b)) : std::nullopt" in out
         assert "return std::nullopt;" in out
 
 
 class TestValueReprOptionalStrParamEmit:
-    def _emit(self, src: str, thir: bool):
+    def _emit(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1043,11 +1036,8 @@ class TestValueReprOptionalStrParamEmit:
         "def main():\n    print(read_narrow(\"hi\"))\nmain()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_renders(self):
-        out = self._emit(self.SRC, thir=True)
+        out = self._emit(self.SRC)
         assert "return (!s.has_value());" in out           # is_none
         assert "return (s.has_value());" in out            # is_not_none
         assert "if ((!(::tpy::is_truthy(s))))" in out       # not-truthy
@@ -1150,12 +1140,11 @@ class TestValueReprOptionalParamBigIntEmit:
     last-use return / container element moves `std::move((*p))`; a const-ref
     call arg and a plain var-decl copy `(*p)`."""
 
-    def _emit(self, src: str, thir: bool):
+    def _emit(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1177,11 +1166,8 @@ class TestValueReprOptionalParamBigIntEmit:
         "def main():\n    print(ret_move(3))\nmain()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_renders(self):
-        out = self._emit(self.SRC, thir=True)
+        out = self._emit(self.SRC)
         assert "return std::move((*p));" in out            # narrowed return move
         assert "return take((*p));" in out                 # const-ref arg: copy
         assert "{std::move((*p))}" in out                  # container elem move
@@ -1189,12 +1175,11 @@ class TestValueReprOptionalParamBigIntEmit:
 
 
 class TestValueReprOptionalReturnEmit:
-    def _emit(self, src: str, thir: bool):
+    def _emit(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1215,11 +1200,8 @@ class TestValueReprOptionalReturnEmit:
         "def main():\n    print(basic(3))\nmain()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_renders(self):
-        out = self._emit(self.SRC, thir=True)
+        out = self._emit(self.SRC)
         assert "return std::nullopt;" in out
         assert "return (::tpy::add_check<int32_t>((*p), 1));" in out
         assert "return p;" in out                              # bare optional pass
@@ -1227,12 +1209,11 @@ class TestValueReprOptionalReturnEmit:
 
 
 class TestOptionalParamEmit:
-    def _emit(self, src: str, thir: bool):
+    def _emit(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1251,11 +1232,8 @@ class TestOptionalParamEmit:
         + "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_renders(self):
-        out = self._emit(self.SRC, thir=True)
+        out = self._emit(self.SRC)
         assert "return ::tpy::deref_check(p).x;" in out
         assert "if ((p == nullptr))" in out
         assert "return take_rec((*p));" in out
@@ -1280,12 +1258,11 @@ class TestNarrowedOptionalFieldFaces:
         "        self.v = None\n        self.big = None\n"
     )
 
-    def _cpp(self, src: str, thir: bool) -> str:
+    def _cpp(self, src: str) -> str:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_field_none_test_routes_has_value(self):
@@ -1323,8 +1300,7 @@ class TestNarrowedOptionalFieldFaces:
         aug = _fn(thir, "use").body[2]
         assert isinstance(aug.target, THIRFieldAccess)
         assert aug.target.narrowed_deref
-        cpp = self._cpp(src + "def main() -> None:\n    use(C())\nmain()\n",
-                        thir=True)
+        cpp = self._cpp(src + "def main() -> None:\n    use(C())\nmain()\n")
         assert "c.v = 5;" in cpp
         assert "(*c.v) = ::tpy::add_check<int32_t>((*c.v), 2);" in cpp
 
@@ -1363,8 +1339,7 @@ class TestNarrowedOptionalFieldFaces:
                + "def main() -> None:\n"
                + "    print(chain(H()))\n"
                + "main()\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
-        cpp = self._cpp(src, thir=True)
+        cpp = self._cpp(src)
         assert "if ((!h.f.has_value())) {" in cpp
         assert "return (*h.f).x;" in cpp
 
@@ -1457,12 +1432,11 @@ class TestOptionalScalarEq:
 
 
 class TestOptionalScalarEqEmit:
-    def _emit(self, src: str, thir: bool):
+    def _emit(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     SRC = (
@@ -1479,11 +1453,8 @@ class TestOptionalScalarEqEmit:
         "main()\n"
     )
 
-    def test_byte_identical(self):
-        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
-
     def test_renders_bare_mixed_compare(self):
-        out = self._emit(self.SRC, thir=True)
+        out = self._emit(self.SRC)
         assert "return (x == y);" in out
         assert "return (x == 3);" in out
         assert "return (o == 'a');" in out
@@ -1555,19 +1526,15 @@ class TestOptViewArgMethodPositionStaysBare:
         "main()\n"
     )
 
-    def _emit(self, thir: bool) -> str:
+    def _emit(self) -> str:
         compiler, modules = _compile(self.SRC)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
-    def test_byte_identical(self):
-        assert self._emit(thir=True) == self._emit(thir=False)
-
     def test_method_arg_bare_free_arg_split(self):
-        out = self._emit(thir=True)
+        out = self._emit()
         assert "return s.take(b);" in out
         assert ("return free_take(b ? std::make_optional(::tpy::bytes_copy(*b))"
                 " : std::nullopt);" in out)
@@ -1588,12 +1555,11 @@ class TestValueOptOwnedStrFieldWrite:
             "        self.label = None\n"
             "        self.view = None\n")
 
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_str_literal_write_routes(self):
@@ -1606,7 +1572,7 @@ class TestValueOptOwnedStrFieldWrite:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
         assert faces.get("field_write.value_opt_scalar")
-        assert 'h.label = "hello";' in self._cpp(src, thir=True)
+        assert 'h.label = "hello";' in self._cpp(src)
         _assert_byte_identical(src)
 
     def test_str_name_source_still_defers(self):
@@ -1618,9 +1584,8 @@ class TestValueOptOwnedStrFieldWrite:
                + "    h.label = s\n"
                + "    print(h.label is None)\n"
                + "f(\"x\")\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
     def test_view_typed_field_still_defers(self):
         # BOUNDARY: a `StrView | None` field is a different storage spelling
@@ -1631,9 +1596,8 @@ class TestValueOptOwnedStrFieldWrite:
                + "    h.view = \"v\"\n"
                + "    print(h.view is None)\n"
                + "f()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:assign.field_write_shape")
 
 
 class TestValueRecordOptionalBinding:

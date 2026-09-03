@@ -1,5 +1,5 @@
-"""Control-flow graph for resumable-frame lowering (async def today; the
-future generator migration consumes the same module).
+"""Control-flow graph for resumable-frame lowering, shared by async defs
+and generators.
 
 A resumable frame is a state-machine struct whose body method (`__poll__`
 for async, `__next__` for generators) dispatches on a state integer to
@@ -21,13 +21,11 @@ This module owns:
 Emission is in `gen_async.py` (and, later, `gen_generators.py`); the
 CFG itself is shape-neutral.
 
-Generator migration plan: SuspensionPayload is a tagged union with two
-variants -- AwaitPayload (async) and YieldPayload (generator). The
-builder dispatches on the node it encounters: a top-level `await` shape
-produces an AwaitPayload, a `yield` statement produces a YieldPayload,
-and the decomposition predicate (`_stmt_has_any_suspension`) treats both
-uniformly. The generator emitter that consumes YieldPayload is the next
-migration step.
+SuspensionPayload is a tagged union with two variants -- AwaitPayload
+(async) and YieldPayload (generator). The builder dispatches on the node
+it encounters: a top-level `await` shape produces an AwaitPayload, a
+`yield` statement produces a YieldPayload, and the decomposition
+predicate (`_stmt_has_any_suspension`) treats both uniformly.
 """
 from __future__ import annotations
 
@@ -107,8 +105,8 @@ class ResumableFuncState:
     # `std::optional<T>` FRAME FIELD (one per write site), never a case-block
     # local -- the pointer field outlives the case block, so an inline slot
     # dangles at the first suspension. ptr_slot_map keys id(TpyVarDecl/
-    # TpyAssign) -> field name; the emit arms in _gen_pointer_local_rebind
-    # consume it and must find an entry for every slot-needing write (loud
+    # TpyAssign) -> field name; the pointer-local reseat lowering
+    # consumes it and must find an entry for every slot-needing write (loud
     # internal error otherwise -- silence would be the dangle coming back).
     ptr_slots_prescanned: bool = False
     ptr_slot_fields: 'list[tuple[str, str]]' = field(default_factory=list)
@@ -326,7 +324,7 @@ class AwaitKind(Enum):
 class AsyncWithKind(Enum):
     """Which leg of an `async with` a synthetic yield emits.
 
-    M5's CFG synthesizes two Yield BBs per async-with: one for
+    The CFG synthesizes two Yield BBs per async-with: one for
     `await __cm.__aenter__()` and one for `await __cm.__aexit__(...)`.
     Emit dispatches on this enum rather than re-parsing the AST.
     """
@@ -356,7 +354,7 @@ class AwaitPayload:
     # Async-with internal yields: emit takes a special path that
     # synthesizes `(*__with_ctx_<n>).__aenter__()` or
     # `(*__with_ctx_<n>).__aexit__({}, nullptr, {})` directly rather
-    # than going through gen_expr on a synthesized AST. Set by
+    # than rendering a synthesized parse-tree node. Set by
     # `_build_async_with`; None for ordinary user awaits.
     async_with_kind: 'AsyncWithKind | None' = None
     async_with_ctx_n: int | None = None
@@ -384,8 +382,8 @@ class YieldPayload:
     """A generator suspension. Held inside a Yield terminator when the CFG
     is built from a generator body."""
     value_expr: TpyExpr | None    # the yielded expression (None for bare yield)
-    # The source `yield` statement, so emit can reuse the statement
-    # generator's `gen_yield_value` (storage->borrow bridging etc.).
+    # The source `yield` statement, so emit can reuse the ordinary yield
+    # emit (storage->borrow bridging etc.).
     yield_stmt: 'TpyYield | None' = None
 
 
@@ -573,7 +571,7 @@ class MatchDispatch:
     """Terminator for a `match` whose arm bodies contain a suspension (H1).
 
     The suspension-free dispatch (subject eval + every arm test + bindings
-    + guards) is emitted by reusing the ordinary `gen_match`; each arm
+    + guards) is emitted by reusing the ordinary match dispatch; each arm
     *body* is routed back through the resumable walker (it may suspend),
     so arm bodies live in the state machine while the dispatch keeps its
     type-aware switch / if-elif shape. `arm_bbs[i]` is the entry BB of
@@ -700,7 +698,7 @@ class AsyncWithSetup:
 class BB:
     """A basic block.
 
-    `stmts` are leaf statements emitted via the normal StatementGenerator;
+    `stmts` are leaf statements emitted by the ordinary leaf renderer;
     compound statements that *don't* transitively contain a suspension
     stay as single elements here (lazy decomposition). Compound
     statements that *do* contain suspensions are decomposed during CFG
@@ -1795,9 +1793,9 @@ class CFGBuilder:
     def _build_match(self, cur: int, stmt: TpyMatch) -> int | None:
         """Lower a `match` whose arm bodies contain a suspension. The
         dispatch stays a single suspension-free unit (emitted later by
-        reusing `gen_match`); each arm body becomes its own BB chain
-        (recursively built, so nested suspensions decompose), joining at
-        `join_bb`. `match` introduces no region, so arm BBs and join
+        reusing the ordinary match dispatch); each arm body becomes its
+        own BB chain (recursively built, so nested suspensions decompose),
+        joining at `join_bb`. `match` introduces no region, so arm BBs and join
         share `cur`'s region stack -- no finally-chain delta on the
         dispatch->arm or arm->join transitions.
 

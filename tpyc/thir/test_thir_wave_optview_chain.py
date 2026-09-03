@@ -12,6 +12,8 @@ the AST's render is an unmirrored quirk.
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _fn, _lower_ctx,
     _lower_ctx_witnessed,
 )
@@ -148,8 +150,8 @@ class TestViewInnerOptionalLocal:
             "    print(probe(\"hello\"))\n"
             "main()\n"
         )
-        assert _fn(_lower_ctx(src), "probe") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:name.value_opt_view_inner_local")
 
     def test_owned_inner_return_from_a_view_source_takes_the_copy(self):
         # The VIEW-inner slice row must not capture `-> str | None`: at an

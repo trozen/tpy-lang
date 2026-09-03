@@ -23,6 +23,8 @@ Own[P] return (only the call-pair row is admitted), and a STRUCTURAL
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -233,14 +235,7 @@ class TestDynRetBoundaries:
             "    print(pick(True, Dog()).name())\n"
             "main()\n"
         )
-        _assert_byte_identical(src)
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   thir_codegen=True))
-        assert any("expr.ifexpr" in k for k in compiler._thir_fallback), \
-            dict(compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
 
     def test_erased_source_global_write_keeps_rejecting(self):
         # An already-ERASED source at the protocol-global write
@@ -255,7 +250,5 @@ class TestDynRetBoundaries:
             "pet = other\n"
             "print(pet.name())\n"
         )
-        _assert_byte_identical(src)
-        top, wit, fb = _top_level(src)
-        assert top is None
-        assert any("top_level.global_slot_protocol" in k for k in fb), fb
+        _assert_rejects_at(_reject_tally(src),
+                           "top_level:stmt.var_decl:top_level.global_slot_protocol")

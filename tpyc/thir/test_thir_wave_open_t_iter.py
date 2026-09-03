@@ -17,7 +17,8 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import (_lower_ctx, _lower_ctx_witnessed, _fn,
+from .testutil import (
+    _reject_tally, _lower_ctx, _lower_ctx_witnessed, _fn,
                        _assert_byte_identical, _compile, _entry)
 from ..codegen_cpp import CodeGenOptions
 
@@ -28,15 +29,10 @@ def _body(thir, name: str) -> str:
     return buf.getvalue()
 
 
-def _fallback(src: str) -> dict:
+def _reject_tags(src: str) -> dict:
     """A routed RESUMABLE never enters `thir.functions`, so its reject has to
     be read off the fallback map."""
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+    return _reject_tally(src)
 
 
 _ITER = (
@@ -100,7 +96,7 @@ class TestOpenTIterableField:
         # The generator sibling rides since the generic-sgen cell (the
         # bounded-T iterable field's for-head admits like the sync row);
         # byte-identical -- formerly fenced on the generic-record reject.
-        assert _fallback(_SUMMER) == {}
+        assert _reject_tags(_SUMMER) == {}
         _assert_byte_identical(_SUMMER)
 
 

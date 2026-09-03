@@ -8,6 +8,8 @@ nested-tuple-element boundary that must keep rejecting."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _fn,
     _lower_ctx_witnessed,
@@ -54,9 +56,8 @@ class TestValueTupleFieldNativeSlot:
             "def main() -> None:\n"
             "    print(H((5, 'z')).show())\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "show") is not None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "ctor:ctor.mil_field.optional.name")
 
 
 class TestF3TupleFieldNativeSlot:
@@ -124,8 +125,5 @@ class TestTupleFieldNativeBoundaries:
             "def main() -> None:\n"
             "    print(H(((1, 2), 3)).show())\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "show") is None
-        assert not faces.get("arg.native_value_tuple_field")
-        assert not faces.get("arg.borrow_tuple_field")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.native_arg.other")

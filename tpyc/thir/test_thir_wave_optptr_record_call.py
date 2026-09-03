@@ -5,7 +5,8 @@ slot-typed temp and passes its address, so a free call joins the ctor and
 marker-call rvalues already on that face. Corpus witness: tplib.requests'
 `_connect` (`HTTPSConnection(host, hport, timeout, _ssl_context_for(v))`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -26,13 +27,8 @@ _BASE = ("from tpy import Int32, Own\n"
          "    return c.k if c is not None else 0\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestRecordCallAtOptionalPtrSlot:
@@ -94,9 +90,8 @@ class TestRecordCallAtOptionalPtrSlotBoundary:
                + "def main() -> None:\n"
                + "    print(use())\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.arg_shape.optional")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.optional")
 
     def test_subclass_returning_call_keeps_rejecting(self):
         # The temp's CLASS is re-derived from the arg type by the AST when
@@ -119,9 +114,8 @@ class TestRecordCallAtOptionalPtrSlotBoundary:
                + "def main() -> None:\n"
                + "    print(use(2))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.arg_shape.optional")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.optional")
 
     def test_match_guard_position_keeps_rejecting(self):
         # A guard admits calls but is never a flush point, so the temp has
@@ -136,6 +130,5 @@ class TestRecordCallAtOptionalPtrSlotBoundary:
                + "def main() -> None:\n"
                + "    print(use(2))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.call",
-                           "call.arg_shape.optional")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.optional")

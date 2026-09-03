@@ -25,6 +25,10 @@ gitignored `__tpyc__/` build output stay at the case root:
   normalized to basenames, as in the main harness). `# tpyc:` inline
   annotations on `src/*.py` are validated against the diagnostics. This
   alone catches any glue/marshaller codegen or diagnostics drift in CI.
+  THIR is the only author of the module half, so the committed snapshot is
+  the whole check on it -- there is no second emitter to diff it against.
+  A body THIR cannot lower is a `ThirRejectError` and lands in `diag.txt`
+  like any other compile error.
 - **ext-exec** (cached, like the exec phase; **Linux and macOS**): `tpyc`'s
   first-class `.so` build mode (`-b` on an `# tpy: ext_module` -> `-fPIC`,
   no `main`, facade only -- never links libpython) produces an importable
@@ -35,21 +39,6 @@ gitignored `__tpyc__/` build output stay at the case root:
   `-bundle -undefined dynamic_lookup`. Windows is the remaining gap, so the
   phase still skips there; the snapshot, cpy-parity, and facade self-check
   run everywhere.
-- **THIR overlay** (always, when THIR is on): the case's module is re-emitted
-  through THIR and byte-diffed against the AST oracle, and an unmarked case
-  must route every user body (the ratchet) -- the same contract the main
-  harness enforces, with `no_thir.txt` at the case root exempting a case from
-  the ratchet only, never from the diff. `--thir-classify` /
-  `--thir-check-flip` maintain these markers here too. Interop cases are
-  tallied on their own `tpy| interop thir:` line and deliberately kept out of
-  the migration dial, which is keyed to `tests/cases`.
-
-  The overlay emits *both* sides itself instead of diffing THIR against
-  `expected/`: the snapshot above comes from the real `tpyc` CLI at the
-  default `emit_source_comments=False`, so a THIR-vs-snapshot diff cannot see
-  a source-comment divergence at all. Emitting both sides with comments on
-  restores that sensitivity. The glue `_ext.cpp` is diffed too -- it has no
-  THIR path today, so the diff pins that it stays THIR-insensitive.
 - **cpy-parity** (always, cheap): the *same* `driver.py` over the TPy source
   (via the `lib/cpy` stubs) must reproduce the ext-exec output snapshot.
 - **ext_checks.py** (ext-only, if present): runs against the built `.so`.

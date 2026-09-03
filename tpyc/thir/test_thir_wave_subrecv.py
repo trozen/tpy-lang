@@ -6,6 +6,8 @@ unproven-index and write boundaries."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _fn,
     _lower_ctx,
@@ -86,5 +88,5 @@ class TestOwnContainerReceiver:
             "    items[0] = 9\n"
             "    return items[0]\n"
         )
-        assert _fn(_lower_ctx(src), "bump") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.family")

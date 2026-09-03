@@ -14,8 +14,8 @@ import pytest
 from ..codegen_cpp.context import CodeGenOptions
 from ..typesys import INT32
 from .nodes import (
-    Form, THIRCoerce, THIRExprStmt, THIRFormConvert, THIRLiteral,
-    THIRResumableBody, THIRSimpleGenBody,
+    Form, THIRArgTemp, THIRCoerce, THIRExprStmt, THIRFormConvert, THIRLiteral,
+    THIRRaise, THIRResumableBody, THIRSimpleGenBody, THIRUnionArgLift,
 )
 from . import validate as _validate
 from .lower import resumable as _lower_resumable_mod
@@ -51,7 +51,7 @@ def _emit_thir(src: str) -> None:
     compiler, modules = _compile(src)
     compiler.generate_code_to_strings(
         _entry(modules),
-        options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
+        options=CodeGenOptions(emit_source_comments=True))
 
 
 def _form_lie() -> THIRCoerce:
@@ -181,3 +181,70 @@ class TestNarrowedRules:
                          form=Form.VALUE)
         with pytest.raises(THIRValidationError, match="coerce form"):
             validate_resumable_body("f", self._in_return(bad))
+
+
+class TestArgListFlushRight:
+    """The one arg-list walk carries a per-position flush right. The raise arm
+    grants it (its ctor arg temps, union lift included, hoist before the throw
+    line); sharing the walk must not have loosened what a NON-flush position
+    rejects."""
+
+    @staticmethod
+    def _lift(value=None, temp=True):
+        return THIRUnionArgLift(
+            result_type=INT32, variant_cpp="std::variant<int32_t*>",
+            value=value if value is not None
+            else THIRLiteral(result_type=INT32, value=1),
+            temp_cpp="std::variant<int32_t*>" if temp else None)
+
+    def test_temp_bearing_lift_at_a_cond_seam_raises(self):
+        # A resumable CONDITION has no flush point in the skeleton.
+        body = THIRResumableBody(
+            leaves={}, conds={1: self._lift()}, await_args={},
+            return_values={})
+        with pytest.raises(THIRValidationError,
+                           match="THIRUnionArgLift outside a call arg"):
+            validate_resumable_body("f", body)
+
+    def test_nested_temp_under_a_lift_raises_even_where_temps_flush(self):
+        # A temp is admitted only as a DIRECT arg: nesting one inside a lift's
+        # value is rejected in an arg list that DOES grant the flush right,
+        # so the raise arm's widened right cannot reach it either.
+        nested = THIRArgTemp(result_type=INT32,
+                             init=THIRLiteral(result_type=INT32, value=1),
+                             cpp_type="int32_t")
+        body = THIRResumableBody(
+            leaves={}, conds={}, return_values={},
+            await_args={1: (self._lift(value=nested),)})
+        with pytest.raises(THIRValidationError,
+                           match="THIRArgTemp outside a call arg"):
+            validate_resumable_body("f", body)
+
+    def test_raise_args_grant_the_flush_right(self):
+        # A raise's ctor args ARE a flush position: its temps hoist before the
+        # throw line, so a temp-bearing lift is admitted there and the same
+        # node at a cond seam, which has no flush point, is not.
+        body = THIRResumableBody(
+            leaves={1: THIRRaise(cpp_type="::tpy::ValueError",
+                                 args=(self._lift(),))},
+            conds={}, await_args={}, return_values={})
+        validate_resumable_body("f", body)
+
+    def test_raise_args_still_reject_a_nested_temp(self):
+        nested = THIRArgTemp(result_type=INT32,
+                             init=THIRLiteral(result_type=INT32, value=1),
+                             cpp_type="int32_t")
+        body = THIRResumableBody(
+            leaves={1: THIRRaise(cpp_type="::tpy::ValueError",
+                                 args=(self._lift(value=nested),))},
+            conds={}, await_args={}, return_values={})
+        with pytest.raises(THIRValidationError,
+                           match="THIRArgTemp outside a call arg"):
+            validate_resumable_body("f", body)
+
+    def test_plain_temp_bearing_lift_in_an_arg_list_passes(self):
+        # The emplace arg list IS a flush position, like a call's or a raise's.
+        body = THIRResumableBody(
+            leaves={}, conds={}, return_values={},
+            await_args={1: (self._lift(),)})
+        validate_resumable_body("f", body)

@@ -1,11 +1,10 @@
-"""Per-face witness tally; reported by the --thir-codegen zero-witness summary.
+"""Per-face witness tally; reported by the zero-witness summary at run end.
 
-The corpus byte-diff proves routed bodies emit byte-identical C++, but says
-nothing about a face (a lowering classifier / render) that NO corpus case
+The committed snapshots pin the C++ each corpus case emits, but say nothing
+about a face (a lowering classifier / render) that NO corpus case
 reaches -- a latent bug there stays invisible until its first witness
 arrives. The test harness folds these counts across cases and xdist workers
-(like the routed-body tally) and reports registered faces with zero
-witnesses over the whole corpus run.
+and reports registered faces with zero witnesses over the whole corpus run.
 
 Witness semantics differ by face kind (encoded in the registry comment):
 lowering faces record at THIR-node construction (the render actually
@@ -19,18 +18,14 @@ registry witnesses at a GATE, so "witnessed" there means a row was ADMITTED,
 not that its render ran. Read the registry comment before treating a witness
 count as render coverage.
 
-CENSUS SCOPE, and it inflates the zero-witness list: the harness folds
-witnesses only from the per-case USER-module overlay. The stdlib sweeps --
-conftest's wide stdlib oracle (which runs deliberately AFTER every
-`record_thir_*` call, so stdlib bodies stay out of the dial and the ratchet)
-and `tests/test_thir_stdlib_gate.py` -- reach many more faces and fold none of
-them in. A sizeable share of the reported zero-witness faces are in fact
-exercised by the stdlib. Check there before writing a unit for one.
+CENSUS SCOPE: the harness folds witnesses from every module a case compiles,
+its libraries included, so a face only the stdlib reaches still counts. What
+it cannot see is a face no case in the corpus reaches at all.
 
 Every kind is journalled per lowering attempt and ROLLED BACK when the body
-falls back (`rollback_witnesses`, driven from fallback.py's attempt
-boundaries): a fallback emits its whole tree through the AST path, so an arm
-it merely reached covers nothing. Without that, an arm witnessing before it
+does not lower (`rollback_witnesses`, driven from reject.py's attempt
+boundaries): a rejected body emits nothing, so an arm it merely reached
+covers nothing. Without that, an arm witnessing before it
 can raise reads as covered when it never lowered -- which is how a dead arm
 passed this very check.
 
@@ -38,19 +33,18 @@ RESIDUE, measured and real: `lower_module` -- the whole-module entry only the
 lowering UNIT TESTS drive (`testutil._lower_ctx*`) -- opens no attempt window,
 so witnesses recorded under it are never journalled and never rolled back
 (~694 escape per suite run). The whole-corpus census is unaffected: it folds
-only the compiler-driven path, which IS bracketed at every fallback seam. What
-this weakens is the unit-level routing pin: a face read out of
-`_lower_ctx_witnessed` counts even when the body that reached it then raised
-and fell back, so witness-count assertions there are not by themselves a
-routing claim -- pair them with `_assert_no_fallback`. Give `lower_module` a
+only the compiler-driven path, which IS bracketed at every attempt seam. What
+this weakens is the unit-level emit pin: a face read out of
+`_lower_ctx_witnessed` counts even when the body that reached it then raised,
+so witness-count assertions there are not by themselves proof the body
+emitted -- pair them with `_assert_byte_identical`. Give `lower_module` a
 seam and the gap closes.
 
 The registry is immutable metadata (module-level by design); the mutable
 counts live on the active Compiler (`_thir_face_witnesses`), so the helper
 is a no-op outside a compilation. Recording is NOT flag-gated: it happens
-wherever lowering runs, which is every case of every run with
-THIR on. Only the zero-witness REPORT is behind the marker-ignoring metrics
-flags -- it is a whole-corpus question, so a `-k`-filtered run would name
+wherever lowering runs, which is every case of every run. The zero-witness
+REPORT is a whole-corpus question, so a `-k`-filtered run names
 faces no selected case could reach.
 """
 
@@ -67,7 +61,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # route admission
     "foreach.ifexpr_iterable_lower",  # ... and its dedicated lowering leg
     "argtemp.list_repeat",          # list-repeat rvalue into a container
-                                    # ref slot: the AST is_temporary hoist
+                                    # ref slot: the is_temporary hoist
     "argtemp.list_repeat_proto",    # ADMISSION of a list-repeat rvalue at
                                     # a STATIC structural-protocol slot;
                                     # the shared structural temp renders it
@@ -75,7 +69,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # operand: the eager statement hoist
     "argtemp.cond_defer_audited",   # audited deferring temp in a
                                     # conditional operand: the emit's
-                                    # region defers it like the AST
+                                    # region defers it
     "argtemp.value_union_method",   # method-call value-union member temp
     "argtemp.recursive_union_literal",  # list/dict literal into a recursive-
                                     # union wrapper slot (json.dumps([...]))
@@ -230,7 +224,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # walrus (std::get<N>((t = ..))->f)
     "binop.value_select",           # value-position and/or: the once-
                                     # evaluated-LHS ternary
-                                    # (_gen_logical_value's value slice)
     "binop.container_select",       # container and/or over lvalue
                                     # operands: the __len__-truthy
                                     # ternary aliasing the chosen side
@@ -284,7 +277,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ::tpy::make_adapter<Base>(x)
     "argtemp.covariant",            # covariant-upcast typed temp:
                                     # `Box<Shape> __tmp_N = std::move(bc);`
-    # `*args` call-site pack faces (THIRVarargPack lowering / _gen_vararg_pack).
+    # `*args` call-site pack faces (THIRVarargPack lowering).
     "vararg.empty",                 # `::tpy::varargs<E>()`
     "vararg.pack_value",            # value-element std::array<E, N> temp
     "vararg.pack_ref",              # ref-element std::array<E*, N> temp
@@ -311,6 +304,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "optptr.call_pass",             # borrow-returning call passes bare
     "argtemp.protocol_union_literal",  # container literal at a nullable
                                     # protocol ctor slot: typed temp + addr
+    "argtemp.protocol_union_iter",  # dict-view / gen-factory rvalue at the
+                                    # same slot: the same typed temp + addr
     # Value-repr Optional slot None arg (lowering): the value-optional twin
     # of `optptr.none` -- `f(std::nullopt)`.
     "call.none_value_opt",
@@ -569,6 +564,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.user_deref_stub",       # container MEMBER stub through the Deref chain (push_back)
     "method.ptr_template",          # explicit `@cpp_template` Ptr method
                                     # (`p.__deref__()` -> `::tpy::deref_check(p)`)
+    # The same template expansion on a plain user-record receiver: an
+    # explicitly spelled dunder (`self.__eq__(other)` -> `((*this)) == (other)`)
+    # rendered through the operator template sema stamps on every user dunder.
+    "method.record_template",
     # Container-field method receiver (`self.buf.append(x)` -> the container arm
     # over a bare `this->buf` THIRFieldAccess receiver, same emit as a bare-name
     # container receiver).
@@ -603,7 +602,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.recv.container_method",
     # Value-record field method receiver (`self.field.m()` -> the user-record
     # arm over a bare `this->field` / `p->field` THIRFieldAccess receiver). The
-    # field's record spells byte-identically (`_f1_record`: same-module,
+    # field's record spells the same way (`_f1_record`: same-module,
     # cross-module, @native, and concrete-arg generic records all qualify), so
     # native / generic field receivers ride the same face as a plain one.
     "method.recv.record_field",
@@ -715,6 +714,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # container-param copy / Own-param move name row).
     "mil.container_literal",        # `self.xs = [1, 2]` -> `xs({1, 2})`
     "mil.container_name",           # `self.xs = p` -> `xs(p)` / `xs(std::move(p))`
+    "mil.container_repeat",         # `self.xs = [e] * n` -> the threaded
+                                    # from_range(repeat_range(..)) prvalue
     "with.str_target",              # str/StrView __enter__ as-target
     # Container subscript writes (lowering; THIRSetItem's emit arms plus
     # the owned-str element sink copy and the aug-assign desugar).
@@ -722,7 +723,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # list_set_slice / list_set_stepped_slice
     "aug.inplace_dunder",           # resolved inplace method (`b += 10` on
                                     # Atomic -> `b.__iadd__(10);`, `s |= {3}`
-                                    # -> set_update) via gen_call_from_fi
+                                    # -> set_update)
     "aug.record_binop",             # `a += b` on a record with no __iadd__:
                                     # the synthetic `a = (a) + (b);` off the
                                     # Own-returning __add__ fallback
@@ -735,6 +736,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.field_recv",           # write/aug receiver is a field access
     "setitem.user_record",          # `recv[k] = v` on a user record with
                                     # __setitem__ -> ::tpy::__setitem__(recv,k,v)
+    "setitem.record_move",          # record element slot: the last use of an
+                                    # owned local moves in (std::move(z))
     "setitem.container_value",      # nested-container element: literal value,
                                     # type-prefixed on the checked path
     "setitem.btuple_call",          # ptr-Optional-tuple value slot: a
@@ -763,6 +766,19 @@ THIR_FACES: frozenset[str] = frozenset({
     # Container-literal FIELD write: the decl-init literal render assigned
     # into the field lvalue (`this->xs = {n};` / the ordered_map ctor form).
     "field_write.container_lit",
+    # `recv.field = [e] * n` at a container field: the repeat's from_range
+    # build, target-typed by the FIELD slot, assigned bare.
+    "field_write.container_repeat",
+    # `recv.field = data.splitlines()` -- a container-returning method-call
+    # RVALUE assigned bare (no move verdict: a prvalue is not a movable name).
+    "field_write.container_method_call",
+    # ... and its FREE-call sibling (`self.data = make_list(n)`), an
+    # `Own[container]` return assigned through the identical bare row.
+    "field_write.container_free_call",
+    # A BORROW-returning call at a container field: the `C&` copy-assigns
+    # bare (sema warns the copy), the container sibling of
+    # `field_write.borrow_call_copy`.
+    "field_write.container_borrow_call",
     # The same literal into a STORAGE-form `Optional[container]` field
     # (`this->items = std::vector<T>{10, 20};`) -- lowered against the
     # Optional's INNER, the list brace self-describing for the optional ctor.
@@ -991,8 +1007,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the record field directly (Rc.new)
     "mil.own_param_copy",           # Own record param at a NON-last use: the
                                     # warned bare `field(param)` copy
-    # An own-field init the AST demotes to the ctor body (bare non-param name /
-    # nested-def name / body-local ref) -- THIR demotes identically instead of
+    # An own-field init demoted from the MIL to the ctor body (bare non-param
+    # name / nested-def name / body-local ref) -- demoted rather than
     # rejecting the whole ctor (lowering verdict; the body machinery renders it).
     "mil.demote_mirror",
     # Container/str subscript read off a FIELD-ACCESS receiver (lowering;
@@ -1037,6 +1053,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "field.property_call_recv",
     # ...DISCARDED in statement position (`timedelta(seconds=1) / 0;` --
     # evaluated for its raise; statement lowering).
+    "expr_stmt.name",               # a bare NAME statement (`x`) -> `x;`
     "expr_stmt.record_binop",
     # Owned-BYTES element read off a list[bytes]/dict-value container
     # (lowering; STORAGE form -- owned sinks copy implicitly, view bindings
@@ -1054,12 +1071,12 @@ THIR_FACES: frozenset[str] = frozenset({
     "subscript.container_slice",
     # A user record's own slice `__getitem__` overload rendered as the plain
     # member call over the BasicSlice initializer
-    # (`a.__getitem__(::tpy::BasicSlice{1, 4})` -- gen_call_from_fi's tail).
+    # (`a.__getitem__(::tpy::BasicSlice{1, 4})`).
     "subscript.record_slice_method",
     # A generator-method ctor-rvalue receiver lifted into a named local
     # (`Counter __tmp_N = Counter(..);` + `__tmp_N.each()`) -- the frame
     # captures the receiver by reference, so the temporary must outlive the
-    # call (_gen_method_call's is_temporary lift).
+    # call (the is_temporary lift at a method receiver).
     "method.gen_recv_temp",
     # A plain @native member (renamed method / property getter) on a
     # Ptr[record] receiver, deref-check face only
@@ -1078,7 +1095,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "len.field_recv",
     # A NESTED-CONTAINER element read in a value position (`groups["a"]` off
     # `dict[str, list[Int32]]`): the checked dunder's element lvalue, which
-    # lands bare in every value sink because the AST's single element emitter
+    # lands bare in every value sink because the single element emitter
     # is consumer-blind. Replaced the per-sink `subscript_prechecked` bypasses
     # at len/print, so the gate's receiver checks now apply there too.
     "subscript.container_elem",
@@ -1129,13 +1146,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "foreach.consuming_iter",
     # List-literal for-each iterable (lowering; `for c in [a, b, c]:` -- the
     # owning `auto __obj_N = {a, b, c};` initializer-list capture, elements
-    # rendered target-less like the AST's untargeted gen_expr_deref).
+    # rendered target-less).
     "foreach.iter_literal",
     # Str-literal for-each iterable (lowering; `for ch in "abc":` -- the
     # owning `auto __obj_N = std::string_view("abc");` capture, Char elems).
     "foreach.str_literal",
     # Branch-first-declared value locals used after the loop -> `{cpp} {name};`
-    # predecls before the loop (lowering; mirrors _emit_branch_decls, shared with
+    # predecls before the loop (lowering; the branch-decl predecls, shared with
     # the if/try/with hoist family). Includes the loop var when hoisted.
     "foreach.hoist_decl",
     # Loop else blocks (lowering; the bare `{...}` past the loop's close
@@ -1152,8 +1169,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # with a container-literal init/reseat -- `std::vector<T>* xs = &__slot_1;
     # ... xs = &*(__slot_2 = {...});`).
     "decl.container_rebind_slot",
-    # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the AST's
-    # gen_index_expr / _gen_slice_bound / aug-assign / enum-from_value wraps).
+    # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the
+    # subscript-index / slice-bound / aug-assign / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
     "narrow.slice_bound",           # same wrap on a str/bytes slice bound
     "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
@@ -1386,7 +1403,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.tuple_storage",   # `[(a, P(1)), ...]` -> tuple_to_storage<S>(S{...})
     # The REF-element sibling: the inner is the BORROW tuple
     # (`std::tuple<T*, ..>{&(a), nullptr}`) under the same convert --
-    # _gen_tuple_literal's has_ref_elements path.
+    # the tuple literal's has_ref_elements path.
     "containerlit.tuple_borrow_storage",
     "containerlit.make",            # make_vector / make_ordered_map / _set
     "containerlit.move",            # `std::move(name)` element at last use
@@ -1449,7 +1466,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # A str-family FIELD read under a view-TARGET coerce (`return self.s` at a
     # StrView slot): the coerce renders its inner bare, so the member read is
     # the emitted form. Declared-type keyed -- a narrowed `str | None` field
-    # stays unrouted (its AST render is broken, see BUGS.md).
+    # is excluded (its render is broken, see BUGS.md).
     "coerce.str_field_view",
     # An open-T result at a marker/qualcall slot (`val_or_cref_t<T>`): the
     # form-neutral slot renders the bare call.
@@ -1625,10 +1642,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # form): the local owns its elements, a ref-element type spells `auto`.
     "decl.storage_record_tuple",
     # A @dynamic protocol local (`p: P = Concrete()`): concrete/adapter slot +
-    # protocol Base* pointer (the AST's _gen_dynamic_protocol_init).
+    # protocol Base* pointer.
     "decl.dyn_protocol",
     # A @dynamic protocol local RESEAT (`p = Other()`): a fresh hoisted
-    # `std::optional<slot>` + emplace + `p = &*slot` (_gen_dynamic_protocol_rebind).
+    # `std::optional<slot>` + emplace + `p = &*slot`.
     "reseat.dyn_protocol",
     # An already-erased @dynamic assign (`p2: P = p1` / `p2 = p1`): alias the
     # same object, `Base* p2 = &(*p1);` / `p2 = &(*p1);` (no slot).
@@ -1652,7 +1669,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "btuple.value_arg",             # value-tuple literal call arg
     "btuple.proto_borrow",          # native-protocol slot tuple literal whose
                                     # non-value elements are simple lvalues:
-                                    # the AST's per-element `T*` ref capture
+                                    # the per-element `T*` ref capture
     "btuple.decl",                  # sync borrow-tuple local decl (`auto t = ...`)
     "decl.bytearray_alias",         # `std::vector<uint8_t>& y = <name|field>`
     "decl.btuple_alias",            # borrow-tuple local re-aliased from a name
@@ -1846,6 +1863,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # A same-repr pointer-Optional name-copy decl (`const Point* q = a;`).
     "decl.storage_opt_name_lift",   # `first = it` off a storage-opt loop
                                     # var: the optional_to_ptr lift
+    "decl.opt_name_addr",           # plain record lvalue into a ptr-repr
+                                    # Optional slot -> the address-of lift
     "decl.opt_name_copy",
     # Native record-returning free-call local decl (`f = open(path)` ->
     # `::tpy::TextFile f = ::tpy::builtin_open(path);`) -- a plain-value decl,
@@ -1888,7 +1907,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy(span)` of a Span NAME -> `std::span<T>(span)` (a view copy).
     "call.copy_span",
     # `copy(acc)` of a POINTER-LOCAL record source -> `Tag((*acc))` (the
-    # general tail over gen_expr_deref's indirect read).
+    # general tail over the indirect read).
     "call.copy_record_ptr",
     # `copy(s)` of a str NAME -> `std::string(s)` (the explicit owned copy).
     "call.copy_str",
@@ -1899,19 +1918,19 @@ THIR_FACES: frozenset[str] = frozenset({
     # the storage brace `std::tuple<int32_t, Box>{1, b}` (per-element copy).
     "call.copy_tuple_storage",
     # A REAL scalar-cast coerce over a local name at an Own[scalar] slot
-    # binds the cast rvalue bare (the AST's needs_copy=False flip); the
+    # binds the cast rvalue bare (no copy at the slot); the
     # generic coerce-template render is the whole emit.
     "call.own_coerce_cast",
     # A ptr-variant-BOUND union name at a value-variant Own[union] slot
     # copies the active member out (`to_value_variant<...>(p)`) -- the
-    # AST Own-cascade's union lift, keyed on the binding set.
+    # Own-cascade's union lift, keyed on the binding set.
     "arg.union_value_lift",
     # Ptr[T] value-slot admission (bare passes / field reads share the
     # scalar renders, so the predicate is the only distinguishing site).
     "ptr.value_slot",
     # The @dynamic-protocol pointee arm of the same predicate (the
-    # pointee spelling is the shared PtrType.to_cpp on both paths, so
-    # admission distinguishes it from the record/scalar pointees).
+    # pointee spelling is the shared PtrType.to_cpp, so admission is the
+    # only site distinguishing it from the record/scalar pointees).
     "ptr.dyn_proto_pointee",
     # `x = None` at a Ptr[T] value binding (lowering; the `nullptr` render).
     "decl.ptr_none",
@@ -2011,7 +2030,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # bare-name render shared with locals, so the seed is what distinguishes).
     "name.global_seeded",
     # A same-module function used as a value (`apply(double, ...)`): the bare
-    # escaped-name render on THIRName.cpp (_function_ref_name's plain arm).
+    # escaped-name render on THIRName.cpp (the plain function-ref render).
     "name.func_ref",
     # A nested def's closure local read as a value (`push_back(add_offset)`):
     # the bare local name the nested def bound, not the module spelling.
@@ -2021,7 +2040,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "name.global_native",
     # A read of a read-only-seeded IMPORTED value global (lowering; the
     # pre-rendered `::tpyapp::mod::g` / native_cpp_name spelling on
-    # THIRName.cpp -- imported_variable_cpp, shared with the AST render).
+    # THIRName.cpp -- imported_variable_cpp).
     "name.global_imported",
     # A read of a read-only-seeded POINTER-SLOT global (non-value record/
     # container `T* g{};` -- rides the pointer-local arms via lc.pointers:
@@ -2033,7 +2052,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # fixed-int emit).
     "range.bigint_counter",
     # 3-arg stepped range loop, by step arm (lowering admission; each arm's emit
-    # is a distinct overflow / direction shape mirroring _gen_range_counter_loop).
+    # is a distinct overflow / direction shape).
     "range.step_plus_one",          # literal +1 step -> the ascending ++ loop
     "range.step_unit_neg",          # literal -1 step -> the descending -- loop
     "range.step_literal_pos",       # non-unit positive literal step
@@ -2294,10 +2313,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.membership",
     # user-record membership (`needle in jar` over a record whose
     # `__contains__` is a plain user method) -> the member call
-    # `(recv.__contains__(needle))`, gen_call_from_fi's member tail.
+    # `(recv.__contains__(needle))`, the member-call tail.
     "binop.user_membership",
     # native-set membership with no resolved __contains__ member (a
-    # `readonly[set]`) -> the AST's `is_native_in` fallback
+    # `readonly[set]`) -> the `is_native_in` fallback
     # `[!]std::ranges::contains(s, x)`.
     "binop.set_ranges_membership",
     # bytes/BytesView membership (`needle in b` -> the native free-function
@@ -2326,16 +2345,16 @@ THIR_FACES: frozenset[str] = frozenset({
     # target-typed to its inner (lowering).
     "binop.opt_scalar_eq",
     # A chained comparison with a non-simple intermediate (`a < f() < b`) ->
-    # the GCC stmt-expr single-eval form (_gen_chained_compare_lambda).
+    # the GCC stmt-expr single-eval form.
     "chained_compare.stmt_expr",
     # Method call on a bare protocol receiver: `p.m(args)`,
     # monomorphized for a structural protocol, a vtable call for a @dynamic
     # one -- one render either way. Args take the FREE-call literal rules
-    # (`_gen_method_call`'s `_args()` fallback loop, not the user-record loop).
+    # (the generic `_args()` fallback loop, not the user-record loop).
     "method.protocol",
     # A zero-arg @cpp_template dunder stub on a protocol value
     # (`it.__next__()` on `Iterator[T]`): the shared template expansion
-    # over the same receiver render on both paths.
+    # over the same receiver render.
     "method.protocol_template",
     # A pointer-repr Optional slot arg on the protocol ladder (`s.total(d)` at
     # a `dict | None` param -> `&(d)`) -- the record ladder's row.
@@ -2345,11 +2364,15 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.protocol_ptr_ret",
     # An ENUM arg into a ptr / @native-record template slot
     # (`_raw.compare_exchange(.., MemoryOrder.SEQ_CST)`): one enum_cpp_name
-    # spelling on both paths, so it interpolates bare like a scalar.
+    # spelling, so it interpolates bare like a scalar.
     "method.ptr_template_enum_arg",
     # ... and its OPEN type-param sibling: a bare `T` arg takes no
     # borrow/storage lift, so the slot renders the name.
     "method.ptr_template_tparam_arg",
+    # ... and a str-family NAME arg: the binding renders as the bare name
+    # (a str LITERAL stays out -- the param_view_t question).
+    "method.ptr_template_record_arg",
+    "method.ptr_template_str_name_arg",
     # An open-T tuple RESULT of the same family (`tuple[bool, T]` off the
     # @native CAS): borrow and storage coincide, the plain spelled copy.
     "method.ptr_template_open_t_tuple_ret",
@@ -2384,13 +2407,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "stmt.trivia",
     "stmt.super_del",               # `super().__del__()` in a destructor ->
                                     # elided (base dtor runs automatically)
-    # THIRNestedDef (lowering): a nested `def` -> the AST's lambda emit,
+    # THIRNestedDef (lowering): a nested `def` -> a lambda emit,
     # capture list spelled from sema's node facts.
     "stmt.nested_def",
     # (emit) A nested def whose own body produced hoist lines: they drain at
     # the lambda's prologue, not the enclosing body's.
     "stmt.nested_def_hoist",
-    # THIRLambda (lowering): a `lambda` expr -> _gen_lambda's C++ closure;
+    # THIRLambda (lowering): a `lambda` expr -> a C++ closure;
     # by-ref capture, non-void or void body.
     "expr.lambda",
     # A pointer-repr tuple lambda return spells the borrow form
@@ -2462,11 +2485,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # ::tpy::unwrap_ref(std::get<i>(__tup_N));` -- a reference alias.
     "stmt.tuple_unpack.unwrap_ref_target",
     # A reused plain scalar/str target (lowering): `a = std::get<i>(__tup_N);`
-    # -- the AST's declared-name assign tail, no decl.
+    # -- the declared-name assign tail, no decl.
     "stmt.tuple_unpack.assign_target",
     # An Own[F1-record] element landing in a module-level POINTER-SLOT global:
     # `static T __global_slot_N = std::move(std::get<i>(__tup_N));` +
-    # `g = &__global_slot_N;` (the AST's pointer_locals reassign tail).
+    # `g = &__global_slot_N;` (the pointer-local reassign tail).
     "stmt.tuple_unpack.global_slot_target",
     # THIRComprehension (lowering, the C1+C2 slice).
     "comp.list",                    # list comp -> vector stmt-expr
@@ -2535,7 +2558,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # protocol slot: the bare member read
     "arg.native_protocol_field",    # bare optional/record field read at a
                                     # native protocol slot (repr_of(this->f))
-    "arg.type_ctor_protocol_field",  # the same bare member read on the
+    "arg.type_ctor_protocol_field",
+    # An INT-kind type-param arg at a scalar type-ctor slot (`Int32(N)` under
+    # `[N: int]`): the non-type template parameter passes bare.
+    "arg.type_ctor_int_tparam",  # the same bare member read on the
                                     # TYPE-CTOR arg loop (str(p.name))
     "arg.native_value_tuple_field",  # value-tuple field passed whole at a
                                     # native tuple slot (tuple_to_str(f))
@@ -2616,7 +2642,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                   # iterable: the (*d) capture into the
                                   # universal key loop
     "foreach.narrowed_opt_listset",  # the list/set families of the same
-                                     # capture (the AST loop is
+                                     # capture (the loop render is
                                      # family-blind)
     # Proven-narrowed ptr-opt container NAME under a dict-view call
     # (`for v in items.values():` at `dict | None`): the bare `(*items)`
@@ -2871,7 +2897,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.loop_slot_bind",           # frame_slot loop var admitted ((*x) reads)
     "binop.poly_inline_narrow",     # inline poly-isinstance under && (spelled static_cast RHS)
     "truthy.optional_field_whole",  # truthy Optional field condition (is_truthy over raw storage)
-    "mil.demote_probe",             # dynamic MIL demote (AST-probe-temp class, whitelisted)
+    "mil.demote_probe",             # dynamic MIL demote (the probe registers a temp)
     "res.return_opt_record_none",   # storage Optional[record] async return of None (nullopt)
     "res.return_ptr_opt_field",     # ptr-repr Optional field lift at the BORROW async return
     "res.poly_cond",                # poly isinstance Branch cond (no-alias dynamic_cast check)
@@ -2930,10 +2956,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "sgen.iterable",                # for-branch iterable render
     "sgen.range_arg",               # for-range bound renders
     # The universal __iter__/__next__ protocol foreach (generator-call /
-    # iterator-returning-call / user-iterator-name iterables --
-    # _gen_direct_next_loop_with_iter).
+    # iterator-returning-call / user-iterator-name iterables -- the
+    # direct-next loop over an explicit iterator).
     "foreach.iter_proto",
-    # A NativeIterable[T]/Spannable[T] protocol PARAM iterable: the AST's
+    # A NativeIterable[T]/Spannable[T] protocol PARAM iterable: the
     # NativeIterable peephole (plain begin/end range-for over the deduced
     # template-param lvalue), not the universal loop.
     "foreach.narrowed_proto_src",  # narrowed-alias iterable -> the
@@ -3012,7 +3038,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "field_write.borrow_call_copy",  # `h.p = identity(pt);` -- the T&-
                                      # returning call copies bare on assign
     # `t.w = e.make(4);` -- a record-returning METHOD call RVALUE copies bare
-    # into the field. The borrow-returning twin stays on the AST path.
+    # into the field. The borrow-returning twin rejects.
     "field_write.method_rvalue_copy",
     "field_write.ptr_local_copy",   # `this->r = (*saved);` -- pointer-local
                                     # record source copies through the deref
@@ -3110,7 +3136,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # value-repr Optional[view] return slot
     "decl.value_opt_tuple_slot",    # value-repr Optional[value tuple] decl
                                     # slot: plain spelled copy
-    "if.narrow_elif_else_fact",     # non-mirrorable else fact tolerated on a
+    "if.narrow_elif_else_fact",     # else fact with no consumer tolerated on a
                                     # narrowing if whose else body is an elif
                                     # link -- the link seeds its own facts and
                                     # no extraction runs at this level
@@ -3138,7 +3164,7 @@ def witness(face: str) -> bool:
 
 def begin_witness_journal() -> None:
     """Open the journal for one body's lowering attempt (called from
-    `fallback.begin_attempt`, so the two tallies share their boundaries)."""
+    `reject.begin_attempt`, so the journal shares the attempt's boundaries)."""
     compiler = get_current_compiler()
     if compiler is not None:
         compiler._thir_face_journal = {}
@@ -3150,9 +3176,9 @@ def commit_witnesses() -> None:
     records faces too -- are never journalled and so can never be rolled back.
 
     Closing is not what makes the tally correct: `begin_attempt` precedes
-    every `fold_attempt` and RESETS the journal, so a rollback already drains
+    every reject and RESETS the journal, so a rollback already drains
     only its own body (measured -- neutering this call corpus-wide leaves the
-    zero-witness list byte-identical). What it buys is that the window has a
+    zero-witness list unchanged). What it buys is that the window has a
     definite end, which is what lets `rollback_witnesses` assert it was
     opened. That assert is the enforcement the 6-site convention would
     otherwise lack.
@@ -3172,8 +3198,8 @@ def commit_witnesses() -> None:
 def rollback_witnesses() -> None:
     """Undo every witness recorded since the journal opened, and close it.
 
-    A body that falls back emits its WHOLE tree through the AST path, so an
-    arm that merely ran during the attempt contributed no emitted C++ and is
+    A body that rejects emits NOTHING, so an arm that merely ran during the
+    attempt contributed no emitted C++ and is
     not covered by anything. Counting it defeats the detector: that is exactly
     how a dead arm passed the zero-witness check once already. Applies to the
     `own.*` admission rows too -- admission stays the distinguishing site for a
@@ -3182,7 +3208,7 @@ def rollback_witnesses() -> None:
     if compiler is None:
         return
     assert compiler._thir_face_journal is not None, (
-        "fold_attempt with no journal open -- every fallback seam must be "
+        "a reject with no journal open -- every attempt seam must be "
         "preceded by begin_attempt, or the rolled-back witnesses belong to "
         "whatever ran last instead of to this body")
     w = compiler._thir_face_witnesses

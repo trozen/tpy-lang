@@ -8,6 +8,7 @@ no row: those reject at the receiver row, never escape the classifier."""
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical, _assert_rejects_at, _assert_routes_byte_identical,
     _thir_ctx,
 )
@@ -102,7 +103,6 @@ class TestSelectReceiverRejects:
     def _rejects(self, src: str, landmark: str) -> None:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, landmark, "method.recv.other")
-        _assert_byte_identical(src)
 
     def test_narrowed_optional_operands_reject(self):
         # Both operands are narrowed `Shape | None` names: the AST renders
@@ -116,7 +116,8 @@ class TestSelectReceiverRejects:
                "def main() -> None:\n"
                "    print(f(Shape(1), Shape(2), True))\n"
                "main()\n")
-        self._rejects(src, "body:expr.method_call")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.recv.other")
 
     def test_narrowed_value_optional_str_operand_rejects(self):
         # A narrowed `str | None` is value-repr (no pointer-local), so this
@@ -128,7 +129,8 @@ class TestSelectReceiverRejects:
                "def main() -> None:\n"
                "    print(f(\"ab\", \"cd\"))\n"
                "main()\n")
-        self._rejects(src, "body:expr.method_call")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.recv.other")
 
     def test_module_global_operand_rejects(self):
         # A module global is not a declared local: the guard's first clause.
@@ -139,7 +141,8 @@ class TestSelectReceiverRejects:
                "    c = True\n"
                "    print((G if c else b).area())\n"
                "main()\n")
-        self._rejects(src, "body:stmt.expr_stmt")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:method.recv.other")
 
     def test_nested_select_rejects_at_the_ternary(self):
         # A record-valued inner ternary is not a shape the ternary lowering
@@ -157,7 +160,6 @@ class TestSelectReceiverRejects:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.expr_stmt",
                            "ifexpr.record_arm")
-        _assert_byte_identical(src)
 
     def test_container_ternary_receiver_rejects(self):
         # A list is neither a str value nor a record: the boundary of the
@@ -169,7 +171,8 @@ class TestSelectReceiverRejects:
                "    (xs if c else ys).append(3)\n"
                "    print(len(xs), len(ys))\n"
                "main()\n")
-        self._rejects(src, "body:expr.method_call")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.recv.other")
 
     def test_bytes_ternary_rejects_at_the_ternary(self):
         # The receiver row admits a bytes-value select, but the ternary
@@ -183,7 +186,6 @@ class TestSelectReceiverRejects:
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:stmt.expr_stmt",
                            "ifexpr.bytes_mixed")
-        _assert_byte_identical(src)
 
     def test_list_literal_receiver_rejects(self):
         self._rejects("def main() -> None:\n"

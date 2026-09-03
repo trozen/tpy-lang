@@ -19,10 +19,9 @@ tuple with the predicates' own short-circuit, never a dispatch keyed on a
 computed source classifier, which would have to classify every argument
 before it could dispatch.
 
-`note` is the family's verbatim `note_detail` tail. Every reject histogram --
-the stdlib gate's own fallback report, `thir_stdlib_fallback.py`, and the
-marker-scoped corpus probes -- groups on those strings, so a family keeps the
-tag it had; renaming one silently splits its rows across two buckets.
+`note` is the family's verbatim `note_detail` tail: it composes into the
+reject tag the diagnostic reports, so the string is user-visible and a family
+keeps the tag it had.
 
 THE TABLES LIVE WITH THEIR PREDICATES, not here: every row's predicate is
 defined in `checks.py` / `predicates.py`, and `checks.py` needs the finished
@@ -36,7 +35,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..faces import witness
-from ..fallback import note_detail
+from ..reject import note_detail
 from ...compilation_context import get_current_compiler
 
 if TYPE_CHECKING:
@@ -93,7 +92,7 @@ class _ArgReq(NamedTuple):
     frame_capturing: bool = False
     # The callee's mutation facts are UNKNOWN (a resolved fi that carries no
     # `mutated_params`), which the ctor family refuses at a `String&` slot
-    # rather than mirror a known AST miscompile. Distinct from
+    # rather than reproduce the known miscompile for it. Distinct from
     # `mutated_slots=False`, which asserts the slot is not mutated.
     mutation_unknown: bool = False
     # Four facts the LOWERING CONTEXT holds and the move-slice rows read.
@@ -101,8 +100,8 @@ class _ArgReq(NamedTuple):
     # context itself: this module has no `_LowerCtx` import (it would close an
     # import cycle) and a row that could reach the whole context could reach
     # anything on it. `inline_narrowed` / `movable_locals` / `pointers` are
-    # name sets exactly like `narrowed`; `func_name` labels the enclosing body
-    # in the move-audit join's record.
+    # name sets exactly like `narrowed`; `func_name` names the enclosing
+    # body.
     inline_narrowed: 'frozenset[str] | set[str] | dict' = frozenset()
     movable_locals: 'frozenset[str] | set[str]' = frozenset()
     pointers: 'frozenset[str] | set[str]' = frozenset()
@@ -119,9 +118,8 @@ class _ArgRow(NamedTuple):
     drift between callee families except where `extra` records an explicit,
     commented override.
 
-    `extra` is a PRE-guard, evaluated before `fn`, mirroring the `own_ok and
-    <pred>` prefixes it replaces. `face` is the witness tag the cell fires on
-    admission, tacked on after `fn` exactly as `<pred> and _witness(...)` did.
+    `extra` is a PRE-guard, evaluated before `fn`. `face` is the witness tag
+    the cell fires on admission, once `fn` has passed.
 
     `decisive` marks the cell whose `extra` gate makes `fn` the WHOLE verdict:
     a False from `fn` ends the walk instead of falling through to the rows
@@ -265,25 +263,21 @@ def _walk(sink: _ArgSink, req: _ArgReq) -> bool:
 # ---------------------------------------------------------------------------
 # The reach tally.
 #
-# NOT the migration's audit join, which compared the table against the ladders
-# it replaced and came down with them: nothing is replayed and nothing is
-# compared. This answers the OTHER question -- whether a corpus reaches the
-# table at all. The join proved a cell decides what its ladder decided;
-# reachability proves anything ever asks the cell. A family no corpus reaches
-# has neither proof nor witness, and reads exactly like a family that always
-# agreed.
+# Nothing is replayed and nothing is compared: this answers only whether a
+# corpus reaches the table at all. A family no corpus reaches has no witness,
+# and reads exactly like a family that is always right.
 #
-# The unit is the DECIDING cell, which is what the join's failure message
-# named: the row that admitted, the decisive row that rejected on its own
+# The unit is the DECIDING cell: the row that admitted, the decisive row that
+# rejected on its own
 # verdict (`!row`), the prologue leg (`<prologue>`), or the family tail with
 # no cell reached (`<none>`). So the keys a run produces are a subset of
 # `registered_cells()` plus the two family-level sentinels, and the families
 # it names are the families the run reached.
 #
 # NOT journalled per lowering attempt the way the face census is: a verdict
-# recorded in a body that then falls back still decided something -- often it
-# is the very rejection that caused the fallback -- so rolling it back would
-# hide the reach that matters most.
+# recorded in a body that then REJECTS still decided something -- often it is
+# the very rejection -- so rolling it back would hide the reach that matters
+# most.
 # ---------------------------------------------------------------------------
 
 PROLOGUE_CELL = "<prologue>"

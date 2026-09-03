@@ -7,6 +7,8 @@ pinned consumer of the `(*slot)` read, like the native-slot arg)."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _fn, _assert_byte_identical,
 )
 
@@ -64,16 +66,15 @@ class TestSliceReceiverLongTail:
                "def main() -> None:\n"
                "    field_slice(Buf())\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "field_slice") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:subscript.slice_shape")
 
-    def test_module_var_nonslice_subscript_stays_ast(self):
-        # The pinned consumer is the SLICE template only: a plain indexed
-        # read of the pointer-slot module var keeps rejecting.
+    def test_module_var_nonslice_subscript_routes(self):
+        # A plain indexed read of the pointer-slot module var takes the
+        # subscript-receiver deref read, like the slice template does.
         src = ("import sys\n"
                "def main() -> None:\n"
                "    if len(sys.argv) > 0:\n"
                "        print(sys.argv[0])\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        assert _reject_tally(src) == {}

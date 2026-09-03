@@ -7,6 +7,7 @@ family does not carry keeps rejecting at the hoist.
 """
 
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -41,12 +42,8 @@ NESTED_TUPLE = _SRC.format(ret="Int32", elem="(1, 2)", fail="-1",
                            read="pair[1]")
 
 
-def _fallback(src: str) -> dict:
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=True,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str) -> dict:
+    return _reject_tally(src)
 
 
 class TestValueTupleTryHoist:
@@ -59,5 +56,5 @@ class TestValueTupleTryHoist:
 
 class TestNestedTupleHoistKeepsRejecting:
     def test_rejects_at_the_try_hoist(self):
-        _assert_rejects_at(_fallback(NESTED_TUPLE), "body:stmt.try",
+        _assert_rejects_at(_reject_tags(NESTED_TUPLE), "body:stmt.try",
                            shape="try.hoist", count=1)

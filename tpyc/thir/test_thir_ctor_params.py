@@ -26,12 +26,11 @@ def _lower_ctor_reason(source: str, record_name: str):
     return None, "record_not_found"
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -51,7 +50,6 @@ class TestOptvalParams:
         src = _ctor_src("Int32 | None", "")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optval_mil_use_routes(self):
         # `self.x = p` into a value-repr Optional field: the AST hoists
@@ -63,7 +61,6 @@ class TestOptvalParams:
                + "        self.x = p\n        self.y = 1\n")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optval_narrowed_read_routes(self):
         # A narrowed read of a value-repr Optional[cheap scalar] param unwraps
@@ -73,7 +70,6 @@ class TestOptvalParams:
                         "            self.y = p + 1\n")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optval_bigint_block_local_read_routes(self):
         # A BigInt block-local first-declared inside the narrowed branch
@@ -86,13 +82,11 @@ class TestOptvalParams:
                         "            print(x)\n")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_optval_bytes_unused_routes(self):
         src = _ctor_src("bytes | None", "")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestStringParams:
@@ -107,7 +101,6 @@ class TestStringParams:
                         prelude=self._PRE)
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_string_concat_routes(self):
         src = _ctor_src("String",
@@ -115,7 +108,6 @@ class TestStringParams:
                         prelude=self._PRE)
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_mutated_string_param_stays_ast(self):
         # `name += ...` on a String param: the AST writes through the const
@@ -149,7 +141,6 @@ class TestReassignCopyParams:
         ctor, reason = _lower_ctor_reason(src, "A")
         assert ctor is None
         assert reason == "ctor.param_reassign_copy"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_reassigned_scalar_param_still_routes(self):
         # By-value params reassign in place on both paths -- no prologue.
@@ -159,7 +150,6 @@ class TestReassignCopyParams:
                "        n = n + 1\n        self.x = n\n")
         ctor, _ = _lower_ctor_reason(src, "A")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestOwnParams:
@@ -169,7 +159,6 @@ class TestOwnParams:
         src = _ctor_src("Own[str]", "", prelude=self._PRE)
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_own_str_body_read_routes(self):
         # An Own[str] param's bare read is STORAGE (the signature spells the
@@ -181,7 +170,6 @@ class TestOwnParams:
                         prelude=self._PRE)
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_own_str_mil_use_moves(self):
         # `self.s = p` (str field) at the param's LAST USE: the own-param move
@@ -193,7 +181,6 @@ class TestOwnParams:
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
         assert _ctor_tail(ctor) == " : s(std::move(p)), y(1) {}\n"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_own_container_mil_move_routes(self):
         # Composed with the container cell's MIL name row: the admitted
@@ -204,7 +191,6 @@ class TestOwnParams:
                "        self.xs = p\n")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
 
 class TestUnionAndPtrParams:
@@ -214,7 +200,6 @@ class TestUnionAndPtrParams:
         src = _ctor_src("str | Int32", "")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_mixed_value_union_print_routes_str_visitor(self):
         # A union-typed NAME print arg streams via the `::tpy::__str__`
@@ -223,7 +208,6 @@ class TestUnionAndPtrParams:
         src = _ctor_src("str | Int32", "        print(p)\n")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_unused_nonvalue_ptr_param_routes(self):
         # A Ptr pointee outside _eligible_ptr_value (StrView) -- the bare
@@ -234,7 +218,6 @@ class TestUnionAndPtrParams:
                "        self.y = 5\n")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     def test_nonvalue_ptr_mil_use_stays_ast(self):
         src = ("from tpy import Int32, Ptr, StrView\n"
@@ -244,7 +227,6 @@ class TestUnionAndPtrParams:
         ctor, reason = _lower_ctor_reason(src, "C")
         assert ctor is None
         assert reason.startswith("ctor.mil_field")
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
 
     _PTR_DATA = ("from tpy import Int32, Ptr\n"
                  "class Data:\n    value: Int32\n"
@@ -261,8 +243,7 @@ class TestUnionAndPtrParams:
                + "        self.p = Ptr[Data]()\n")
         ctor, _ = _lower_ctor_reason(src, "C")
         assert ctor is not None
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)
-        assert "p(static_cast<Data*>(nullptr))" in _cpp(src, thir=True)
+        assert "p(static_cast<Data*>(nullptr))" in _cpp(src)
 
     def test_nonvalue_ptr_null_ctor_mil_stays_ast(self):
         # BOUNDARY: a Ptr pointee outside _eligible_ptr_value (StrView)
@@ -275,4 +256,3 @@ class TestUnionAndPtrParams:
         ctor, reason = _lower_ctor_reason(src, "C")
         assert ctor is None
         assert reason == "ctor.mil_field.ptr.call"
-        assert _cpp(src, thir=True) == _cpp(src, thir=False)

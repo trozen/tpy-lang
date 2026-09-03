@@ -5,6 +5,8 @@ elements, jagged tuple members, and the tuple-elem-over-subscript receiver."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn,
     _assert_byte_identical,
 )
@@ -570,8 +572,7 @@ class TestInplaceDunderAug:
                "    if b is not None:\n"
                "        b += 10\n"
                "        print(b.load())\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:stmt.aug_assign")
 
     def test_field_target_routes(self):
         # `a.get().n += 5` -> `a.get().n.__iadd__(5);` (the field arm's

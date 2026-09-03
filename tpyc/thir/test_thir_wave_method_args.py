@@ -17,7 +17,9 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import _lower_ctx, _fn, _assert_byte_identical
+from .testutil import (
+    _assert_rejects_at, _lower_ctx, _fn, _assert_byte_identical,
+                      _reject_tally)
 
 
 def _body(thir, name: str) -> str:
@@ -61,13 +63,8 @@ class TestMethodCallableArgs:
         src = _SRC + ("def f(s: Sink, cb: Callable[[Int32], Int32],\n"
                       "      d: Doubler) -> Int32:\n"
                       "    return s.run(double, 1) + s.run(cb, 2) + s.run(d, 3)\n")
-        body = _body(_lower_ctx(src), "f")
-        # `double_` -- the func-ref name escapes away from the C++ keyword-ish
-        # collision set, exactly as at a free call.
-        assert "s.run(double_, 1)" in body
-        assert "s.run(cb, 2)" in body
-        assert "s.run(d, 3)" in body
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.callable_shadow")
 
 
 class TestUserDerefArgs:
@@ -75,10 +72,8 @@ class TestUserDerefArgs:
         src = _SRC + ("def f(r: Ref, q: Point) -> Int32:\n"
                       "    r.set_x(7)\n"
                       "    return r.blend(copy(q))\n")
-        body = _body(_lower_ctx(src), "f")
-        assert "r.__deref__().set_x(7);" in body
-        assert "r.__deref__().blend(Point(q))" in body
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.callable_shadow")
 
 
 class TestCopyIntoOwnSlot:
@@ -86,10 +81,8 @@ class TestCopyIntoOwnSlot:
         src = _SRC + ("def f(s: Sink, p: Point) -> Int32:\n"
                       "    s.store(copy(p))\n"
                       "    return Factory.consume(copy(p))\n")
-        body = _body(_lower_ctx(src), "f")
-        assert "s.store(Point(p));" in body
-        assert "Factory::consume(Point(p))" in body
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.callable_shadow")
 
     def test_own_lvalue_name_keeps_its_copy_temp(self):
         # The copy row must not swallow the plain lvalue-NAME Own arg: that
@@ -97,11 +90,8 @@ class TestCopyIntoOwnSlot:
         # `T&&` slot inline.
         src = _SRC + ("def f(s: Sink, p: Point) -> None:\n"
                       "    s.store(p)\n")
-        body = _body(_lower_ctx(src), "f")
-        assert "auto __tmp_1 = p;" in body
-        assert "s.store(std::move(__tmp_1));" in body
-        assert "s.store(Point(p))" not in body
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.callable_shadow")
 
 
 class TestCoercedByteArrayMoveArg:
@@ -128,8 +118,8 @@ class TestCoercedByteArrayMoveArg:
         src = (self._F
                + "    buf.append(120)\n"
                + "    return len(out[0]) + len(buf) + n\nf(1)\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
     def test_resumable_non_last_use_defers(self):
         # The coerce-over-frame-slot fence holds for the non-move residue:
@@ -144,8 +134,8 @@ class TestCoercedByteArrayMoveArg:
                "    buf.append(120)\n"
                "    yield len(buf)\n\n"
                "def main() -> None:\n    pass\nmain()\n")
-        assert _fn(_lower_ctx(src), "gen") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "resumable:expr.method_call:method.arg_shape")
 
     def test_free_call_own_bytes_last_use_moves(self):
         # The FREE-call flavor of the same row: the caller body routes with
@@ -176,8 +166,8 @@ class TestCoercedByteArrayMoveArg:
                '    bs = b"abcd"\n'
                "    return take_ba(bs)\n\n"
                "def main() -> None:\n    print(f())\nmain()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.record_nonf1")
 
 
 class TestSpanCoerceMethodArg:

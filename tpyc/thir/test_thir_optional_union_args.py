@@ -2,19 +2,23 @@
 member-arg admission (bare render via the generic tail), the pointer-repr
 Optional container-name faces (`&(name)` / `nullptr`), and the
 pointer-variant union ctor-rvalue arg temp (`pv{&__tmp_N}`) -- routed emits
-plus the position/shape rejects that must keep falling back."""
+plus the position/shape rejects that must keep refusing."""
 
 from __future__ import annotations
 
 import io
+
+import pytest
 
 from .emit import emit_thir_body
 from .nodes import (
     THIRArgTemp, THIRCall, THIRContainerLiteral, THIRExprStmt, THIRLiteral,
     THIROptionalPtrArg, THIRPrint, THIRUnionArgLift,
 )
-from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
-                       _fn, _lower, _lower_ctx, _lower_ctx_witnessed)
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
+                       _assert_routes_byte_identical, _fn, _lower, _lower_ctx,
+                       _lower_ctx_witnessed, _thir_ctx)
 
 _PRELUDE = "from tpy import Int32\nfrom typing import Optional\n"
 
@@ -29,6 +33,13 @@ _UNION_RECORDS = (
     "def check(a: Dog | Cat) -> bool:\n"
     "    return True\n"
 )
+
+
+def _reject_tags(src: str) -> dict:
+    """The reject reasons emitting `src` reports -- what
+    `_assert_rejects_at` matches a landmark and blocking shape against."""
+    _ctx, fell = _thir_ctx(src)
+    return fell
 
 
 def _body(thir, name: str) -> str:
@@ -140,6 +151,108 @@ class TestUnionCtorTempArg:
             "    Dog __tmp_1 = Dog(3);\n"
             "    check(std::variant<Cat*, Dog*>{&__tmp_1});\n")
         assert faces.get("unionlift.ctor_temp", 0) >= 1
+
+    def test_nested_member_ctor_hoists_its_own_temp_first(self):
+        # `check(Dog(Collar(2)))` where Dog's slot is `Collar | None`: the
+        # pointer-repr Optional needs the inner ctor's ADDRESS, so it hoists
+        # its own temp ahead of the member temp at the SAME flush point --
+        # innermost first, the record-temp row's flush use.
+        src = (
+            "from tpy import Int32\n"
+            "from typing import Optional\n"
+            "class Collar:\n"
+            "    size: Int32\n"
+            "    def __init__(self, size: Int32) -> None:\n"
+            "        self.size = size\n"
+            "class Dog:\n"
+            "    collar: Optional[Collar]\n"
+            "    def __init__(self, c: Optional[Collar]) -> None:\n"
+            "        self.collar = c\n"
+            "class Cat:\n"
+            "    tag: Int32\n"
+            "    def __init__(self, tag: Int32) -> None:\n        self.tag = tag\n"
+            "def check(a: Dog | Cat) -> bool:\n    return True\n"
+            "def f() -> None:\n    check(Dog(Collar(2)))\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("unionlift.ctor_temp", 0) >= 1
+        assert _body(thir, "f") == (
+            "    Collar __tmp_1 = Collar(2);\n"
+            "    Dog __tmp_2 = Dog(&(__tmp_1));\n"
+            "    check(std::variant<Cat*, Dog*>{&__tmp_2});\n")
+        _assert_routes_byte_identical(
+            src + "def main() -> None:\n    f()\nmain()\n")
+
+    # The nested shape at the positions that are NOT flush points, one per
+    # kind. Each must keep rejecting: a hoist has nowhere to land in a match
+    # guard, and at a conditional OPERAND the temp belongs in the committed
+    # render as an uninit `std::optional<T>` + a deferred `emplace` -- a
+    # different placement, and one an eagerly-hoisted decl would read BEFORE
+    # the inner emplace runs.
+    NESTED = (
+        "from tpy import Int32\n"
+        "from typing import Optional\n"
+        "class Collar:\n"
+        "    size: Int32\n"
+        "    def __init__(self, size: Int32) -> None:\n"
+        "        self.size = size\n"
+        "class Dog:\n"
+        "    collar: Optional[Collar]\n"
+        "    def __init__(self, c: Optional[Collar]) -> None:\n"
+        "        self.collar = c\n"
+        "class Cat:\n"
+        "    tag: Int32\n"
+        "    def __init__(self, tag: Int32) -> None:\n        self.tag = tag\n"
+        "def check(a: Dog | Cat) -> bool:\n    return True\n")
+
+    def test_nested_member_ctor_in_a_match_guard_keeps_rejecting(self):
+        src = (self.NESTED
+               + "def f(n: Int32) -> bool:\n"
+               + "    match n:\n"
+               + "        case _ if check(Dog(Collar(2))):\n"
+               + "            return True\n"
+               + "    return False\n")
+        _assert_rejects_at(_reject_tally(src + 'def main() -> None:\n    print(f(1))\nmain()\n'),
+                           "body:expr.call:call.arg_shape.union")
+
+    @pytest.mark.parametrize("body,label", [
+        ("def f(x: bool) -> bool:\n    return x and check(Dog(Collar(2)))\n",
+         "and RHS"),
+        ("def f(x: bool) -> bool:\n    return x or check(Dog(Collar(2)))\n",
+         "or RHS"),
+        ("def f(x: bool) -> bool:\n"
+         "    return check(Dog(Collar(2))) if x else False\n",
+         "ternary true arm"),
+        ("def f(x: bool) -> bool:\n"
+         "    return False if x else check(Dog(Collar(2)))\n",
+         "ternary false arm"),
+    ])
+    def test_nested_member_ctor_in_a_deferred_operand_keeps_rejecting(
+            self, body, label):
+        src = (self.NESTED + body
+               + "def main() -> None:\n    print(f(True))\nmain()\n")
+        assert _fn(_lower_ctx(src), "f") is None, label
+        _assert_rejects_at(_reject_tags(src), "body:stmt.return",
+                           "unionlift.cond_defer")
+
+    def test_flat_ctor_temp_in_a_deferred_operand_keeps_rejecting(self):
+        # The same gate covers the UN-nested row: THIR hoists the union-lift
+        # temp eagerly wherever it renders one, so a conditional operand is
+        # a placement mismatch with or without a nested member temp.
+        src = (_UNION_RECORDS
+               + "def f(x: bool) -> bool:\n    return x and check(Dog(3))\n"
+               + "def main() -> None:\n    print(f(True))\nmain()\n")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:unionlift.cond_defer")
+
+    def test_and_LHS_is_not_a_deferred_operand(self):
+        # INVERSE: an `and` LHS runs unconditionally, so the eager hoist is
+        # the right placement there and the row keeps routing.
+        src = (_UNION_RECORDS
+               + "def f(x: bool) -> bool:\n    return check(Dog(3)) and x\n"
+               + "def main() -> None:\n    print(f(True))\nmain()\n")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("unionlift.ctor_temp", 0) >= 1
+        _assert_routes_byte_identical(src)
 
     def test_bigint_ctor_arg_renders_inside_temp_init(self):
         # An `int` field ctor arg takes the BigInt wrap inside the hoisted
@@ -487,8 +600,8 @@ class TestWrapperNoneDeclAndElems:
             "    b: V = None\n"
             "    print(a is None, b is None)\n"
             "main()\n")
-        _assert_byte_identical(src)
-        assert _fn(_lower_ctx(src), "main") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_own_wrapper_ctor_literal_routes(self):
         src = _WRAP_V + (
@@ -611,9 +724,7 @@ class TestOptViewIdentityCoerceArg:
             "def f() -> None:\n"
             "    x: str | None = returns_view_opt()\n"
             "    takes_str_opt(x)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.coerce")
 
     def test_name_source_still_defers(self):
         # Boundary: a NAME inner has no witness -- the coerce row admits
@@ -621,9 +732,8 @@ class TestOptViewIdentityCoerceArg:
         src = _OPTVIEW + (
             "def f(v: StrView | None) -> None:\n"
             "    takes_str_opt(v)\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.optional")
 
 
 class TestRuWrapperFreeCallArgs:
@@ -688,8 +798,8 @@ class TestRuWrapperFreeCallArgs:
                "def main() -> None:\n"
                "    print(leaves(2.5))\n"
                "main()\n")
-        _assert_byte_identical(src)
-        assert _fn(_lower_ctx(src), "main") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.union")
 
 
 class TestValueOptTupleArgs:
@@ -746,6 +856,5 @@ class TestValueOptTupleArgs:
                "    return 1\n"
                "def ptr_pass(p: tuple[Box, Box] | None) -> None:\n"
                "    print(take_ptr(p))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "ptr_pass") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.optional")

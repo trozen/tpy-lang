@@ -10,6 +10,8 @@ deferred."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -205,9 +207,8 @@ class TestMacroPrintArg:
             "def main() -> None:\n"
             "    print(astuple(Q([1, 2])))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:field.result_type")
 
 
 class TestAsdictBoundaries:
@@ -222,9 +223,8 @@ class TestAsdictBoundaries:
             "    t = make()\n"
             "    print(len(t[0]), t[1])\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "make") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.slot_type")
 
     def test_narrowed_optional_dict_field_view_still_defers(self):
         # A narrowed Optional dict FIELD receiver: declared-type keyed,
@@ -241,9 +241,7 @@ class TestAsdictBoundaries:
             "def main() -> None:\n"
             "    show(H({'a': 1}))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "show") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.dict_comp")
 
 
 class TestPrintTupleStorageArm:
@@ -347,10 +345,8 @@ class TestPrintTupleStorageArm:
             "def main() -> None:\n"
             "    f(R(1))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        assert not faces.get("print.tuple_literal_storage_arg")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:btuple.elem_rvalue")
 
     def test_dict_comp_bare_name_tuple_value_still_defers(self):
         # The value leg's row is NODE-gated: a bare NAME value_expr at the
@@ -363,6 +359,4 @@ class TestPrintTupleStorageArm:
             "def main() -> None:\n"
             "    f({'a': (1, 2)})\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.dict_comp")

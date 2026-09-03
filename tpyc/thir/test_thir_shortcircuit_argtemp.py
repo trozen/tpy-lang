@@ -15,7 +15,9 @@ Each face keeps its flushable-position inverse pin; the conditional shapes
 are routing pins with the deferred/eager render asserted.
 """
 
-from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_byte_identical, _assert_routes_byte_identical,
                        _compile, _entry, _lower_ctx_witnessed)
 from ..codegen_cpp.context import CodeGenOptions
 
@@ -46,18 +48,14 @@ _SCALAR_BOX = ("from tpy import Int32\n"
                "        return val is not None\n")
 
 
-def _fallback(source: str) -> dict:
-    compiler, modules = _compile(source)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source: str) -> dict:
+    return _reject_tally(source)
 
 
 def _assert_fenced(source: str, reject: str = "body:expr.call") -> None:
     """The fence claim: no validator crash, the enclosing body rejects at the
     call, and the emitted C++ still matches the AST oracle byte for byte."""
-    assert _fallback(source).get(reject) == 1
+    assert _reject_tags(source).get(reject) == 1
     _assert_byte_identical(source)
 
 
@@ -268,6 +266,5 @@ class TestIfConditionUnchanged:
                   "    return False\n") + _MAIN
 
     def test_condition_is_fenced(self):
-        assert _fallback(self.SRC).get(
-            "body:stmt.if:call.arg_shape.optional") == 1
-        _assert_byte_identical(self.SRC)
+        _assert_rejects_at(_reject_tally(self.SRC),
+                           "body:stmt.if:call.arg_shape.optional")

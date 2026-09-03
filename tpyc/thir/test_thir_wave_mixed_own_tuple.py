@@ -10,6 +10,8 @@ tuple outside the family."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _fn,
@@ -72,9 +74,8 @@ class TestMixedOwnTupleBoundaries:
             "def main() -> None:\n"
             "    print(take_lc(make_lc()))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.slot_type")
 
     def test_own_container_element_still_defers(self):
         # An `Own[list]` element keeps the tuple outside the F1 slice --
@@ -88,10 +89,8 @@ class TestMixedOwnTupleBoundaries:
             "    b = Box(9)\n"
             "    print(take_bad(make_bad(b)))\n"
         )
-        thir, faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "main") is None
-        assert not faces.get("call.own_tuple_pass")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.slot_type")
 
 
 class TestMixedOwnStorageSinks:
@@ -171,9 +170,7 @@ class TestMixedOwnStorageSinks:
             "def main() -> None:\n"
             "    print(name_in_list(Box(2)))\n"
             "main()\n")
-        thir, _faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "name_in_list") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.container_literal")
 
     def test_own_container_elem_mixed_call_still_defers(self):
         # Boundary: an `Own[list]`-element mixed call stays outside the F1
@@ -188,6 +185,5 @@ class TestMixedOwnStorageSinks:
             "def main() -> None:\n"
             "    print(lc_in_list())\n"
             "main()\n")
-        thir, _faces = _lower_ctx_witnessed(src)
-        assert _fn(thir, "lc_in_list") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.return:return.slot_type")

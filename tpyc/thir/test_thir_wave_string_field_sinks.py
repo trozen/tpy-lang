@@ -9,7 +9,8 @@ render is unwitnessed, not identical-by-construction."""
 from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry, _fn,
                        _lower_ctx)
 
@@ -87,9 +88,8 @@ class TestStringFieldNonThreadingSinksReject:
                + "def main() -> None:\n"
                + "    f(R(\"a\"), R(\"b\"))\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:field.result_type")
 
 
 _MEMB_REC = (
@@ -155,12 +155,4 @@ class TestMembershipReceiverField:
                + "def main() -> None:\n"
                + "    print(f(H()))\n"
                + "main()\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        _assert_rejects_at(dict(compiler._thir_fallback), "body:stmt.return",
-                           "binop.shape.in")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), 'body:stmt.return', 'binop.shape.in')

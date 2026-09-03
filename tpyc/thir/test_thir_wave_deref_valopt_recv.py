@@ -5,7 +5,8 @@ derefs in place (`(*b)`) and the chain composes off that lvalue --
 `(*b).__deref__().m()`. Corpus witness: urllib.request's `_urlopen`
 (`injected: Own[Box[_Connection]] | None`)."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -23,13 +24,8 @@ _PET = ("from tpy import Int32, Own\n"
         "        self.n = self.n + d\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestValueOptDerefReceiver:
@@ -126,6 +122,5 @@ class TestValueOptDerefReceiverBoundary:
                + "def main() -> None:\n"
                + "    print(use())\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:expr.method_call",
-                           "method.marker.deref.recv_shape")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.marker.deref.recv_shape")

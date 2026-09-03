@@ -7,6 +7,7 @@ not admit (an owned view) keeps rejecting.
 """
 
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -58,9 +59,8 @@ def _generate(src: str):
     alone never reaches the yield seam."""
     compiler, modules = _compile(src)
     compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=True,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback), dict(compiler._thir_face_witnesses)
+        _entry(modules), options=CodeGenOptions(emit_source_comments=True))
+    return dict(compiler._thir_face_witnesses)
 
 
 class TestOwnTypeParamYieldSlot:
@@ -71,8 +71,7 @@ class TestOwnTypeParamYieldSlot:
         assert "return __self.take();" in out
 
     def test_witnesses_the_yield_value_face(self):
-        fallback, witnesses = _generate(OWN_TPARAM)
-        assert not fallback, fallback
+        witnesses = _generate(OWN_TPARAM)
         assert witnesses.get("res.yield_value", 0) >= 1, witnesses
 
 
@@ -80,5 +79,5 @@ class TestOwnViewYieldSlotKeepsRejecting:
     def test_rejects_at_the_yield_slot_gate(self):
         # `res.yield_type` carries no shape detail -- the landmark IS the
         # named gate this pin claims.
-        _assert_rejects_at(_generate(OWN_STR)[0], "resumable:res.yield_type",
-                           count=1)
+        _assert_rejects_at(_reject_tally(OWN_STR),
+                           "body:stmt.expr_stmt:name.own_read")

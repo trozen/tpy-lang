@@ -63,9 +63,9 @@ def resolve_stmt_recorded_type(
 
     The TypeResolver-free twin of `resolve_stmt_type_cascade`, for callers that
     hold only the analyzer. `None` means sema recorded no type at any of the
-    three, so nothing can spell the slot -- the one condition that has to read
-    the same on every emit path, or one path rejects a binding the other
-    happily mis-emits.
+    three, so nothing can spell the slot -- the one condition both twins have
+    to read the same way, or one rejects a binding the other happily
+    mis-emits.
     """
     var_type = resolve_stmt_binding_type(
         stmt,

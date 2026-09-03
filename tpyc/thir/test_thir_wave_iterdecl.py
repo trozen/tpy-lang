@@ -6,6 +6,8 @@ protocol-result print arg."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -116,7 +118,6 @@ class TestNativeIterSlot:
                    "    chars: str = 'hi'\n"
                    + tail + "main()\n")
             assert _fn(_lower_ctx(src), "main") is None
-            _assert_byte_identical(src)
 
     def test_pointer_receiver_dunder_iter_stays_ast(self):
         # The native_function-form arm admits bare non-pointer name
@@ -132,8 +133,8 @@ class TestNativeIterSlot:
                "    for v in it:\n"
                "        print(v)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_auto_readonly_dunder_iter_routes(self):
         # An @auto_readonly `__iter__` is an is_clone_pair overload set (the

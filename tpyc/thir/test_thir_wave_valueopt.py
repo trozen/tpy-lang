@@ -11,6 +11,7 @@ The value-repr Optional ternary wraps both arms in the spelled optional.
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _compile,
     _entry,
@@ -19,15 +20,12 @@ from .testutil import (
 
 
 def _gen(source):
+    """`(compiler, (hpp, cpp))` from one emit -- the compiler is kept for the
+    face-witness reads."""
     compiler, modules = _compile(source)
-    entry = _entry(modules)
-    outs = {}
-    for flag in (False, True):
-        outs[flag] = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          comment_line_numbers=False,
-                                          thir_codegen=flag))
-    return compiler, outs[False], outs[True]
+    return compiler, compiler.generate_code_to_strings(
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
+                                                comment_line_numbers=False))
 
 
 class TestOwnedViewLiteralDeclBindingKeyedReads:
@@ -44,9 +42,7 @@ class TestOwnedViewLiteralDeclBindingKeyedReads:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "std::optional<std::string> s = \"one\";" in thir[1]
         assert "s.has_value()" in thir[1]
         assert "(*s).has_value()" not in thir[1]
@@ -76,9 +72,7 @@ class TestOptViewOwnElemArgRows:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "items.push_back(src1);" in thir[1]
         assert ("({ auto __ov = (src2); __ov ? "
                 "std::make_optional(std::string_view(*__ov)) : "
@@ -100,9 +94,7 @@ class TestValueOptTernaryReturns:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert ("return ((flag) ? (std::optional<std::string>(std::nullopt))"
                 " : (std::optional<std::string>(\"hello\")));") in thir[1]
         w = compiler._thir_face_witnesses
@@ -126,9 +118,7 @@ class TestOwnedViewBytesLiteralDecl:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "b.has_value()" in thir[1]
         assert "(*b).has_value()" not in thir[1]
 
@@ -147,9 +137,7 @@ class TestScalarValueOptTernaryDefers:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert fb.get("body:expr.ifexpr") == 1, fb
 
 
@@ -166,9 +154,7 @@ class TestScalarNameValueOptTernaryArm:
     )
 
     def test_routes_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        assert not dict(compiler._thir_fallback), dict(compiler._thir_fallback)
+        compiler, thir = _gen(self.SRC)
         assert "std::optional<int32_t>(n)" in thir[1]
 
     def test_face_witnessed(self):
@@ -189,9 +175,7 @@ class TestCharNameValueOptTernaryArmDefers:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert fb.get("body:expr.ifexpr") == 1, fb
 
 
@@ -209,9 +193,7 @@ class TestValueOptTernaryNonScalarNameArmDefers:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        fb = dict(compiler._thir_fallback)
+        fb = _reject_tally(self.SRC)
         assert "body:expr.ifexpr" in fb, fb
 
 
@@ -232,7 +214,4 @@ class TestOptViewParamArgStaysOut:
     )
 
     def test_defers_byte_identical(self):
-        compiler, ast, thir = _gen(self.SRC)
-        assert thir == ast
-        _assert_rejects_at(dict(compiler._thir_fallback),
-                           "body:expr.method_call", "method.arg_shape")
+        _assert_rejects_at(_reject_tally(self.SRC), 'body:expr.method_call', 'method.arg_shape')

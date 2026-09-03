@@ -12,6 +12,7 @@ not mirror the uncompilable output by routing).
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -19,18 +20,12 @@ from .testutil import (
 )
 
 
-def _thir_fallbacks(source, extra_lib_dirs=None):
+def _reject_tags(source, extra_lib_dirs=None):
     """Emit through THIR and return the fallback tally (reject pins).
 
     Byte-identity for these fixtures is already guaranteed by fallback
     (the AST re-emits the body), so the tally IS the claim."""
-    compiler, modules = _compile(source, extra_lib_dirs=extra_lib_dirs)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+    return _reject_tally(source, extra_lib_dirs=extra_lib_dirs)
 
 
 _PAIR = (
@@ -100,7 +95,7 @@ class TestEnumTypeArg:
             "    print(p.first == Color.BLUE)\n"
             "main()\n"
         )
-        _assert_rejects_at(_thir_fallbacks(src), "body:expr.call",
+        _assert_rejects_at(_reject_tags(src), "body:expr.call",
                            "call.ctor_arg.own_enum")
 
 
@@ -146,7 +141,7 @@ class TestTupleTypeArg:
             "    p = Pair((1, n))\n"
             "    print(1)\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert "body:stmt.var_decl:decl.slot_type" in fell, fell
 
 
@@ -219,7 +214,7 @@ class TestUnionAliasTypeArg:
             "    p = Pair(n)\n"
             "    print(1)\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert "body:stmt.var_decl:decl.slot_type" in fell, fell
 
 
@@ -254,6 +249,6 @@ class TestFenceHoles:
             "def main():\n"
             "    b = Box(f())\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert "body:stmt.var_decl:decl.slot_type" in fell, fell
 

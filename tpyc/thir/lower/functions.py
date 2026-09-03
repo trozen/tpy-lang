@@ -19,11 +19,13 @@ from ...parse.nodes import (
     TpyExpr,
     TpyFieldAccess,
     TpyFloatLiteral,
+    TpyFString,
     TpyFunction,
     TpyIfExpr,
     TpyImport,
     TpyIntLiteral,
     TpyLambda,
+    TpyListRepeat,
     TpyMatch,
     TpyMethodCall,
     TpyModule,
@@ -47,7 +49,6 @@ from ...parse.nodes import (
     iter_capture_bindings,
 )
 from ...namespace import BindingKind
-from ...binding_audit import publish_thir as publish_binding_facts
 from ...prescan import scan_reassigned_vars
 from ...typesys import (
     AnyType,
@@ -77,6 +78,7 @@ from ...typesys import (
 )
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.context import (
+    contains_named_expr,
     escape_cpp_name,
     imported_variable_cpp,
     module_init_targets,
@@ -101,7 +103,7 @@ from ...type_def_registry import (
     is_list,
     is_set,
 )
-from ..fallback import ThirUnsupported, _walk as _fallback_walk, note
+from ..reject import ThirUnsupported, _walk as _fallback_walk, note
 from ..faces import witness as _witness
 from ..validate import _iter_children, validate_constructor, validate_function
 from ..nodes import (
@@ -210,7 +212,7 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     the impl body is sensitive to -- the slice-1 routing frontier. First
     match wins, ordered by disqualification severity; `plain` marks the
     candidates whose per-stub specializations are the same body modulo the
-    (AST-owned) signature:
+    signature:
 
     - `arity`: a stub is shorter than the impl (missing-param default locals);
     - `ret_mismatch`: stub return types differ from the impl's (the return
@@ -222,12 +224,11 @@ def _overload_reject_detail(func: TpyFunction, stubs, *,
     - `plain`: none of the above.
 
     Literal folds (equality, truthiness, membership, chain coverage) need
-    no fence rows any more: `_overload_resolve_static` mirrors all four
-    through the AST's own helpers.
+    no fence rows: `_overload_resolve_static` folds all four.
 
     Tags extend the dot-hierarchical drilldown convention (like
     `call.ret_type.*`), not the `stmt.<shape>:<detail>` colon composition
-    (which is fallback.py's auto-composed form, never hand-built)."""
+    (which is auto-composed, never hand-built)."""
     if not allow_arity and any(len(fi.params) != len(func.params)
                                for fi in stubs):
         return "sig.overload_set.arity"
@@ -257,29 +258,30 @@ def _stub_has_template_param(fi) -> bool:
     type params.
 
     The caller only WITNESSES this (`fn.overload_template_stub`): the header
-    is signature -- AST-printed, like declared type params -- and the stub
-    body lowers against its protocol-typed params through the ordinary arms.
+    is signature -- printed by the signature emitter, like declared type
+    params -- and the stub body lowers against its protocol-typed params
+    through the ordinary arms.
     The CALL side is where the shape still rejects (checks.py's
     `_stub_template_param`): a template stub is not the plain named call the
     call gate admits.
 
     Declared type params are NOT part of this: `template<...>` is signature,
-    written by the AST printer, and the specialization bodies lower through
-    the ordinary arms."""
+    written by the signature emitter, and the specialization bodies lower
+    through the ordinary arms."""
     return any(_stub_template_param(pt) for _n, pt in fi.params)
 
 
 def _overload_missing_params(func: TpyFunction, stub: TpyFunction) -> list:
-    """The impl params a SHORT stub omits -- the AST's `missing_params`
-    (`impl.params[len(stub.params):]`), whose defaults it emits as locals."""
+    """The impl params a SHORT stub omits (`impl.params[len(stub.params):]`),
+    whose defaults emit as prologue locals."""
     return list(func.params[len(stub.params):])
 
 
 def _short_stub_missing_ok(func: TpyFunction, stub: TpyFunction) -> bool:
     """Whether a short @overload stub's omitted impl params need NO prologue
-    local -- the only arity shape mirrored.
+    local -- the only arity shape admitted.
 
-    The AST emits one local per missing param (`T x = <default>;`) EXCEPT
+    Each missing param needs one local (`T x = <default>;`) EXCEPT
     when the param narrows to NoneType and the body never reassigns it: the
     `is not None` guard then folds to False and dead-branch elim strips
     every use. Any other missing param (a literal/typed default that stays
@@ -302,7 +304,7 @@ def _short_stub_missing_ok(func: TpyFunction, stub: TpyFunction) -> bool:
     return all((isinstance(narrowing.get(pname), NoneType)
                 and pname not in reassigned)
                # A live missing param takes the default-local prologue;
-               # only plain value-scalar locals are mirrored (a non-value
+               # only plain value-scalar locals are supported (a non-value
                # local would need the pointer/binding registrations the
                # prologue node does not carry).
                or _default_local_ok(pt)
@@ -318,8 +320,7 @@ def _default_local_ok(pt) -> bool:
 
 def _stub_default_locals(func: TpyFunction, stub: TpyFunction, analyzer,
                          narrowing) -> 'tuple[THIROverloadDefault, ...]':
-    """The short stub's omitted-impl-param prologue -- the mirror of
-    gen_body's `overload_missing_param_locals` emit: one comment-free
+    """The short stub's omitted-impl-param prologue: one comment-free
     `{to_cpp} {name} = <default>;` local per LIVE missing param
     (NoneType-narrowed unreassigned params are skipped; dead-branch elim
     strips their every use)."""
@@ -341,8 +342,7 @@ def _stub_default_locals(func: TpyFunction, stub: TpyFunction, analyzer,
                                                    ptype)
         if (cpp_default == "0"
                 and not isinstance(default_expr, (TpyIntLiteral, TpyCall))):
-            # The AST's value-initialization fallback for unrecognized
-            # default exprs.
+            # Value-initialize instead, for unrecognized default exprs.
             cpp_default = "{}"
         out.append(THIROverloadDefault(name=escape_cpp_name(pname),
                                        cpp_type=ptype.to_cpp(),
@@ -351,9 +351,8 @@ def _stub_default_locals(func: TpyFunction, stub: TpyFunction, analyzer,
 
 
 def _literal_stub_facts(func: TpyFunction, stub: TpyFunction) -> dict:
-    """The literal-fact map a literal-only stub injects -- the mirror of
-    `_gen_literal_specialized_function`'s param zip (impl param names,
-    stub Literal types)."""
+    """The literal-fact map a literal-only stub injects: impl param names
+    zipped to the stub's Literal types."""
     return {pname: stub_pt
             for (pname, _), (_, stub_pt) in zip(func.params, stub.params)
             if isinstance(stub_pt, LiteralType)}
@@ -361,15 +360,15 @@ def _literal_stub_facts(func: TpyFunction, stub: TpyFunction) -> dict:
 
 def _admit_literal_only_stub(func: TpyFunction, analyzer,
                              stub: TpyFunction) -> None:
-    """Admission for a literal-only @overload group (the AST's mangled-name
+    """Admission for a literal-only @overload group (the mangled-name
     path): per-stub emission binds the IMPL's params + the STUB's return
     type and folds if-chains via the injected literal facts (equality,
     truthiness, membership, chain coverage -- `_overload_resolve_static`).
 
-    A body that WRITES a fact-carrying param rejects: the AST pops the
-    fact at the reassign (its literal_facts map is flow-sensitive), while
-    the injected map here is frozen -- folding past the write would decide
-    compares the AST leaves as runtime code."""
+    A body that WRITES a fact-carrying param rejects
+    (`sig.overload_set.literal_fact_write`): a literal fact dies at the
+    reassign, while the injected map here is frozen -- folding past the
+    write would decide compares that must stay runtime code."""
     if len(stub.params) != len(func.params):
         raise ThirUnsupported("sig.overload_set.arity")
     facts = _literal_stub_facts(func, stub)
@@ -392,7 +391,7 @@ def _admit_overload_stub(func: TpyFunction, group, analyzer,
     don't apply).
 
     A protocol-param (template) stub is NOT a disqualifier: the template
-    header is signature (AST-printed, like declared type params), and the
+    header is signature (like declared type params), and the
     stub's body lowers against the stub's protocol-typed params through
     the ordinary arms (the protocol-param loop included)."""
     stubs = analyzer.overload_groups.get(id(func)) or []
@@ -430,7 +429,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # linkage, shadowing) applies to their bodies exactly like a sync one.
     # A record-owned callable is admitted when its owning record is an
     # F1-record (`self_type` passed by the caller). All method kinds funnel
-    # their bodies through gen_body, so only the receiver model differs:
+    # their bodies through the same lowering, so only the receiver model differs:
     # instance methods
     # (M1/M2, dunders included -- the C++ operator wrappers delegating to them
     # are structural emission, not body emission) and property getters/setters
@@ -452,8 +451,8 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     if is_record_callable:
         if self_type is None or not _f1_record(self_type, analyzer):
             raise ThirUnsupported("sig.receiver_record")
-        # Inplace dunders (__iadd__ ...) admit: the AST's forced-const param
-        # verdict (CONST_PARAMS_METHODS) is mirrored by `_param_is_const`'s
+        # Inplace dunders (__iadd__ ...) admit: the forced-const param
+        # verdict (CONST_PARAMS_METHODS) is applied by `_param_is_const`'s
         # forced arm -- including the slices decide_param_const drops the
         # force for (`_forced_const_dropped`) -- and the mandatory `return
         # self` renders `return *this;` through the record-self return arm
@@ -461,29 +460,35 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # is_inplace_dunder branch).
         # @readonly on a @staticmethod emits with the readonly verdicts dropped
         # (`gen_method_def` branches on `is_const and not is_static`): the const
-        # overload and forced-const params are signature-only, emitted by the AST
-        # structural path THIR shares. The static body has no `self`, so the only
+        # overload and forced-const params are signature-only, emitted by the
+        # structural path. The static body has no `self`, so the only
         # readonly-keyed body effect (`const_locals.add("self")`) is unreachable
         # -- the body lowers identically to a plain static.
     elif func.is_staticmethod:
         raise ThirUnsupported("sig.staticmethod_flag")
-    if func.is_overload_stub or func.native_function:
+    # A BODIED `@overload` variant is self-contained: sema forbids mixing it
+    # with a trailing implementation, so it owns its body, keys its own
+    # id(func), and the function driver emits it standalone. Only the bodyless
+    # stub -- emitted per-specialization off a shared impl -- is special here.
+    bodied_overload = func.is_overload_stub and not func.is_stub
+    if (func.is_overload_stub and not bodied_overload) or func.native_function:
         raise ThirUnsupported("sig.special_callable")
     # An overload IMPL body is emitted once per stub with per-stub facts
     # (overload_param_types / literal_overload_facts driving dead-branch
     # elimination, missing-param default locals, and return-coercion
-    # stripping), but gen_body's THIR interception keys on id(func) --
+    # stripping), but body emission keys on id(func) --
     # routing the shared impl would hijack every specialization with the
     # unspecialized body. Reject any callable in a multi-entry overload set
     # (functions and methods alike), sub-classified by WHICH per-stub fact
     # the body is sensitive to (the slice-1 routing frontier: an impl
-    # sensitive to none of them lowers identically per stub). Sole
-    # carve-out: a property getter+setter pair shares one method name in
-    # the registry but each has its own body (no shared-impl hijack).
+    # sensitive to none of them lowers identically per stub). Two carve-outs
+    # on the same argument -- each entry owns its body, so there is no
+    # shared-impl to hijack: a property getter+setter pair (one registry name,
+    # two bodies) and a bodied `@overload` variant.
     #
     # A generator is a second carve-out on the same argument, one tier up:
-    # the AST router diverts every generator to its leaf seam (the simple
-    # peephole lambda or the resumable frame) before the per-stub seeding
+    # the function driver diverts every generator to its frame emitter (the
+    # simple peephole lambda or the resumable frame) before the per-stub seeding
     # loop, so its overload set emits ONE body -- one frame plus one factory
     # carrying the impl signature and its defaults -- and there is no
     # specialization to hijack. Keyed on the frame/peephole ENTRY, not on the
@@ -492,10 +497,10 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     #
     # The async twin does NOT join it: an `async def` STUB is still async
     # (a `...` body is not a generator, which is what keeps generator stubs
-    # off this entry), so it reaches the frame emitter itself, and the AST
-    # emits one frame plus one factory PER OVERLOAD ENTRY -- three bodies,
-    # not one. Its emission is broken independently of routing (every frame
-    # takes the same struct name), so the shape must stay on the AST path
+    # off this entry), so it reaches the frame emitter itself, which emits
+    # one frame plus one factory PER OVERLOAD ENTRY -- three bodies,
+    # not one. That emission is broken independently of routing (every frame
+    # takes the same struct name), so the shape keeps the overload-set reject
     # until that is fixed.
     single_body = allow_resumable and func.is_generator
     if is_record_callable:
@@ -525,7 +530,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
                 and (func.auto_readonly_params_resolved
                      or func.is_auto_own_borrowing_clone
                      or func.is_auto_own_consuming_clone))
-            if not (is_property_pair or is_clone_pair):
+            if not (is_property_pair or is_clone_pair or bodied_overload):
                 if stub is not None:
                     _admit_overload_stub(func, overloads, analyzer, stub)
                 else:
@@ -536,7 +541,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         if fis is not None and len(fis) > 1:
             if stub is not None:
                 _admit_overload_stub(func, fis, analyzer, stub)
-            elif not single_body:
+            elif not (single_body or bodied_overload):
                 raise ThirUnsupported(_overload_reject_detail(func, fis))
     if func.builtin_decorator_key is not None:
         raise ThirUnsupported("sig.builtin_decorator")
@@ -544,9 +549,8 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         if func.is_async:
             raise ThirUnsupported("sig.async")
         if func.is_generator:
-            # Sub-tagged by the AST router's own peephole predicate (one
-            # shared routing fact): the two populations are different
-            # emitters, so each residue must be measurable separately.
+            # Sub-tagged by the peephole predicate: the two populations
+            # are different emitters, so each rejects under its own tag.
             raise ThirUnsupported(
                 "sig.generator_simple"
                 if GeneratorCodegen.is_simple_generator(func)
@@ -554,14 +558,14 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     if func.error_return is not None and (func.is_async or func.is_generator):
         # The sync @error_return body routes (the return-tier renders live on
         # THIRReturn/THIRRaise + the bind/discard/unwrap nodes); the resumable
-        # emitters have no expected-return seam, so those stay AST.
+        # emitters have no expected-return handling, so those reject.
         raise ThirUnsupported("sig.error_return")
     # A generic callable routes its body via the same TypeParamRef T-value
     # arms F5 built for generic-record methods: the resolver spells each
     # `[T]` param/return as a TypeParamRef, `_is_type_param_slot` checks it
     # as a form-neutral value pass-through (`val_or_ref_t<T>` resolves
-    # value-vs-ref per instantiation), and the template signature stays
-    # AST. A method's OWN type params (`def m[U](self, x: U)`) spell the
+    # value-vs-ref per instantiation), and the template header is
+    # signature. A method's OWN type params (`def m[U](self, x: U)`) spell the
     # same way -- on a generic record the record's T rides the F5
     # self-feed while the method's U rides these slots, so both compose.
     # An INT-kind param (`[N: int]`) is a template VALUE param
@@ -576,16 +580,15 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # body reads differently from their plain-function form.
     # A reassigned param of a type flagged param_needs_copy_for_reassign (owned
     # str/bytes/String, BigInt -- const-ref params that cannot reassign in
-    # place) gets a mutable owned copy hoisted by the AST prologue
-    # (`::tpy::BigInt x = __param_x;` + signature rename). Sync bodies mirror
-    # the prologue (`_param_reassign_copies` in lower_function).
+    # place) gets a mutable owned copy hoisted into the prologue
+    # (`::tpy::BigInt x = __param_x;` + signature rename). Sync bodies emit
+    # that prologue via `_param_reassign_copies` in lower_function.
     # ASYNC resumables need no gate: the frame member respells owned at the
     # SKELETON (`std::string t;` -- gen_async owns the member spelling), no
-    # prologue arises, and the body reads ride the frame-field arms
-    # (str/bytes/BigInt flavors dualgen-verified byte-identical). GENERATOR
-    # bodies KEEP the reject: the simple-gen peephole respells the
+    # prologue arises, and the body reads ride the frame-field arms.
+    # GENERATOR bodies KEEP the reject: the simple-gen peephole respells the
     # reassigned param in its lambda capture, a render the leaves do not
-    # mirror (suite-caught divergence on the while-head str flavor).
+    # produce.
     if allow_resumable and func.is_generator:
         scan = analyzer.function_scan_results.get(id(func))
         if scan is not None and scan.reassigned:
@@ -598,9 +601,8 @@ def _check_callable_structure(func: TpyFunction, analyzer,
 def _param_reassign_copies(func: TpyFunction,
                            analyzer,
                            params=None) -> 'tuple[THIRParamCopy, ...]':
-    """The mutable-owned-copy prologue for reassigned const-ref params -- the
-    mirror of `_gen_buffered_body`'s `_reassigned_param_copies` emit (param
-    order): `{to_cpp} {name} = __param_{name};`, no source comment. The AST's
+    """The mutable-owned-copy prologue for reassigned const-ref params, in
+    param order: `{to_cpp} {name} = __param_{name};`, no source comment. The
     signature-side rename (`gen_params`' `__param_` branch) keys on the same
     scan.reassigned + param_needs_copy_for_reassign facts, so the renamed
     param and the prologue stay paired. Two init shapes: the plain
@@ -614,8 +616,8 @@ def _param_reassign_copies(func: TpyFunction,
         return ()
     copies: list[THIRParamCopy] = []
     # `params` overrides the type source for a per-@overload-stub lowering
-    # (the AST prologue keys on the STUB's param types); the scan facts stay
-    # the impl's, matching gen_body's scan/params split.
+    # (the prologue keys on the STUB's param types); the scan facts stay
+    # the impl's.
     for name, ptype in (params if params is not None else func.params):
         pt = ptype if isinstance(ptype, TpyType) else None
         if not (name in scan.reassigned and pt is not None
@@ -629,8 +631,8 @@ def _param_reassign_copies(func: TpyFunction,
             # (`std::string p = std::string(__param_p);` / the Optional
             # make_optional split). Body reads keep their view-form
             # renders -- the owned local converts implicitly at every
-            # view sink, exactly as on the AST path (its read model is
-            # param-type-keyed, never respelled).
+            # view sink (the read model is param-type-keyed, never
+            # respelled).
             conv = view_to_owned_conv(fam.owned_type)
             pref = f"__param_{escape_cpp_name(name)}"
             if opt_inner is not None:
@@ -649,7 +651,7 @@ def _param_reassign_copies(func: TpyFunction,
 def _shadow_bound_names(stmts: list[TpyStmt]) -> set[str]:
     """Names bound by the binder forms `scan_reassigned_vars` does not record:
     except-`as` bindings and match captures. A candidate read-only global one
-    of these shadows must not seed -- the AST may hoist/predecl the binder at
+    of these shadows must not seed -- the binder may be hoisted/predeclared at
     function scope while the seeded walk state would keep treating later reads
     of the name as the global."""
     out: set[str] = set()
@@ -674,7 +676,7 @@ def _seed_imported_globals(analyzer, cands: dict[str, TpyType],
                            spelled: dict[str, str], slots: set[str],
                            *, skip) -> None:
     """Seed every IMPORTED module variable that reads through a fixed
-    qualified spelling (`imported_variable_cpp`, the AST's own render
+    qualified spelling (`imported_variable_cpp`, the render
     authority) into `cands`/`spelled`, and the pointer-slot ones into
     `slots` as well. Shared by function bodies and module init so the two
     cannot drift on which imported globals are readable and how they spell.
@@ -695,13 +697,13 @@ def _seed_imported_globals(analyzer, cands: dict[str, TpyType],
         st = _readonly_global_type(vi.type, analyzer)
         if st is not None and _value_opt_scalar(st, analyzer) is not None:
             # An IMPORTED value-opt global stays unseeded: the narrowed
-            # (*qualified) render is unverified against the AST's
-            # imported-global deref sites -- same-module only for now.
+            # (*qualified) render is unverified at imported-global deref
+            # sites -- same-module only for now.
             continue
         if st is None:
             # An imported pointer-slot global reads through the qualified
             # spelling with the same slot renders (`(*::tpyapp::mod::g)`);
-            # `vi.is_pointer` is the render authority the AST keys on
+            # `vi.is_pointer` is the render authority
             # (is_indirect_name's imported branch).
             if (not getattr(vi, "is_pointer", False)
                     or _pointer_slot_global_type(vi.type, analyzer) is None):
@@ -726,15 +728,15 @@ def _seed_readonly_globals(
     ride the pointer-local arms via lc.pointers; Final and native-linkage
     names are excluded, matching the generator's pointer_globals set).
 
-    Sema resolves an unassigned name to the module global, and the AST
-    renders a value global's read bare (`is_indirect_name` is False for
+    Sema resolves an unassigned name to the module global, and a value
+    global's read renders bare (`is_indirect_name` is False for
     value globals, and `_maybe_convert_opt_view_param` is param-keyed) --
     or, for a native-linkage / imported global, as a fixed spelling
     (`qualify_native_name` / `imported_variable_cpp`) -- so a seeded name
     routes through every existing name-read arm unchanged, the spelled ones
     differing only in the verbatim-`cpp` render. Same-module candidates
     come from `top_level_decls` (an imported name REDEFINED there reads
-    bare in functions, matching the AST's top_level_decls precedence over
+    bare in functions -- `top_level_decls` takes precedence over
     the import qualification -- so it seeds as a same-module global, and
     the imported loop skips it); imported candidates from the
     `imported_names` history via the shared detection. Excluded: params
@@ -814,9 +816,9 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
     sync and simple-generator entries; resumables use frame fields instead).
 
     `global`-declared names seed the scope like params: their writes then
-    lower as reassignments (the AST's global-write arm emits `g = v;`) and
+    lower as reassignments (`g = v;`) and
     reads render bare -- the same-module plain-scalar-global spelling. The
-    seeding is WHOLE-function, mirroring the AST exactly: both paths key on
+    seeding is WHOLE-function, keyed on
     `function_global_decls`, so even a write textually BEFORE its `global`
     statement (which sema accepts -- a CPython-parity gap, see BUGS.md)
     renders the same global assign. Only eligible scalars and `Ptr[T]`
@@ -861,8 +863,8 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
                 lc.value_opt_bindings[n] = ValueOptKind.SCALAR
             if n in native_globals:
                 # A native-linkage global writes through its BARE C name
-                # (`g_counter = val;` -- the AST's native_global_names.get
-                # target, unqualified) and reads through the `::`-qualified
+                # (`g_counter = val;` -- the native_global_names target,
+                # unqualified) and reads through the `::`-qualified
                 # spelling like any other native-global read.
                 global_write_cpp[n] = native_globals[n]
         elif _pointer_slot_global_type(
@@ -902,7 +904,7 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
     for n, cname in global_write_cpp.items():
         # Reads of a write-seeded native global keep the ordinary
         # `::`-qualified native-read spelling (the read arm is
-        # global-decl-blind on the AST path).
+        # global-decl-blind).
         lc.prescan.global_cpp.setdefault(n, qualify_native_name(cname))
 
 def lower_function(func: TpyFunction, analyzer, render_type=None,
@@ -915,10 +917,10 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     """Lower one function to THIR, or None if it falls outside the slice.
 
     `render_type` (codegen's `TypeResolver.type_to_cpp`) renders F1 borrow-local
-    decl types byte-identically; omit it only when no non-value local can arise
+    decl types; omit it only when no non-value local can arise
     (dump / value-scalar standalone lowering). `render_type_stored`
     (`TypeResolver.type_to_cpp_stored`) is its stored-form sibling for the
-    slots the AST spells that way (explicit template args on generic calls).
+    slots spelled that way (explicit template args on generic calls).
     `self_type` is the owning record's
     type when `func` is a record method: for kinds with a receiver (instance /
     property / dunder) `self` is seeded as an F1-record receiver (a `this`
@@ -930,8 +932,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     try:
         _check_callable_structure(func, analyzer, self_type, stub=stub)
         if stub is not None:
-            # The body references impl param names while the AST binds the
-            # stub's; the two coincide in practice (zip-keyed narrowing
+            # The body references impl param names while the signature binds
+            # the stub's; the two coincide in practice (zip-keyed narrowing
             # depends on it) -- reject the divergent spelling rather than
             # lower reads against the wrong names. A SHORT stub binds a
             # prefix; its omitted params are admitted only when they need no
@@ -942,7 +944,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                     or func.error_return is not None):
                 raise ThirUnsupported("sig.overload_set.param_names")
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
     # A static method has no receiver -- it lowers like a free function, but
     # keeps `record_name` so `_param_is_const` resolves its param verdicts from
@@ -959,9 +961,9 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     record_name = (self_type.name
                    if is_record_method and isinstance(self_type, NominalType)
                    else None)
-    # A literal-only group's per-stub emission binds the IMPL's signature
-    # (_gen_literal_specialized_function): only the return type and the
-    # injected literal facts are per-stub, so no params override applies.
+    # A literal-only group's per-stub emission binds the IMPL's signature:
+    # only the return type and the injected literal facts are per-stub, so
+    # no params override applies.
     literal_group = (stub is not None
                      and overload_stubs_are_literal_only(
                          analyzer.overload_groups.get(id(func)) or [], func))
@@ -985,30 +987,29 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     if stub is not None and literal_group:
         # Literal-only specialization: impl params bind as-is; the stub
         # contributes its return type + the literal facts driving the
-        # if-chain dead-branch fold (the AST's literal_overload_facts).
-        # The facts also seed the live literal_facts map -- the mirror of
-        # gen_body's entry merge -- so expression-level consumers (the
-        # compare-fold fence) see them like AST body emission does.
+        # if-chain dead-branch fold. The facts also merge into the live
+        # literal_facts map at entry, so expression-level consumers (the
+        # compare-fold fence) see them too.
         lc.overload_literal_facts = _literal_stub_facts(func, stub)
         lc.literal_facts.update(lc.overload_literal_facts)
         lc.overload_stub_return = (stub.return_type
                                    if isinstance(stub.return_type, TpyType)
                                    else None)
     elif stub is not None:
-        # Per-stub specialization: the AST binds the STUB's param types
-        # (gen_body receives stub.params), so every binding class, borrow
+        # Per-stub specialization: the STUB's param types bind, so every
+        # binding class, borrow
         # form, and narrowing decision keys on them -- a union impl param
         # narrowed to a concrete stub member is a plain record param here,
         # not a ptr-variant (the _LowerCtx/_Prescan overrides re-key the
         # signature-derived facts the same way).
         params_set = {n: t for n, t in stub.params}
         # A short stub's omitted params narrow from the impl's defaults, so
-        # the dead-branch fold sees the same facts the AST specializer does.
+        # the dead-branch fold sees the per-stub facts.
         lc.overload_narrowing = build_overload_narrowing(
             func, stub, _overload_missing_params(func, stub),
             func.defaults or [])
         # LIVE missing params become prologue locals; seed their bindings
-        # so body reads/reassignments resolve like the AST's registration.
+        # so body reads/reassignments resolve against them.
         default_locals = _stub_default_locals(func, stub, analyzer,
                                               lc.overload_narrowing)
         for dl_name, dl_type in _overload_missing_params(func, stub):
@@ -1051,10 +1052,9 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         if _rejects_lambda_hoist(fn.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
         validate_function(fn)
-        publish_binding_facts(lc)
         return fn
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
 
 def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
@@ -1128,8 +1128,8 @@ def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
 def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
                             declared: dict[str, TpyType],
                             lc: _LowerCtx) -> bool:
-    """A (str / StrView / bytes field, source) pair whose MIL render the tail
-    emitter reproduces byte-for-byte. The probed contract per field family:
+    """A (str / StrView / bytes field, source) pair the tail emitter can
+    render into the MIL. The contract per field family:
 
       * **str / StrView** (owned `std::string` / `std::string_view`): a str
         literal (position-neutral const char[N], lands bare); a str-family
@@ -1140,13 +1140,12 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
         `std::string(name)`).
       * **bytes** (owned `std::vector<uint8_t>`): a bytes literal (the owned
         `bytes_literal_owned` / empty-vector render); a bytes-family param name
-        (the span lifts via the AST's `_view_source_to_owned` -->
-        `::tpy::bytes_copy(name)`); the same name under the sema
+        (the span lifts to owned: `::tpy::bytes_copy(name)`); the same name under the sema
         `bytesview_to_bytes` coerce (its codegen lambda IS that copy); or the
         zero-arg `bytes()` @cpp_template __init__ (`std::vector<uint8_t>()`,
         an owned rvalue landing bare). Arg-taking ctor overloads are
-        @native-function emits the call slice does not spell -> AST.
-      * **BytesView fields** and `copy()`-wrapped sources are unprobed -> AST.
+        @native-function emits the call slice does not spell, so they reject.
+      * **BytesView fields** and `copy()`-wrapped sources reject.
     """
     analyzer = lc.analyzer
     if is_bytes_view_type(fam_t):
@@ -1182,7 +1181,7 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
             return False
         src = src.expr
         # A StrView field's literal arrives under the identity str_to_strview
-        # coerce (probe: renders bare on both paths).
+        # coerce, which renders bare.
         if isinstance(src, TpyStrLiteral):
             return True
     return (isinstance(src, TpyName)
@@ -1239,13 +1238,13 @@ def _mil_ptr_tuple_elem_ok(elem: TpyExpr, slot: TpyType,
         bool literal (the shared `_slot_literal_retype` render);
       * F1-record slot <- a same-typed record param name (capture VALUE, the
         brace-init copies) or an explicit `copy(param)` (renders the copy-ctor
-        call `T(p)`, the AST's `_gen_copy_expr` record arm);
+        call `T(p)`);
       * pointer-repr `Optional[F1-record]` slot <- a bare record param name of
         the INNER type (the optional's converting ctor absorbs the lvalue).
 
     A pointer-repr-optional param source (a `T*` binding) stays out of every
-    slot -- optional<T> takes no T* implicitly, and the AST routes it through
-    per-element lift logic this cell does not mirror."""
+    slot -- optional<T> takes no T* implicitly, and the per-element lift
+    logic that would be needed is not lowered here."""
     analyzer = lc.analyzer
     bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
 
@@ -1302,7 +1301,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
 
     The `obj.name == "self"` guard is load-bearing -- `_field_receiver_ok` alone
     would also admit `other_record.field = ...`, which is not a member init. The
-    own-field test matches `_extract_field_inits`. Routed shapes:
+    own-field test is the same one the ctor driver applies. Routed shapes:
 
       * **scalar** (M3a): an eligible-scalar or Char value (`f(value)`).
       * **own-param move** (M3b-move): an `Own[...]` source consumed at its last use
@@ -1334,13 +1333,13 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
       * **any Optional** -- a `None` source (`f(std::nullopt)`), inner- and
         repr-independent; and for a POINTER-REPR Optional the own-param move
         plus the borrow-`T*` `ptr_to_optional` lift, likewise inner-agnostic
-        (the AST keys the lift on the field's repr, never on the inner).
+        (the lift keys on the field's repr, never on the inner).
 
     Then a tail for families the cascade above claims for no arm: the
     type-agnostic own-param move, an `Any` field's `into_any` coerce, and a
     `bytearray` field's same-typed param copy. Field types beyond all of that
     (BytesView; cross-module / native / generic records outside the move row)
-    leave the ctor on the AST path."""
+    reject the whole ctor."""
     analyzer = lc.analyzer
     if not (isinstance(stmt, TpyAssign)
             and isinstance(stmt.target, TpyFieldAccess)
@@ -1349,11 +1348,10 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             and stmt.target.field in own_field_names
             and _field_receiver_ok(stmt.target, declared, analyzer)):
         return False
-    # The AST DEMOTES a bare-name RHS that is not a param (`blocked_by_bare_name`
-    # in _extract_field_inits -- a conservative "not in scope at MIL time" that
-    # covers read-only-seeded globals too), so hoisting one here would diverge.
-    # Returning False routes it to the demote mirror in lower_constructor
-    # (`_ast_demotes_init`), which sends it to the body like the AST does.
+    # A bare-name RHS that is not a param is DEMOTED to the ctor body -- a
+    # conservative "not in scope at MIL time" that covers read-only-seeded
+    # globals too -- so it must not hoist here. Returning False routes it to
+    # `_ast_demotes_init` in lower_constructor, which sends it to the body.
     src_peeled = stmt.value
     while isinstance(src_peeled, TpyCoerce):
         src_peeled = src_peeled.expr
@@ -1386,8 +1384,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # An `Own[str]` / `Own[bytes]` param consumed at its LAST USE moves
         # into the owned field like any other own-param source -- the tail
         # emitter runs that check ahead of its view arm, so admitting it here
-        # is the whole gap. Move sources only: at a NON-last use the AST
-        # renders the family's copy (`::tpy::bytes_copy(name)`), which the
+        # is the whole gap. Move sources only: at a NON-last use the
+        # family's copy renders (`::tpy::bytes_copy(name)`), which the
         # view arm below does not spell for an Own-wrapped declaration.
         if _is_move_source(_unwrap_copy(stmt.value, analyzer), lc,
                            own_param_names):
@@ -1397,7 +1395,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # Stage B: a generic record's `T` field. An `Own[T]` param moves; a bare
         # `T` param copies (`first(a)`). The source renders by name only -- a
         # TypeParamRef slot takes no borrow/storage lift -- so the MIL is
-        # byte-identical to the AST's `gen_expr(name, T)`. A non-param source
+        # that bare render. A non-param source
         # (`self.<field>` read, ctor rvalue) rides a later cell.
         source = _unwrap_copy(stmt.value, analyzer)
         if _is_move_source(source, lc, own_param_names):
@@ -1411,13 +1409,17 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         return False
     if _container_storage_field(ftype):
         source = _unwrap_copy(stmt.value, analyzer)
-        if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-            # The MIL is a target-threaded position like a decl init (the AST
-            # renders `gen_expr(source, fld_type)`), so the shared container-
+        if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
+                               TpyListRepeat)):
+            # The MIL is a target-threaded position like a decl init (the field
+            # type is the render target), so the shared container-
             # literal classifier applies verbatim. Admitted element rows are all
-            # temps_ok=False shapes, so the AST's temps-rollback demote cannot
-            # fire on an admitted literal. A TpyListRepeat / comprehension /
-            # coerce-wrapped source falls through to the reject.
+            # temps_ok=False shapes, so the temps-rollback demote cannot
+            # fire on an admitted literal. `[e] * n` joins them: it
+            # materializes its own container off the threaded field type,
+            # the same value the field-write prvalue row assigns. A
+            # comprehension / coerce-wrapped source falls through to the
+            # reject.
             return _container_literal_shape_ok(
                 source, ftype, analyzer, threaded=True)
         if isinstance(source, TpyName):
@@ -1441,13 +1443,13 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                 and source.func.name in ("list", "dict", "set", "Array")):
             # The container ctor call (`self.items = list()` ->
             # `items(std::vector<T>())`, `self.items = list(src)` ->
-            # `items(::tpy::construct<std::vector<T>>(src))`): the AST's
-            # target-threaded `gen_expr(source, fld_type)` spells the FIELD's
+            # `items(::tpy::construct<std::vector<T>>(src))`): the
+            # target-threaded render spells the FIELD's
             # container type either way, so the element types come from the
             # field, not from the call. `Array()` joins them:
             # `data(std::array<T, N>())`. The single argument rides the
             # ordinary call lowering, which raises on any arg shape it does
-            # not mirror.
+            # not support.
             return True
         return False
     pu = _eligible_ptr_union(ftype, analyzer)
@@ -1498,8 +1500,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # F4 U1: bare renders only -- the variant converting ctor absorbs a
         # same-union param name, a member-typed param name, a scalar literal
         # (`u(u)` / `u(x)` / `u(5)`; lowering retypes a top-level literal to
-        # the union so the BigInt/Float32 slot wraps never fire -- the AST
-        # threads the union as the render target, which takes neither), and
+        # the union so the BigInt/Float32 slot wraps never fire -- the union
+        # is the render target, which takes neither), and
         # the monostate `None`. Classification peels sema coerces (a literal
         # source arrives coerce-wrapped); eligibility checks the full expr.
         peeled = _unwrap_copy(stmt.value, analyzer)
@@ -1514,9 +1516,9 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # A spelled tuple LITERAL builds the borrow-form brace-init and wraps
         # it in `tuple_to_storage` (per-element admission in
         # `_mil_ptr_tuple_elem_ok`; all-VALUE captures only -- a ref capture
-        # takes the AST's slot_info path this cell does not mirror). Checked
+        # takes a slot_info path this cell does not render). Checked
         # on the coerce-peeled RHS, NOT the copy-unwrapped one: a `copy()` of
-        # a WHOLE tuple takes the storage-form `_gen_copy_expr` render.
+        # a WHOLE tuple takes the storage-form copy render.
         lit = stmt.value
         while isinstance(lit, TpyCoerce):
             lit = lit.expr
@@ -1531,7 +1533,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                                        own_params=own_param_names)
                 for e, s in zip(lit.elements, ft_tuple.element_types))
         # A storage-form-tuple-returning CALL stores bare
-        # (`t(make_pair(5))` -- no tuple_to_storage lift, the AST's
+        # (`t(make_pair(5))` -- no tuple_to_storage lift, per the
         # needs_tuple_storage_lift call verdict).
         if (isinstance(stmt.value, (TpyCall, TpyMethodCall))
                 and _storage_form_tuple_return(
@@ -1552,8 +1554,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             return True
         # F3: a borrow pointer-repr tuple param stores via `tuple_to_storage`
         # (the body field-write arm's MIL sibling). No copy()-unwrap: a
-        # `copy()` of a pointer-repr tuple takes the AST's storage-form
-        # `_gen_copy_expr` render, which the MIL slice does not mirror.
+        # `copy()` of a pointer-repr tuple takes the storage-form copy
+        # render, which the MIL slice does not spell.
         if _unwrap_copy(stmt.value, analyzer) is not stmt.value:
             return False
         return _is_borrow_tuple_source(stmt.value, declared, set(), analyzer)
@@ -1590,8 +1592,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     if oc_inner is not None:
         source = _unwrap_copy(stmt.value, analyzer)
         if isinstance(source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-            # A container literal into an `Optional[container]` field. The AST
-            # threads the field type and `_gen_array_literal` unwraps the
+            # A container literal into an `Optional[container]` field. The
+            # field type is threaded and the literal render unwraps the
             # Optional itself, so the literal is classified against the INNER
             # -- element targets derived from the Optional would diverge.
             # Other sources keep the Optional rows below.
@@ -1619,8 +1621,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             # ctor absorbs the bare (target-retyped) literal.
             return True
         if _str_literal_value_opt_arg(_peel_coerce(source), ftype):
-            # `self.s = "xy"` on `str | None` -> `s("xy")`: the same bare
-            # literal both paths render at a value-repr Optional[str] slot.
+            # `self.s = "xy"` on `str | None` -> `s("xy")`: the bare
+            # literal renders at a value-repr Optional[str] slot.
             # str ONLY -- `_value_opt_view` also covers bytes, whose owned
             # field needs the view->owned copy this bare render omits.
             return True
@@ -1633,7 +1635,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if _value_opt_scalar(ftype, analyzer) is not None:
             # Either the same `std::optional<T>` (a plain copy) or the bare
             # INNER scalar, which `std::optional<T>`'s converting ctor absorbs
-            # -- the AST renders both bare (`value(value)`), no wrap either
+            # -- both render bare (`value(value)`), no wrap either
             # way. The inner is a cheap scalar by `_value_opt_scalar`'s own
             # verdict, so matching it is enough to stay in the routed family.
             return dt == ftype or dt == unwrap_readonly(
@@ -1670,8 +1672,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # never confirmed the `this` receiver spelling). The
         # `Send[...]` wrapper is erased in storage form on BOTH sides, so it
         # is peeled off the field type as well as the param's -- comparing a
-        # peeled param against an unpeeled field would reject the pair the
-        # AST spells identically (`std::function<void(int32_t)> cb : cb(cb)`).
+        # peeled param against an unpeeled field would reject a pair that
+        # spells identically (`std::function<void(int32_t)> cb : cb(cb)`).
         source = _unwrap_copy(stmt.value, analyzer)
         if isinstance(source, TpyLambda):
             return _lambda_routable(source, analyzer)
@@ -1684,7 +1686,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         return _callable_value(dt) and dt == ft_bare
     if isinstance(ftype, OptionalType) and ftype.uses_pointer_repr():
         # The move and the `ptr_to_optional` lift are both INNER-AGNOSTIC: the
-        # AST arm keys the lift on the field's pointer repr alone, never on
+        # lift keys on the field's pointer repr alone, never on
         # what is inside, so a record / container / bytearray / type-param
         # inner all take the same wrap. An OWN param -- the same storage
         # optional by rvalue-ref -- MOVES bare (`tag(std::move(tag))`, the
@@ -1713,14 +1715,14 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if (isinstance(ftype, AnyType) and isinstance(tail_src, TpyCoerce)
                 and tail_src.coercion.name == "into_any"):
             # An `Any` field from sema's into_any coerce: the coercion node
-            # carries its own `::tpy::make_any(...)` render, so the tail's
-            # bare source lowering is byte-identical.
+            # carries its own `::tpy::make_any(...)` render, so the tail
+            # lowers the source bare.
             _witness("mil.any_coerce")
             return True
         if is_bytearray_type(ftype) and isinstance(tail_src, TpyName):
             # A `bytearray` field copies bare from a same-typed param
             # (`data(data)`) -- a reference type, but the MIL slot is storage
-            # and the AST threads no conversion. Exact-shape pin like the
+            # and no conversion is threaded. Exact-shape pin like the
             # container-param row: a differing spelling could carry one.
             dt = declared.get(tail_src.name)
             return (dt is not None
@@ -1767,16 +1769,16 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     inits that cannot hoist or follow a chain break (M3c-demotion) -- lowers through the
     shared statement machinery (`_lower_stmt`), the same path method
     bodies use. The ctor routes only when every non-trivia body statement is in the slice;
-    otherwise it stays on the AST path, byte-identical. The signature stays on the AST path
-    (the M1 method precedent); only the MIL + body tail routes here."""
+    otherwise it rejects. The signature belongs to the printer layer
+    (the M1 method precedent); only the MIL + body tail lowers here."""
     if self_type is None or not _f1_record(self_type, analyzer):
         note("ctor.non_f1_record")
         return None
     # M3d: same-module F1 base(s) route -- each `super().__init__` / `BaseN.__init__`
     # call lowers to a base initializer (sorted by parent declaration order), and a
     # direct inherited-field write goes to the body. A non-F1 base (cross-module /
-    # generic / native -- its `to_cpp()` would not match) keeps the ctor on the AST
-    # path. Reject overloaded / native / generator / generic __init__ -- those take
+    # generic / native -- its `to_cpp()` would not match) rejects the whole
+    # ctor. Reject overloaded / native / generator / generic __init__ -- those take
     # emit paths the tail emitter does not reproduce.
     ri = analyzer.registry.get_record(record.name)
     if ri is None:
@@ -1803,10 +1805,10 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         note("ctor.special_init")
         return None
     # A reassigned param needing the owned-copy prologue (String/BigInt/owned
-    # bytes...): gen_body emits the `T name = __param_name;` body local for a
-    # ctor too -- while the ctor signature never takes the `__param_` rename
-    # (a pre-existing AST defect; both halves stay AST-owned). The THIR tail
-    # reproduces neither -> AST path. Mirrors sig.param_reassign_copy.
+    # bytes...) rejects (`ctor.param_reassign_copy`, the ctor sibling of
+    # sig.param_reassign_copy): the prologue local `T name = __param_name;`
+    # has no matching `__param_` rename in the ctor signature -- a
+    # pre-existing defect the tail does not reproduce.
     scan = analyzer.function_scan_results.get(id(init_method))
     if scan is not None and scan.reassigned:
         for pname, ptype in init_method.params:
@@ -1815,9 +1817,9 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                     and pt.param_needs_copy_for_reassign()):
                 note("ctor.param_reassign_copy")
                 return None
-    # A MUTATED `String` param: the AST emits the mutation against the
-    # untouched `const std::string&` param (ill-formed C++, see BUGS.md) --
-    # keep the whole shape AST-owned rather than mirror it. Mirrors
+    # A MUTATED `String` param would emit the mutation against the untouched
+    # `const std::string&` param (ill-formed C++, see BUGS.md), so the whole
+    # shape rejects (`ctor.param_mutated_string`).
     # TpyCall lowering rejects the same mutated-String slots using these
     # synthetic-constructor mutation facts.
     init_fis = ri.get_method_overloads("__init__")
@@ -1828,7 +1830,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 note("ctor.param_mutated_string")
                 return None
     # Own[T] / Own[T]|None params: their MIL sources move (M3b-move), so M3b-copy
-    # rejects them as record-field sources (mirror `_extract_field_inits`'s set).
+    # rejects them as record-field sources.
     own_param_names = {pname for pname, ptype in init_method.params
                        if isinstance(ptype, TpyType)
                        and unwrap_optional_own(unwrap_readonly(
@@ -1844,15 +1846,15 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                    render_resolve=render_resolve,
                    render_concept=render_concept)
     # Global seeding, like lower_function's: read-only value globals plus
-    # `global`-declared write names (the AST's global-write arm is
+    # `global`-declared write names (the global-write render is
     # function-kind-blind, so a ctor's `g = v;` renders exactly like a
     # sync function's).
     _seed_global_scope(init_method, analyzer, lc, declared, native_globals)
     # Every lowering call sits inside this boundary: expression admission can
-    # raise, and a raise outside here would crash instead of falling back.
+    # raise, and a raise outside here would escape this reject boundary.
     try:
         # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
-        # declaration order (M3d); None if any is outside the slice -> AST path.
+        # declaration order (M3d); None if any is outside the slice -> reject.
         base_inits = _lower_base_inits(init_method, ri, declared, lc)
         if base_inits is None:
             note("ctor.base_init")
@@ -1860,8 +1862,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         field_inits: list[THIRMilInit] = []
         body_stmts: list[TpyStmt] = []  # demoted inits + non-init stmts + trivia, source order
         body_written_self_fields: set[str] = set()
-        # The AST's demote triggers (`_extract_field_inits`): a nested-def-name /
-        # bare non-param-name source, or any body-local reference in the RHS.
+        # The demote triggers: a nested-def-name / bare non-param-name
+        # source, or any body-local reference in the RHS.
         nested_def_names = {s.func.name for s in init_method.body
                             if isinstance(s, TpyNestedDef)}
         body_local_names = collect_top_level_local_names(init_method.body)
@@ -1878,9 +1880,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             # the base ctor owns the MIL slot -- WITHOUT breaking the hoist chain. It is
             # tracked so a later own-field hoist that reads it demotes (below). A property
             # setter (also a non-own self field) lands here too and rejects via body
-            # ineligibility (`_field_receiver_ok`). NB the AST checks this only on a live
-            # chain (after `chain_broken` it demotes instead, skipping the tracking set); the
-            # divergence is inert -- once the chain is broken every later own-field init
+            # ineligibility (`_field_receiver_ok`). The tracking set matters only on a
+            # live chain -- once the chain is broken every later own-field init
             # demotes regardless, so the set is never consulted.
             if _is_self_nonown_field_assign(stmt, own_field_names):
                 body_written_self_fields.add(stmt.target.field)
@@ -1900,7 +1901,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 if mil_node is not None:
                     field_inits.append(mil_node)
                     continue
-                # DYNAMIC demote (the AST's probe-registers-a-temp trigger,
+                # DYNAMIC demote (the probe-registers-a-temp trigger,
                 # e.g. a varargs std::array in the init): the init goes to
                 # the body like the static demotes below.
                 _reject_nondef_ctor_field(stmt, analyzer,
@@ -1917,8 +1918,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                                         body_local_names))
                 if not chain_broken and ast_demotes:
                     _witness("mil.demote_mirror")
-            # Demote to the body. Demoting breaks the chain (mirrors `_extract_field_inits`'s
-            # `demote()`): the MIL runs before the body, so a later otherwise-hoistable init
+            # Demote to the body. Demoting breaks the chain: the MIL runs
+            # before the body, so a later otherwise-hoistable init
             # must also demote to preserve source evaluation order.
             chain_broken = True
             body_stmts.append(stmt)
@@ -1933,17 +1934,15 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         if _rejects_lambda_hoist(ctor.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
         validate_constructor(ctor)
-        publish_binding_facts(lc)
         return ctor
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
 
 _MIL_DEMOTE_TAGS = frozenset({
-    # The AST-probe-temp class ONLY: rejects the AST *hoists* must stay
-    # whole-body fallbacks (demoting one would emit THIR body code where
-    # the AST emits a MIL entry -- a guaranteed byte diff). Extend this
-    # whitelist one oracle at a time.
+    # The probe-temp class ONLY: a reject at an init that belongs in the MIL
+    # must fail the whole ctor -- demoting one would emit body code where a
+    # MIL entry belongs. Extend this whitelist one witnessed shape at a time.
     "call.vararg_pack_flush",
 })
 
@@ -1951,8 +1950,8 @@ _MIL_DEMOTE_TAGS = frozenset({
 def _attempt_ctor_mil_init(stmt, own_param_names, own_field_names,
                            declared: dict, lc) -> 'THIRExpr | None':
     """Try one MIL field-init lowering; None = dynamically demote (the
-    whitelisted AST-probe-temp rejects only -- every other ThirUnsupported
-    re-raises into the whole-ctor fallback). The attempt's side effects
+    whitelisted probe-temp rejects only -- every other ThirUnsupported
+    re-raises and rejects the whole ctor). The attempt's side effects
     roll back locally: `declared` by copy, the branch-scoped lc name-sets
     via branch_scope, the FUNCTION-scoped walrus sets by explicit copy
     (branch_scope deliberately skips them, and a walrus ARG can lower
@@ -1976,6 +1975,10 @@ def _attempt_ctor_mil_init(stmt, own_param_names, own_field_names,
                 stmt, own_param_names, own_field_names, declared, lc)
     except ThirUnsupported as ex:
         if ex.reason not in _MIL_DEMOTE_TAGS:
+            # A member-init never reaches the statement chokepoint, so this is
+            # the innermost frame that knows which source line rejected.
+            if ex.loc is None:
+                ex.loc = getattr(stmt, "loc", None)
             raise
         declared.clear()
         declared.update(decl_snap)
@@ -2007,13 +2010,13 @@ def _is_self_nonown_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bo
 def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
                       nested_def_names: set[str],
                       body_local_names: set[str]) -> bool:
-    """Whether the AST demotes this own-field init to the ctor body regardless
-    of the chain state -- `_extract_field_inits`' source triggers: a nested-def
+    """Whether this own-field init demotes to the ctor body regardless
+    of the chain state -- the source triggers: a nested-def
     name, a bare name that is not a param (not in scope at MIL time; covers
-    module globals and `self`), or any body-local reference in the RHS. THIR
-    must demote identically -- rejecting the ctor here would be safe but
-    needlessly conservative; hoisting would diverge. The temps trigger
-    (`temps.rollback` -> demote) is NOT mirrored: lowering rejects
+    module globals and `self`), or any body-local reference in the RHS.
+    Rejecting the ctor here would be safe but needlessly conservative;
+    hoisting one would spell a name not yet in scope. The temps trigger
+    (`temps.rollback` -> demote) is NOT handled here: lowering rejects
     temp-registering sources instead."""
     src = stmt.value
     while isinstance(src, TpyCoerce):
@@ -2028,8 +2031,8 @@ def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
 def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
                         nested_def_names: set[str], param_names: set[str],
                         body_local_names: set[str]) -> str:
-    """Which demote trigger fired for this own-field init, in the order
-    `_extract_field_inits` tests them.
+    """Which demote trigger fired for this own-field init, in the order the
+    triggers are tested.
 
     The trigger is part of the user-visible sentence, so a later one standing in
     for an earlier one is a wrong message, not a differently-worded right one.
@@ -2067,10 +2070,10 @@ def _reject_nondef_ctor_field(stmt: TpyAssign, analyzer, reason: str) -> None:
 
 
 def _is_self_own_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
-    """A `self.<own field> = expr` -- a member initializer the AST hoists into the
-    MIL. THIR must hoist it too or keep the whole ctor on the AST path; demoting it
-    into the body (when THIR's MIL slice can't reproduce its field type / source)
-    would diverge from the AST's MIL hoist."""
+    """A `self.<own field> = expr` -- a member initializer that belongs in the
+    MIL. Either it hoists there or the whole ctor rejects; demoting it
+    into the body (when the MIL slice can't render its field type / source)
+    is not an alternative."""
     return (isinstance(stmt, TpyAssign)
             and isinstance(stmt.target, TpyFieldAccess)
             and isinstance(stmt.target.obj, TpyName)
@@ -2079,10 +2082,10 @@ def _is_self_own_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
 
 def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType],
                       lc: _LowerCtx) -> 'list[THIRBaseInit] | None':
-    """Mirror `_extract_base_inits`: lower every `super().__init__` / `BaseN.__init__`
+    """Lower every `super().__init__` / `BaseN.__init__`
     call to a THIRBaseInit, sorted by parent declaration order (so a multi-base list
     emits in the order C++ runs the base ctors, avoiding -Wreorder). None if any base
-    init is outside the slice -- the whole ctor then stays on the AST path."""
+    init is outside the slice -- the whole ctor then rejects."""
     analyzer = lc.analyzer
     parent_order: dict[int, int] = {}
     for idx, parent in enumerate(ri.parents):
@@ -2105,9 +2108,9 @@ def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType]
     return [bi for _, bi in entries]
 
 def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -> bool:
-    """One base-init arg the tail emitter mirrors. The AST renders every arg
-    via TARGET-LESS `gen_expr(a)` -- no retype, no deref, no `_maybe_move` --
-    so the admitted rows are exactly the shapes whose bare render matches:
+    """One base-init arg the tail emitter can render. Every arg renders
+    TARGET-LESS -- no retype, no deref, no auto-move --
+    so the admitted rows are exactly the shapes whose bare render is right:
 
       * an eligible-scalar value expression (the M3d-1 row);
       * a str literal (`"lit"`) / a `None` literal, the latter only where the
@@ -2120,7 +2123,7 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
       * a declared PARAM name of a str-family / F1-record / pointer-repr
         Optional[F1-record] type, incl. `Own[...]` params -- all render as
         the bare name. NB an `Own` param arg renders bare (a COPY into the
-        base slot, no `std::move`) on the AST path; mirrored, not fixed.
+        base slot, no `std::move`) -- a known gap, not fixed here.
 
     Anything that could register a codegen temp is out -- a base-init cell
     has no flush point (same contract as the MIL)."""
@@ -2154,6 +2157,40 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     if isinstance(a, TpyIntLiteral):
         return (isinstance(at, IntLiteralType)
                 and -(2**31 - 1) <= a.value <= 2**31 - 1)
+    # A walrus inside the argument would need a flush point for its
+    # binding, and the cell has none: the part order the format call
+    # evaluates in is unspecified, so the write and a later read race.
+    if (isinstance(a, (TpyBinOp, TpyFString))
+            and contains_named_expr(a)):
+        return False
+    if (isinstance(a, TpyBinOp) and a.op == "+"
+            and _resolved_str_value(at, analyzer) is not None):
+        # A str CONCAT (`super().__init__("tag" + str(n))` ->
+        # `::tpy::Exception((::tpy::str_concat("tag", ...)))`): str_concat is
+        # a pure expression, so the target-less bare render holds -- provided
+        # each operand is itself a temp-free row, which keeps the cell's
+        # no-flush contract.
+        return (_base_init_str_operand_ok(a.left, declared, lc)
+                and _base_init_str_operand_ok(a.right, declared, lc))
+    if ((_conv := _base_init_str_conversion(a)) is not None
+            and _resolved_str_value(at, analyzer) is not None):
+        # A bare conversion (`super().__init__(str(n))`): the same pure
+        # render the concat admits as an operand, standing alone.
+        return _base_init_arg_ok(_conv, declared, lc)
+    if isinstance(a, TpyFString):
+        # An f-string (`super().__init__(f"tag{n}")` ->
+        # `::tpy::Exception(std::format("tag{}", n))`): std::format is a pure
+        # expression like str_concat, so the same operand rule applies to
+        # each interpolated value. A conversion or format spec is excluded
+        # -- those spell their own render, which this row has not read.
+        for part in a.parts:
+            if isinstance(part, str):
+                continue
+            if part.conversion != -1 or part.format_spec is not None:
+                return False
+            if not _base_init_str_operand_ok(part.expr, declared, lc):
+                return False
+        return True
     if not (isinstance(a, TpyName) and a.name in declared
             and a.name != "self"):
         return False
@@ -2161,7 +2198,7 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     if _resolved_str_value(vt, analyzer) is not None:
         return True
     # The remaining bare-name param families. Each binds a `const T&` (never a
-    # pointer-local), so the target-less `gen_expr(name)` the AST renders is
+    # pointer-local), so the target-less render is
     # the bare name and nothing here can register a temp:
     #   * a builtin CONTAINER (`: Parent(store)`),
     #   * an open type param inside a generic record (`: Base<T>(val)`),
@@ -2186,6 +2223,29 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
             vt = vt.inner
     return _f1_record(vt, analyzer)
 
+def _base_init_str_conversion(a: TpyExpr) -> 'TpyExpr | None':
+    """The subject of a `str(x)` / `repr(x)` conversion call, or None. The
+    render is a pure expression (`::tpy::fixed_to_str<int32_t>(n)`,
+    `(n).to_string()`, `::tpy::repr_of(n)`), so it registers no temp and the
+    cell's no-flush contract survives it."""
+    if (isinstance(a, TpyCall) and isinstance(a.func, TpyName)
+            and a.func.name in ("str", "repr") and len(a.args) == 1
+            and not a.kwargs and a.double_star_unpack is None):
+        return a.args[0]
+    return None
+
+
+def _base_init_str_operand_ok(a: TpyExpr, declared: dict[str, TpyType],
+                              lc: _LowerCtx) -> bool:
+    """One operand of an admitted base-init str concat or f-string: any row
+    `_base_init_arg_ok` admits, plus a `str(x)` / `repr(x)` conversion over
+    one."""
+    subject = _base_init_str_conversion(a)
+    if subject is not None:
+        return _base_init_arg_ok(subject, declared, lc)
+    return _base_init_arg_ok(a, declared, lc)
+
+
 def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
                          declared: dict[str, TpyType],
                          none_cpp: 'str | None' = None) -> THIRExpr:
@@ -2193,8 +2253,8 @@ def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
     `_lower_expr` arm (its render is always slot-derived elsewhere), so it
     lowers here to the None literal carrying the SLOT's spelling
     (`none_default_cpp_spelling` -- `{}` for a variant slot, `std::nullopt`
-    for a value optional, the bare `nullptr` default otherwise, matching the
-    AST's slot-aware default render); everything else takes `_lower_expr`'s
+    for a value optional, the bare `nullptr` default otherwise -- the
+    slot-aware default render); everything else takes `_lower_expr`'s
     name/literal arms."""
     if isinstance(a, TpyNoneLiteral):
         return THIRLiteral(result_type=lc.analyzer.get_expr_type(a),
@@ -2206,11 +2266,11 @@ def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
 def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
                      lc: _LowerCtx) -> 'tuple[THIRBaseInit, TpyType] | None':
     """Lower one base-init call to `(THIRBaseInit, parent_type)`, or None outside the
-    slice (the caller reuses `parent_type` for the parent-order rank). Mirrors
-    `_extract_base_inits`'s `{parent_type.to_cpp()}({args})` render for both the
+    slice (the caller reuses `parent_type` for the parent-order rank). Renders
+    `{parent_type.to_cpp()}({args})` for both the
     `super().__init__(args)` and the explicit `BaseN.__init__(self, args)` forms (sema
-    strips `self` from the latter's args). The base must be F1 (so `to_cpp()` is
-    byte-identical) and every arg in `_base_init_arg_ok`'s target-less bare-render
+    strips `self` from the latter's args). The base must be F1 (so `to_cpp()`
+    spells the struct) and every arg in `_base_init_arg_ok`'s target-less bare-render
     rows; kwargs / star args are out."""
     analyzer = lc.analyzer
     expr = stmt.expr
@@ -2231,8 +2291,7 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
             return None
         # A `None` arg needs its SLOT's spelling (`{}` for a variant slot,
         # `std::nullopt` for a value optional, bare `nullptr` otherwise) --
-        # rendered by the same `default_to_cpp` the AST arm calls, so the
-        # two cannot drift.
+        # rendered by `default_to_cpp` off the base's own param type.
         none_cpp = None
         if isinstance(a, TpyNoneLiteral) and i < len(base_params):
             none_cpp = default_to_cpp_from_analyzer(analyzer, a,
@@ -2248,9 +2307,9 @@ def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
 def _lower_ctor_mil_init(
         stmt: TpyAssign, own_param_names: set[str], own_field_names: set[str],
         declared: dict[str, TpyType], lc: _LowerCtx) -> THIRMilInit:
-    """Lower one AST-hoisted field initializer into a member-init-list entry.
+    """Lower one hoisted field initializer into a member-init-list entry.
 
-    Mirrors the record/Optional arms of `_extract_field_inits`:
+    The record/Optional arms:
 
       * an **own-param at last use** moves (`move=True`, plain source -- never
         `ptr_to_optional`, per the cascade) [M3b-move];
@@ -2261,8 +2320,8 @@ def _lower_ctor_mil_init(
         the optional directly [M3b-rvalue];
       * a plain **F1-record** -> the `copy()`-unwrapped record-value source [M3b-copy/-rvalue];
       * an owned **bytes** field -> a view (span) source copies via the S6
-        STORAGE convert (`::tpy::bytes_copy(...)`, the AST's
-        `_view_source_to_owned` / the `bytesview_to_bytes` coerce lambda);
+        STORAGE convert (`::tpy::bytes_copy(...)`, or the
+        `bytesview_to_bytes` coerce lambda);
         an owned source (bytes literal / `bytes()` rvalue) lands bare;
       * a **str / StrView** field -> the bare lowered source (std::string's
         EXPLICIT string_view ctor fires in the MIL direct-init; a
@@ -2286,8 +2345,8 @@ def _lower_ctor_mil_init(
     source = _unwrap_copy(stmt.value, analyzer)
     if (_container_storage_field(ftype) and isinstance(source, TpyCall)
             and not source.args and not source.kwargs):
-        # `self.items = list()` -> `items(std::vector<T>())`: the AST threads
-        # the FIELD type as the target, so the spelling comes from the field
+        # `self.items = list()` -> `items(std::vector<T>())`: the FIELD type
+        # is the render target, so the spelling comes from the field
         # and the call default-constructs it. Spelled here rather than lowered
         # as a call -- the callee is a builtin type name, not a function.
         _witness("mil.container_default")
@@ -2297,10 +2356,13 @@ def _lower_ctor_mil_init(
                            args=(), cpp_template=f"{lc.render_type(ftype)}()",
                            loc=loc))
     if _container_storage_field(ftype):
-        _witness("mil.container_literal"
-                 if isinstance(source, (TpyArrayLiteral, TpyDictLiteral,
-                                        TpySetLiteral))
-                 else "mil.container_name")
+        if isinstance(source, TpyListRepeat):
+            _witness("mil.container_repeat")
+        else:
+            _witness("mil.container_literal"
+                     if isinstance(source, (TpyArrayLiteral, TpyDictLiteral,
+                                            TpySetLiteral))
+                     else "mil.container_name")
     if _is_move_source(source, lc, own_param_names):
         return THIRMilInit(
             field_cpp=field_cpp,
@@ -2359,16 +2421,16 @@ def _lower_ctor_mil_init(
                                 form=Form.STORAGE, move=False, loc=loc)
         else:
             v = _lower_expr(source, lc, declared)
-            # A view (span) source into the owned vector field copies via the
-            # AST's `_view_source_to_owned` chokepoint -- vector has no span
-            # ctor; owned sources (literal / `bytes()` rvalue) land bare.
+            # A view (span) source into the owned vector field copies to
+            # owned -- vector has no span ctor; owned sources (literal /
+            # `bytes()` rvalue) land bare.
             if v.form is Form.BORROW:
                 v = THIRFormConvert(result_type=bytes_t, value=v,
                                     form=Form.STORAGE, move=False, loc=loc)
         return THIRMilInit(field_cpp=field_cpp, value=v)
     if _resolved_str_value(ftype, analyzer) is not None:
         # str/StrView fields take the BARE render: std::string's EXPLICIT
-        # string_view ctor fires in the MIL direct-init (the AST adds no wrap
+        # string_view ctor fires in the MIL direct-init (no wrap is added
         # there); a sema `strview_to_str` coerce materializes itself.
         _witness("mil.str_field")
         return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc, declared))
@@ -2396,8 +2458,7 @@ def _lower_ctor_mil_init(
         # `None` is the monostate member. A top-level int/float literal
         # (possibly coerce-wrapped by sema) retypes to the union so the
         # BigInt wrap / Float32 suffix keyed on the literal's own scalar type
-        # never fires -- the AST threads the union as the render target,
-        # which takes neither.
+        # never fires -- the union is the render target, which takes neither.
         peeled = source
         while isinstance(peeled, TpyCoerce):
             peeled = peeled.expr
@@ -2545,11 +2606,11 @@ def _lower_ctor_mil_init(
         elif oc_inner is not None and isinstance(
                 source, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             # A container literal into `std::optional<C>`: lowered against the
-            # INNER, mirroring `_gen_array_literal`'s own Optional unwrap --
-            # threading the Optional would derive the element targets from it.
-            # An ARRAY literal additionally self-describes
-            # (`lst(std::vector<int32_t>{1, 2, 3})`), which is the AST's
-            # union_prefix on the same branch: a bare brace-init has no
+            # INNER, since the container-literal render unwraps the Optional
+            # itself -- threading the Optional would derive the element
+            # targets from it. An ARRAY literal additionally self-describes
+            # (`lst(std::vector<int32_t>{1, 2, 3})`) via the type prefix on
+            # the same branch: a bare brace-init has no
             # deducible type for the optional's ctor. Dict/set literals spell
             # their own container type already.
             _witness("mil.optional_container_literal")
@@ -2557,7 +2618,7 @@ def _lower_ctor_mil_init(
             if isinstance(source, TpyArrayLiteral):
                 if not isinstance(v, THIRContainerLiteral):
                     # The prefix has nowhere to live; reject rather than let a
-                    # `replace` TypeError escape the per-body fallback.
+                    # `replace` TypeError escape as a crash.
                     raise ThirUnsupported(_mil_reject_detail(stmt, analyzer))
                 v = replace(v, typed_brace_cpp=lc.render_type(oc_inner))
         elif _str_literal_value_opt_arg(_peel_coerce(source), ftype):
@@ -2640,7 +2701,7 @@ def _method_self_type(record, analyzer) -> 'TpyType | None':
     generic record the self is `Record[T, ...]` (a `TypeParamRef` per type
     param, kinds per-index like sema's own self-type mirror), which `_f1_record`
     admits via `_f1_record_type_arg_ok`, opening lowering for the record's
-    templated bodies. Unsupported T-slot cells still fall a body back."""
+    templated bodies. Unsupported T-slot cells still reject the body."""
     ri = analyzer.registry.get_record(record.name)
     if ri is None:
         return None
@@ -2654,8 +2715,8 @@ def _method_self_type(record, analyzer) -> 'TpyType | None':
     return NominalType(record.name, _module_qname=ri.qualified_name())
 
 def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
-    """`_method_self_type` from the record NAME (the resumable seam has the
-    record name, not the AST node) -- reads `type_params` / `type_param_kinds`
+    """`_method_self_type` from the record NAME (the resumable entry has the
+    record name, not the parse-tree node) -- reads `type_params` / `type_param_kinds`
     / the qname off the `RecordInfo`. None when the record is unregistered."""
     ri = analyzer.registry.get_record(record_name)
     if ri is None:
@@ -2672,16 +2733,15 @@ def method_self_type_by_name(record_name: str, analyzer) -> 'TpyType | None':
 
 def unemitted_overload_clones(module: TpyModule, analyzer) -> set[int]:
     """ids of the auto_readonly / auto_own CLONE of an @overload impl whose
-    body the AST never emits.
+    body is never emitted.
 
     `_collect_method_overload_groups` hands a name's stubs to the FIRST
     non-stub method it sees (`pending_stubs.pop`), and method expansion has
     already split the impl into a mutable and a const clone -- so only one of
-    the two is registered. The AST emits THAT one once per stub, taking each
-    specialization's const-ness from the stub, and never names the twin: every
-    `thir_overload_key` for the group points at the registered impl. Attempting
-    the twin would tally a fallback for a body that does not exist, gating the
-    ratchet on a phantom."""
+    the two is registered. THAT one is emitted once per stub, taking each
+    specialization's const-ness from the stub, and the twin is never named:
+    every `thir_overload_key` for the group points at the registered impl.
+    Attempting the twin would lower a body that does not exist."""
     out: set[int] = set()
     for record in module.records:
         registered = {m.name for m in record.methods
@@ -2706,8 +2766,8 @@ def iter_module_callables(module: TpyModule, analyzer):
     (instance / static / property / dunder) yield the owning record's type
     (None-skipped for generic records). The constructor is excluded -- its body
     is emitted via the member-init-list driver (the M3 ctor frontier), not
-    gen_method_def; so is the unemitted @overload clone, which has no body on
-    either path, and the `skip_codegen` (@inline) callable, whose body sema
+    gen_method_def; so is the unemitted @overload clone, which has no body to
+    emit, and the `skip_codegen` (@inline) callable, whose body sema
     never analyzed -- lowering it would walk a body with empty `expr_types`.
     Excluding them HERE rather than at each driver is what keeps a third
     consumer (the dump) from reporting them as un-routed."""
@@ -2716,7 +2776,7 @@ def iter_module_callables(module: TpyModule, analyzer):
         if func.skip_codegen:
             continue
         yield func, None
-    for record in module.records:
+    for record in module.all_records():
         self_type = _method_self_type(record, analyzer)
         if self_type is None:
             continue
@@ -2730,11 +2790,11 @@ def iter_module_constructors(module: TpyModule, analyzer):
     """Yield `(record, init_method, self_type)` for every record that defines an
     `__init__` -- the ctor feed for the M3 frontier, the sibling of
     `iter_module_callables` (which excludes the ctor because its body is emitted by
-    the member-init-list driver, not `gen_body`). `self_type` is the owning
+    the member-init-list driver). `self_type` is the owning
     record's F1-record receiver (None-skipped for generic records, which
     `lower_constructor` also rejects). Constructor lowering has the final say;
     this only enumerates candidates."""
-    for record in module.records:
+    for record in module.all_records():
         init = record.init_method
         if init is None:
             continue
@@ -2805,8 +2865,7 @@ def cross_scope_rebind_site(
     The slot is declared at the enclosing body's prologue, outside the lambda's
     capture list: inside the lambda it dies each invocation while the pointer
     aliasing it is captured and outlives it, and outside it the lambda cannot
-    name it. The AST rejects that in `use_rebind_slot` by comparing the slot's
-    owning hoist scope, and THIR has no such runtime check, so this predicate is
+    name it. Nothing checks it at emit time, so this predicate is
     its entire protection. A lambda body reserving its OWN slot is not a hazard
     -- the emitters drain it inside the lambda.
 
@@ -2818,7 +2877,7 @@ def cross_scope_rebind_site(
     not a cross-scope consume, but the reason differs per caller and only one of
     the two is the local-vs-`nonlocal` dichotomy. For a NESTED DEF the two
     operands are two Python scopes, and within one of them a name is either local
-    or `nonlocal`, never both. For the SIMPLE-GENERATOR seam they are ONE scope
+    or `nonlocal`, never both. For the SIMPLE-GENERATOR peephole they are ONE scope
     -- the lambda is a render, not a Python scope -- and what carries `rb in own`
     there is that a local is DECLARED once per scope: a name whose slot is
     reserved inside the loop reserved none in the prologue, so the drain is
@@ -2849,8 +2908,8 @@ def _rejects_lambda_hoist(body) -> bool:
 
     A verdict only, never the diagnostic: a local first declared in a branch
     rides `THIRIf.hoist_slots`, whose owner `_slot_owning_name` cannot read, so
-    the shadow exemption misses it and this over-rejects shapes the AST accepts.
-    Falling back is safe there; raising would reject valid code.
+    the shadow exemption misses it and this over-rejects -- a valid shape can
+    land on the `nested_def.rebind_slot_hoist` reject.
     """
     return any(cross_scope_rebind_site(body, nd.body) is not None
                for nd in _iter_thir(body)
@@ -2873,7 +2932,7 @@ def _rejects_global_slot(node) -> bool:
     `_EmitState.next_slot()` must be represented here. The traversal is
     generic (`validate._iter_children` walks dataclass fields), so only this
     predicate needs maintaining; inverting it to an allowlist would make the
-    failure mode a spurious fallback instead of a dangling pointer."""
+    failure mode a spurious reject instead of a dangling pointer."""
     if isinstance(node, THIRPtrLocalDecl):
         # RECORD_HOISTED joins GLOBAL_RVALUE: its slot rides the hoist
         # lines, which spell `static __global_slot_N` at module scope
@@ -2959,8 +3018,8 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
             # `std::vector<T>* g{}` at namespace scope: reads deref through
             # the pointer-local arms, writes take the static-slot render.
             # `global_slots` too, not just `pointers`: a pointer-slot GLOBAL
-            # derefs at EVERY value position whatever its family (the AST's
-            # gen_expr_deref indirect render), where a pointer LOCAL of
+            # derefs at EVERY value position whatever its family (the
+            # indirect-name render), where a pointer LOCAL of
             # record type stays bare and reaches its members via `->`.
             lc.global_ptr_slots.add(name)
             lc.pointers.add(name)
@@ -3004,8 +3063,7 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
     lc.pointers.update(imported_slots)
     # A native-linkage global splits its spelling exactly as it does inside a
     # function body: writes take the BARE C name, reads the `::`-qualified
-    # one (the AST's `native_global_names` write target vs the qualified
-    # read).
+    # one (the `native_global_names` write target vs the qualified read).
     for name, cname in lc.prescan.native_globals.items():
         if name in declared:
             lc.prescan.global_write_cpp[name] = cname
@@ -3029,18 +3087,21 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         fn = THIRFunction(name="__tpy_init", params=(),
                           return_type=VoidType(), body=body,
                           layout=THIRFunctionLayout())
-        if any(_rejects_global_slot(n) for n in _iter_thir(fn.body)):
-            raise ThirUnsupported("top_level.slot_alloc")
+        slot_node = next((n for n in _iter_thir(fn.body)
+                          if _rejects_global_slot(n)), None)
+        if slot_node is not None:
+            raise ThirUnsupported("top_level.slot_alloc",
+                                  loc=getattr(slot_node, "loc", None))
         validate_function(fn)
         return fn
     except ThirUnsupported as ex:
-        note(ex.reason)
+        note(ex.reason, ex.loc)
         return None
 
 
 def lower_module(module: TpyModule, analyzer, render_type=None,
                  global_types=None) -> THIRModule:
-    """Try to lower every function and method in `module`; skip fallbacks.
+    """Try to lower every function and method in `module`; skip the rejects.
     With `global_types` (the generator's global name -> type map) the module's
     top-level statements lower too."""
     out = THIRModule(module_name=getattr(analyzer.ctx, "module_name", "generated"))

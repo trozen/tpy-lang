@@ -47,8 +47,7 @@ def _gen(source):
     compiler, modules = _compile(source)
     hpp, cpp = compiler.generate_code_to_strings(
         _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
+                                                comment_line_numbers=False))
     return hpp, cpp
 
 

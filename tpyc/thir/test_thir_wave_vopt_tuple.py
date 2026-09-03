@@ -11,6 +11,7 @@ elements, which `to_cpp` does not do.
 """
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_rejects_at,
     _assert_routes_byte_identical,
@@ -21,13 +22,8 @@ from .testutil import (
 from ..codegen_cpp.context import CodeGenOptions
 
 
-def _thir_fallbacks(source):
-    compiler, modules = _compile(source)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source):
+    return _reject_tally(source)
 
 
 MODEL_SRC = (
@@ -102,6 +98,5 @@ class TestValueOptTupleLocal:
             "    print(f())\n"
             "main()\n"
         )
-        _assert_rejects_at(_thir_fallbacks(src), "body:expr.call",
-                           "call.arg_shape.span")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.span")

@@ -10,17 +10,13 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical, _compile, _entry, _lower_ctx_witnessed,
 )
 
 
 def _fallbacks(source: str) -> dict:
-    compiler, modules = _compile(source)
-    compiler.generate_code_to_strings(
-        _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False,
-                               thir_codegen=True))
-    return dict(compiler._thir_fallback)
+    return _reject_tally(source)
 
 
 class TestQualcallProtocolRecordTemp:

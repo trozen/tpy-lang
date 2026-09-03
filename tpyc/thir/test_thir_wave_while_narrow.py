@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import pytest
 
-from .fallback import ThirUnsupported
+from .reject import ThirUnsupported
 from .lower import _LowerCtx
 from .lower.statements import _lower_stmt
 from ..parse.nodes import TpyAssign, TpyName
-from .testutil import (_assert_byte_identical, _assert_routes_byte_identical,
+from .testutil import (
+    _assert_rejects_at,
+    _reject_tally, _assert_byte_identical, _assert_routes_byte_identical,
                        _compile, _entry, _fn, _lower_ctx)
 
 _UNION = (
@@ -121,9 +123,8 @@ class TestWhileNarrowBoundaries:
                + "def main() -> None:\n"
                + "    print(f())\n"
                + "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.narrowed_rebind")
 
     def test_raw_assign_rebind_of_narrowed_still_rejects(self):
         # BOUNDARY: the kill lives in the var-decl arm. A frontend-IR raw

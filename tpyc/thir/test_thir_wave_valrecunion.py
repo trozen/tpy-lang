@@ -401,8 +401,7 @@ class TestModuleQualifiedCtorArgTemp:
         compiler, modules = _compile(src, extra_lib_dirs=[lib])
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir_flag))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return hpp + cpp
 
     def test_qualified_ctor_free_arg_hoists_temp(self, tmp_path):

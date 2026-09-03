@@ -71,4 +71,3 @@ class TestOwnedViewfamWalrusDecl:
                "    return len(t)\n")
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.walrus")
-        _assert_byte_identical(src)

@@ -14,6 +14,8 @@ that still needs its unwrap.
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _lower_ctx_witnessed,
@@ -72,9 +74,8 @@ class TestContainerFieldArg:
                "    def go(self) -> None:\n        self.n = eat(self.ws)\n"
                "def main() -> None:\n    q = Q()\n    q.go()\n"
                "    print(q.n)\nmain()\n")
-        _assert_byte_identical(src)
-        _ctx, fell = _thir_ctx(src)
-        assert fell.get("body:expr.call:call.arg_shape.optional") == 1, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.optional")
 
 
 class TestBytearrayFieldMethodReceiver:
@@ -114,10 +115,8 @@ class TestBytearrayFieldMethodReceiver:
                "    def go(self) -> None:\n        self.buf.append(65)\n"
                "def main() -> None:\n    h = H(1)\n    h.go()\n"
                "    print(len(h._b))\nmain()\n")
-        _assert_byte_identical(src)
-        _ctx, fell = _thir_ctx(src)
-        assert fell.get(
-            "body:expr.method_call:method.recv.field_parent") == 1, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.recv.field_parent")
 
 
 class TestPtrFieldMethodReceiver:
@@ -182,7 +181,5 @@ class TestPtrFieldMethodReceiver:
                "    c.st.bump(3)\n    return 0\n"
                "def main() -> None:\n    c = unsafe_take(Cell())\n"
                "    print(g(c, None))\n    unsafe_release(c)\nmain()\n")
-        _assert_byte_identical(src)
-        _ctx, fell = _thir_ctx(src)
-        assert fell.get(
-            "body:expr.method_call:method.recv.field_parent") == 1, fell
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.recv.field_parent")

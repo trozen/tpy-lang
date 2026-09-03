@@ -11,6 +11,8 @@ from .nodes import (
     THIRReturn, THIRStrLiteral, THIRVarDecl, THIRWhile,
 )
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _compile, _entry, _fn, _lower, _lower_ctx, _lower_ctx_witnessed,
     _assert_byte_identical, _assert_routes_byte_identical,
 )
@@ -254,8 +256,7 @@ class TestIfExprRejects:
                "def main() -> None:\n"
                "    print(f(True))\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
 
     def test_container_result_routes(self):
         # RE-PINNED ROUTED (decl-slot track): the container ternary renders
@@ -335,16 +336,22 @@ class TestIfExprRejects:
         cpp = _assert_byte_identical(src)
         assert "std::string x = ((cond) ? (r.s) : (t.s));" in cpp[1]
 
-    def test_nonbool_ternary_condition_rejected(self):
-        # `if a if c else b:` (int truthiness) stays AST, mirroring the
-        # condition name arm's bool pin.
-        thir = _lower(
-            "from tpy import Int32\n"
-            "def f(c: bool, a: Int32, b: Int32) -> Int32:\n"
-            "    if a if c else b:\n"
-            "        return 1\n"
-            "    return 0\n")
-        assert _fn(thir, "f") is None
+    def test_scalar_ternary_condition_renders_bare(self):
+        # `if a if c else b:` (int truthiness): the ternary's scalar result
+        # renders its own test, so the condition is the bare ternary --
+        # the same type-keyed verdict every other condition shape gets.
+        src = ("from tpy import Int32\n"
+               "def f(c: bool, a: Int32, b: Int32) -> Int32:\n"
+               "    if a if c else b:\n"
+               "        return 1\n"
+               "    return 0\n"
+               "def main() -> None:\n"
+               "    print(f(True, 1, 2))\n"
+               "main()\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "f") is not None
+        cpp = _assert_routes_byte_identical(src)
+        assert "if (((c) ? (a) : (b))) {" in cpp[0] + cpp[1]
 
     def test_isinstance_condition_routes(self):
         # The isinstance-ternary arm carries the condition-scoped inline
@@ -369,12 +376,11 @@ class TestIfExprRejects:
 
 
 class TestIfExprEmit:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     SRC = (
@@ -440,10 +446,9 @@ class TestIfExprEmit:
                      "views", "owned_ret", "mixed", "litmix", "fstr",
                      "as_cond", "as_operand", "enum_pick", "main"):
             assert _fn(thir, name) is not None, name
-        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
 
     def test_ternary_renders(self):
-        cpp = self._cpp(self.SRC, thir=True)
+        cpp = self._cpp(self.SRC)
         assert "int32_t x = ((c) ? (a) : (b));" in cpp
         assert "return ((c) ? (::tpy::BigInt(1)) : (n));" in cpp
         assert "float y = ((c) ? (1.5f) : (g));" in cpp

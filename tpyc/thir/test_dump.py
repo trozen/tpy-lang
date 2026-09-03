@@ -102,7 +102,7 @@ def _dump(src: str) -> str:
 
     compiler, modules = _compile(src)
     entry = _entry(modules)
-    ctx = compiler.collect_thir(entry, CodeGenOptions(thir_codegen=True))
+    ctx = compiler.collect_thir(entry, CodeGenOptions(), tolerate_reject=True)
     return dump_codegen_thir(entry.ast, entry.analyzer, ctx,
                              compiler.thir_reject_by_node)
 
@@ -129,28 +129,6 @@ def test_dump_includes_constructors():
         "def main() -> None:\n    pass\nmain()\n")
     assert "ctor R.__init__:" in out
     assert "mil n = %n" in out
-
-
-def test_dump_names_fallback_bodies():
-    # "What did NOT route" is usually the question being asked, so a body
-    # that fell back is named rather than silently absent.
-    out = _dump(
-        "from tpy import Int32\n\n"
-        "class R:\n    n: Int32\n"
-        "    def __init__(self, n: Int32) -> None:\n        self.n = n\n\n"
-        "def pick(a: R, b: R) -> R:\n    return a\n\n"
-        "def f(a: R, b: R) -> None:\n"
-        "    print(pick(a, b))\n\n"
-        "def main() -> None:\n    pass\nmain()\n")
-    # The first-reject reason rides along, so the dump answers WHY. Matched
-    # loosely: the exact tag moves as constructs migrate, and this test is
-    # about the reason being PRESENT, not about which construct blocks today.
-    import re
-    m = re.search(r"fn f: <fell back to AST: (\S+)>", out)
-    assert m and m.group(1), out
-    # The routed siblings still render, so the marker is per body.
-    assert "fn main() -> None:" in out
-    assert "ctor R.__init__:" in out
 
 
 def test_resumable_keys_are_stable_across_runs():
@@ -221,34 +199,56 @@ def test_except_binding_is_rendered():
     assert "as %e" in out
 
 
-def test_bodyless_binding_is_not_called_a_fallback():
-    # A @native binding is never ATTEMPTED, so labelling it a fallback would
-    # misreport the migration frontier.
+def test_bodyless_binding_says_it_has_no_body():
+    # A @native binding is never ATTEMPTED, so it must not read as a reject:
+    # the dump would otherwise name a lowering gap that does not exist.
     out = _dump(
-        "from tpy import Int32\n"
-        "# tpy: link(\"m\")\n\n"
-        "def main() -> None:\n    pass\nmain()\n")
-    assert "<fell back to AST" not in out or "not a body-migration candidate" in out
+        "# tpy: include(\"<math.h>\")\n"
+        "# tpy: link(\"m\")\n"
+        "from tpy.extern import native\n"
+        "from tpy import Float64\n\n"
+        "@native(binding=\"C\")\n"
+        "def sqrt(x: Float64) -> Float64: ...\n\n"
+        "def main() -> None:\n    print(sqrt(4.0))\nmain()\n")
+    assert "fn sqrt: <no body to lower>" in out, out
+    assert "rejected" not in out, out
 
 
-def test_resumable_fallback_records_its_reason():
-    # gen_async's fold site is a THIRD call of the node-carrying fold_attempt
-    # (alongside body/ctor); without this, only the sync path was covered.
-    # An Any LOCAL live across a suspension is a fenced resumable shape:
-    # every frame-local family excludes Any (only Any PARAMS ride), so the
-    # body rejects at res.local_storage.
-    out = _dump(
-        "import asyncio\nfrom tpy import Int32\nfrom typing import Any\n\n"
-        "async def f(n: Int32) -> Int32:\n"
-        "    a: Any = n\n"
-        "    await asyncio.sleep(0)\n"
-        "    print(a)\n"
-        "    return n\n\n"
-        "def main() -> None:\n    pass\nmain()\n")
-    import re
-    m = re.search(r"fn f: <fell back to AST: (\S+)>", out)
-    assert m, out
-    # The exact tag pins WHICH fence holds the fixture up: if Any locals
-    # gain a frame-local family, the fixture (not just this assert) is
-    # stale and needs a new fenced shape.
-    assert m.group(1) == "res.local_storage", out
+# One body lowers, the next rejects, the rest never get their turn -- the
+# three no-THIR states the dump must keep apart. The rejecting shape is a
+# dict of Box rebound to another dict; if lowering ever admits it this test
+# goes vacuous, which the first assertion catches.
+_REJECTING_MODULE = (
+    "from tpy import Int32\n"
+    "from tplib import Box\n\n\n"
+    "class Point:\n"
+    "    x: Int32\n\n"
+    "    def __init__(self, x: Int32) -> None:\n"
+    "        self.x = x\n\n\n"
+    "def lowers(n: Int32) -> Int32:\n"
+    "    return n + 1\n\n\n"
+    "def rejects() -> None:\n"
+    "    d = {1: Box(Point(1))}\n"
+    "    other = {2: Box(Point(2))}\n"
+    "    d = other\n"
+    "    print(len(d))\n\n\n"
+    "def after() -> Int32:\n"
+    "    return 2\n\n\n"
+    "def main() -> None:\n    print(lowers(1))\nmain()\n")
+
+
+def test_rejected_body_names_its_reason():
+    out = _dump(_REJECTING_MODULE)
+    assert "fn rejects: <rejected: " in out, out
+    # The bodies BEFORE the reject are the point of dumping a rejecting
+    # module at all: a reject used to abort the module and print nothing.
+    assert "fn lowers(n: Int32) -> Int32:" in out, out
+
+
+def test_bodies_after_a_reject_are_not_called_rejected():
+    # Emission stops at the first reject, so a later body was never lowered
+    # AND never attempted -- calling it rejected would invent a gap.
+    out = _dump(_REJECTING_MODULE)
+    assert "fn after: <not attempted:" in out, out
+
+

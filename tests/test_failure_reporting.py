@@ -24,8 +24,8 @@ def test_check_or_update_reports_unified_diff(tmp_path: Path, monkeypatch: pytes
     assert "+++ actual" in msg
     assert "-line2" in msg
     assert "+CHANGED" in msg
-    # Without thir_routed_names the divergence reporter stays silent.
-    assert "THIR divergence" not in msg
+    # Without name_function the divergence site is not reported.
+    assert "diverges " not in msg
 
 
 GEN_CPP = """\
@@ -114,47 +114,35 @@ class TestEnclosingFunction:
         assert conftest.enclosing_function(GEN_CPP.splitlines(), 1) is None
 
 
-class TestThirDivergenceReport:
+class TestDivergenceSiteReport:
     def _fail_msg(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-                  actual: str, routed: frozenset[str]) -> str:
+                  actual: str) -> str:
         monkeypatch.setattr(conftest, "UPDATE_EXPECTED", False)
-        monkeypatch.setattr(conftest, "_thir_divergences", [])
         expected_file = tmp_path / "main.cpp"
         expected_file.write_text(GEN_CPP)
         with pytest.raises(pytest.fail.Exception) as exc:
             conftest.check_or_update(actual, expected_file, "main.cpp",
-                                     thir_routed_names=routed)
+                                     name_function=True)
         return str(exc.value)
 
-    def test_labels_routed_function(self, tmp_path: Path,
-                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_names_the_enclosing_function(
+            self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         actual = GEN_CPP.replace("__getitem__(items, 1)", "items[1]")
-        msg = self._fail_msg(tmp_path, monkeypatch, actual,
-                             frozenset({"second"}))
-        assert "THIR divergence: in `second` [THIR-routed]" in msg
-        assert conftest._thir_divergences == [
-            "main.cpp main.cpp: in `second` [THIR-routed]"]
-
-    def test_labels_unrouted_function(self, tmp_path: Path,
-                                      monkeypatch: pytest.MonkeyPatch) -> None:
-        actual = GEN_CPP.replace("__getitem__(items, 0)", "items[0]")
-        msg = self._fail_msg(tmp_path, monkeypatch, actual,
-                             frozenset({"second"}))
-        assert "THIR divergence: in `first` [NOT THIR-routed]" in msg
+        msg = self._fail_msg(tmp_path, monkeypatch, actual)
+        assert "diverges in `second`" in msg
 
     def test_divergence_before_any_marker(self, tmp_path: Path,
                                           monkeypatch: pytest.MonkeyPatch) -> None:
         actual = GEN_CPP.replace('#include "main.hpp"', '#include "other.hpp"')
-        msg = self._fail_msg(tmp_path, monkeypatch, actual, frozenset())
+        msg = self._fail_msg(tmp_path, monkeypatch, actual)
         assert "outside any function marker" in msg
 
     def test_dropped_lines_fall_back_to_expected_side(
             self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        # THIR dropping a whole function body can leave actual's divergence
-        # point on a marker-free line; the expected side still names it.
+        # Dropping a whole function body can leave actual's divergence point on
+        # a marker-free line; the expected side still names it.
         actual = GEN_CPP.replace(
             "    // return items[1]\n"
             "    return ::tpy::__getitem__(items, 1);\n", "")
-        msg = self._fail_msg(tmp_path, monkeypatch, actual,
-                             frozenset({"second"}))
-        assert "in `second` [THIR-routed]" in msg
+        msg = self._fail_msg(tmp_path, monkeypatch, actual)
+        assert "in `second`" in msg

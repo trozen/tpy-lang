@@ -24,9 +24,8 @@ def _thir_cpp(src: str) -> 'tuple[str, dict, dict]':
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return cpp, dict(compiler._thir_fallback), compiler._thir_face_witnesses
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return cpp, compiler._thir_face_witnesses
 
 
 _BOX = ("from typing import Iterator\n"
@@ -41,8 +40,7 @@ class TestFrameTupleElement:
         src = _BOX + ("def gen() -> Iterator[Int32]:\n"
                       "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
                       "    yield len(items)\n")
-        cpp, fallback, faces = _thir_cpp(src)
-        assert not fallback
+        cpp, faces = _thir_cpp(src)
         assert faces.get("containerlit.tuple_frame_elem")
         assert ("items.emplace(std::vector<std::tuple<int32_t, Box>>"
                 "{std::tuple<int32_t, Box>{1, Box(5)}});") in cpp
@@ -56,8 +54,7 @@ class TestFrameTupleElement:
         src = _BOX + ("def gen() -> Iterator[Int32]:\n"
                       "    items = [(1, Box(5))]\n"
                       "    yield len(items)\n")
-        cpp, fallback, faces = _thir_cpp(src)
-        assert not fallback
+        cpp, faces = _thir_cpp(src)
         assert faces.get("containerlit.tuple_frame_elem")
         assert ("items.emplace(std::array<std::tuple<int32_t, Box>, 1>"
                 "{std::tuple<int32_t, Box>{1, Box(5)}});") in cpp
@@ -69,8 +66,7 @@ class TestFrameTupleElement:
                       "    m: dict[str, tuple[Int32, Box]] = "
                       "{\"a\": (1, Box(5))}\n"
                       "    yield len(m)\n")
-        cpp, fallback, faces = _thir_cpp(src)
-        assert not fallback
+        cpp, faces = _thir_cpp(src)
         assert not faces.get("containerlit.tuple_frame_elem")
         assert ("::tpy::tuple_to_storage<std::tuple<int32_t, Box>>"
                 "(std::tuple<int32_t, Box>{1, Box(5)})") in cpp
@@ -80,8 +76,7 @@ class TestFrameTupleElement:
         src = _BOX + ("def f() -> Int32:\n"
                       "    items: list[tuple[Int32, Box]] = [(1, Box(5))]\n"
                       "    return len(items)\n")
-        cpp, fallback, faces = _thir_cpp(src)
-        assert not fallback
+        cpp, faces = _thir_cpp(src)
         assert not faces.get("containerlit.tuple_frame_elem")
         assert "::tpy::tuple_to_storage<std::tuple<int32_t, Box>>" in cpp
         _assert_byte_identical(src)
@@ -92,8 +87,7 @@ class TestFrameTupleElement:
                "def gen() -> Iterator[Int32]:\n"
                "    pairs: list[tuple[Int32, Int32]] = [(1, 2)]\n"
                "    yield len(pairs)\n")
-        _, fallback, faces = _thir_cpp(src)
-        assert not fallback
+        _, faces = _thir_cpp(src)
         # A VALUE tuple takes the value-tuple arm, never this row.
         assert not faces.get("containerlit.tuple_frame_elem")
         _assert_byte_identical(src)

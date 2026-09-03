@@ -1,13 +1,13 @@
 # THIR Emit-Arm Inventory
 
-> **Operating model (2026-07-12):** the goal is COMPLETION (deleting the AST
-> codegen), not a permanent hybrid -- and the direction is now the zero-whole-body-
-> fallback loop in CLAUDE.md "THIR migration". The smallest per-construct residual
-> prioritizes a dependency cluster; it does not authorize deleting an individual
-> AST arm. The emit-arm inventory, leverage tables, and final deletion targets are the current
-> per-construct what-to-port reference. The fan-out/wave *sequencing* plan and
-> the "maximize throughput to near-100%" framing describe the earlier
-> coordinated campaign and are no longer how the work is driven.
+> **HISTORICAL (closed 2026-09-03).** This was the per-construct what-to-port
+> reference while the AST body emitters still existed; the migration it maps is
+> finished and those emitters are deleted. Every leverage figure, residual count
+> and deletion target below is a record of the state at its stated date. Keep it
+> for the per-construct emit-surface map, which is still an accurate account of
+> what `codegen_cpp` used to do and where each construct now lives in
+> `tpyc/thir/`. For today's invariant see CLAUDE.md "THIR and the codegen
+> boundary".
 
 The map for completing the THIR migration (deleting the AST codegen path).
 Drives the work by the **finite emit surface we must port** (~236 emit functions
@@ -16,8 +16,7 @@ combinatorial ~5,100 body *shapes* those arms generate. Shapes are the products;
 arms are the generators. Chasing shapes is asymptotic; porting arms is bounded.
 
 Companion to `THIR_COMPLETION_LEDGER.md` (deletion-target model)
-and the shape meter (`tpyc/thir/shape.py`, `$THIR_SHAPES_JSON`) which measures
-progress. Leverage figures below are real-corpus blocked-body counts from a full
+and the shape meter (`tpyc/thir/shape.py`). Leverage figures below are real-corpus blocked-body counts from a full
 `--thir-codegen` run (2026-07-06, master @ edc226168e; 691/5136 distinct shapes
 routed). **Updated 2026-07-08 (branch thir-param-grid):** ~1,239/5,179 distinct
 shapes routed (~24%) after the 8 param/return/compositional waves. Note: the

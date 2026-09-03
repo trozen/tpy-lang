@@ -8,6 +8,8 @@ scalar row does not answer."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
     _assert_routes_byte_identical,
 )
@@ -62,8 +64,8 @@ class TestPendingGenericMethodArgs:
                "    p.set_b(Int64(2))\n"
                "    print(p.get_a().x)\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")
 
     def test_pending_str_arg_stays_ast(self):
         # A str into the pending `T` slot: the view/owned split stays out
@@ -76,5 +78,5 @@ class TestPendingGenericMethodArgs:
                "    p.set_b(Int64(2))\n"
                "    print(p.get_a())\n"
                "main()\n")
-        assert _fn(_lower_ctx(src), "main") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.arg_shape")

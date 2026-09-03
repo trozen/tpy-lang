@@ -18,29 +18,24 @@ from __future__ import annotations
 import io
 
 from .emit import emit_thir_body
-from .testutil import _compile, _entry, _assert_byte_identical
+from .testutil import (_compile, _entry, _assert_byte_identical,
+                      _reject_tally)
 from ..codegen_cpp import CodeGenOptions
 from ..compilation_context import activate_compiler
 from .lower import lower_module
 
 
-def _fallback(src: str) -> dict:
+def _reject_tags(src: str) -> dict:
     """The per-body fallback map -- a routed RESUMABLE never appears in
     `thir.functions`, so a reject pin must read the fallback keys."""
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+    return _reject_tally(src)
 
 
 def _thir_cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -62,7 +57,7 @@ class TestResumableValueOptLocal:
                       "        if v is not None:\n"
                       "            yield v\n"
                       "        yield -1\n")
-        assert not _fallback(src)
+        assert not _reject_tags(src)
         cpp = _thir_cpp(src)
         # The whole optional copies bare; the narrowed read derefs.
         assert "v = __self.f;" in cpp
@@ -77,7 +72,7 @@ class TestResumableValueOptLocal:
                       "        if t is not None:\n"
                       "            yield len(t)\n"
                       "        yield -1\n")
-        assert _fallback(src)
+        assert _reject_tags(src)
 
     def test_truthiness_of_a_value_opt_frame_name_routes(self):
         # A resumable branch condition takes the truthiness lowering, so a
@@ -89,7 +84,7 @@ class TestResumableValueOptLocal:
                      "    if v:\n"
                      "        yield v\n"
                      "    yield -1\n")
-        assert not _fallback(param_src)
+        assert not _reject_tags(param_src)
         assert "if (::tpy::is_truthy(v))" in _thir_cpp(param_src)
         _assert_byte_identical(param_src)
         local_src = _BOX + ("    def gen(self) -> Iterator[Int32]:\n"
@@ -97,7 +92,7 @@ class TestResumableValueOptLocal:
                             "        if v:\n"
                             "            yield v\n"
                             "        yield -1\n")
-        assert not _fallback(local_src)
+        assert not _reject_tags(local_src)
         assert "if (::tpy::is_truthy(v))" in _thir_cpp(local_src)
         _assert_byte_identical(local_src)
 
@@ -111,4 +106,4 @@ class TestResumableValueOptLocal:
                       "        yield -1\n")
         cpp = _thir_cpp(src)
         assert "is_truthy" not in cpp
-        assert not _fallback(src)
+        assert not _reject_tags(src)

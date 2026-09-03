@@ -6,7 +6,8 @@ return.borrow_form fence -- the pointer-payload family is its own rung."""
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _compile, _entry
+from .testutil import (_assert_byte_identical, _compile, _entry,
+                      _reject_tally)
 
 
 def _gen_thir(source: str):
@@ -14,9 +15,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 _BOX = (
@@ -44,8 +44,7 @@ class TestAsyncOwnReturn:
             "    print(asyncio.run(driver()))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "Box __tpy_async_ret = std::move((*b));" in out
         _assert_byte_identical(src)
 
@@ -72,8 +71,7 @@ class TestAsyncOwnReturn:
             "    asyncio.run(main_())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("res.return_self_borrow", 0) >= 1
         assert "Res* __tpy_async_ret = &(__self);" in out
         _assert_byte_identical(src)
@@ -94,9 +92,8 @@ class TestAsyncOwnReturn:
             "    asyncio.run(main_())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("return.borrow_form" in r for r in fallback)
-        _assert_byte_identical(src)
 
     def test_multi_local_own_return_routes(self):
         # Two frame locals; the returned one moves out, the other is
@@ -114,8 +111,7 @@ class TestAsyncOwnReturn:
             "    print(asyncio.run(driver()))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "Box __tpy_async_ret = std::move((*p));" in out
         _assert_byte_identical(src)
 
@@ -141,10 +137,9 @@ class TestAsyncOwnReturn:
             "    asyncio.run(main_())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("return.borrow_form" in r or "res." in r
                    for r in fallback)
-        _assert_byte_identical(src)
 
 
 class TestSelfFieldBorrowReturn:
@@ -178,8 +173,7 @@ class TestSelfFieldBorrowReturn:
     )
 
     def test_self_field_borrow_return_routes(self):
-        out, faces, fallback = _gen_thir(self._SRC)
-        assert not fallback
+        out, faces = _gen_thir(self._SRC)
         assert faces.get("res.return_self_borrow", 0) >= 1
         assert "Inner* __tpy_async_ret = &(__self.inner);" in out
         _assert_byte_identical(self._SRC)
@@ -213,6 +207,5 @@ class TestSelfFieldBorrowReturn:
             "    asyncio.run(main_())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert fallback, fallback
-        _assert_byte_identical(src)

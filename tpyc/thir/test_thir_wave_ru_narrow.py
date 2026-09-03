@@ -7,6 +7,8 @@ boundaries that must keep falling back."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical,
     _fn,
     _lower_ctx,
@@ -65,7 +67,7 @@ class TestWrapperUnionNarrow:
         compiler, modules = _compile(_JSON_NESTED)
         _hpp, cpp = compiler.generate_code_to_strings(
             _entry(modules),
-            options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+            options=CodeGenOptions(emit_source_comments=False))
         assert '::tpy::__getitem__(__d, "rows")' in cpp
         assert '__d["rows"]' not in cpp
 
@@ -95,8 +97,8 @@ class TestWrapperUnionNarrow:
             "    if isinstance(v, dict):\n"
             "        v[\"k\"] = 1\n"
         )
-        assert _fn(_lower_ctx(src), "g") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.const_narrowed_recv")
 
     def test_param_source_elem_decl_stays_ast(self):
         # The wrapper-elem REF_ALIAS row is LOCAL-subject only: off a param
@@ -110,8 +112,8 @@ class TestWrapperUnionNarrow:
             "        x: JsonValue = v[0]\n"
             "        print(json.dumps(x))\n"
         )
-        assert _fn(_lower_ctx(src), "g") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.branch_slot_type")
 
     def test_compound_cond_stays_ast(self):
         # The inline THIRNarrowedRead render has no wrapper `.value`
@@ -123,8 +125,8 @@ class TestWrapperUnionNarrow:
             "    if isinstance(d, dict) and flag:\n"
             "        print(json.dumps(d))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_facts_unmirrored")
 
     def test_foreach_over_narrowed_alias_routes(self):
         # gen_expr's for-dispatch keys the DECLARED union, so a narrowed-alias
@@ -157,8 +159,8 @@ class TestWrapperUnionNarrow:
             "        d[\"b\"] = None\n"
             "        print(json.dumps(d))\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.ru_value_shape")
 
 
 _AB = (
@@ -219,8 +221,8 @@ class TestFoldedNarrow:
             "            return -9\n"
             "    return -1\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.folded_narrow_shape")
 
 
 class TestReadonlySubject:

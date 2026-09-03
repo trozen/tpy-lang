@@ -22,17 +22,17 @@ from .nodes import (
     THIRTry,
 )
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at, _assert_routes_byte_identical, _compile, _entry,
     _fn, _lower_ctx, _lower_ctx_witnessed, _thir_ctx,
 )
 
 
-def _cpp(src: str, thir: bool):
+def _cpp(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     _, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -42,8 +42,7 @@ def _emit_witnesses(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return compiler._thir_face_witnesses
 
 
@@ -73,7 +72,6 @@ class TestErrorReturnFunctionBody:
         fn = _fn(thir, "parse")
         assert fn is not None
         assert fn.error_return_cpp == "Err"
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_raise_lowers_return_tier(self):
         thir = _lower_ctx(self.SRC)
@@ -83,7 +81,7 @@ class TestErrorReturnFunctionBody:
         assert r.cpp_type == "Err"
 
     def test_emit_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "return ::tpy::make_unexpected(Err{});" in cpp
 
     def test_witnesses(self):
@@ -111,10 +109,9 @@ class TestErrorReturnVoidTail:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "check") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_void_success_tail(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("check("):]
         assert "return {};" in body
 
@@ -142,12 +139,11 @@ class TestErrorReturnBareReturn:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "check") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_bare_return_constructs_success(self):
         # `return` inside the branch renders `return {};` (the expected's
         # implicit success), not a bare `return;`.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         body = cpp[cpp.index("check("):cpp.index("__tpy_init")]
         assert body.count("return {};") == 2  # the branch + the void tail
 
@@ -188,7 +184,6 @@ class TestErrorReturnPropagation:
         thir = _lower_ctx(self.SRC)
         for name in ("parse", "validate", "combine", "forward"):
             assert _fn(thir, name) is not None, name
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_node_shapes(self):
         thir = _lower_ctx(self.SRC)
@@ -202,7 +197,7 @@ class TestErrorReturnPropagation:
         assert isinstance(ret, THIRReturn)  # raw expected pass-through
 
     def test_emit_shapes(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         # Propagate checks inside @error_return bodies...
         assert ("if (!__try_tmp_1.has_value()) return "
                 "::tpy::make_unexpected(__try_tmp_1.error());" in cpp)
@@ -239,10 +234,9 @@ class TestErrorReturnExprUnwrap:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "add") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_unwrap_emit(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("({ auto __er_1 = parse(a); if (!__er_1.has_value()) "
                 "return ::tpy::make_unexpected(__er_1.error()); "
                 "::tpy::unwrap_ref_move(*__er_1); })" in cpp)
@@ -276,10 +270,9 @@ class TestErrorReturnTryReturnTier:
         assert main is not None
         t = main.body[0]
         assert isinstance(t, THIRTry) and t.tier == "return"
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_goto_dispatch_emit(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "if (!__try_tmp_2.has_value()) goto __except_1;" in cpp
         assert "__except_1:;" in cpp
         assert "goto __after_try_1;" in cpp
@@ -317,10 +310,9 @@ class TestErrorReturnTryBindingAndReraise:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "outer") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_binding_and_reraise_emit(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "std::optional<Err> __err_opt_" in cpp
         assert "auto& e = *__err_opt_" in cpp
         # The bare `raise` in the return-tier handler re-returns the capture.
@@ -391,7 +383,7 @@ class TestErrorReturnGateRejections:
             + "print(use(Store(2)))\n"
         )
         _assert_routes_byte_identical(src)
-        assert "auto __er_" in _cpp(src, thir=True)
+        assert "auto __er_" in _cpp(src)
 
     def test_coerce_wrapped_bind_rejected(self):
         # `_error_return_stmt_fi` peels a TpyCoerce, but the bind/discard/
@@ -463,12 +455,7 @@ class TestErrorReturnGateRejections:
 
 
 def _fallback_tags(src: str) -> dict:
-    compiler, modules = _compile(src)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+    return _reject_tally(src)
 
 
 _ERR32 = (
@@ -508,10 +495,9 @@ class TestErrorReturnUnwrapPtr:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "total") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_pointer_form_emit(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert ("(*({ auto __er_1 = view(n); if (!__er_1.has_value()) "
                 "return ::tpy::make_unexpected(__er_1.error()); "
                 "&::tpy::unwrap_ref(*__er_1); }))" in cpp)
@@ -544,10 +530,9 @@ class TestErrorReturnRaiseArgs:
     def test_routed_and_byte_identical(self):
         thir = _lower_ctx(self.SRC)
         assert _fn(thir, "parse") is not None
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
 
     def test_raise_args_emit(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "return ::tpy::make_unexpected(ParseErr(7));" in cpp
 
     def test_witnesses(self):
@@ -660,8 +645,8 @@ class TestErrorReturnDeferredGateDetails:
             + "main()\n"
         )
         assert _fn(_lower_ctx(src), "caller") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert cpp.count("b = &*(__slot_1 = ") == 2
         assert _emit_witnesses(src).get("er.bind_ptr_rebind", 0) > 0
 
@@ -734,8 +719,8 @@ class TestErrorReturnDeferredGateDetails:
         thir = _lower_ctx(src)
         assert _fn(thir, "read") is not None
         assert _fn(thir, "bind_and_discard") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "return s.get();" in cpp
         w = _emit_witnesses(src)
         assert w.get("er.bind", 0) > 0
@@ -772,8 +757,8 @@ class TestErrorReturnDeferredGateDetails:
             + "main()\n"
         )
         assert _fn(_lower_ctx(src), "caller") is not None
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "std::string s;" in cpp
 
     def test_ret_slot_gated(self):
@@ -835,8 +820,8 @@ class TestPtrOptionalRecordReturn:
         assert w.get("ret.record_ptr_opt_local", 0) >= 1
 
     def test_byte_identical_and_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         assert "return std::move((*hit));" in cpp
 
     def test_non_record_inner_still_rejects(self):
@@ -888,8 +873,8 @@ class TestPlainPtrLocalRecordReturn:
         assert w.get("ret.record_ptr_local", 0) >= 1
 
     def test_byte_identical_and_shape(self):
-        cpp = _cpp(self.SRC, thir=True)
-        assert cpp == _cpp(self.SRC, thir=False)
+        cpp = _cpp(self.SRC)
+        assert cpp == _cpp(self.SRC)
         assert "return (*best);" in cpp
         assert "std::move((*best))" not in cpp
 
@@ -913,8 +898,8 @@ class TestPlainPtrLocalRecordReturn:
         assert _fn(_lower_ctx(src), "pick") is not None
         w = _emit_witnesses(src)
         assert w.get("ret.record_ptr_local", 0) >= 1
-        cpp = _cpp(src, thir=True)
-        assert cpp == _cpp(src, thir=False)
+        cpp = _cpp(src)
+        assert cpp == _cpp(src)
         assert "return std::move((*best));" in cpp
 
     def test_narrowed_ptr_name_still_rejects(self):
@@ -970,15 +955,11 @@ class TestErrorReturnNestedDef:
         assert _fn(_lower_ctx(self.SRC), "outer") is not None
 
     def test_nested_bare_return_stays_void(self):
-        thir_cpp = _cpp(self.SRC, thir=True)
+        thir_cpp = _cpp(self.SRC)
         lambda_body = thir_cpp[thir_cpp.index("auto helper"):
                                thir_cpp.index("helper(n)")]
         assert "return {};" not in lambda_body
         assert "return;" in lambda_body
-
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
 
 class TestErrorReturnMethod:
     # The sig gate admits sync @error_return METHODS, not just free
@@ -1002,10 +983,6 @@ class TestErrorReturnMethod:
 
     def test_routes(self):
         assert _fn(_lower_ctx(self.SRC), "get") is not None
-
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
 
 class TestErrorReturnBindIsNotAutoMovable:
     """The AST's `movable_locals` is a WORKING set grown at the var-decl arms,
@@ -1046,14 +1023,10 @@ class TestErrorReturnBindIsNotAutoMovable:
         assert _fn(_lower_ctx(self.SRC), "collect") is not None
 
     def test_the_unwrap_bound_local_is_appended_without_a_move(self):
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "Rec r;" in cpp
         assert "out.push_back(r);" in cpp
         assert "out.push_back(std::move(r));" not in cpp
-
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
 
 class TestErrorReturnRefBind:
     """The er-bind of a REF-returning @error_return callee: the alias-bind
@@ -1497,7 +1470,7 @@ class TestErrorReturnMethodExprUnwrap:
         # The lift is what makes `u` ALIAS `h.items`: losing it would copy
         # the list, and `u.append(7)` would not be observable on `h` -- a
         # silent CPython divergence the byte-diff alone would not name.
-        cpp = _cpp(self.SRC, thir=True)
+        cpp = _cpp(self.SRC)
         assert "&::tpy::unwrap_ref(*__er_" in cpp        # borrow: pointer form
         assert "::tpy::unwrap_ref_move(*__er_" in cpp    # value: move form
 

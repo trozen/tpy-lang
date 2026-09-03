@@ -3088,8 +3088,8 @@ class OptionalType(TpyType):
 
     The flag is load-bearing beyond the call site: once set on a resolved
     return type, it flows through sema into the receiver variable's type,
-    and codegen_cpp/statements.py reads uses_pointer_repr() during variable
-    declaration to pick T* storage + register in pointer_locals. Silently
+    and the var-decl lowering reads uses_pointer_repr() to pick T* storage
+    and register the name in pointer_locals. Silently
     dropping the flag during any structural transform miscompiles any
     `v = container.get()` pattern.
 

@@ -1,21 +1,20 @@
 """Resumable-body (async def) lowering: the leaf half of the seam.
 
 The state-machine SKELETON -- CFG build, frame struct, case labels, region
-replay, suspend/resume plumbing -- is shared machinery in `gen_async` (the
-structural-emission precedent: signatures and record layout also stay on
-the AST path). What routes through THIR is every LEAF the skeleton would
-otherwise delegate to the AST statement/expression emitters: BB leaf
+replay, suspend/resume plumbing -- is shared machinery in `gen_async`,
+alongside the other structural emitters (signatures, record layout). What
+THIR lowers is every LEAF the skeleton delegates to it: BB leaf
 statements, Branch terminator conditions, ReturnT value renders, and the
 sub-coro emplace arguments at each suspension.
 
 `lower_resumable` walks the already-built CFG (cached on the function by
 `gen_async._build_resumable_cfg`), lowers every leaf through the shared
 statement/expression lowering plus the resumable-only rejects below, and
-returns a `THIRResumableBody` keyed by id() of the AST nodes the skeleton
-holds -- or None (with a `res.*` / composed `stmt.*` fallback reason) when
-any leaf or frame feature falls outside the slice.
+returns a `THIRResumableBody` keyed by id() of the parse-tree nodes the
+skeleton holds -- or None (with a `res.*` / composed `stmt.*` reject
+reason) when any leaf or frame feature falls outside the slice.
 
-Foundation slice (deliberately tight; the fan-out cells widen it):
+Slice currently lowered:
 free `async def` only, value-scalar/str/bytes/F1-record params,
 value-scalar/str/bytes locals plus owning frame_slot locals,
 value-scalar returns, INLINE await payloads on plain or module-qualified
@@ -30,7 +29,7 @@ proven a concrete member; leaves lower under the skeleton's extraction
 alias -- `__{var}`, or the match tier's `__case_{i}` inside an arm chain),
 no returns inside leaf compounds (a ReturnT terminator's scaffolding is
 skeleton; a return nested in a leaf would need the async-return render
-inside THIR emit -- a cell).
+inside THIR emit).
 """
 
 from __future__ import annotations
@@ -38,12 +37,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import fields as dc_fields, replace
 
-from ..fallback import (ThirUnsupported, begin_stmt, note, note_detail,
+from ..reject import (ThirUnsupported, begin_stmt, note, note_detail,
                         stmt_reject_reason)
 from ..faces import witness as _witness
 from ..validate import validate_resumable_body, validate_stmts
-from ...binding_audit import (acknowledge_binding_partial as publish_ack,
-                              publish_thir as publish_binding_facts)
 from ..nodes import (
     THIRDynIsinstanceMulti,
     THIRAssign,
@@ -60,6 +57,7 @@ from ..nodes import (
     THIRStmtSeq,
 )
 from ...parse.nodes import (
+    SourceLocation,
     TpyAssert,
     TpyAssign,
     TpyAugAssign,
@@ -236,7 +234,7 @@ def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
       object-typed T return COPIES where CPython aliases -- see BUGS.md. When
       that fix routes the return through `val_or_ref_t<T>`, re-check this arm
       and the return leaf TOGETHER.)
-    - YIELD: `gen_yield_value` bridges storage->pointer only for tuple slots
+    - YIELD: the yield slot bridges storage->pointer only for tuple slots
       and borrow-form loop vars; a bare `T` yield source is neither, so it
       passes through unchanged.
 
@@ -351,6 +349,12 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     if (unwrapped is not None and is_protocol_type(unwrapped)
             and not is_dyn_protocol(unwrapped)):
         return True
+    # An OWN-wrapped static protocol (`s: Own[Sink]`) stays out: the frame's
+    # `T_s&&` ctor param deduces off the argument's value category, so an
+    # lvalue argument makes the frame BORROW what the signature says it
+    # owns (BUGS.md#own-static-protocol-frame-capture-borrows). Admitting it
+    # would make the declared ownership a lie; it rejects until the capture
+    # follows the argument's ownership.
     # An `Own[@dynamic P]` param captures as a bare `unique_ptr<P>` frame
     # field (the ctor's `p(std::move(p_))` is skeleton), and its leaf reads
     # are the forward arg renders (`std::move(p)` at a same-protocol Own
@@ -420,15 +424,12 @@ def _loop_elem_type(stmt: 'TpyForEach', analyzer) -> 'TpyType | None':
 
 def _var_decl_names(stmts: list) -> 'set[str]':
     """Every name a `TpyVarDecl` binds anywhere in the body, plus tuple-unpack
-    targets -- the frame-local promotion's mirror of "a PROMOTING decl arm ran
-    for this name" (the AST's `_gen_var_decl`, and `_gen_tuple_unpack`, which
-    promotes each target the same way).
+    targets -- the names frame-local promotion applies to: a declaration
+    promotes the name it binds, a tuple unpack each of its targets.
 
     Do NOT also exclude await inits: tried, and it breaks `await_in_with` +
     `await_in_with_multi_cm`, because a BigInt bound by `x = await f()` IS
-    promoted on the AST path and moves at its return. The residual divergence
-    is not about await at all -- it is a frame-field POINTER-set
-    disagreement, so it must be fixed by aligning that membership."""
+    promoted and moves at its return."""
     out: 'set[str]' = set()
     for s in stmts:
         if isinstance(s, TpyVarDecl):
@@ -464,14 +465,14 @@ def _first_var_decls(stmts: list,
 def _bare_yield_tuple_name_ok(name: str, lc: '_LowerCtx',
                               declared: dict[str, TpyType]) -> bool:
     """A tuple NAME the yield hands out BARE (`return v;` / `return p;`):
-    the AST's `_maybe_wrap_tuple_to_pointer` no-ops for a non-storage-form
-    source. Admitted order-independently by TYPE, not by the (partially
-    mirrored, lowering-order-populated) storage sets: a VALUE tuple (no
+    the `tuple_to_pointer` lift no-ops for a non-storage-form
+    source. Admitted order-independently by TYPE, not by the
+    lowering-order-populated storage sets: a VALUE tuple (no
     pointer-repr element -- the wrap no-ops on the target alone), or a
     BORROW-form tuple PARAM (not Own-wrapped, not owned-movable -- the
     shapes seed_param_locals registers storage-form stay out). Locals with
-    pointer-repr elements keep the `res.btuple_yield_source` fence (the
-    tuple_to_pointer lift rung), as do pointer-form names."""
+    pointer-repr elements keep the `res.btuple_yield_source` reject, as do
+    pointer-form names."""
     if name not in declared or name in lc.pointers:
         return False
     if (name in lc.storage_tuple_locals
@@ -491,17 +492,17 @@ def _bare_yield_tuple_name_ok(name: str, lc: '_LowerCtx',
 
 def _alias_frame_collision(var: str, frame_fields: 'set[str]') -> bool:
     """Whether the `__{var}` extraction alias would collide with a real frame
-    field (or `self`). On a collision the AST bumps the alias name
-    (`_fresh_alias_local`'s `__{var}_narrowed` rename), which none of the THIR
+    field (or `self`). On a collision the skeleton bumps the alias name
+    (`fresh_alias_local`'s `__{var}_narrowed` rename), which none of the THIR
     narrowing arms reproduce -- so every one of them rejects the shape
     instead. Shared so the three arms cannot drift apart."""
     return f"__{var}" in frame_fields or var == "self"
 
 
 def _resume_alias_name(var: str, frame_fields: 'set[str]') -> str:
-    """The extraction alias the AST emits for a resume-narrowed var:
+    """The extraction alias the skeleton emits for a resume-narrowed var:
     `__{var}`, bumped to `__{var}_narrowed` on a frame-field collision
-    (`_fresh_alias_local`'s rename -- `self`'s `__self` always collides
+    (`fresh_alias_local`'s rename -- `self`'s `__self` always collides
     with the frame's receiver ref)."""
     base = f"__{var}"
     return (f"{base}_narrowed"
@@ -518,13 +519,13 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
                              ) -> 'str | None':
     """Narrowed-BB admission: the variant-get slice only. Each fact must be
     a concrete non-protocol member narrowing a union-declared frame field --
-    the shape `_emit_isinstance_extractions` re-establishes with a plain
+    the shape `emit_isinstance_extractions` re-establishes with a plain
     `std::get` alias whose name the lowering can mirror (`__{var}`, the
-    non-persistent `_fresh_alias_local`). Everything else -- the polymorphic
+    non-persistent `fresh_alias_local`). Everything else -- the polymorphic
     self/subclass dynamic_cast family, Optional `is not None`, literal /
     protocol / Any facts, narrowed-to-smaller-union -- keeps the named
     reject. Without the skeleton's case-entry set the match-arm alias
-    environments can't be mirrored, so every narrowed body stays fallback."""
+    environments can't be mirrored, so every narrowed body rejects."""
     if case_entry_ids is None:
         return "res.narrowed_resume"
     for var, fact in facts.items():
@@ -535,9 +536,9 @@ def _entry_narrowings_reject(facts: 'dict[str, TpyType]',
                 is not None):
             # The POLY-SELF fact: the skeleton re-extracts per resume case
             # (`const Dog& __self_narrowed = *dynamic_cast<...>(&__self);`
-            # -- _emit_isinstance_extractions' poly arm with the
-            # _fresh_alias_local bump), and the leaves read the SPELLED
-            # alias -- no cross-BB state, the round C memo's finding.
+            # -- emit_isinstance_extractions' poly arm with the
+            # fresh_alias_local bump), and the leaves read the SPELLED
+            # alias -- no cross-BB state.
             continue
         decl = param_types.get(var, gen_local_types.get(var))
         if not isinstance(decl, TpyType):
@@ -557,7 +558,7 @@ def _rebound_names(stmts, names: 'frozenset[str]') -> 'set[str]':
     subtree (including non-suspending compounds). Field/subscript writes
     mutate THROUGH the alias and keep the narrowing. The generic body walk
     over-matches unknown compound kinds on purpose: a false positive only
-    costs AST fallback."""
+    costs a reject, never a wrong render."""
     out: set[str] = set()
     for s in stmts:
         if isinstance(s, TpyVarDecl):
@@ -612,9 +613,9 @@ def _narrow_kill_plan(stmts, names: 'frozenset[str]'
     names: {id(stmt): killed} for TOP-LEVEL simple rebinds (VarDecl / Assign
     / TupleUnpack) whose own value does not READ the killed name -- the
     write targets the raw variant, so the leaves past the kill read the
-    bare binding, exactly where the AST drops the narrowing. None = an
-    unmirrorable shape (a rebind nested in a compound, a with/aug target,
-    a value reading the killed name, a del) -- the BB falls back whole.
+    bare binding. None = a shape with no kill plan (a rebind nested in a
+    compound, a with/aug target, a value reading the killed name, a del)
+    -- the BB rejects whole.
     {} = no rebind at all."""
     plan: dict[int, frozenset[str]] = {}
     for s in stmts:
@@ -705,9 +706,9 @@ def _resume_narrow_envs(cfg: 'rcfg.CFG',
         bb = cfg.blocks[bb_id]
         t = bb.terminator
         # A rebind of a narrowed name anywhere in this BB kills its fact on
-        # every OUT edge (the AST stops re-establishing it too -- the
-        # dead-alias case entries carry only sema's stamped facts, which
-        # already dropped the killed name). The BB's own entry env keeps the
+        # every OUT edge (nothing re-establishes it: the dead-alias case
+        # entries carry only sema's stamped facts, which already dropped
+        # the killed name). The BB's own entry env keeps the
         # fact for the leaves BEFORE the rebind; _lower_bb pops it at the
         # rebinding leaf.
         killed = _rebound_names(bb.stmts, frozenset(env))
@@ -844,11 +845,11 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
                           region_exprs: dict) -> None:
     """Lower the user renders of a sync for-loop's iter setup into
     region_exprs. The skeleton's strategy (from the prescan) decides the
-    render shape: range lowers each bound (== `gen_range_args`); every other
-    strategy lowers the whole iterable ONCE (`gen_expr(iterable_expr)`, reused
-    by the advance's re-render when no `__for_src` field). Rejects a
-    narrowed-optional iterable (the skeleton's `(*v)` unwrap is not
-    mirrored)."""
+    render shape: range lowers each bound separately; every other strategy
+    lowers the whole iterable ONCE, reused by the advance's re-render when
+    there is no `__for_src` field. Rejects a narrowed-optional iterable
+    whose leaf cannot supply the bare source the skeleton's `(*v)` unwrap
+    expects."""
     it = stmt.iterable_expr
     info = rcfg.resumable_state(func).for_info_by_uid.get(stmt.uid)
     strat = info.strategy if info else "iter_next"
@@ -861,19 +862,18 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
                 arg, fi.params[i].type, lc, declared)
         return
 
-    # ITERABLE result use, mirroring the sync for-head: the skeleton's
-    # source capture consumes the render whole (`gen_expr(iterable_expr)`,
-    # position-blind), so generator-factory calls admit here exactly like
-    # the sync route (their render is the same bare call). The setup is a
-    # statement position -- arg temps (`int32_t __tmp_N = 7;` ref-slot
-    # literals of a generic factory call) flush before the source capture,
-    # exactly where the AST flushes them.
+    # ITERABLE result use, matching the sync for-head: the skeleton's
+    # source capture consumes the render whole (position-blind), so
+    # generator-factory calls admit here exactly like the sync route
+    # (their render is the same bare call). The setup is a statement
+    # position -- arg temps (`int32_t __tmp_N = 7;` ref-slot literals of a
+    # generic factory call) flush before the source capture.
     lowered_it = _lower_expr(
         it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                        allow_temps=True))
     if _for_iterable_narrowed_optional(it, declared, analyzer):
         # The begin_end skeleton owns the narrowed value-Optional unwrap
-        # (`_maybe_unwrap_narrowed_optional` over the leaf render), so the
+        # (`maybe_unwrap_narrowed_optional` over the leaf render), so the
         # leaf supplies the BARE name/member -- a deref'd leaf would
         # double-deref.
         if isinstance(lowered_it, THIRFieldAccess):
@@ -904,8 +904,7 @@ def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
     """WithEnter / AsyncWithSetup admission (R6-with / R5-async-with). The
     bind's emplace / &(..) wrap and the __enter__ / __aenter__ yields are
     skeleton; the manager expression is the one leaf render, so admit exactly
-    the shapes whose lowered render matches the AST's inline `gen_expr` -- the
-    same manager families the sync `_lower_with` gates (borrowed F1-record
+    the manager families the sync `_lower_with` gates (borrowed F1-record
     lvalue name; owned F1-record ctor / record-rvalue call). The `as`-target
     bind is a skeleton frame write; its storage already passed the body-wide
     local gate."""
@@ -940,7 +939,7 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
     source) are admitted as a whole-operand render: the skeleton keeps its
     emplace(std::move(..)) / &(..) / .get() wrap and the leaf loop lowers
     `operand_expr` through the shared expression lowering (a reject there
-    composes the fallback reason). Deferred: generic awaited callees,
+    composes the reject reason). Not lowered yet: generic awaited callees,
     kwargs, and non-value INLINE arg slots (R5c)."""
     if isinstance(payload, rcfg.YieldPayload):
         return "res.generator_shape"
@@ -983,13 +982,13 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
         # position that stays gated).
         pt_u = (unwrap_send_sync(pt) if isinstance(pt, TpyType) else None)
         # RAW wrapped, matching the arg gates: an `Own[readonly[P]]` slot
-        # never takes the adapter render on the AST side.
+        # never takes the adapter render.
         own_dyn_slot = (isinstance(pt_u, OwnType)
                         and is_dyn_protocol(pt_u.wrapped))
         # An `Own[value]` slot (a generic Own[T] param at a value
         # instantiation, e.g. a Queue[Int32] put): the emplace arg is the sync
-        # call-arg render (arg temp + std::move via `gen_call_arg`), so it
-        # rides the same `_lower_call_arg` rows.
+        # call-arg render (arg temp + std::move), so it rides the same
+        # `_lower_call_arg` rows.
         own_val_slot = (isinstance(pt_u, OwnType)
                         and _res_value_ok(unwrap_readonly(pt_u.wrapped),
                                           analyzer))
@@ -998,9 +997,9 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
                                    analyzer) is not None):
             # An ENUM payload is the one value family the sync Own-arg row
             # leaves unmodelled (a sync call rejects it outright), and no
-            # call admission runs at this position -- admitting it, from
-            # this rung or the CAPTURE families below, renders the arg BARE
-            # where the AST still hoists its copy temp.
+            # call admission runs at this position -- admitting it here or
+            # from the CAPTURE families below would render the arg BARE,
+            # without the copy temp the enum payload needs.
             return "res.await_param_type"
         if not (own_dyn_slot or own_val_slot or _res_param_ok(pt, analyzer)):
             # Slots beyond the param families (optional-ptr / protocol
@@ -1045,7 +1044,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
                     native_globals: 'Mapping[str, str] | None' = None,
                     frame_layout: 'rcfg.FrameLayoutPlan | None' = None,
                     ) -> 'THIRResumableBody | None':
-    """Lower a resumable body, falling back cleanly on a lowering reject."""
+    """Lower a resumable body, or None on a lowering reject."""
     try:
         return _lower_resumable(
             func, analyzer, render_type, cfg,
@@ -1056,7 +1055,7 @@ def lower_resumable(func: TpyFunction, analyzer, render_type,
             frame_layout=frame_layout,
         )
     except ThirUnsupported as ex:
-        return _reject(ex.reason)
+        return _reject(ex.reason, ex.loc)
 
 
 def _lower_resumable(func: TpyFunction, analyzer, render_type,
@@ -1079,14 +1078,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     `frame_layout` is the skeleton's frame-local placement plan
     (`gen_async._frame_layout`): each local's field form, reused (vs
-    re-derived) so the form decision is identical on both paths; None (unit
-    callers) keeps every body with hoisted locals on the fallback path.
+    re-derived) so the skeleton and the leaves cannot disagree on the form;
+    None (unit callers) rejects every body with hoisted locals.
 
     `case_entry_ids` is the skeleton's case-label set (`_compute_case_entries`
     keys, cached on the CFG): the emit positions that re-establish narrowing
     aliases as `__{var}`. Reused (vs re-derived) so the narrowed-BB alias
-    environments match the walker exactly; None (unit callers) keeps every
-    narrowed body on the fallback path."""
+    environments match the walker exactly; None (unit callers) rejects
+    every narrowed body."""
     _check_suspending_poly_match(cfg)
     is_generator = bool(func.is_generator)
     # R2: instance-method coros route with a `__self` receiver. Static /
@@ -1111,7 +1110,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         _check_callable_structure(
             func, analyzer, self_type, allow_resumable=True)
     except ThirUnsupported as ex:
-        return _reject(ex.reason)
+        return _reject(ex.reason, ex.loc)
     # A generic frame (`async def f[T]` / a coro method on a generic record)
     # needs no gate of its own: the template header, and the value-vs-reference
     # frame-field choice (`val_or_ref_t<T>`), are skeleton -- every leaf reads
@@ -1128,8 +1127,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # `Iterator[T]`, not a value slot). Value scalars, a bare `T`, and
         # str/bytes route (the owned return slot's ctor absorbs the bare
         # source render -- the `_sgen_yield_ok` families' reasoning; the
-        # slot-literal retype in the Yield arm mirrors gen_yield_value's
-        # target threading). Records are interlocked with the non-value
+        # slot-literal retype in the Yield arm threads the yield type into
+        # the render). Records are interlocked with the non-value
         # loop-var rung (`(*b)` deref) and tuples need the tuple_to_pointer
         # bridge + borrow literal builder -- each its own rung.
         yt = func.generator_yield_type
@@ -1173,10 +1172,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         rt_inner = (unwrap_readonly(unwrap_send_sync(rt))
                     if rt is not None else None)
         # Owned str/bytes returns ride the shared form-keyed wrap
-        # (`_wrap_view_owned_return`): the AST's `_wrap_view_to_storage` fires
-        # iff the source is view-form, and THIR's lowered value carries that
-        # as its form fact -- the equivalence every routed sync str return
-        # already validates. One render serves all three async scaffolding
+        # (`_wrap_view_owned_return`): the wrap fires iff the source is
+        # view-form, which the lowered value carries as its form fact -- the
+        # same wrap every sync str return takes. One render serves all
+        # three async scaffolding
         # sites (`_async_ret_to_borrow` is a no-op for str/bytes).
         if not (rt is None or isinstance(rt_inner, VoidType)
                 or _res_capture_ok(rt, analyzer)
@@ -1234,7 +1233,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             return _reject("res.return_type")
     # Forwarded proto-param aliases (`xs = it`) are compile-time renames:
     # the decl emits nothing and every read renders the backing param
-    # (the AST's generator_storage_name substitution). Admitted whenever
+    # (the `generator_storage_name` substitution). Admitted whenever
     # each backing IS a param; lc.forwarded_map carries the swap.
     if func.forwarded_locals:
         param_names = {n for n, _t in func.params}
@@ -1243,7 +1242,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             return _reject("res.forwarded_local")
     # Classify each hoisted local off its FrameLayoutPlan verdict (the
     # skeleton's own placement decision, passed through the seam); a
-    # verdict whose READ/WRITE render family is not mirrored yet rejects
+    # verdict whose READ/WRITE render family is not lowered yet rejects
     # here. The alias ORIGIN (loop var vs unpack target vs statement
     # alias) is not a placement fact -- it comes from the same for-prescan
     # info the skeleton reads.
@@ -1296,7 +1295,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # value-opt scalars). An OWNED_STR field is `std::string`, but
             # its reads/writes are the same sema-resolved str renders the
             # view field takes. Value types beyond the admitted families
-            # (value records, Ptr, Char arrays) have unmirrored renders.
+            # (value records, Ptr, Char arrays) have no lowered render.
             if _res_local_ok(ltype, analyzer):
                 continue
             # A `std::optional<Record>` VALUE frame field (the await-bind
@@ -1385,10 +1384,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # split per element off the deref'd slot -- `.` for the owned
             # element, `->` for the borrowed pointer -- keyed on the
             # ELEMENT types exactly like the sync mixed alias's chooser
-            # (`_subscript_yields_borrow_ptr`). The AST's storage_form /
-            # own_borrow memberships feed only ITS chooser; THIR reads the
-            # element forms directly, so neither is mirrored -- the partial
-            # is acknowledged for the binding-fact join.
+            # (`_subscript_yields_borrow_ptr`), read directly off the
+            # element types rather than off a storage-form membership set.
             frame_slots.add(lname)
             mixed_tuple_slots.add(lname)
             continue
@@ -1473,12 +1470,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             lt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ltype)))
                   if isinstance(ltype, TpyType) else None)
             # An Own[dyn-protocol] local is a coroutine/adapter handle with
-            # its own AST write arms: a CONCRETE handle (`c = add_one(1)`)
+            # its own write shapes: a CONCRETE handle (`c = add_one(1)`)
             # writes `c.emplace(<factory call>)` -- the frame_slot shape,
             # admitted with a factory-call-only init gate in the decl arm;
             # an ERASED handle (`unique_ptr<P>` field) writes `=` through
-            # the make_adapter wrap, a render family the seam does not
-            # mirror -- reject.
+            # the make_adapter wrap, a render family the leaves do not
+            # lower -- reject.
             if (isinstance(lt, OwnType)
                     and is_dyn_protocol(unwrap_readonly(lt.wrapped))):
                 if isinstance(unwrap_readonly(lt.wrapped), ConcreteCoroType):
@@ -1490,8 +1487,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # frame field; the for-each lowering masks them out of
             # frame_slots (the register_frame_field_shadow mirror), so they
             # classify like any other local here rather than rejecting.
-            # Non-plain slot types (Callable etc.) have unmirrored
-            # emplace/read renders.
+            # Non-plain slot types (Callable etc.) have no lowered
+            # emplace/read render.
             if lt is not None and is_plain_nonvalue(lt):
                 frame_slots.add(lname)
                 continue
@@ -1506,7 +1503,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 continue
             return _reject("res.local_storage")
         # PROTOCOL (the struct emit raises its user-facing error first on
-        # this path) and any future kind: no mirrored render family.
+        # this path) and any future kind: no lowered render family.
         return _reject("res.local_storage")
     # Helper-based finally bodies (cfg.finally_helpers) route: their
     # statements lower into the leaves table below and emit through the seam
@@ -1624,22 +1621,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # the slot deref render value-form (`std::get<1>((*t)).val`, dot not
     # arrow) -- the binding-form fact, per-binding not per-type.
     lc.storage_tuple_locals |= owning_tuple_slots
-    # The AST's frame-body var-decl arm promotes a frame-promoted STORAGE slot
-    # (its pointer-form sibling returns before the promotion) with no
-    # value-type filter -- a last-use read moves out of the slot rather than
-    # copying it, which is how a BigInt frame local moves at an async return.
+    # A frame-promoted STORAGE slot is movable with no value-type filter --
+    # a last-use read moves out of the slot rather than copying it, which is
+    # how a BigInt frame local moves at an async return. Its pointer-form
+    # sibling is never promoted, hence the `_frame_ptr_locals` subtraction.
     # Promoted here rather than per-decl because the frame classification is
-    # an up-front pass on this path, not a decl-time one.
-    # Restricted to names an actual `TpyVarDecl` binds, because the AST's
-    # frame promotion lives in `_gen_var_decl`: a for-loop variable that
-    # happens to be frame-promoted is bound by the loop arm instead, whose own
-    # promotion is gated on a CONSUMING iterable -- promoting it here moved a
-    # yielded loop element the AST copies.
-    # `_frame_ptr_locals` is this mirror's weak joint: it must equal the AST's
-    # `pointer_locals` membership for frame fields, and for at least one
-    # classification it does not, so an `Own[record]` frame local moves here
-    # and copies there. Align the two memberships to fix it -- the
-    # await bind is a red herring, see `_var_decl_names`.
+    # an up-front pass, not a decl-time one.
+    # Restricted to names an actual `TpyVarDecl` binds: a for-loop variable
+    # that happens to be frame-promoted is bound by the loop arm instead,
+    # whose own promotion is gated on a CONSUMING iterable -- promoting it
+    # here would move a yielded loop element that must be copied.
     _frame_ptr_locals = (ptr_frame_locals | opt_ptr_locals | alias_ptr_locals
                          | unpack_ptr_targets)
     _frame_decl_names = _var_decl_names(list(func.body))
@@ -1647,8 +1638,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if _lname not in _frame_ptr_locals and _lname in _frame_decl_names:
             lc.promote_movable(_lname)
     # Frame nested defs are struct members callable from EVERY resume
-    # case, so their names register up front (the AST's
-    # collect_frame_nested_defs pass), not just at their statement.
+    # case, so their names register up front (the
+    # `collect_frame_nested_defs` pass), not just at their statement.
     for _nd in collect_frame_nested_defs(list(func.body)):
         lc.nested_def_locals.add(_nd.func.name)
     # Pointer-form loop vars and Optional-ptr locals ride the same pointer
@@ -1668,8 +1659,6 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.value_tuple_frame_locals = frozenset(value_tuple_locals)
     lc.opt_tuple_holders = frozenset(opt_tuple_holders)
     lc.opt_ptr_frame_locals = frozenset(opt_ptr_locals)
-    for _mts in mixed_tuple_slots:
-        publish_ack(lc, "storage_tuple_locals", _mts)
     lc.oneshot_lift_locals = frozenset(rstate.one_shot_lift_names)
     # value_tuple_locals stay IN plain_frame_fields deliberately: they are
     # bare member fields whose reassign is the same plain `name = expr;`
@@ -1682,9 +1671,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.borrow_tuple_frame_locals = frozenset(borrow_tuple_locals)
     lc.coro_handle_slots = frozenset(coro_handle_slots)
     lc.frame_local_types = dict(gen_local_types)
-    # The AST's frame ctx seeds var_types from generator_locals and then
-    # OVERWRITES each branch-first-declared name with the sema branch-decl
-    # snapshot (`_emit_branch_decls`), whose container types are forced off
+    # The frame ctx seeds var_types from generator_locals and then
+    # OVERWRITES each branch-first-declared name with sema's branch-decl
+    # snapshot (`if_branch_decls`), whose container types are forced off
     # the fixed-size Array optimization (sibling arms may bind different
     # lengths). Renders spelling the slot must see the same override.
     for _stmt in _iter_nested_stmts(list(func.body)):
@@ -1708,8 +1697,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # is never a frame field, so reads render exactly the sync spellings --
     # bare same-module, qualified native/imported -- with no frame peel,
     # and a `global`-declared name's write renders the same module-slot
-    # `g = v;` as a sync body's (the AST resumable emit is
-    # function-kind-blind there).
+    # `g = v;` as a sync body's (global writes are function-kind-blind).
     _seed_global_scope(func, analyzer, lc, declared, native_globals or {})
 
     # Pass 1 -- scope registration. Each frame-field decl (and each await
@@ -1770,8 +1758,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     and stmt.item.target not in declared
                     and isinstance(stmt.item.enter_type, TpyType)):
                 # The `as`-target bind (sync or async with) is a skeleton
-                # frame write; reads classify against the sema enter type,
-                # like the AST frame ctx's `var_types[target] = enter_type`.
+                # frame write; reads classify against the sema enter type.
                 declared[stmt.item.target] = unwrap_readonly(
                     unwrap_ref_type(unwrap_send_sync(stmt.item.enter_type)))
         t = bb.terminator
@@ -1805,8 +1792,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # the same binding-keyed arms as a value-opt param
                     # (deref-on-narrow, whole-optional None-test) -- the
                     # resumable twin of the sync foreach registration.
-                    # Value-opt narrows have no extraction alias (the AST
-                    # derefs in place), so without the binding a narrowed
+                    # Value-opt narrows have no extraction alias (the deref
+                    # happens in place), so without the binding a narrowed
                     # read falls through to the plain-name arm and renders
                     # bare.
                     if _value_opt_scalar(declared[lv],
@@ -1824,25 +1811,33 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     deferred_returns: dict[int, THIRStmt] = {}
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
+        try:
+            return _lower_leaf_inner(stmt)
+        except ThirUnsupported as ex:
+            # The frame-field arms below bypass the sync statement chokepoint,
+            # so this is the innermost frame that knows the rejecting line.
+            if ex.loc is None:
+                ex.loc = getattr(stmt, "loc", None)
+            raise
+
+    def _lower_leaf_inner(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
             begin_stmt()
             if stmt.init is None:
                 raise ThirUnsupported("stmt.decl.no_init")
             # A view-resolved frame field fed a stale view->owned coerce
-            # renders the source bare (the AST threads the binding type into
-            # gen_expr's stale-coerce arm) -- same peel as the sync decl.
+            # renders the source bare -- same peel as the sync decl.
             init = _peel_stale_view_owned_coerce(
                 stmt.init, declared[stmt.name], analyzer)
             if stmt.name in borrow_tuple_locals:
                 return _lower_borrow_tuple_frame_write(stmt, lc, declared)
-            # A concrete-coro handle slot (`c = add_one(1)`) admits ONLY a
-            # factory-call source: `_gen_concrete_coro_write`'s call arm is
-            # `c.emplace(<gen_expr(call)>)` -- byte-equal to the frame_slot
-            # write for a call render -- while its NAME-source arm is the
+            # A concrete-coro handle slot (`c = add_one(1)`) writes
+            # `c.emplace(<call>)` for a factory-call source -- the frame_slot
+            # write shape for a call render -- while a NAME source is the
             # two-statement `emplace(std::move(*src)); src.reset();` pair
-            # (and self-write a no-op), render shapes the seam does not
-            # mirror yet. coro_factory lifts only the async-callee reject;
-            # arg slots and callee kind gate like any call.
+            # (and a self-write a no-op). coro_factory lifts only the
+            # async-callee reject; arg slots and callee kind gate like any
+            # call.
             if stmt.name in coro_handle_slots:
                 if (isinstance(init, TpyName)
                         and init.name in coro_handle_slots
@@ -1851,7 +1846,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # payload and resets it (`d.emplace(std::move(*c));
                     # c.reset();` -- optional's move-assign is deleted
                     # when the frame holds reference members). A
-                    # self-write is a Python no-op (the AST emits "").
+                    # self-write is a Python no-op: nothing is emitted.
                     _witness("res.coro_handle_move")
                     return THIRCoroHandleMove(
                         target=stmt.name, source=init.name, loc=stmt.loc,
@@ -1865,7 +1860,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     raise ThirUnsupported("res.coro_handle_source")
                 # The decl is a statement position: a generic factory's
                 # ref-slot literal temps (`int32_t __tmp_N = 41;`) flush
-                # before the emplace, where the AST flushes them.
+                # before the emplace.
                 value = _lower_expr(
                     init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
@@ -1910,7 +1905,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # reject guards it: a reassign or multi-char char literal, and
             # None at a scalar/Char slot, are sema type errors that never
             # reach lowering; a single-char `c: Char = 'a'` first decl
-            # renders position-blind identically to the AST frame arm.
+            # renders position-blind like any other frame write.
             return _lower_frame_field_assign(stmt, lc, declared)
         return _lower_stmt(stmt, lc, declared)
 
@@ -1921,13 +1916,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     postif_saved: 'list[dict[str, TpyType | None] | None]' = [None]
     # Per-BB narrow-KILL map ({id(stmt): killed names}) installed by the BB
     # loop; _lower_bb pops the alias + restores the declared union at the
-    # rebinding leaf (the AST un-narrows at the same point).
+    # rebinding leaf.
     narrow_kill: 'list[dict[int, frozenset[str]] | None]' = [None]
 
     def _flat_narrowing_assert(stmt: TpyStmt) -> bool:
         """A top-level narrowing (or re-assert bump) `assert isinstance`:
-        the AST's `_gen_assert` emits a persistent extraction inline, which
-        only `_lower_stmts`' post-assert arm mirrors -- compound BODIES get
+        a persistent extraction alias belongs inline after it, which only
+        `_lower_stmts`' post-assert arm emits -- compound BODIES get
         it, but the flat BB and finally-helper walks lower per-statement and
         would silently miss the alias. Reject in both walks."""
         if not isinstance(stmt, TpyAssert):
@@ -1940,11 +1935,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     def _apply_leaf_post_if(stmt: TpyIf, leaf: THIRStmt,
                             bb: 'rcfg.BB') -> THIRStmt:
         """Mirror `_lower_stmts`' early-return narrowing arm for a leaf `if`
-        (the AST's `_gen_if` emits the persistent extraction inline after
-        the close brace and extends the live narrow scope). The scope must
+        (the persistent extraction lands inline after the close brace and
+        extends the live narrow scope). The scope must
         stay BB-LOCAL: the env walk (`_resume_narrow_envs`) doesn't model
         mid-BB facts, so only a BB whose control leaves the frame (ReturnT /
-        RaiseT terminator) admits one -- anything else falls back whole."""
+        RaiseT terminator) admits one -- anything else rejects whole."""
         plan = _post_if_narrow_plan(stmt, declared, lc.narrow, analyzer)
         if not plan:
             return leaf
@@ -1983,7 +1978,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Statement-ordered narrow kill: the rebind writes the raw
                 # variant, so this and every later leaf in the BB reads the
                 # bare union binding. The case-entry re-establish alias the
-                # skeleton emitted stays (dead on both paths).
+                # skeleton emitted stays (dead after the kill).
                 saved = postif_saved[0]
                 for _kv in _kills:
                     lc.narrow.narrowed.pop(_kv, None)
@@ -2042,7 +2037,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Pure skeleton (pending-return replay + exc rethrow); no leaf.
                 continue
             if _flat_narrowing_assert(stmt):
-                # The alias the AST appends inline after the assert. It does
+                # The alias appended inline after the assert. It does
                 # NOT need to survive the BB: the CFG flows the assert's
                 # then_type_facts into every successor's entry_narrowings
                 # (resumable_cfg's _active_narrowings), and each resume case
@@ -2090,8 +2085,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                    if isinstance(func.return_type, TpyType) else None)
             if ret.value is None or isinstance(_rt, VoidType):
                 # Void scaffolding is skeleton-only -- a Void slot never
-                # renders its value (`return None` included; the AST keys
-                # POLL_VOID_READY_RETURN on VoidType, not on the value).
+                # renders its value (`return None` included; the skeleton
+                # keys POLL_VOID_READY_RETURN on VoidType, not on the value).
                 return
             if isinstance(ret.value, TpyAwait):
                 # RETURN-kind await: `_emit_resume_core` fully emits the
@@ -2126,8 +2121,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 getattr(t.match_stmt, "loc", None), arm_body_hooks=True)
             match_dispatches[id(t.match_stmt)] = m_node
             # Hook-mode captures bind frame fields BEFORE the arm's BB walk,
-            # so the walk's flat `declared` must carry them (the AST's
-            # var_types registration); the frame slot type is authoritative.
+            # so the walk's flat `declared` must carry them; the frame slot
+            # type is authoritative.
             # A capture with no frame entry stays unregistered -- its arm
             # reads keep rejecting fail-closed.
             for m_arm in m_node.arms:
@@ -2173,12 +2168,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             _witness("res.branch_cond")
         elif isinstance(t, rcfg.Yield) and is_generator:
             # Generator suspension: the skeleton emits `__state = S_RESUME_i;
-            # return <value>;`. The AST's `gen_yield_value` threads the yield
-            # type into the render (`gen_expr(value, yield_type)`): for the
-            # value-scalar slice that only shows on an int/float literal
-            # value (a widened literal carries a sema-baked coerce, but a
-            # BigInt-slot literal renders the target-typed ctor wrap), so
-            # mirror it with the shared slot-literal retype. A char-typed
+            # return <value>;`. The yield type threads into the value
+            # render: for the value-scalar slice that only shows on an
+            # int/float literal value (a widened literal carries a sema-baked
+            # coerce, but a BigInt-slot literal renders the target-typed ctor
+            # wrap), hence the shared slot-literal retype. A char-typed
             # str-literal yield would need the char-targeted render --
             # reject, like the return arm. A bare `yield` (no value) never
             # arises for a value-scalar yield type.
@@ -2187,7 +2181,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 raise ThirUnsupported("res.bare_yield")
             begin_stmt()
             yt = func.generator_yield_type
-            # Own peel mirrors the eligibility gate: an Own[container] slot
+            # Own peel matches the eligibility gate: an Own[container] slot
             # renders like the plain container borrow.
             yt_bare = (_unwrap_own(unwrap_readonly(unwrap_ref_type(
                            unwrap_send_sync(yt))))
@@ -2195,13 +2189,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if _eligible_char(yt_bare) and isinstance(ys.value, TpyStrLiteral):
                 raise ThirUnsupported(stmt_reject_reason(ys))
             if isinstance(yt_bare, TupleType):
-                # Tuple yield slot: `gen_yield_value` target-threads the
-                # render. A literal takes the value or borrow builder per the
-                # slot's element forms (a readonly slot bumps REF elements to
+                # Tuple yield slot: the slot type threads into the render.
+                # A literal takes the value or borrow builder per the slot's
+                # element forms (a readonly slot bumps REF elements to
                 # const); a borrow-tuple LOCAL name passes bare (not a
-                # storage-form source, so `_maybe_wrap_tuple_to_pointer`
-                # no-ops). Storage-form sources (the tuple_to_pointer lift)
-                # stay a named rung.
+                # storage-form source, so the pointer lift no-ops).
+                # Storage-form sources (the tuple_to_pointer lift) reject.
                 target_ro = isinstance(
                     unwrap_ref_type(unwrap_send_sync(yt)), ReadonlyType)
                 yv_src = ys.value
@@ -2360,8 +2353,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     and ys.value.name in ptr_frame_locals
                     and isinstance(yv_lowered, THIRName)
                     and not yv_lowered.deref):
-                # Pointer-form loop var at a VALUE yield slot: the AST's
-                # pointer_value_expr deref (`return (*x);`); the name arm
+                # Pointer-form loop var at a VALUE yield slot takes the
+                # `pointer_value_expr` deref (`return (*x);`); the name arm
                 # keeps pointer names bare for the arrow/pass positions.
                 yv_lowered = replace(yv_lowered, deref=True)
             # The iterator slot owns its str/bytes payload, so a borrow-form
@@ -2397,7 +2390,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 try:
                     # The emplace is a statement position: arg temps (the
                     # vararg pack's std::array) flush before the suspend
-                    # line, exactly where the AST flushes them.
+                    # line.
                     suspend_exprs[id(operand)] = _strip_slot_leaf_deref(
                         _lower_expr(
                             operand, lc, declared,
@@ -2423,14 +2416,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     _witness("res.suspend_expr")
                 lowered_args = []
                 # The const verdict lives on the RAW fi only (substitution
-                # never copies it) -- mirror the AST emplace-arg read.
+                # never copies it), so the emplace arg reads it there.
                 dcbp = fi.root.deep_const_borrow_params
                 for i, a in enumerate(operand.args):
                     # An awaited callee is a coro factory -- always
                     # frame-capturing for its ref args. The emplace is a
                     # statement position: arg temps (the Own-slot copy+move
-                    # `auto __tmp_N = ...;`) flush before the suspend line,
-                    # exactly where the AST flushes them.
+                    # `auto __tmp_N = ...;`) flush before the suspend line.
                     lowered_args.append(_lower_call_arg(
                         a, fi.params[i].type, lc, declared,
                         frame_capturing=True, temp_args=True,
@@ -2443,7 +2435,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         bb = cfg.blocks[bb_id]
         env = narrow_envs.get(bb_id) or {}
         # A stamped fact the env walk didn't model (or modeled with a
-        # different fact) has no mirrored alias -- fall back whole.
+        # different fact) has no alias to read -- reject whole.
         for v, f in bb.entry_narrowings.items():
             if v not in env or env[v][0] is not f:
                 raise ThirUnsupported("res.narrowed_resume")
@@ -2504,9 +2496,9 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             for stmt in body_stmts:
                 if (isinstance(stmt, TpyIf) and _post_if_ast_facts(
                         stmt, declared, lc.narrow, analyzer)):
-                    # The AST emits the post-if extraction inside the helper
-                    # too; the helper walk has no post-if arm -- fall back.
-                    # Asked of the FACTS, which is what the AST arm reads: a
+                    # A post-if extraction belongs inside the helper too,
+                    # but the helper walk has no post-if arm -- reject.
+                    # Asked of the FACTS, not of the condition shape: a
                     # condition-shape reader answers "no" for every shape it
                     # cannot spell, and the extraction vanishes.
                     raise ThirUnsupported("res.narrowed_resume")
@@ -2518,11 +2510,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         lc.in_finally_helper = False
 
     # Frame nested defs are struct MEMBERS emitted by
-    # `gen_coro_finally_top_def`; lower each member BODY here so the routed
-    # frame emits it from THIR instead of `gen_nested_def_body`. The
-    # statement position keeps its THIRFrameNestedDef marker; a member body
-    # outside the slice folds the WHOLE frame back (per-body all-or-nothing
-    # at the frame's granularity).
+    # `gen_coro_finally_top_def`; lower each member BODY here so the frame
+    # emits it from THIR. The statement position keeps its
+    # THIRFrameNestedDef marker; a member body outside the slice rejects the
+    # WHOLE frame (all-or-nothing at the frame's granularity).
     nested_def_bodies: dict[int, tuple] = {}
     for _nd in collect_frame_nested_defs(list(func.body)):
         nested_def_bodies[id(_nd.func)] = _lower_member_nested_def(
@@ -2556,18 +2547,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         nested_def_bodies=nested_def_bodies,
         deferred_returns=deferred_returns)
     validate_resumable_body(func.name, res_body)
-    publish_binding_facts(lc)
     return res_body
 
 
 def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
-    """Lower one frame nested def's MEMBER body -- the seam replacement for
-    `gen_coro_finally_top_def`'s `gen_nested_def_body` call.
+    """Lower one frame nested def's MEMBER body, which
+    `gen_coro_finally_top_def` emits.
 
     The member is a plain sync function over the frame struct: the frame
     classification sets stay live (an outer local reads as the frame's own
-    field via implicit this, exactly like in the frame body -- the AST's
-    `gen_nested_def_body` deliberately keeps local-render state), while the
+    field via implicit this, exactly like in the frame body), while the
     per-function return/prescan facts swap through the shared nested-def
     scope, and `resumable_leaf_mode` CLEARS so a `return` lowers plain
     (`return v;` -- the member is not a resume step). No capture gates:
@@ -2591,13 +2580,12 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
         if not isinstance(ptype, TpyType):
             note_detail("nesteddef.param_unresolved")
             raise ThirUnsupported("res.nested_def_member")
-        # No param seeding, like the lambda form: `gen_nested_def_body`
-        # only adds the names to local_scope_names. Unlike the lambda form
-        # there is no param-TYPE ladder: the member's signature is skeleton
-        # emission (`nested_def_signature`), and the body reads a param as
-        # a plain name on both paths -- the lambda ladder exists to fence
-        # shapes whose AST LAMBDA emit is ill-formed (BUGS.md), a hazard
-        # the member form does not share.
+        # No param seeding, like the lambda form: the params only enter the
+        # local scope by name. Unlike the lambda form there is no param-TYPE
+        # ladder: the member's signature is skeleton emission
+        # (`nested_def_signature`), and the body reads a param as a plain
+        # name -- the lambda ladder exists to fence shapes whose LAMBDA emit
+        # is ill-formed (BUGS.md), a hazard the member form does not share.
         body_declared[pname] = ptype
     saved_leaf = lc.resumable_leaf_mode
     lc.resumable_leaf_mode = False
@@ -2620,8 +2608,8 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
     return out
 
 
-def _reject(reason: str):
-    note(reason)
+def _reject(reason: str, loc: 'SourceLocation | None' = None) -> None:
+    note(reason, loc)
     return None
 
 

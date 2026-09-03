@@ -16,12 +16,11 @@ from .testutil import (
 
 
 class TestIntegrationReviewUnits:
-    def _cpp(self, src: str, thir: bool):
+    def _cpp(self, src: str):
         compiler, modules = _compile(src)
         entry = _entry(modules)
         _, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=thir))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         return cpp
 
     def test_float_literal_ctor_rvalue_routes(self):
@@ -39,7 +38,6 @@ class TestIntegrationReviewUnits:
         assert fn is not None
         decl = fn.body[0]
         assert isinstance(decl.init, THIRCtorCall) and decl.init.type_cpp == "P"
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_omitted_default_ctor_rvalue_routes(self):
         # An omitted TRAILING default rides the C++ ctor signature, so both the
@@ -54,7 +52,6 @@ class TestIntegrationReviewUnits:
             "        self.a = a\n        self.b = b\n"
             "def f() -> Int32:\n"
             "    q = Q(1)\n    x = q.a\n    q = Q(3)\n    return x + q.a\n")
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
         thir = _lower_ctx(src)
         fn = _fn(thir, "f")
         assert fn is not None
@@ -75,7 +72,6 @@ class TestIntegrationReviewUnits:
         assert isinstance(decl.init, THIRContainerLiteral)
         assert decl.resolved_type.name == "Array"
         assert isinstance(decl.init.elements[1], THIRFormConvert)
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
 
     def test_string_init_identity_mirrors_ast_miscompile(self):
         # `m: String = s` (a view-form source) is IDENTITY at INIT on both
@@ -92,4 +88,3 @@ class TestIntegrationReviewUnits:
         decl = fn.body[0]
         assert isinstance(decl.init, THIRCoerce)
         assert decl.init.coercion_name == "str_to_string"
-        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)

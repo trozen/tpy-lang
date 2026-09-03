@@ -5,6 +5,8 @@ deref reads) the if cascade and the with family already carry."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _lower_ctx, _lower_ctx_witnessed, _fn, _assert_byte_identical,
 )
 
@@ -109,9 +111,8 @@ class TestTryHoistNonValueBoundaries:
                "        i += 1\n"
                "    items = get()\n"
                "    print(len(items))\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "use") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.container_call_reassigned")
 
     def test_resumable_body_hoist_stays_ast(self):
         # A generator frame has no function-top drain for the hoist line.

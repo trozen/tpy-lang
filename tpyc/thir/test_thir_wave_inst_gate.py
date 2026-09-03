@@ -4,6 +4,7 @@ reject used to swallow, plus the neighbours that must keep rejecting there."""
 from __future__ import annotations
 
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_rejects_at,
     _fn,
@@ -15,14 +16,7 @@ from .testutil import (
 def _fallbacks(src: str) -> dict:
     """The body-component fallback tally -- the only honest claim for a
     widening that moves a reject down a layer rather than routing the body."""
-    from ..codegen_cpp.context import CodeGenOptions
-    from .testutil import _compile, _entry
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
-    return {k: n for k, n in compiler._thir_fallback.items()
-            if k.startswith("body:")}
+    return {k: n for k, n in _reject_tally(src).items() if k.startswith('body:')}
 
 
 def _cpp(src: str) -> str:
@@ -31,7 +25,7 @@ def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     _hpp, cpp = compiler.generate_code_to_strings(
         _entry(modules),
-        options=CodeGenOptions(emit_source_comments=False, thir_codegen=True))
+        options=CodeGenOptions(emit_source_comments=False))
     return cpp
 
 
@@ -383,9 +377,8 @@ class TestDictTupleLiteralInstantiation:
             "    d = dict[str, Int32]([t, (\"y\", 2)])\n"
             "    print(d[\"y\"])\n"
             "name_elem()\n")
-        _assert_byte_identical(src)
-        thir = _lower_ctx(src)
-        assert _fn(thir, "name_elem") is None
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.inst_shape")
 
 
 class TestInstantiationIterProtoArg:

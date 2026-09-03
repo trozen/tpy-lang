@@ -12,20 +12,15 @@ method-call receiver (`parent_ref = child.get().parent` ->
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_routes_byte_identical,
     _compile,
     _entry,
 )
 
 
-def _thir_fallbacks(source, extra_lib_dirs=None):
-    compiler, modules = _compile(source, extra_lib_dirs=extra_lib_dirs)
-    entry = _entry(modules)
-    compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      comment_line_numbers=False,
-                                      thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(source, extra_lib_dirs=None):
+    return _reject_tally(source, extra_lib_dirs=extra_lib_dirs)
 
 
 _CHAIN = (
@@ -83,7 +78,7 @@ class TestMethodRvalueRebindSlot:
             "    cur = Node(9)\n"
             "    return cur.value\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert not fell, fell
 
 
@@ -252,5 +247,5 @@ class TestOptFieldOffRvalueReceiver:
             "    print(probe())\n"
             "main()\n"
         )
-        fell = _thir_fallbacks(src)
+        fell = _reject_tags(src)
         assert "body:stmt.var_decl:decl.opt_slot_source" in fell, fell

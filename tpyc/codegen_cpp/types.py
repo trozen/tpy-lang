@@ -329,8 +329,8 @@ class TypeResolver:
     @staticmethod
     def involves_variables(expr: TpyExpr) -> bool:
         """Check if an expression involves any variable references. Static --
-        the AST fold's syntactic guard, shared verbatim by THIR's literal-fold
-        mirror (one walk, no drift)."""
+        the literal fold's syntactic guard, one walk shared by every
+        caller."""
         if isinstance(expr, TpyCoerce):
             return TypeResolver.involves_variables(expr.expr)
         if isinstance(expr, TpyName):
@@ -348,21 +348,6 @@ class TypeResolver:
             return True
         # Default to True for safety
         return True
-
-    def is_fixed_int_arithmetic(self, left_type: TpyType, right_type: TpyType, op: str) -> bool:
-        """Check if binary op produces fixed-int result (needs checked arithmetic).
-
-        Only applies when at least one operand is explicitly a fixed-width int.
-        IntLiteralType alone uses the configured default integer type.
-        """
-        if op not in ("+", "-", "*", "//", "%", "**"):
-            return False
-        has_fixed = is_fixed_int_type(left_type) or is_fixed_int_type(right_type)
-        if not has_fixed:
-            return False
-        def is_fixed_compatible(t: TpyType) -> bool:
-            return is_fixed_int_type(t) or isinstance(t, IntLiteralType)
-        return is_fixed_compatible(left_type) and is_fixed_compatible(right_type)
 
     def is_runtime_bigint(self, expr: TpyExpr, expr_type: TpyType) -> bool:
         """Check if expression is stored as BigInt at runtime."""

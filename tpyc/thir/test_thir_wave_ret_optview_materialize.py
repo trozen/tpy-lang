@@ -5,6 +5,7 @@ absorbs it. A coercion that does NOT materialize keeps the reject."""
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
@@ -17,8 +18,8 @@ def _codegen_facts(source: str):
     compiler.generate_code_to_strings(
         _entry(modules),
         options=CodeGenOptions(emit_source_comments=True,
-                               comment_line_numbers=False, thir_codegen=True))
-    return compiler._thir_face_witnesses, compiler._thir_fallback
+                               comment_line_numbers=False))
+    return compiler._thir_face_witnesses
 
 
 # Both flavors in one body: the coercion sits over a SLICE and over a NAME.
@@ -44,8 +45,7 @@ main()
 
 
 def test_str_materialize_at_owned_inner_routes():
-    faces, fallback = _codegen_facts(STR_OWNED_INNER)
-    assert fallback == {}
+    faces = _codegen_facts(STR_OWNED_INNER)
     assert faces.get("ret.value_opt_view_materialize", 0) >= 2
 
 
@@ -82,8 +82,7 @@ main()
 
 
 def test_bytes_materialize_at_owned_inner_routes():
-    faces, fallback = _codegen_facts(BYTES_OWNED_INNER)
-    assert fallback == {}
+    faces = _codegen_facts(BYTES_OWNED_INNER)
     assert faces.get("ret.value_opt_view_materialize", 0) >= 2
 
 
@@ -115,8 +114,7 @@ main()
 
 
 def test_view_inner_slice_keeps_its_own_arm():
-    faces, fallback = _codegen_facts(VIEW_INNER)
-    assert fallback == {}
+    faces = _codegen_facts(VIEW_INNER)
     assert faces.get("ret.value_opt_view_slice", 0) >= 1
     assert faces.get("ret.value_opt_view_materialize", 0) == 0
 
@@ -141,6 +139,6 @@ main()
 
 
 def test_non_materializing_optional_coerce_stays_ast():
-    _faces, fallback = _codegen_facts(NON_MATERIALIZING)
+    fallback = _reject_tally(NON_MATERIALIZING)
     _assert_rejects_at(fallback, "body:stmt.return",
                        shape="return.opt_view_source")

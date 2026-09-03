@@ -8,7 +8,9 @@ renderer-less resumables)."""
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _compile, _entry
+from .testutil import (
+    _assert_rejects_at, _assert_byte_identical, _compile, _entry,
+                      _reject_tally)
 
 
 def _gen_thir(source: str):
@@ -18,9 +20,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 class TestConceptSpelling:
@@ -36,9 +37,8 @@ class TestConceptSpelling:
             "    describe([10, 20, 30])\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert faces.get("if.constexpr_concept", 0) >= 1
-        assert not fallback
         assert "if constexpr (::tpystd::typing::Sized<T_items>)" in out
         _assert_byte_identical(src)
 
@@ -54,9 +54,8 @@ class TestConceptSpelling:
             "    check_not([1, 2])\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert faces.get("if.constexpr_concept", 0) >= 1
-        assert not fallback
         assert "if constexpr ((!(::tpystd::typing::Sized<T_items>)))" in out
         _assert_byte_identical(src)
 
@@ -76,10 +75,8 @@ class TestConceptSpelling:
             "    probe(None)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert faces.get("if.constexpr_concept", 0) >= 1
-        assert "if constexpr (!std::same_as<T_x, std::nullptr_t>)" in out
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.optional")
 
     def test_optional_protocol_same_as_negated(self):
         # `not isinstance` flips the same_as polarity DIRECTLY -- no
@@ -96,10 +93,8 @@ class TestConceptSpelling:
             "    probe(None)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert faces.get("if.constexpr_concept", 0) >= 1
-        assert "if constexpr (std::same_as<T_x, std::nullptr_t>)" in out
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.arg_shape.optional")
 
 
 class TestCtorConstexpr:
@@ -125,8 +120,7 @@ class TestCtorConstexpr:
             "    print(m.n)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("if.constexpr_concept", 0) >= 1
         _assert_byte_identical(src)
 
@@ -141,10 +135,8 @@ class TestCtorConstexpr:
             "    print(m.n)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("expr.call" in r for r in fallback)
-        assert "Meter(std::array<int32_t, 3>{1, 2, 3})" in out
-        _assert_byte_identical(src)
 
     def test_ctor_dynamic_rvalue_protocol_arg_routes(self):
         # A @dynamic-slot ctor arg RVALUE keeps the adapter temp row (the
@@ -168,8 +160,7 @@ class TestCtorConstexpr:
             "    print(h.n)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         _assert_byte_identical(src)
 
 
@@ -202,7 +193,7 @@ class TestConstexprBoundaries:
             "    print(describe(Box(Cat())))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert not faces.get("if.constexpr_concept")
         _assert_byte_identical(src)
 
@@ -224,8 +215,7 @@ class TestConstexprBoundaries:
             "    print(process())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("if.nullproto_guard", 0) >= 1
         assert "if constexpr (!std::same_as<T_items, std::nullptr_t>)" in out
         assert "::tpy::__len__((*items))" in out
@@ -244,8 +234,7 @@ class TestConstexprBoundaries:
             "    print(probe(None))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("if.nullproto_guard", 0) >= 1
         assert faces.get("arg.nullproto_none", 0) >= 1
         assert "if constexpr (!std::same_as<T_x, std::nullptr_t>)" in out
@@ -271,10 +260,8 @@ class TestConstexprBoundaries:
             "    print(probe(None))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert faces.get("isnone.union_monostate", 0) >= 1
-        assert "std::holds_alternative<std::monostate>" in out
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.expr_stmt:call.arg_shape.union")
 
     def test_branch_hoist_rejects(self):
         # A var first declared in both branches and read after hoists
@@ -291,9 +278,8 @@ class TestConstexprBoundaries:
             "    describe([1, 2])\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("if.constexpr" in r for r in fallback)
-        _assert_byte_identical(src)
 
     def test_mixed_constexpr_runtime_elif_chain(self):
         # is_constexpr is PER-NODE: a chain can mix a concept-if member
@@ -312,7 +298,7 @@ class TestConstexprBoundaries:
             "    probe([1], 2)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        out, faces = _gen_thir(src)
         assert faces.get("if.constexpr_concept", 0) >= 1
         assert "if constexpr (::tpystd::typing::Sized<T_items>)" in out
         _assert_byte_identical(src)
@@ -332,9 +318,8 @@ class TestConstexprBoundaries:
             "    probe([1], True)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not faces.get("if.constexpr_concept")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.cond_binop.&&.scalar_scalar:truthy.call_nonbool")
 
     def test_ternary_protocol_union_none_test_rejects(self):
         # The EXPRESSION-position None-test on a protocol union hits the
@@ -350,9 +335,8 @@ class TestConstexprBoundaries:
             "    print(probe())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("union_none_protocol_subject" in r for r in fallback)
-        _assert_byte_identical(src)
 
     def test_resumable_keeps_rejecting(self):
         # A CFG-lowered frame branch can't be constexpr (state writes
@@ -371,10 +355,7 @@ class TestConstexprBoundaries:
             "        print(v)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not faces.get("if.constexpr_concept")
-        assert "if (::tpystd::typing::Sized<T_items>)" in out
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src), "resumable:res.narrowed_resume")
 
 
 class TestNullprotoGuardFamily:
@@ -402,8 +383,7 @@ class TestNullprotoGuardFamily:
             "    print(pick())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("if.nullproto_guard", 0) >= 1
         assert "if constexpr (!std::same_as<T_a, std::nullptr_t>)" in out
         _assert_byte_identical(src)
@@ -434,8 +414,7 @@ class TestNullprotoGuardFamily:
             "    print(c.count)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("arg.nullable_proto_addr", 0) >= 2
         assert "c.update(nums, &(more));" in out
         assert ("c.update(nums, static_cast<std::nullptr_t*>(nullptr));"
@@ -456,9 +435,8 @@ class TestNullprotoGuardFamily:
             "    print(probe([1]))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("call.arg_shape" in r for r in fallback)
-        _assert_byte_identical(src)
 
     def test_dyn_member_is_not_none_still_defers(self):
         # BOUNDARY: the @dynamic-member flavor keeps the runtime compare
@@ -481,9 +459,8 @@ class TestNullprotoGuardFamily:
             "    print(greet(None))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any("constexpr_nullproto_guard" in r for r in fallback)
-        _assert_byte_identical(src)
 
 
 class TestRequiredUnionPassOnward:
@@ -517,8 +494,7 @@ class TestRequiredUnionPassOnward:
             "    print(maybe_total(None))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("arg.required_protocol_union", 0) >= 1
         assert "return total((*items));" in out
 
@@ -541,6 +517,5 @@ class TestRequiredUnionPassOnward:
             "    print(probe())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert faces.get("if.nullproto_guard", 0) == 0
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.if:if.nullproto_hoist")

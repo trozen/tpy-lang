@@ -10,33 +10,33 @@ from __future__ import annotations
 import pytest
 
 from ..codegen_cpp.context import CodeGenError, CodeGenOptions
-from .testutil import _compile, _entry, _raised_in_lowering, _thir_ctx
+from .testutil import (
+    _assert_rejects_at, _compile, _entry, _raised_in_lowering, _thir_ctx,
+                      _reject_tally)
 
 _ITER = "from tpy import Int32, Int64\nfrom typing import Iterator\n\n"
 
 
-def _gen(src: str, thir: bool):
+def _gen(src: str):
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=True,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=True))
     return compiler, hpp, cpp
 
 
 def _assert_identical(src: str) -> 'tuple[dict, dict]':
     """Byte-compare THIR vs AST output; return (witnesses, fallback)."""
-    _, hpp_ast, cpp_ast = _gen(src, thir=False)
-    c, hpp_thir, cpp_thir = _gen(src, thir=True)
+    _, hpp_ast, cpp_ast = _gen(src)
+    c, hpp_thir, cpp_thir = _gen(src)
     assert hpp_ast == hpp_thir
     assert cpp_ast == cpp_thir
-    return c._thir_face_witnesses, c._thir_fallback
+    return c._thir_face_witnesses
 
 
 def _sgen_fallback(src: str) -> dict:
-    """The body-component fallback reasons, sans the `body:` prefix."""
-    c, _hpp, _cpp = _gen(src, thir=True)
-    return {k.split(":", 1)[1]: n for k, n in c._thir_fallback.items()
+    """The body-component reject reasons, sans the `body:` prefix."""
+    return {k.split(":", 1)[1]: n for k, n in _reject_tally(src).items()
             if k.startswith("body:")}
 
 
@@ -48,7 +48,7 @@ def _assert_thir_authored(src: str) -> None:
     alone cannot tell the two apart -- and those emitters go away, taking any
     diagnostic that still lives in them."""
     with pytest.raises(CodeGenError) as ei:
-        _gen(src, thir=True)
+        _gen(src)
     if not _raised_in_lowering(ei.value):
         pytest.fail(f"diagnostic not authored by THIR lowering: {ei.value}")
 
@@ -59,7 +59,7 @@ def _assert_raises_alike(src: str) -> None:
     errs = []
     for thir in (False, True):
         with pytest.raises(CodeGenError) as ei:
-            _gen(src, thir=thir)
+            _gen(src)
         errs.append(str(ei.value))
     assert errs[0] == errs[1], errs
 
@@ -74,11 +74,10 @@ class TestRoutedFoundation:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for x in gen(3):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
         assert witnesses.get("sgen.while_cond") == 1
         assert witnesses.get("sgen.yield_value") == 1
-        assert not any("sgen." in k for k in fallback)
 
     def test_init_block_and_pre_yield_route(self):
         # Init stmts before the loop (lambda captures) + a pre-yield
@@ -93,7 +92,7 @@ class TestRoutedFoundation:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for x in gen(4):\n        print(x)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
 
     def test_for_range_routes(self):
@@ -109,7 +108,7 @@ class TestRoutedFoundation:
                + "def main() -> None:\n"
                + "    for x in squares(4):\n        print(x)\n"
                + "    for y in offsets(1, 4):\n        print(y)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 2
         assert witnesses.get("sgen.range_arg") == 2
 
@@ -124,7 +123,7 @@ class TestRoutedFoundation:
                + "def main() -> None:\n"
                + "    items = [1, 2, 3]\n"
                + "    for v in doubles(items):\n        print(v)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
         assert witnesses.get("sgen.iterable") == 1
 
@@ -142,9 +141,9 @@ class TestRoutedFoundation:
                + "def main() -> None:\n"
                + "    c = C(7)\n"
                + "    for x in c.counts(3):\n        print(x)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "(*this).base" in hpp
 
 
@@ -162,7 +161,7 @@ class TestValueFamilies:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for c in colors(2):\n        print(c)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
 
     def test_char_yield_routes(self):
@@ -173,7 +172,7 @@ class TestValueFamilies:
                + "        yield c\n\n"
                + "def main() -> None:\n"
                + "    for c in chars(\"ab\"):\n        print(c)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
         assert witnesses.get("sgen.iterable") == 1
 
@@ -190,9 +189,8 @@ class TestValueFamilies:
                + "        yield x.v\n\n"
                + "def main() -> None:\n"
                + "    for v in ticks(None):\n        print(v)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        assert not any("sgen." in k for k in fallback)
 
 
 class TestSlicedOutShapes:
@@ -216,9 +214,8 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    ps = [P(1), P(2)]\n"
                + "    for p in gen(ps):\n        print(p.x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        assert not any("sgen." in k for k in fallback)
 
     def test_own_record_yield_routes(self):
         # An Own[record] yield keeps the bare value slot; the skeleton's
@@ -234,9 +231,8 @@ class TestSlicedOutShapes:
                + "        yield P(i)\n\n"
                + "def main() -> None:\n"
                + "    for p in gen(2):\n        print(p.x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        assert not any("sgen." in k for k in fallback)
 
     def test_own_tparam_yield_routes(self):
         # An `Own[T]`-open yield slot (`Iterator[Own[T]]`, `yield copy(x)`):
@@ -251,10 +247,9 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    nums: list[Int32] = [3, 1]\n"
                + "    print(list(each(nums)))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
         assert witnesses.get("sgen.yield_own_tparam") == 1
-        assert not any("sgen." in k for k in fallback)
 
     def test_own_optional_tparam_yield_defers(self):
         # BOUNDARY: `Own[T] | None` wraps the slot in Optional machinery the
@@ -284,9 +279,8 @@ class TestSlicedOutShapes:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for v in echo(\"hi\", 2):\n        print(v)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        assert not any("sgen." in k for k in fallback)
 
     def test_static_view_yield_materializes(self):
         # Same slot, still-a-VIEW source: a literal-sourced local keeps its
@@ -304,10 +298,9 @@ class TestSlicedOutShapes:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for v in parts(2):\n        print(v)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        assert not any("sgen." in k for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "std::string(lit)" in hpp
 
     def test_static_bytes_view_yield_materializes(self):
@@ -323,10 +316,9 @@ class TestSlicedOutShapes:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for c in chunks(2):\n        print(len(c))\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        assert not any("sgen." in k for k in fallback)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "::tpy::bytes_copy(view)" in hpp
 
     def test_tuple_yield_literal_routes(self):
@@ -343,7 +335,7 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    ps = [P(1), P(2)]\n"
                + "    for i, p in gen(ps):\n        print(i, p.x)\nmain()\n")
-        witnesses, _fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert not _sgen_fallback(src).get("sgen.yield_type")
 
     def test_str_loop_var_routes(self):
@@ -367,7 +359,7 @@ class TestSlicedOutShapes:
         assert ctx.thir_simple_gens
         assert not fallback
         _assert_identical(src)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "std::string w = *__beg++;" in hpp
 
     def test_bytes_loop_var_routes(self):
@@ -384,7 +376,7 @@ class TestSlicedOutShapes:
         assert ctx.thir_simple_gens
         assert not fallback
         _assert_identical(src)
-        _, hpp, _cpp = _gen(src, thir=True)
+        _, hpp, _cpp = _gen(src)
         assert "std::vector<uint8_t> b = *__beg++;" in hpp
 
     def test_str_dict_key_loop_var_routes(self):
@@ -440,8 +432,7 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    b = Box(7)\n"
                + "    for x in b.rep(2):\n        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
 
     def test_property_generator_defers(self):
@@ -459,12 +450,13 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    b = Bag(2)\n"
                + "    for v in b.items:\n        print(v)\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert fallback.get("body:sgen.property", 0) >= 1
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.user_iterator.field_access")
 
-    def test_nonbool_call_cond_defers(self):
-        # An Int32-returning call in the while-truthy position rejects at
-        # _lower_truthy -> sgen.cond.
+    def test_nonbool_scalar_call_cond_routes(self):
+        # An Int32-returning call in the while-truthy position renders its
+        # own test, so the loop head carries it into the peephole unchanged
+        # -- the same type-keyed condition verdict as outside a generator.
         src = (_ITER
                + "def countdown(n: Int32) -> Int32:\n"
                + "    return n\n\n"
@@ -474,8 +466,9 @@ class TestSlicedOutShapes:
                + "        n = n - 1\n\n"
                + "def main() -> None:\n"
                + "    for v in gen(2):\n        print(v)\nmain()\n")
-        _, fallback = _assert_identical(src)
-        assert fallback.get("body:sgen.cond") == 1
+        assert _reject_tally(src) == {}
+        _compiler, hpp, cpp = _gen(src)
+        assert "while (countdown(n)) {" in hpp + cpp
 
     def test_while_isinstance_cond_defers(self):
         # A U4 while-isinstance head would need the loop-entry extraction
@@ -495,7 +488,7 @@ class TestSlicedOutShapes:
                + "def main() -> None:\n"
                + "    b = B(1)\n"
                + "    for v in ticks(b):\n        print(v)\nmain()\n")
-        _, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback.get("body:sgen.narrow_cond") == 1
 
     def test_forwarded_proto_local_defers(self):
@@ -511,7 +504,7 @@ class TestSlicedOutShapes:
                + "        i = i + 1\n\n"
                + "def main() -> None:\n"
                + "    for v in relay(src(3)):\n        print(v)\nmain()\n")
-        _, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback.get("body:sgen.forwarded_local") == 1
 
     def test_range3_iterable_routes(self):
@@ -524,9 +517,8 @@ class TestSlicedOutShapes:
                + "        yield i\n\n"
                + "def main() -> None:\n"
                + "    for v in evens(7):\n        print(v)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body")
-        assert not fallback
 
 
 class TestSkeletonAuthoredReject:
@@ -563,10 +555,8 @@ class TestSkeletonAuthoredReject:
         with pytest.raises(CodeGenError, match="walrus binding") as ei:
             compiler.generate_code_to_strings(
                 _entry(modules),
-                options=CodeGenOptions(emit_source_comments=False,
-                                       thir_codegen=True))
+                options=CodeGenOptions(emit_source_comments=False))
         assert not _raised_in_lowering(ei.value)
-        assert not compiler._thir_fallback
         assert compiler._thir_face_witnesses.get("sgen.while_cond") == 1
 
     def test_walrus_only_cond_routes(self):
@@ -579,9 +569,8 @@ class TestSkeletonAuthoredReject:
                + "        yield i\n\n"
                + "def main() -> None:\n"
                + "    for v in counted():\n        print(v)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.while_cond") == 1
-        assert not fallback
 
     def test_temp_only_cond_routes(self):
         # The other half of the boundary: an argument temp with no walrus.
@@ -593,9 +582,8 @@ class TestSkeletonAuthoredReject:
                + "        yield i\n\n"
                + "def main() -> None:\n"
                + "    for v in counted(2):\n        print(v)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.while_cond") == 1
-        assert not fallback
 
 
 class TestForeachCallers:
@@ -618,10 +606,9 @@ class TestForeachCallers:
                + "def main() -> None:\n"
                + "    for x in gen(3):\n"
                + "        print(x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
-        assert not fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto __src_0 = gen(3);" in cpp
         assert "auto&& __itr_0 = ::tpy::__iter__(__src_0);" in cpp
 
@@ -634,7 +621,7 @@ class TestForeachCallers:
                + "        print(x)\n"
                + "    else:\n"
                + "        print(99)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
 
     def test_foreach_user_iterator_name_routes(self):
@@ -654,9 +641,9 @@ class TestForeachCallers:
                + "    c = Counter(3)\n"
                + "    for x in c:\n"
                + "        print(x)\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto& __src_0 = c;" in cpp
 
     def test_foreach_member_gen_call_routes(self):
@@ -678,14 +665,13 @@ class TestForeachCallers:
                + "    s.push(3)\n"
                + "    for v in s.each_doubled():\n"
                + "        print(v)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
         # The generator BODY routed too (the sgen field-iterable arm), not
         # just the caller: a silent leaf fallback would keep the caller
         # witness and the byte-diff green while un-routing each_doubled.
         assert witnesses.get("sgen.iterable") == 1
-        assert not fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "auto __src_0 = s.each_doubled();" in cpp
 
     def test_foreach_self_member_gen_call_routes(self):
@@ -709,7 +695,7 @@ class TestForeachCallers:
                + "def main() -> None:\n"
                + "    r = Runner(4)\n"
                + "    print(r.total())\nmain()\n")
-        witnesses, _ = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto") == 1
 
     def test_foreach_self_iterable_routes(self):
@@ -730,8 +716,7 @@ class TestForeachCallers:
                + "def main() -> None:\n"
                + "    b = Bag()\n"
                + "    print(b.first())\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.self_iterable", 0) >= 1
 
 
@@ -759,9 +744,8 @@ class TestTupleYield:
                + "        b.val = i + 10\n"
                + "    for b in xs:\n"
                + "        print(b.val)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.tuple_yield", 0) >= 1
-        assert not fallback
 
     def test_value_tuple_literal_yield_routes(self):
         src = (_ITER
@@ -773,9 +757,8 @@ class TestTupleYield:
                + "def main() -> None:\n"
                + "    for a, b in pairs(2):\n"
                + "        print(a, b)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.tuple_yield", 0) >= 1
-        assert not fallback
 
     def test_own_tuple_literal_yield_and_unpack_route(self):
         # An Own-record-element tuple literal at a STORAGE yield slot spells
@@ -838,7 +821,7 @@ class TestTupleYield:
                + "    for i, pair in g(3):\n"
                + "        total = total + pair[1].val\n"
                + "    print(total)\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback == {"body:stmt.for_each:iter.call.generator": 1}, \
             fallback
 
@@ -873,7 +856,7 @@ class TestTupleYield:
                + "    for i, x in relay(items):\n"
                + "        x.val = 9\n"
                + "    print(b.val)\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert fallback, "expected the name-source tuple yield to fall back"
 
 
@@ -962,9 +945,8 @@ class TestYieldCopyRecord:
                + "        yield copy(p)\n\n"
                + "def main() -> None:\n"
                + "    for p in points():\n        print(p.x)\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.yield_copy_record", 0) >= 1
-        assert not fallback
 
     def test_yield_copy_of_ctor_rvalue_stays_ast(self):
         # `copy(Point(1))` is the PRVALUE arm of _gen_copy_expr (the ctor
@@ -978,8 +960,8 @@ class TestYieldCopyRecord:
                + "        i += 1\n\n"
                + "def main() -> None:\n"
                + "    for p in points():\n        print(p.x)\nmain()\n")
-        witnesses, _fallback = _assert_identical(src)
-        assert witnesses.get("sgen.yield_copy_record", 0) == 0
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.call:call.builtin_special")
 
 
 class TestContainerLoopVar:
@@ -1000,9 +982,8 @@ class TestContainerLoopVar:
                + "    d[\"a\"] = [1]\n"
                + "    for n in bump(d):\n        print(n)\n"
                + "    print(d[\"a\"])\nmain()\n")
-        witnesses, fallback = _assert_identical(src)
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.body") == 1
-        assert not fallback
 
     def test_whole_tuple_loop_var_still_defers(self):
         # The `d.items()` UNPACK form routes (the items tuple-unpack arm);
@@ -1015,7 +996,7 @@ class TestContainerLoopVar:
                + "        yield kv[1]\n\n"
                + "def main() -> None:\n"
                + "    for n in pairs({\"a\": 1}):\n        print(n)\nmain()\n")
-        _witnesses, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert any("sgen.loop_var_type" in k for k in fallback), fallback
 
 
@@ -1058,8 +1039,7 @@ class TestSelfAndElementIterables:
                + "def main() -> None:\n"
                + "    print(Stack().sum())\n"
                + "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.self_iterable", 0) >= 1
 
     def test_element_iterable_routes(self):
@@ -1069,8 +1049,7 @@ class TestSelfAndElementIterables:
                + "    for x in items[0]:\n"
                + "        print(x)\n"
                + "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("foreach.iter_proto", 0) >= 1
 
 
@@ -1109,10 +1088,9 @@ class TestSgenPtrTupleLoopVar:
             "    print(d[1].v)\n"
             "    print(xs[0][1].v)\n"
             "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        witnesses = _assert_identical(src)
         # The element member reads render VALUE-form (dot, not arrow).
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "std::get<1>(pair).v" in (cpp + _hpp)
 
     def test_iterator_relay_yields_bare_name(self):
@@ -1131,8 +1109,7 @@ class TestSgenPtrTupleLoopVar:
             "            a.v = 9\n"
             "    print(xs[0].v)\n"
             "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.tuple_yield_name", 0) >= 1
 
     def test_storage_form_relay_stays_out(self):
@@ -1148,7 +1125,7 @@ class TestSgenPtrTupleLoopVar:
             "    for t in storage_relay(xs):\n"
             "        print(t[0])\n"
             "main()\n")
-        witnesses, fallback = _assert_identical(src)
+        fallback = _reject_tally(src)
         assert any("sgen.tuple_yield_source" in k for k in fallback), fallback
 
     def test_span_source_registers_storage_form(self):
@@ -1168,13 +1145,8 @@ class TestSgenPtrTupleLoopVar:
             "        print(k)\n"
             "    print(xs[0][1].v)\n"
             "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        # over_span itself must route: no sgen-tagged fallback (main's
-        # Span decl is an unrelated deferral).
-        assert not any("sgen" in k for k in fallback), fallback
-        assert witnesses.get("sgen.body", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
-        assert "std::get<1>(pair).v" in (cpp + _hpp)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
 
 class TestGenericRecordSgen:
@@ -1211,9 +1183,8 @@ class TestGenericRecordSgen:
             "    for b in Holder([1, 2]).walk():\n"
             "        print(b)\n"
             "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
-        _, _hpp, cpp = _gen(src, thir=True)
+        witnesses = _assert_identical(src)
+        _, _hpp, cpp = _gen(src)
         assert "auto __val = (*this).v;" in (_hpp + cpp)
         assert "auto&& x = *__beg++;" in (_hpp + cpp)
 
@@ -1237,10 +1208,9 @@ class TestGenericFunctionSgen:
             "    for i, v in pairs(xs):\n"
             "        print(i, v)\n"
             "main()\n")
-        witnesses, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        witnesses = _assert_identical(src)
         assert witnesses.get("sgen.tuple_yield_generic", 0) >= 1
-        _, _hpp, cpp = _gen(src, thir=True)
+        _, _hpp, cpp = _gen(src)
         assert "::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)" in (
             _hpp + cpp)
 
@@ -1287,10 +1257,9 @@ class TestTupleYieldSources:
             "    for pair in gen():\n"
             "        print(pair[0], pair[1].val)\n"
             "main()\n")
-        wit, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        wit = _assert_identical(src)
         assert wit.get("sgen.tuple_yield_elem_lift", 0) >= 1
-        _c, _hpp, cpp = _gen(src, thir=True)
+        _c, _hpp, cpp = _gen(src)
         joined = _hpp + cpp
         assert ("::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>"
                 "(::tpy::__getitem__(items, 0))") in joined
@@ -1313,10 +1282,9 @@ class TestTupleYieldSources:
             "    for pair in gen(2):\n"
             "        print(pair[0], pair[1].val)\n"
             "main()\n")
-        wit, fallback = _assert_identical(src)
-        assert not fallback, fallback
+        wit = _assert_identical(src)
         assert wit.get("sgen.tuple_yield_storage_name", 0) >= 1
-        _c, _hpp, cpp = _gen(src, thir=True)
+        _c, _hpp, cpp = _gen(src)
         assert "auto __val = t;" in (_hpp + cpp)
 
     def test_dict_elem_source_still_defers(self):

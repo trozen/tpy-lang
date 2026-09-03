@@ -8,6 +8,8 @@ the record ladder's row on the protocol family."""
 from __future__ import annotations
 
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _assert_routes_byte_identical, _fn, _lower_ctx,
     _lower_ctx_witnessed,
 )
@@ -117,9 +119,8 @@ class TestNarrowedOptDictViewIter:
                "def main() -> None:\n"
                "    print(f({\"a\": Int32(1)}))\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.method_call_shape")
 
     def test_field_receiver_stays_ast(self):
         # The FIELD-receiver flavor is off at the for-head callers (its
@@ -139,9 +140,8 @@ class TestNarrowedOptDictViewIter:
                "def main() -> None:\n"
                "    print(H().total())\n"
                "main()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "total") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.for_each:iter.method_call_shape")
 
 
 class TestProtocolMethodOptionalPtrArg:

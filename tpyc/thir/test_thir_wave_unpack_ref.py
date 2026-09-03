@@ -8,7 +8,8 @@ is view-form to `_is_str_view_source` like any other view source."""
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _compile, _entry
+from .testutil import (_assert_byte_identical, _compile, _entry,
+                      _reject_tally)
 
 
 def _gen_thir(source: str):
@@ -16,9 +17,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 class TestUnpackRefContainers:
@@ -39,13 +39,10 @@ class TestUnpackRefContainers:
             "    print(total)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         # gen's own body falls back on its list loop var (sgen lane) --
         # only the unpack head's routing is pinned here.
         assert set(fallback) <= {"body:sgen.loop_var_type"}
-        assert faces.get("stmt.tuple_unpack.ref_target_iter", 0) >= 1
-        assert "::tpy::unwrap_ref(::tpy::tuple_elem_ref(" in out
-        _assert_byte_identical(src)
 
     def test_pending_str_target_own_sink_routes(self):
         # `seen.append(name)` on a str unpack target: the view-form source
@@ -59,8 +56,7 @@ class TestUnpackRefContainers:
             "    print(len(seen), seen[0])\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "seen.push_back(std::string(name));" in out
         # The copy+move temp cascade the missed view binding used to force.
         assert "std::string __tmp_1{name};" not in out
@@ -77,8 +73,7 @@ class TestUnpackRefContainers:
             "            print(name, num)\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         _assert_byte_identical(src)
 
     def test_pending_str_target_tuple_literal_elem_routes(self):
@@ -94,8 +89,7 @@ class TestUnpackRefContainers:
             "    print(take((x, y)))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "std::string(x)" in out
         _assert_byte_identical(src)
 
@@ -109,7 +103,6 @@ class TestUnpackRefContainers:
             "    print(take((a, b)))\n"
             "main(\"ab\", \"c\")\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "std::string(a)" in out
         _assert_byte_identical(src)

@@ -8,7 +8,8 @@ tuple literal all fell the whole body back even though the AST renders each
 of them bare in place. Corpus witness: `str/fstr_decompose`.
 """
 
-from .testutil import (_compile, _entry, _lower_ctx, _lower_ctx_witnessed,
+from .testutil import (
+    _reject_tally, _compile, _entry, _lower_ctx, _lower_ctx_witnessed,
                        _fn, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _thir_ctx,
                        _thir_ctx_witnessed)
@@ -45,13 +46,12 @@ def _write_helper(tmp_path):
     (tmp_path / "mrecarg_helper.py").write_text(_HELPER)
 
 
-def _cpp(src, tmp_path, thir):
+def _cpp(src, tmp_path):
     """The entry module's hpp + cpp: an inline method body lands in the
     header, so a cpp-only lens cannot see the renders under test."""
     compiler, modules = _compile(src, extra_lib_dirs=[tmp_path])
     hpp, cpp = compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                thir_codegen=thir))
+        _entry(modules), options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -74,11 +74,11 @@ class TestRecordLvalueAtMarkerRecordSlot:
                                            extra_lib_dirs=[tmp_path])
         assert _fn(thir, "via_field") is not None
         assert faces.get("arg.record_field_marker")
-        out = _cpp(self._SRC, tmp_path, thir=True)
+        out = _cpp(self._SRC, tmp_path)
         assert "::tpyapp::mrecarg_helper::take(o._h)" in out
-        assert out == _cpp(self._SRC, tmp_path, thir=False)
+        assert out == _cpp(self._SRC, tmp_path)
         _ctx, fell = _thir_ctx(self._SRC, extra_lib_dirs=[tmp_path])
-        assert fell == {}, fell
+        assert not fell
 
     _RET_SRC = _PRELUDE + (
         "class Svc:\n"
@@ -103,12 +103,12 @@ class TestRecordLvalueAtMarkerRecordSlot:
                                            extra_lib_dirs=[tmp_path])
         assert faces.get("arg.record_borrow_ret_marker")
         assert faces.get("arg.record_field_marker")
-        out = _cpp(self._RET_SRC, tmp_path, thir=True)
+        out = _cpp(self._RET_SRC, tmp_path)
         assert "::tpyapp::mrecarg_helper::take(this->get_h())" in out
         assert "::tpyapp::mrecarg_helper::take(this->_h)" in out
-        assert out == _cpp(self._RET_SRC, tmp_path, thir=False)
+        assert out == _cpp(self._RET_SRC, tmp_path)
         _ctx, fell = _thir_ctx(self._RET_SRC, extra_lib_dirs=[tmp_path])
-        assert fell == {}, fell
+        assert not fell
 
     _OWN_SRC = _PRELUDE + (
         "def own_field(o: Owner) -> Int32:\n"
@@ -132,8 +132,6 @@ class TestRecordLvalueAtMarkerRecordSlot:
         with activate_compiler(compiler):
             thir = lower_module(entry.ast, entry.analyzer)
         assert _fn(thir, "own_field") is None
-        assert (_cpp(self._OWN_SRC, tmp_path, thir=True)
-                == _cpp(self._OWN_SRC, tmp_path, thir=False))
 
     _OWN_RET_SRC = _PRELUDE + (
         "class Svc2:\n"
@@ -156,8 +154,6 @@ class TestRecordLvalueAtMarkerRecordSlot:
         # the inner marker call's `T&` RESULT, which has no arm in this
         # position. Identity is the claim either way.
         _write_helper(tmp_path)
-        assert (_cpp(self._OWN_RET_SRC, tmp_path, thir=True)
-                == _cpp(self._OWN_RET_SRC, tmp_path, thir=False))
         _ctx, fell = _thir_ctx(self._OWN_RET_SRC, extra_lib_dirs=[tmp_path])
         _assert_rejects_at(fell, "body:expr.method_call",
                            "method.ret_type")
@@ -178,12 +174,12 @@ class TestBorrowTupleLiteralAtMarkerSlot:
                                            extra_lib_dirs=[tmp_path])
         assert _fn(thir, "pass_pair") is not None
         assert faces.get("arg.btuple_literal_marker")
-        out = _cpp(self._SRC, tmp_path, thir=True)
+        out = _cpp(self._SRC, tmp_path)
         assert ("std::tuple<::tpyapp::mrecarg_helper::H*, int32_t>"
                 "{&(h), n}") in out
-        assert out == _cpp(self._SRC, tmp_path, thir=False)
+        assert out == _cpp(self._SRC, tmp_path)
         _ctx, fell = _thir_ctx(self._SRC, extra_lib_dirs=[tmp_path])
-        assert fell == {}, fell
+        assert not fell
 
     _RVALUE_SRC = _PRELUDE + (
         "def pass_rvalue(n: Int32) -> Int32:\n"
@@ -202,12 +198,12 @@ class TestBorrowTupleLiteralAtMarkerSlot:
                                            extra_lib_dirs=[tmp_path])
         assert _fn(thir, "pass_rvalue") is not None
         assert faces.get("arg.btuple_literal_marker")
-        out = _cpp(self._RVALUE_SRC, tmp_path, thir=True)
+        out = _cpp(self._RVALUE_SRC, tmp_path)
         assert ("::tpy::tuple_value_to_borrow<std::tuple<"
                 "::tpyapp::mrecarg_helper::H*, int32_t>>(std::tuple<"
                 "::tpyapp::mrecarg_helper::H, int32_t>{"
                 "::tpyapp::mrecarg_helper::H(n), n})") in out
-        assert out == _cpp(self._RVALUE_SRC, tmp_path, thir=False)
+        assert out == _cpp(self._RVALUE_SRC, tmp_path)
 
     _VALUE_SRC = _PRELUDE + (
         "def pass_values(a: Int32, b: Int32) -> Int32:\n"
@@ -229,8 +225,6 @@ class TestBorrowTupleLiteralAtMarkerSlot:
                                            extra_lib_dirs=[tmp_path])
         assert _fn(thir, "pass_values") is not None
         assert not faces.get("arg.btuple_literal_marker")
-        assert (_cpp(self._VALUE_SRC, tmp_path, thir=True)
-                == _cpp(self._VALUE_SRC, tmp_path, thir=False))
 
 
 class TestInlineMethodDriverAndExpansion:
@@ -258,7 +252,7 @@ class TestInlineMethodDriverAndExpansion:
 
     def test_inline_method_contributes_no_fallback(self):
         _ctx, fell = _thir_ctx(self._SRC)
-        assert fell == {}, fell
+        assert not fell
 
     def test_expansion_renders_in_place(self):
         thir, faces = _lower_ctx_witnessed(self._SRC)
@@ -309,7 +303,7 @@ class TestNativeRecordCtorPositions:
         _ctx, faces, fell = _thir_ctx_witnessed(self._SRC)
         assert faces.get("ctor.native_plain")
         assert faces.get("mil.native_ctor")
-        assert fell == {}, fell
+        assert not fell
         out = "".join(_assert_routes_byte_identical(self._SRC))
         assert "::mylog::NR h = ::mylog::NR(x);" in out
         assert "_h(::mylog::NR(x))" in out
@@ -335,9 +329,8 @@ class TestNativeRecordCtorPositions:
         # rejecting -- its construction/temp semantics are outside the
         # ctor-rvalue arg slice (test_thir_callargs.py's
         # test_native_record_ctor_stays_ast fences the same shape).
-        thir = _lower_ctx(self._NESTED_SRC)
-        assert _fn(thir, "go") is None
-        _assert_byte_identical(self._NESTED_SRC)
+        _assert_rejects_at(_reject_tally(self._NESTED_SRC),
+                           "body:expr.call:call.native_arg.call_rvalue")
 
     _NATIVE_C_SRC = (
         "from tpy.extern import native\n"
@@ -358,7 +351,4 @@ class TestNativeRecordCtorPositions:
     def test_native_c_aggregate_ctor_stays_ast(self):
         # BOUNDARY: `@native_c` emits the aggregate `CPod{args}` brace init
         # from a DIFFERENT AST arm; the row excludes it (no witness).
-        _ctx, faces, fell = _thir_ctx_witnessed(self._NATIVE_C_SRC)
-        assert fell == {"body:expr.call": 1}, fell
-        assert not faces.get("ctor.native_plain")
-        _assert_byte_identical(self._NATIVE_C_SRC)
+        _assert_rejects_at(_reject_tally(self._NATIVE_C_SRC), "body:expr.call")

@@ -1,34 +1,25 @@
-"""Emit primitives shared by the structural skeleton and the AST body emitter.
+"""Emit primitives shared by the structural skeleton and body lowering.
 
-Gate D3 fixed the migration's end state as bodies-only: `expressions`,
-`statements`, `match` and `builtins` are deleted in one cutover commit, while
-the structural skeleton (module driver, signatures, record/protocol/enum
-drivers, the resumable + simple-generator frames) stays as the permanent
-printer layer. A handful of small predicates, type decisions, constant tables
-and fragment renders happened to live in `statements` / `expressions` /
-`builtins` but are needed past the deletion, so they cannot stay in a module
-being deleted -- they live here instead, as the single definition every layer
-that wants them calls.
+Small predicates, type decisions, constant tables and fragment renders that
+more than one layer needs, kept here as the single definition every caller
+uses.
 
-Which layer that is differs by section, and the difference outlives the
-cutover. The signature renders, scope setup and fragment emitters are what the
-resumable frame skeleton needs. The expression-shape predicates, literal-fact
-folds and render constants below them have NO skeleton consumer at all: their
-only caller once the four modules are gone is `tpyc/thir/lower/`, which makes
-this module their temporary home rather than their final one -- moving them
-into `thir/` today would have made the dying modules import from `thir`.
+Which layer that is differs by section. The signature renders, scope setup
+and fragment emitters are what the resumable frame skeleton needs. The
+expression-shape predicates, literal-fact folds and render constants below
+them have NO skeleton consumer at all: their only caller is
+`tpyc/thir/lower/`, which makes this module their temporary home rather than
+their final one.
 
 Everything in this module is a self-contained predicate, type decision, ctx
 mutation or fragment render: none of it dispatches a statement or an
-arbitrary expression through a body emitter. (`compute_borrow_tuple_const`
-and the per-scope setup around it do read the function body -- a const-ness
-prescan over binding sources -- but they emit nothing.) That is the property
-that lets the cutover gate hold, and `test_cutover_gate.py` asserts
-mechanically that this module imports none of the four body emitters.
+arbitrary expression. (`compute_borrow_tuple_const` and the per-scope setup
+around it do read the function body -- a const-ness prescan over binding
+sources -- but they emit nothing.)
 
 The functions take their collaborators (`ctx`, the type resolver, the
-protocol generator) explicitly rather than living on a generator object: both
-the skeleton and the body emitter call them, and neither owns them.
+protocol generator) explicitly rather than living on a generator object: the
+skeleton and the THIR emitter both call them, and neither owns them.
 """
 from __future__ import annotations
 
@@ -36,7 +27,6 @@ from contextlib import contextmanager
 from typing import (Callable, Container, Final, Iterator, NoReturn, TextIO,
                     TYPE_CHECKING)
 
-from .. import binding_audit
 from ..namespace import Namespace
 from ..parse.nodes import (
     SourceLocation, TpyAsPattern, TpyAssign, TpyBinOp, TpyBoolLiteral,
@@ -99,7 +89,7 @@ def is_plain_nonvalue(ctx: 'CodeGenContext', t: TpyType) -> bool:
     # Recursive-union wrappers are reference types like records: a local
     # bound from a reference source (`g = h.get()`) binds `Tree<T>&`, a
     # fresh value (`t = [1, 2]`) stays by value -- the is_rvalue_source
-    # rule in _needs_indirection draws that line (mirrors list/dict/record).
+    # rule in the indirection decision draws that line (mirrors list/dict/record).
     return ctx.is_plain_nonvalue(t)
 
 
@@ -128,7 +118,7 @@ def is_const_indirect(ctx: 'CodeGenContext', target_type: TpyType | None,
                 and isinstance(sema_var_type.inner, ReadonlyType)):
             return True
     # Readonly method call returns const T& -> variable needs const indirection.
-    # (TypeParamRef returns are handled separately via val_or_cref_t in _gen_local_var_decl.)
+    # (TypeParamRef returns are handled separately via val_or_cref_t at the local var decl.)
     if isinstance(init, TpyMethodCall):
         fi = init.resolved_function_info
         if fi is not None and fi.is_readonly and ctx._call_returns_cpp_ref(fi):
@@ -201,11 +191,11 @@ def ptr_slot_field_type(ctx: 'CodeGenContext', init: 'TpyExpr',
     lift forms).
 
     Single source of truth shared by the resumable ptr-slot prescan
-    (which reserves the field) and the emit arms in
-    `_gen_pointer_local_rebind` (which consume it): the two MUST agree
+    (which reserves the field) and the pointer-local reseat lowering
+    (which consumes it): the two MUST agree
     on which writes need a slot, or a frame write lands back in a
-    dying case-block local -- the emit arms raise on a missing entry
-    rather than fall back. The routing order mirrors the emit arms.
+    dying case-block local -- the reseat lowering rejects a missing
+    entry rather than guessing. The routing order mirrors the emit arms.
     """
     if isinstance(init, TpyNoneLiteral):
         return None
@@ -247,8 +237,8 @@ def promote_movable(ctx: 'CodeGenContext', name: str) -> None:
     REF_ALIAS borrows, frame-promoted POINTER locals -- alias rather than
     own, so a last-use read there must copy, not steal. Grep this function's
     callers for the authoritative promoting-arm set: THIR's `_is_move_source`
-    mirrors exactly it, and the two sets silently diverging is a move-vs-copy
-    miscompile no byte-diff can see.
+    must match it exactly, and a silent divergence between the two sets is a
+    move-vs-copy miscompile.
     """
     if name in ctx.sema_movable_locals:
         ctx.movable_locals.add(name)
@@ -359,9 +349,8 @@ def narrowed_value_optional_iter_type(ctx: 'CodeGenContext', expr: TpyExpr,
     frame-field types use the contained value `V`. Pointer-repr Optionals
     (e.g. `list|None`) already deref via the pointer-narrowing path, so they
     pass through unchanged. The matching `(*v)` render is applied separately
-    via `maybe_unwrap_narrowed_optional`. Shared by the sync for-loop
-    (`_for_iterable_deref` / `_gen_for_each_loop`) and the resumable-frame
-    strategy analysis (`_analyze_for_strategy`)."""
+    via `maybe_unwrap_narrowed_optional`. Shared by the sync for-loop and
+    the resumable-frame strategy analysis (`_analyze_for_strategy`)."""
     analyzed = ctx.get_expr_type(expr)
     if (analyzed is not None
             and isinstance(declared, OptionalType)
@@ -456,11 +445,11 @@ def emit_finally_chain(ctx: 'CodeGenContext', out: TextIO, indent: str,
     emission knowledge of its own.
 
     ``indent_level`` is temporarily synced to the ``indent`` string so
-    that gen_stmt-based emit_finally callbacks (which read
-    ctx.indent_level rather than the ``ind`` argument) emit at the
-    correct depth. Callers may pass an indent that doesn't correspond
-    to the current emission point (e.g. _gen_propagate_check emits a
-    nested return inside an `if` body); the level is restored after.
+    that emit_finally callbacks (which read ctx.indent_level rather
+    than the ``ind`` argument) emit at the correct depth. Callers may
+    pass an indent that doesn't correspond to the current emission
+    point (e.g. an error-return propagation check emits a nested return
+    inside an `if` body); the level is restored after.
 
     Returns True if any finally body terminates (raise/return) -- the
     caller must suppress its own trailing return/break/continue/throw
@@ -587,7 +576,7 @@ def emit_isinstance_extractions(
         # class and is gated out by the predicate.
         if is_polymorphic_subclass_fact(
                 var_decl, narrowed_type, ctx.analyzer.registry):
-            # If `_gen_if` pre-bound the cast via C++17 if-init, route reads
+            # If the if-head pre-bound the cast via C++17 if-init, route reads
             # through `(*__var_ptr)` directly -- no need for a separate
             # reference local that just aliases the deref. Compiler sees the
             # same object either way. For assert/while paths that don't go
@@ -848,7 +837,6 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
     # dispatch consults so `->` vs `.` / move / variant-form are correct.
     seed_param_locals(ctx, protocols, params, local_ns,
                       ctx.deep_const_borrow_params)
-    binding_audit.begin_ast_body(func)
     # Generator-promoted locals are struct fields; pre-seed var_types
     # so codegen sites that consult it (e.g. address-of for tuple
     # slots) see the original TPy type rather than the synthetic
@@ -1032,9 +1020,8 @@ def resolve_target_type(ctx: 'CodeGenContext', types: 'TypeResolver',
 
 # -- match routing predicates ----------------------------------------------
 #
-# Pure functions of the AST pattern/subject shape plus the type system. Both
-# body paths route on them, so a single home is what keeps the two routings
-# from disagreeing about which tier a `match` takes.
+# Pure functions of the pattern/subject shape plus the type system, kept in
+# one home so the tier a `match` takes is decided in exactly one place.
 
 def returns_bare_reference(rt: 'TpyType | None') -> bool:
     """True when a return type lowers to a C++ lvalue reference (`T&` /
@@ -1096,9 +1083,9 @@ def resumable_match_subject_is_stable(
 
 
 def sub_has_field_condition(sub: 'TpyPattern') -> bool:
-    """Whether a field sub-pattern emits a runtime condition (mirrors what
-    `_record_field_conditions` produces): a literal comparison, a union
-    field guard, or a nested record sub-pattern that itself carries one.
+    """Whether a field sub-pattern emits a runtime condition: a literal
+    comparison, a union field guard, or a nested record sub-pattern that
+    itself carries one.
     Such a sub-pattern makes its arm conditional -- a later arm on the same
     variant stays reachable."""
     inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
@@ -1390,10 +1377,9 @@ FLOAT_STR_CONSTANTS: dict[str, str] = {
 # -- user-facing rejections ------------------------------------------------
 #
 # Every codegen diagnostic a BODY emit can reach lives here, message and all,
-# so the AST body emitter and THIR raise one text at one `loc` instead of two
-# that drift. Each of these terminates -- a caller that only wants the verdict
+# so each is raised with one text at one `loc`. Each of these terminates -- a caller that only wants the verdict
 # must evaluate its own predicate first, because a returned message string can
-# be dropped, reworded or paired with a different `loc` on one path only.
+# be dropped, reworded or paired with a different `loc` at one call site only.
 
 def reject_overload_return_mismatch(value_type: TpyType,
                                     stub_return: TpyType,
@@ -1489,8 +1475,8 @@ def reject_nonlvalue_resumable_match_ptr_bind(
 
 # The `reason` clause of `reject_nondef_ctor_field_in_body`, one per demote
 # trigger. Each is half of a user-visible sentence, so it belongs with the
-# message: both paths that decide a demote name the same constant instead of
-# repeating a literal that only one of them would be corrected in.
+# message: the site that decides a demote names the constant instead of
+# repeating a literal that would drift from the message.
 CTOR_DEMOTE_PRIOR_STATEMENT = (
     "a prior statement in the constructor body would run before this "
     "initializer")

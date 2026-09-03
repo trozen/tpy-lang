@@ -8,6 +8,7 @@ keep rejecting (unwitnessed rows); the mutable inverse keeps the bare `T*`.
 
 from ..codegen_cpp import CodeGenOptions
 from .testutil import (
+    _reject_tally,
     _assert_byte_identical,
     _assert_routes_byte_identical,
     _compile,
@@ -74,12 +75,4 @@ class TestUnwitnessedInitShapesStayFenced:
     )
 
     def test_name_source_init_stays_ast(self):
-        _assert_byte_identical(self.SRC)
-        compiler, modules = _compile(self.SRC)
-        compiler.generate_code_to_strings(
-            _entry(modules),
-            options=CodeGenOptions(emit_source_comments=True,
-                                   comment_line_numbers=False,
-                                   thir_codegen=True))
-        assert any(k.startswith("body:stmt.var_decl")
-                   for k in compiler._thir_fallback), compiler._thir_fallback
+        assert any((k.startswith('body:stmt.var_decl') for k in _reject_tally(self.SRC))), _reject_tally(self.SRC)

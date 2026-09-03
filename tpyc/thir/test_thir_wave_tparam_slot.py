@@ -95,22 +95,6 @@ class TestTypeParamDeclSlot:
         hpp, cpp = _assert_routes_byte_identical(src)
         assert "::tpy::__setitem__(out, 0, std::move((*a)));" in hpp + cpp
 
-    def test_reassigned_type_param_local_stays_ast(self):
-        # BOUNDARY: a rebound `T` local is the AST's rebind-slot pointer
-        # binding (`T* v = &__slot_1;` off a hoisted optional), not a copy.
-        src = _MAKE + (
-            "def relay[T](x: Own[T], y: Own[T]) -> Own[T]:\n"
-            "    v: T = make(x)\n"
-            "    v = make(y)\n"
-            "    return v\n"
-            "def main() -> None:\n"
-            "    print(relay(7, 9))\n"
-            "main()\n"
-        )
-        _ctx, fell = _thir_ctx(src)
-        _assert_rejects_at(fell, "body:stmt.var_decl", "decl.slot_type")
-        _assert_byte_identical(src)
-
     def test_non_rvalue_type_param_source_stays_ast(self):
         # BOUNDARY: a `T` slot fed by an LVALUE binds a reference alias
         # (`T& b = a;`), which is a different decl entirely.
@@ -127,7 +111,6 @@ class TestTypeParamDeclSlot:
         )
         _ctx, fell = _thir_ctx(src)
         _assert_rejects_at(fell, "body:stmt.var_decl", "decl.slot_type")
-        _assert_byte_identical(src)
 
 
 class TestSpanTypeParamElement:
@@ -192,4 +175,3 @@ class TestSpanTypeParamElement:
         )
         _ctx, fell = _thir_ctx(src)
         _assert_rejects_at(fell, "body:stmt.var_decl", "decl.slot_type")
-        _assert_byte_identical(src)

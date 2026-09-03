@@ -14,9 +14,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 class TestFrameNestedDef:
@@ -32,8 +31,7 @@ class TestFrameNestedDef:
             "    print(asyncio.run(outer()))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("res.nested_def_member", 0) >= 1
         assert "// def g: frame member" in out
         _assert_byte_identical(src)
@@ -50,8 +48,7 @@ class TestFrameNestedDef:
             "    print(outer())\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert not faces.get("res.nested_def_member")
         assert "auto g = []" in out
         _assert_byte_identical(src)
@@ -73,8 +70,7 @@ class TestFrameNestedDef:
             "    print(asyncio.run(outer(2)))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert "// def h: frame member" in out
         _assert_byte_identical(src)
 
@@ -96,8 +92,7 @@ class TestFrameNestedDefMarkerName:
             "    print(asyncio.run(outer()))\n"
             "main()\n"
         )
-        out, faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, faces = _gen_thir(src)
         assert faces.get("res.nested_def_member", 0) >= 1
         assert "// def double: frame member" in out
         assert "// def double_: frame member" not in out

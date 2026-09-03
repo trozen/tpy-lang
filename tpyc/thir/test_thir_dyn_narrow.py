@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
+    _assert_rejects_at,
+    _reject_tally,
     _assert_byte_identical, _compile, _entry, _fn, _lower_ctx,
     _lower_ctx_witnessed,
 )
@@ -25,12 +27,11 @@ _PRELUDE = (
 )
 
 
-def _cpp(src: str, thir: bool) -> str:
+def _cpp(src: str) -> str:
     compiler, modules = _compile(src)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=thir))
+        entry, options=CodeGenOptions(emit_source_comments=False))
     return hpp + cpp
 
 
@@ -52,11 +53,8 @@ class TestDynNarrowLowering:
         for name in ("structural", "inherits"):
             assert _fn(thir, name) is not None, name
 
-    def test_byte_identical(self):
-        assert _cpp(self.SRC, thir=True) == _cpp(self.SRC, thir=False)
-
     def test_emitted_shapes(self):
-        out = _cpp(self.SRC, thir=True)
+        out = _cpp(self.SRC)
         # Structural conformer: adapter cast through the @dynamic base.
         assert ("if (Cat* __p_ptr = ::tpy::dyn_adapter_cast<Pet, Cat>(&p); "
                 "(__p_ptr != nullptr)) {") in out
@@ -80,8 +78,8 @@ class TestDynNarrowLowering:
         )
         thir = _lower_ctx(src)
         assert _fn(thir, "f") is not None
-        out = _cpp(src, thir=True)
-        assert out == _cpp(src, thir=False)
+        out = _cpp(src)
+        assert out == _cpp(src)
         assert ("} else if (Cat* __p_ptr = "
                 "::tpy::dyn_adapter_cast<Pet, Cat>(&p); "
                 "(__p_ptr != nullptr)) {") in out
@@ -179,8 +177,7 @@ class TestDerefViewNarrowIf:
         compiler, modules = _compile(self._SRC)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         out = hpp + cpp
         assert "__b_ptr = dynamic_cast<Dog*>(&(b.__deref__()));" in out
         assert "(*__b_ptr).bark()" in out
@@ -194,9 +191,8 @@ class TestDerefViewNarrowIf:
             "    def bark(self, n: Int32) -> str:\n"
             "        return \"woof\" * n\n").replace(
             "b.bark()", "b.bark(2)")
-        thir, _f = _lower_ctx_witnessed(src)
-        assert _fn(thir, "describe") is None
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:expr.method_call:method.deref_narrowed_shape")
 
     def test_branch_rebind_of_wrapper_routes(self):
         # Reassigning the wrapper LOCAL inside the narrowed branch (the
@@ -238,8 +234,7 @@ class TestDerefViewNarrowIf:
         compiler, modules = _compile(src)
         entry = _entry(modules)
         hpp, cpp = compiler.generate_code_to_strings(
-            entry, options=CodeGenOptions(emit_source_comments=False,
-                                          thir_codegen=True))
+            entry, options=CodeGenOptions(emit_source_comments=False))
         out = hpp + cpp
         assert "::tpy::dyn_adapter_cast<Pet, Cat>(&(b.__deref__()))" in out
         assert "(*__b_ptr).name()" in out
@@ -494,11 +489,8 @@ class TestErasedDynOwnDecl:
             "    c = make(41)\n",
             "    c = make(41)\n"
             "    c = make(1)\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.dyn_protocol_own")
 
 
 class TestBuiltinValueRecordFamily:
@@ -590,11 +582,8 @@ class TestGenericAsyncMethodFactory:
             "    print(asyncio.run(b.with_label(\"hey\")))\n",
             "    c = b.with_label(\"hey\")\n"
             "    print(asyncio.run(c))\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.dyn_protocol_own")
 
 
 class TestResumableSelfDynNarrow:
@@ -660,12 +649,7 @@ class TestResumableSelfDynNarrow:
             "        return \"pet: \" + self._name\n",
             "        assert isinstance(self, Dog)\n"
             "        return \"dog: \" + self.bark()\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
-        assert any(k.startswith("resumable:")
-                   for k in compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src), "resumable:stmt.assert")
 
 
 class TestCoroFrameLocal:
@@ -718,8 +702,6 @@ class TestCoroFrameLocal:
         # placement is the hoist machinery, not this direct-init arm. Full
         # pipeline (not _lower_ctx): the unit shim's render crashes on
         # ConcreteCoroType, which the real fallback path never renders.
-        from ..codegen_cpp.context import CodeGenOptions
-        from .testutil import _compile, _entry
         src = (
             "import asyncio\n"
             "from tpy import Int32\n"
@@ -733,11 +715,8 @@ class TestCoroFrameLocal:
             "        c = add_one(1)\n"
             "    print(asyncio.run(c))\n"
             "main()\n")
-        compiler, modules = _compile(src)
-        compiler.generate_code_to_strings(
-            _entry(modules), options=CodeGenOptions(
-                emit_source_comments=False, thir_codegen=True))
-        assert any(k.startswith("body:") for k in compiler._thir_fallback)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.rebind_source")
 
     def test_erased_own_binding_still_defers(self):
         # A protocol-param callee erases at BIND time (sema types the local

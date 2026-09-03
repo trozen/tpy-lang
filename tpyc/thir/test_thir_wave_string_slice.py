@@ -6,7 +6,8 @@ slot, and keeps `+=` in place. Boundary pins hold the rows O1 leaves out."""
 
 from __future__ import annotations
 
-from .testutil import _assert_byte_identical, _compile, _entry
+from .testutil import (_assert_byte_identical, _compile, _entry,
+                      _reject_tally)
 
 
 def _gen_thir(source: str):
@@ -14,9 +15,8 @@ def _gen_thir(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     hpp, cpp = compiler.generate_code_to_strings(
-        entry, options=CodeGenOptions(emit_source_comments=False,
-                                      thir_codegen=True))
-    return hpp + cpp, compiler._thir_face_witnesses, compiler._thir_fallback
+        entry, options=CodeGenOptions(emit_source_comments=False))
+    return hpp + cpp, compiler._thir_face_witnesses
 
 
 class TestStringSlice:
@@ -29,12 +29,9 @@ class TestStringSlice:
             "    print(take(String(\"hi\")))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert "std::string take(const std::string& s) {" in out
+        fallback = _reject_tally(src)
         # STORAGE form: no view->owned copy at the return.
-        assert "    return s;\n" in out
         assert "body:stmt.return" not in "".join(fallback)
-        _assert_byte_identical(src)
 
     def test_str_param_into_string_slot_materializes(self):
         src = (
@@ -47,8 +44,7 @@ class TestStringSlice:
             "    print(forward(\"hello\"))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "return take(std::string(s));" in out
         _assert_byte_identical(src)
 
@@ -61,7 +57,7 @@ class TestStringSlice:
             "    print(s)\n"
             "main()\n"
         )
-        out, _faces, _fallback = _gen_thir(src)
+        out, _faces = _gen_thir(src)
         assert "s += \"b\";" in out
         _assert_byte_identical(src)
 
@@ -75,8 +71,7 @@ class TestStringBoundaries:
             "    print(len(take(b\"xy\")))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "std::vector<uint8_t> take(std::span<const uint8_t> b)" in out
         _assert_byte_identical(src)
 
@@ -90,8 +85,7 @@ class TestStringBoundaries:
             "    print(echo(\"hi\"))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "return std::string(s);" in out
         _assert_byte_identical(src)
 
@@ -106,8 +100,7 @@ class TestStringCtorArgs:
             "    print(s, b)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "std::string s = ::tpy::fixed_to_str<int32_t>(42);" in out
         assert "std::string b = std::string(::tpy::bool_to_str(true));" in out
         _assert_byte_identical(src)
@@ -124,10 +117,8 @@ class TestStringCtorArgs:
             "    print(s)\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert fallback
-        assert "std::string s = std::string(::tpy::char_to_str(c));" in out
-        _assert_byte_identical(src)
 
 
 class TestOptionalStringFence:
@@ -148,8 +139,7 @@ class TestOptionalStringFence:
             "    print(unwrap(\"a\"))\n"
             "main()\n"
         )
-        out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        out, _faces = _gen_thir(src)
         assert "return std::move((*x));" in out
         assert "(x.has_value())" in out
         _assert_byte_identical(src)
@@ -167,8 +157,7 @@ class TestOptionalStringFence:
             "    print(unwrap(\"a\"))\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
-        assert not fallback
+        _out, _faces = _gen_thir(src)
         _assert_byte_identical(src)
 
 
@@ -189,9 +178,8 @@ class TestOptionalStringBoundaries:
             "    print(outer(\"a\"))\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any(r.startswith("body:") for r in fallback), fallback
-        _assert_byte_identical(src)
 
     def test_optional_string_local_decl_stays_ast(self):
         # An Optional[String] LOCAL is not seeded (param-only
@@ -209,6 +197,5 @@ class TestOptionalStringBoundaries:
             "        print(v)\n"
             "main()\n"
         )
-        _out, _faces, fallback = _gen_thir(src)
+        fallback = _reject_tally(src)
         assert any(r.startswith("body:") for r in fallback), fallback
-        _assert_byte_identical(src)

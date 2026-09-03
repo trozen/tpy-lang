@@ -9,7 +9,8 @@ row did not list the tuple inner. The target is asked off its DECLARED type
 rather than the binding registry on purpose -- the tuple kind admits the
 whole-optional copy only. Corpus witness: `tplib.requests.Session.request`."""
 
-from .testutil import (_assert_byte_identical, _assert_rejects_at,
+from .testutil import (
+    _reject_tally, _assert_byte_identical, _assert_rejects_at,
                        _assert_routes_byte_identical, _compile, _entry,
                        _lower_ctx_witnessed)
 from ..codegen_cpp import CodeGenOptions
@@ -28,13 +29,8 @@ _SRC = ("from tpy import Int32\n"
         "        self.plain = (0, 0)\n")
 
 
-def _fallback(src: str):
-    compiler, modules = _compile(src)
-    compiler.generate_code_to_strings(
-        _entry(modules), options=CodeGenOptions(emit_source_comments=False,
-                                                comment_line_numbers=False,
-                                                thir_codegen=True))
-    return dict(compiler._thir_fallback)
+def _reject_tags(src: str):
+    return _reject_tally(src)
 
 
 class TestOptTupleReassign:
@@ -120,9 +116,8 @@ class TestOptTupleReassignBoundary:
                + "def main() -> None:\n"
                + "    print(use(Cfg(), None))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.var_decl",
-                           "decl.slot_type")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_plain_tuple_target_keeps_rejecting(self):
         # BOUNDARY: a PLAIN tuple target is not the optional slot, so the
@@ -135,6 +130,5 @@ class TestOptTupleReassignBoundary:
                + "def main() -> None:\n"
                + "    print(use(Cfg(), (1, 2)))\n"
                + "main()\n")
-        _assert_rejects_at(_fallback(src), "body:stmt.var_decl",
-                           "field.result_type")
-        _assert_byte_identical(src)
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.var_decl:field.result_type")
