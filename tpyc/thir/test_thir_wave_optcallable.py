@@ -376,12 +376,27 @@ class TestBuiltinSetattrStatement:
         assert w.get("call.dyn_getattr_builtin", 0) >= 2
         _assert_byte_identical(src)
 
-    def test_builtin_setattr_nonliteral_value_still_defers(self):
-        # A non-literal value takes a value-dependent make_any render -- the
-        # mirror's literal pin must keep rejecting it.
+    def test_builtin_setattr_bare_name_value_routes(self):
+        # A bare declared NAME rides the shared into-Any write slice the
+        # mirror now takes, so the builtin delegation reaches it too.
         src = self._BAG + (
             "def use(b: Bag, v: str) -> None:\n"
             "    setattr(b, \"who\", v)\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert w.get("method.dyn_setattr", 0) >= 1
+        cpp = _assert_byte_identical(src, comments=False)[1]
+        assert ('b.__setattr__("who", ::tpy::make_any(std::string(v)));'
+                in cpp)
+
+    def test_builtin_setattr_call_value_still_defers(self):
+        # BOUNDARY: a CALL source is outside the shared slice -- its
+        # into_any render is not placeholder-transparent.
+        src = self._BAG + (
+            "def make() -> str:\n"
+            "    return \"x\"\n"
+            "def use(b: Bag) -> None:\n"
+            "    setattr(b, \"who\", make())\n")
         _assert_rejects_at(_reject_tally(src), "body:stmt.assign")
 
 

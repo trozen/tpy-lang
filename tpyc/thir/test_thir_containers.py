@@ -4046,12 +4046,29 @@ class TestValueOptElemContainer:
         assert _fn(_lower(src), "f") is not None
         _assert_byte_identical(src)
 
-    def test_scalar_value_setitem_deferred(self):
-        # Non-None value sources into the optional element stay deferred
-        # (setitem.optval_value_shape) until their renders are witnessed.
+    def test_scalar_value_setitem_stores_the_bare_scalar(self):
+        # A SCALAR source rides the same row `append`/`insert` already
+        # admit at this slot: the scalar renders bare and std::optional's
+        # converting ctor wraps it.
         src = (self._HDR
-               + "def f(items: list[Optional[Int32]]) -> None:\n"
-               + "    items[0] = 5\n")
+               + "def f(items: list[Optional[Int32]], n: Int32) -> None:\n"
+               + "    items[0] = 5\n"
+               + "    items[1] = n\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.optval_scalar", 0) == 2
+        cpp = _assert_byte_identical(src, comments=False)[1]
+        assert "::tpy::__setitem__(items, 0, 5);" in cpp
+        assert "::tpy::__setitem__(items, 1, n);" in cpp
+
+    def test_whole_optional_name_setitem_still_defers(self):
+        # BOUNDARY: a whole-Optional NAME source is not the scalar row --
+        # its `std::optional<T>` binding would copy whole, a render this
+        # slot has not witnessed.
+        src = (self._HDR
+               + "def f(items: list[Optional[Int32]],\n"
+               + "      o: Optional[Int32]) -> None:\n"
+               + "    items[0] = o\n")
         _assert_rejects_at(_reject_tally(src),
                            "body:stmt.assign:setitem.optval_value_shape")
 
@@ -4089,6 +4106,46 @@ class TestValueOptElemContainer:
                + "main()\n")
         _assert_rejects_at(_reject_tally(src),
                            "body:stmt.for_each:foreach.elem_family.optional")
+
+
+class TestPtrOptElemSetItem:
+    """The pointer-repr `Optional[F1-record]` element slot: clearing it with
+    `None` stores the STORAGE `std::nullopt`, the same spelling the
+    value-repr sibling and the Optional param slot use."""
+
+    _HDR = (_F1_RECORDS + "from typing import Optional\n")
+
+    def test_none_clears_a_list_element(self):
+        src = (self._HDR
+               + "def f(items: list[Optional[Leaf]]) -> None:\n"
+               + "    items[0] = None\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.optional_none", 0) == 1
+        cpp = _assert_byte_identical(src, comments=False)[1]
+        assert "::tpy::__setitem__(items, 0, std::nullopt);" in cpp
+
+    def test_none_clears_a_dict_value(self):
+        # The dict sibling: the value slot is the same element family, so
+        # one arm covers both receivers.
+        src = (self._HDR
+               + "def f(d: dict[str, Optional[Leaf]]) -> None:\n"
+               + "    d[\"a\"] = None\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces.get("setitem.optional_none", 0) == 1
+        cpp = _assert_byte_identical(src, comments=False)[1]
+        assert '::tpy::__setitem__(d, "a", std::nullopt);' in cpp
+
+    def test_record_rvalue_into_the_optional_slot_still_defers(self):
+        # BOUNDARY: a record RVALUE source needs a borrow->storage lift the
+        # None row does not answer -- only a borrow `T*` name lifts today.
+        src = (self._HDR
+               + "def f(items: list[Optional[Leaf]]) -> None:\n"
+               + "    items[0] = Leaf(1)\n")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:stmt.assign:setitem.optional_value_shape")
+
 
 class TestGenericRecordSetItem:
     """The open-T user-record setitem value slot (tplib ArrayList as the

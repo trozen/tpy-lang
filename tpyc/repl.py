@@ -521,7 +521,7 @@ class REPLSession:
             for i, stripped in enumerate(lines):
                 if stripped.startswith("//") or stripped.startswith("#"):
                     continue
-                if stripped in ("return 0;", "0;", "int main() {"):
+                if stripped in ("return 0;", "0;", "(void)(0);", "int main() {"):
                     continue
                 if stripped == "}" and i == len(lines) - 1:
                     continue

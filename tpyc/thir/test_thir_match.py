@@ -977,8 +977,9 @@ class TestMatchGateRejections:
         assert "default: __match_default_2: {" in cpp
         assert cpp == _cpp(src)
 
-    def test_capture_under_as_rejects(self):
-        # `case x as z:` binds TWO names to the subject -- out of the slice.
+    def test_capture_under_as_routes(self):
+        # `case x as z:` binds TWO names to the subject; the arm renders both
+        # lines, the `as` target last.
         src = (
             "from tpy import Int32\n"
             "def f(n: Int32) -> None:\n"
@@ -989,7 +990,10 @@ class TestMatchGateRejections:
             "            print(x, z)\n"
             "f(0)\n"
         )
-        assert not self._routed(src, "f")
+        assert self._routed(src, "f")
+        cpp = _cpp(src)
+        assert ("        auto x = __match_subject_1;\n"
+                "        auto z = __match_subject_1;") in cpp
 
     def test_literal_subject_routes(self):
         # A Literal[...] subject dispatches on its BASE type; the arms'
@@ -1061,7 +1065,9 @@ class TestMatchGateRejections:
         m = _fn(thir, "f").body[0]
         assert m.strategy == "switch_str"
 
-    def test_non_name_subject_rejects(self):
+    def test_non_name_subject_routes_owned_local(self):
+        # A call subject is not an lvalue, so it materializes into an OWNED
+        # dispatch local (`auto`, not `auto&`) that every arm reads.
         src = (
             "def g() -> int:\n"
             "    return 1\n"
@@ -1073,7 +1079,8 @@ class TestMatchGateRejections:
             "            print(1)\n"
             "f()\n"
         )
-        assert not self._routed(src, "f")
+        assert self._routed(src, "f")
+        assert "auto __match_subject_1 = g();" in _cpp(src)
 
 
 RECORD_PREAMBLE = (
@@ -2597,10 +2604,10 @@ class TestMatchSwitchStrLengthGuardedOr:
 
 
 class TestMatchSwitchStrRejections:
-    def test_or_wildcard_alt_rejects(self):
-        # An or-arm mixing a literal and a wildcard is neither a literal
-        # arm nor a plain trailing wildcard/capture -- the AST's
-        # CodeGenError shape, rejected.
+    def test_or_wildcard_alt_is_the_trailing_catch_all(self):
+        # An or-arm mixing a literal and a wildcard is irrefutable, so the
+        # whole group is the trailing catch-all -- the literal beside the
+        # wildcard contributes no discriminator bucket.
         src = (
             "def f(s: str) -> str:\n"
             "    match s:\n"
@@ -2622,7 +2629,11 @@ class TestMatchSwitchStrRejections:
             "main()\n"
         )
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        m = _fn(thir, "f").body[0]
+        assert m.strategy == "switch_str"
+        assert len(m.str_trailing) == 1
+        cpp = _cpp(src)
+        assert "\"ffffff\"" not in cpp
 
 
 class TestMatchWholeSubjectCapture:
@@ -3785,12 +3796,13 @@ class TestScalarFieldSubjectFlavors:
 
 
 class TestMatchScalarRvalueSubject:
-    """A NON-LVALUE subject on the SWITCH scalar tiers copies into the
-    dispatch local (`auto __match_subject_N = <expr>;` -- the AST's
-    `match_subject_is_lvalue` ternary; a scalar copy is safe by value).
-    Witnesses: the pascal frontend's call-rooted `deref(p).tag` subject and
-    the bare-call sibling. Lvalue subjects keep the `auto&` bind, and the
-    if/elif chain tiers stay out of the rung."""
+    """A NON-LVALUE subject on any scalar tier copies into the dispatch
+    local (`auto __match_subject_N = <expr>;` -- the
+    `match_subject_is_lvalue` ternary; a scalar copy is safe by value, and
+    every arm condition/binding reads the local). Witnesses: the pascal
+    frontend's call-rooted `deref(p).tag` subject and the bare-call
+    sibling. Lvalue subjects keep the `auto&` bind; the OPTIONAL tiers stay
+    out (a pointer lift over a temporary would dangle)."""
 
     SRC = (
         "from tpy import Int32, Ptr, deref\n"
@@ -3848,11 +3860,9 @@ class TestMatchScalarRvalueSubject:
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "auto& __match_subject_1 = r.tag;" in cpp
 
-    def test_chain_tier_rvalue_subject_stays_ast(self):
-        # BOUNDARY: the if/elif chain scalars (float labels) are outside the
-        # admitted switch kinds -- a non-lvalue subject there keeps
-        # rejecting (the chain's literal-cond renders are unaudited for
-        # rvalue subjects).
+    def test_chain_tier_rvalue_subject_copies(self):
+        # The if/elif chain scalars (float labels) take the same copy: every
+        # arm condition reads the dispatch local, never the expression again.
         src = (
             "from tpy import Ptr, deref\n"
             "class Rec:\n"
@@ -3862,6 +3872,33 @@ class TestMatchScalarRvalueSubject:
             "    match deref(p).val:\n"
             "        case 1.5:\n            return 10.0\n"
             "        case _:\n            return 0.0\n"
+            "def main() -> None:\n"
+            "    r = Rec(1.5)\n"
+            "    q: Ptr[Rec] = r\n"
+            "    print(pick(q))\n"
+            "main()\n"
+        )
+        thir, witnessed = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is not None
+        assert witnessed.get("match.scalar_rvalue_subject", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("auto __match_subject_1 = "
+                "::tpy::deref_check(p).val;") in cpp
+        assert "if (__match_subject_1 == 1.5) {" in cpp
+
+    def test_optional_tier_rvalue_subject_rejects(self):
+        # BOUNDARY: an Optional-returning call takes the optional tiers,
+        # whose pointer lift over a temporary would dangle -- still rejected.
+        src = (
+            "from typing import Optional\n"
+            "def pick() -> Optional[str]:\n"
+            "    return \"a\"\n"
+            "def f() -> None:\n"
+            "    match pick():\n"
+            "        case None:\n            print(0)\n"
+            "        case \"a\":\n            print(1)\n"
+            "        case _:\n            print(2)\n"
+            "f()\n"
         )
         _assert_rejects_at(_reject_tally(src), "body:stmt.match")
 

@@ -54,6 +54,7 @@ from ...typesys import (
     AnyType,
     RefType,
     BOOL,
+    BYTES_FAMILY,
     CallableType,
     CHAR,
     FloatLiteralType,
@@ -72,6 +73,7 @@ from ...typesys import (
     PtrType,
     ReadonlyType,
     is_readonly_ref_param,
+    STR_FAMILY,
     TpyType,
     TupleType,
     TypeParamRef,
@@ -112,6 +114,7 @@ from ...type_def_registry import (
     is_string_type,
     is_set,
     is_varargs,
+    view_to_owned_conv,
 )
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import TypeResolver, resolve_pending_container
@@ -493,6 +496,9 @@ from .predicates import (
     _container_compare_pair,
     _union_compare_pair,
     _record_compare_pair,
+    _record_dunder_operand_pair,
+    _record_dunder_operand_slot,
+    _bytes_literal_view_slot,
     _unrouted_binding_read,
     _unwrap_lit_coerce,
     _value_opt_view_name,
@@ -2823,27 +2829,55 @@ def _binop_operand_suffix(e: TpyBinOp, declared: dict[str, TpyType],
     return fam
 
 
-def _sv_at_runtime(e: TpyExpr, lc: '_LowerCtx') -> bool:
-    """Whether the operand spells std::string_view at C++ runtime, for the
-    value-select cast decisions (a `str` param, a str literal, a
-    StrView value; and/or / ternary chains recurse)."""
+def _view_at_runtime(e: TpyExpr, lc: '_LowerCtx') -> bool:
+    """Whether a str/bytes-family operand spells its family's VIEW type at
+    C++ runtime (`std::string_view` / `std::span<const uint8_t>`).
+
+    The RESOLVED type is not the answer: a plain `str`/`bytes` PARAM is
+    declared owned but its signature slot is the view, so judging an operand
+    at its resolved type spells conversions that do not exist -- the two
+    families drift the same way, which is why the value-select cast decision
+    and `copy()`'s source spelling read ONE predicate. A str literal is
+    view-form everywhere; a bytes literal's own render is target-driven
+    (`bytes_literal` vs `bytes_literal_owned`), so it answers through its
+    resolved type like any other operand. and/or / ternary chains recurse.
+
+    A REBOUND param still answers "view" here although the prologue declares
+    an owned local under its name. Answering "owned" was tried: against a
+    bytes LITERAL (also "owned") the pair then MATCHED, and the select's
+    view-typed sink bound a span over the literal's vector temporary -- a
+    dangling render with no diagnostic; against a still-view param it split
+    the pair into the mixed row, which for str casts toward the OWNED
+    spelling and would dangle at a view sink the same way. Until the cast
+    takes its direction from the sink's form (a TODO item), a rebound param
+    against an owned operand rejects at the mixed row.
+
+    The if-expression rows ask the same question through their own
+    `_str_view_arm` / `_bytes_view_arm` pair, which additionally models the
+    Optional-param deref and coerce arms."""
     analyzer = lc.analyzer
+
+    def _is_view(t: 'TpyType | None') -> bool:
+        rv = _resolved_viewfam_value(t, analyzer)
+        return rv is not None and (is_str_view_type(rv)
+                                   or is_bytes_view_type(rv))
+
     if isinstance(e, TpyName):
         pt = next((t for n, t in lc.params if n == e.name), None)
-        if pt is not None and is_str_type(
-                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))):
-            return True
-        rs = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
-        return rs is not None and is_str_view_type(rs)
+        if pt is not None:
+            ptu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+            if is_str_type(ptu) or is_bytes_type(ptu):
+                return True
+        return _is_view(analyzer.get_expr_type(e))
     if isinstance(e, TpyStrLiteral):
         return True
     if isinstance(e, TpyBinOp) and e.op in _LOGICAL_OPS:
-        return _sv_at_runtime(e.left, lc) and _sv_at_runtime(e.right, lc)
+        return (_view_at_runtime(e.left, lc)
+                and _view_at_runtime(e.right, lc))
     if isinstance(e, TpyIfExpr):
-        return (_sv_at_runtime(e.then_expr, lc)
-                and _sv_at_runtime(e.else_expr, lc))
-    rs = _resolved_str_value(analyzer.get_expr_type(e), analyzer)
-    return rs is not None and is_str_view_type(rs)
+        return (_view_at_runtime(e.then_expr, lc)
+                and _view_at_runtime(e.else_expr, lc))
+    return _is_view(analyzer.get_expr_type(e))
 
 
 def _contains_isinstance_fact(e: TpyExpr) -> bool:
@@ -2862,9 +2896,10 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
                         lc: '_LowerCtx', declared: dict[str, TpyType],
                         loc, *, temps_ok: bool = False) -> THIRExpr:
     """Value-position and/or -> THIRValueSelect (tier A: scalar / float /
-    BigInt / str results). Record results, the rvalue-RHS pointer-select,
-    inline-isinstance LHS facts, and every non-tier-A truthiness family
-    raise `binop.shape.<op>`."""
+    BigInt / str / bytes results -- the two view families share the
+    `.empty()` truthiness and the view-vs-owned form split). Record results,
+    the rvalue-RHS pointer-select, inline-isinstance LHS facts, and every
+    non-tier-A truthiness family raise `binop.shape.<op>`."""
     analyzer = lc.analyzer
 
     def rej(d: str) -> None:
@@ -2873,29 +2908,40 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
 
     res_str = _resolved_str_value(rtype, analyzer)
     res_owned = _is_string_owned(rtype)
+    res_bytes = _resolved_bytes_value(rtype, analyzer)
+    res_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+             if rtype is not None else None)
+    res_u = resolve_pending_container(res_u, analyzer) or res_u
+    # A `Span[T]` result is a value view copied like a scalar, so the select
+    # is the same bare ternary -- only its truthiness differs, and that comes
+    # from the shared classifier below.
+    res_span = res_u is not None and is_span(res_u)
     if not (_resolved_scalar(rtype, analyzer) or res_str is not None
-            or res_owned):
-        rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
-               if rtype is not None else None)
-        rtu = resolve_pending_container(rtu, analyzer) or rtu
-        if rtu is not None and (is_list(rtu) or is_dict(rtu) or is_set(rtu)
-                                or _f1_record(rtu, analyzer)):
+            or res_owned or res_bytes is not None or res_span):
+        if res_u is not None and (is_list(res_u) or is_dict(res_u)
+                                  or is_set(res_u)
+                                  # `bytearray` is a reference type like the
+                                  # containers, so its select aliases too.
+                                  or is_bytearray_type(res_u)
+                                  or _f1_record(res_u, analyzer)):
             if _contains_isinstance_fact(e.left):
                 rej("valuesel.isinstance_lhs")
-            return _lower_container_select(e, rtu, lc, declared, loc, rej)
+            return _lower_container_select(e, res_u, lc, declared, loc, rej)
         rej("valuesel.result_type")
     if _contains_isinstance_fact(e.left):
         rej("valuesel.isinstance_lhs")
     lt_res = analyzer.get_expr_type(e.left)
     rt_res = analyzer.get_expr_type(e.right)
     l_str = _resolved_str_value(lt_res, analyzer)
-    l_owned = _is_string_owned(unwrap_readonly(unwrap_ref_type(
-        unwrap_send_sync(lt_res)))) if lt_res is not None else False
-    if l_str is not None or l_owned:
-        truthy_nonempty = True
-    elif _resolved_scalar(lt_res, analyzer):
-        truthy_nonempty = False
-    else:
+    # The LHS truthiness spelling comes from the SHARED classifier, so a
+    # select and a plain `if` over the same operand cannot drift apart (that
+    # drift is what left `bytes`/`Span` operands with no admitted render).
+    # A None mode is the operand's own value render, which only a scalar
+    # has; the two whole-cell modes have no ValueSelect emit arm.
+    truthy_mode = _truthiness_mode(lt_res, analyzer)
+    if (truthy_mode in (TruthinessMode.TO_BOOL, TruthinessMode.IS_TRUTHY)
+            or (truthy_mode is None
+                and not _resolved_scalar(lt_res, analyzer))):
         rej("valuesel.lhs_truthy")
     lowered_lhs = _lower_expr(e.left, lc, declared,
                               use=_ExprUse(literal_fold_ok=True))
@@ -2920,18 +2966,37 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
     # C++ spellings.
     def _cmp_cpp(side: TpyExpr, st: 'TpyType | None',
                  s_str) -> str:
-        if s_str is not None and _sv_at_runtime(side, lc):
-            return "std::string_view"
         stu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
                if st is not None else None)
         if stu is None:
             rej("valuesel.operand_type")
+        # A view-family operand's binding stays the family's PENDING view type
+        # until the resolver runs, which has no C++ spelling of its own --
+        # compare at the RESOLVED view/owned type, corrected by the
+        # runtime-view test (a `str`/`bytes` param's resolved type is the
+        # owned string/vector, its signature slot the view). One row for both
+        # families: the only family-dependent term is the view spelling.
+        s_fam = (s_str if s_str is not None
+                 else _resolved_bytes_value(stu, analyzer))
+        if s_fam is not None:
+            fam = STR_FAMILY if s_str is not None else BYTES_FAMILY
+            return lc.render_type(fam.view_type
+                                  if _view_at_runtime(side, lc)
+                                  else s_fam)
         stu = resolve_int_literals(stu, analyzer.ctx.default_int_for_literal)
         return lc.render_type(stu)
 
     lhs_cmp = _cmp_cpp(e.left, lt_res, l_str)
     rhs_cmp = _cmp_cpp(e.right, rt_res, r_str)
     lhs_cast = rhs_cast = None
+    if (lhs_cmp != rhs_cmp
+            and (_resolved_bytes_value(lt_res, analyzer) is not None
+                 or _resolved_bytes_value(rt_res, analyzer) is not None)):
+        # The mixed-operand wrap is a one-argument conversion, and the bytes
+        # family has none in either direction: `std::vector<uint8_t>(span)`
+        # does not exist, and a span over the owned side's temporary would
+        # dangle. `std::string(sv)` is why the str family can cast.
+        rej("valuesel.bytes_mixed")
     if lhs_cmp != rhs_cmp:
         rtu = resolve_int_literals(
             unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype))),
@@ -2941,26 +3006,36 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
             lhs_cast = cpp_result
         if cpp_result != rhs_cmp:
             rhs_cast = cpp_result
-    # A str-family select's FORM tag drives the owned-sink copy exactly
-    # like a name read: the select's runtime spelling is the common operand
-    # spelling (the cast target when the operands differed) -- a
-    # string_view result is BORROW (an owned decl / return wraps
-    # `std::string(...)` around it), an owned spelling STORAGE (no
-    # re-copy). Scalars are plain VALUE.
-    if res_str is not None or res_owned:
+    # A view-family select's FORM tag drives the owned-sink copy exactly
+    # like a name read: the select's runtime spelling is the COMMON OPERAND
+    # spelling (the cast target when the operands differed) -- a view
+    # spelling is BORROW (an owned decl / return wraps the family's
+    # `view_to_owned_conv`), an owned spelling STORAGE (no re-copy).
+    # Scalars are plain VALUE. Reading the tag off the RESULT type instead
+    # drops the copy at every owned sink whose operands still spell the
+    # view: `bytes`' resolved result is the owned vector while `a or b` over
+    # two `bytes` params renders a span, so the return slot would hold a
+    # span into nothing. Both families ask it the same way.
+    if res_str is not None or res_owned or res_bytes is not None:
         common_cpp = (lhs_cmp if lhs_cmp == rhs_cmp
                       else lc.render_type(resolve_int_literals(
                           unwrap_readonly(unwrap_ref_type(
                               unwrap_send_sync(rtype))),
                           analyzer.ctx.default_int_for_literal)))
-        form = (Form.BORROW if common_cpp == "std::string_view"
+        _fam = STR_FAMILY if res_bytes is None else BYTES_FAMILY
+        form = (Form.BORROW
+                if common_cpp == lc.render_type(_fam.view_type)
                 else Form.STORAGE)
+        if res_bytes is not None:
+            _witness("binop.value_select_bytes")
     else:
         form = Form.VALUE
+        if res_span:
+            _witness("binop.value_select_span")
     _witness("binop.value_select")
     return THIRValueSelect(
         result_type=rtype, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
-        truthy_mode=(TruthinessMode.NONEMPTY if truthy_nonempty else None),
+        truthy_mode=truthy_mode,
         lhs_temp_cpp=lhs_temp_cpp,
         lhs_cast=lhs_cast, rhs_cast=rhs_cast, rhs_sv=rhs_sv,
         form=form, loc=loc)
@@ -2975,8 +3050,9 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
     (`((::tpy::__len__(a) != 0) ? a : b)`, a BORROW lvalue); an RVALUE RHS
     takes the hoisted-`__logical_slot` pointer-select (`ptr_select_cpp`),
     materializing lazily so short-circuit holds. Truthiness comes from the
-    LHS operand's record: `__bool__` -> `::tpy::__bool__`, `__len__` -> the
-    len test, no dunder on a user record -> the folded `true`.
+    shared classifier over the LHS operand's type, so the select and a plain
+    `if` spell the same test (`.empty()` for bytearray, `__bool__` /
+    `__len__` for a dunder-carrying record, the folded `true` otherwise).
     Operands: a bare NAME, a nested select (the chain's
     `auto&& __tmp_N` LHS hoist), a container literal (temp-lifted LHS /
     emplaced RHS, spelled via typed_brace), or any rvalue RHS whose own
@@ -3006,16 +3082,14 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
         return lowered
 
     lt = _ref_operand_type(e.left)
-    rec = analyzer.registry.get_record_for_type(lt)
-    if rec is None:
-        rej("valuesel.ref_lhs")
-    if rec.get_method_overloads("__bool__"):
-        truthy_mode = TruthinessMode.RECORD_BOOL
-    elif rec.get_method_overloads("__len__"):
-        truthy_mode = TruthinessMode.RECORD_LEN
-    elif isinstance(lt, NominalType) and lt.is_user_record:
-        truthy_mode = TruthinessMode.ALWAYS_TRUE
-    else:
+    # The shared truthiness classifier, not a private dunder ladder: keying
+    # on the record's dunders alone spelled `bytearray` as the len test where
+    # a plain `if` spells `.empty()`.
+    truthy_mode = _truthiness_mode(lt, analyzer)
+    if truthy_mode not in (TruthinessMode.RECORD_BOOL,
+                           TruthinessMode.RECORD_LEN,
+                           TruthinessMode.NONEMPTY,
+                           TruthinessMode.ALWAYS_TRUE):
         rej("valuesel.ref_lhs")
 
     lhs_ok = (isinstance(e.left, TpyName)
@@ -3538,6 +3612,15 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and _witness("binop.container_eq"))
                 or (e.op in ("==", "!=") and _any_compare_pair(lt, rt))
                 or _record_compare_pair(lt, rt)
+                # A record compared against a NON-record operand its own
+                # dunder declares (`t == s` off `__eq__(self, other: str)`):
+                # sema's resolution proves the pair, or -- for the DERIVED
+                # `!=`, which sema resolves no binop for -- the dunder's own
+                # param slot does.
+                or ((_record_compare_pair(lt, rt, rb)
+                     or _record_dunder_operand_pair(e.op, e, lt, rt,
+                                                    analyzer))
+                    and _witness("binop.record_dunder_operand"))
                 or _enum_compare_pair(e, lt, rt, analyzer)
                 or _tuple_compare_pair(lt, rt, analyzer)
                 or ptr_tuple_pair is not None
@@ -4305,6 +4388,20 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  if e.op not in ("==", "!=") else None) or _lower_char_targeted(
             e.right, lt_a, lc, declared, use=_cmp_operand_use(e.right),
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
+        # Compare operands are target-less EXCEPT opposite a record's own
+        # comparison dunder: the emitted friend operator declares a real
+        # param slot (`friend bool operator==(const Blob&,
+        # std::span<const uint8_t>)`), so a bytes literal there takes the
+        # non-allocating static span the identically-shaped call arg spells
+        # -- the owning render builds a heap vector per comparison for a span
+        # the operator only reads through.
+        _dun = _record_dunder_operand_slot(e.op, e, lt, rt, analyzer)
+        if _dun is not None and _bytes_literal_view_slot(_dun[1]):
+            _dun_e = _dun[0]
+            if _dun_e is e.left:
+                left = _retag_bytes_literal_span(left)
+            else:
+                right = _retag_bytes_literal_span(right)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
 
@@ -6332,6 +6429,18 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                          or is_span(_crb))
                     and ret_ok and index_ok
                     and bool(_witness("subscript.call_recv")))
+            # A container TERNARY receiver (`(a if c else b)[0]`): the same
+            # receiver-shape-blind interpolation the call row relies on -- the
+            # checked dunder takes the ternary render whole. Restricted to the
+            # lvalue (bare-NAME) arm pair so the `?:` stays an lvalue and the
+            # element read aliases the chosen container.
+            ternary_recv_ok = (
+                _lvalue_container_ternary(e.obj, analyzer)
+                and not e.needs_optional_runtime_check
+                and e.slice_function_info is None
+                and not isinstance(e.index, TpySlice)
+                and ret_ok and index_ok
+                and bool(_witness("subscript.ternary_recv")))
             str_ok = (
                 _str_slice_receiver_supported(e.obj, lc, declared)
                 and _eligible_char(rtype) and index_ok)
@@ -6571,7 +6680,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and index_ok
                 and bool(_witness("subscript.borrow_tuple_elem")))
 
-            if not (container_ok or call_recv_ok or str_ok or bytes_ok
+            if not (container_ok or call_recv_ok or ternary_recv_ok
+                    or str_ok or bytes_ok
                     or bytearray_ok
                     or nested_ok
                     or tuple_elem_src_ok or tuple_elem_borrow_ok
@@ -13697,15 +13807,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_literal_arg(
             a, target, lc, declared,
             "container-literal method arg on the make path")
-    _pin_pt = ptype
-    if (isinstance(_pin_pt, OwnType)
-            and is_bytes_view_type(unwrap_readonly(_pin_pt.wrapped))):
-        # `Own[BytesView]` is a no-op spelling on the VALUE view (the
-        # set/dict stubs' insert param at a BytesView element): the span
-        # pin fires exactly as at the plain view slot.
-        _pin_pt = unwrap_readonly(_pin_pt.wrapped)
-    if isinstance(_pin_pt, TpyType) and (is_bytes_type(_pin_pt)
-                                         or is_bytes_view_type(_pin_pt)):
+    # The span pin's slot rule lives in `_bytes_literal_view_slot` -- the
+    # record-dunder OPERAND row spells the same slot, so both ask one
+    # predicate. (`Own[BytesView]` is a no-op spelling on the VALUE view --
+    # the set/dict stubs' insert param at a BytesView element.)
+    if _bytes_literal_view_slot(ptype):
         # Peel coerce wrappers exactly like the span pin does (the pin
         # renders the bare literal; the coercion's own codegen never runs).
         lit = _peel_coerce(a)
@@ -14916,12 +15022,21 @@ def _flush_witness(pos: str, value: THIRExpr) -> THIRExpr:
         _witness(pos)
     return value
 
-def _retag_bytes_literal_view(value: THIRExpr, target: 'TpyType | None') -> THIRExpr:
-    """Rewrite a bytes literal to its static-storage span render (BORROW) when
-    the sink (a view-resolved binding / a BytesView return) is view-typed --
-    the target threads into the bytes-literal render."""
-    if isinstance(value, THIRBytesLiteral) and is_bytes_view_type(target):
+def _retag_bytes_literal_span(value: THIRExpr) -> THIRExpr:
+    """Rewrite a bytes literal to its static-storage span render (BORROW) --
+    the caller has already decided the sink is view-shaped, so this only
+    carries the verdict onto the node."""
+    if isinstance(value, THIRBytesLiteral):
         return replace(value, form=Form.BORROW)
+    return value
+
+def _retag_bytes_literal_view(value: THIRExpr, target: 'TpyType | None') -> THIRExpr:
+    """`_retag_bytes_literal_span` gated on an explicitly VIEW-typed sink (a
+    view-resolved binding / a BytesView return / a BytesView container key) --
+    the target threads into the bytes-literal render. An owned `bytes` sink is
+    deliberately NOT this shape: it stores the vector."""
+    if is_bytes_view_type(target):
+        return _retag_bytes_literal_span(value)
     return value
 
 def _narrowed_opt_char_vs_str_literal(
@@ -14979,8 +15094,12 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
     analyzer = lc.analyzer
     st = analyzer.get_expr_type(src)
     # A literal-seeded container reads as its pending type until sema's
-    # resolution pass; the copy spells the RESOLVED container.
-    st = resolve_pending_container(st, analyzer) or st
+    # resolution pass; the copy spells the RESOLVED container. A str/bytes
+    # local (a loop variable over a literal list, say) carries the view
+    # family's pending type for the same reason and needs the same
+    # resolution -- `to_cpp()` on an unresolved pending type has no spelling.
+    st = (resolve_pending_container(st, analyzer)
+          or _resolve_pending_view(st, analyzer) or st)
     def _open_t_copy(face: str, use: '_ExprUse | None' = None) -> THIRCall:
         """The type-blind `U(<read>)` tail every open-T copy source shares.
 
@@ -15140,18 +15259,37 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
                               use=_ExprUse(indirect_read=True)),),
             cpp_template=f"{stu.to_cpp()}({{0}})",
             loc=loc)
-    if (isinstance(stu, NominalType) and is_str_type(stu)
+    _cp_str = _resolved_str_value(stu, analyzer)
+    _cp_bytes = (None if _cp_str is not None
+                 else _resolved_bytes_value(stu, analyzer))
+    if ((_cp_str is not None or _cp_bytes is not None)
             and isinstance(src, TpyName)
             and src.name not in lc.pointers
             and src.name not in lc.narrow.narrowed):
-        # `copy(s)` of a str NAME (`u = t.copy(s)` -> `std::string(s)`):
-        # the same type-blind general tail; the owned spelling makes the
-        # copy explicit whatever the source's view/owned form.
+        # `copy(s)` of a str/bytes NAME (`u = t.copy(s)` -> `std::string(s)`):
+        # the same type-blind general tail over the source's RESOLVED
+        # spelling. A str is immutable, so a VIEW source copies as a view
+        # (`std::string_view(s)`) -- materializing it instead would leave the
+        # same-typed sink holding a view into a dead temporary.
+        _cp_res = _cp_str if _cp_str is not None else _cp_bytes
+        _cp_tmpl = f"{_cp_res.to_cpp()}({{0}})"
+        if (_cp_bytes is not None and not is_bytes_view_type(_cp_res)
+                and _view_at_runtime(src, lc)):
+            # A `bytes` PARAM is resolved OWNED but passed as the span, and
+            # the owned type has no span ctor -- the family's own owning
+            # conversion is the materializing tail here, spelled through the
+            # registry's single source so it cannot drift from the sink
+            # conversions. (`std::string(sv)` is why the str twin needs no
+            # correction.)
+            _cp_tmpl = f"{view_to_owned_conv(_cp_res)}({{0}})"
+            _witness("call.copy_bytes_view_source")
+        if _cp_bytes is not None or is_str_view_type(_cp_res):
+            _witness("call.copy_viewfam")
         _witness("call.copy_str")
         return THIRCall(
             result_type=rtype, callee=callee,
             args=(_lower_expr(src, lc, declared),),
-            cpp_template=f"{stu.to_cpp()}({{0}})",
+            cpp_template=_cp_tmpl,
             loc=loc)
     if (_eligible_scalar(stu) and isinstance(src, TpyName)
             and src.name not in lc.pointers
@@ -15632,6 +15770,20 @@ def _ifexpr_container(rtype: 'TpyType | None', analyzer) -> 'TpyType | None':
     tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
     tu = resolve_pending_container(tu, analyzer) or tu
     return tu if (is_list(tu) or is_dict(tu) or is_set(tu)) else None
+
+
+def _lvalue_container_ternary(e: TpyExpr, analyzer) -> bool:
+    """A container ternary of bare NAME arms -- the `ifexpr.container` row's
+    shape, whose C++ `?:` over two same-type lvalues is itself an LVALUE.
+
+    Receiver positions take only this arm pair: a MIXED lvalue/prvalue pair
+    makes the `?:` a prvalue that silently copies the lvalue arm
+    (BUGS.md#ternary-receiver-mixed-category-copies)."""
+    return (isinstance(e, TpyIfExpr)
+            and isinstance(e.then_expr, TpyName)
+            and isinstance(e.else_expr, TpyName)
+            and _ifexpr_container(analyzer.get_expr_type(e), analyzer)
+            is not None)
 
 
 def _dyn_own_call_ternary(e: 'TpyIfExpr', rtype: 'TpyType | None',

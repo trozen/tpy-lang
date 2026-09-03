@@ -45,7 +45,7 @@ from ...parse.nodes import (
     TpyVarDecl,
     TupleElemCapture,
 )
-from ...modules.defs import get_dunder_cpp_template
+from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...typesys import (
@@ -76,6 +76,7 @@ from ...typesys import (
     PendingViewType,
     PtrType,
     ReadonlyType,
+    ResolvedBinop,
     STR_FAMILY,
     SelfType,
     TpyType,
@@ -7970,13 +7971,120 @@ def _record_compare_operand(t: TpyType | None) -> 'NominalType | None':
         return t
     return None
 
-def _record_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
+def _record_compare_pair(lt: TpyType | None, rt: TpyType | None,
+                         rb: 'ResolvedBinop | None' = None) -> bool:
     """Two SAME user-record compare operands: the record's generated C++
     comparison (bare operator for a derived `!=`/`<=`, or the dunder template).
-    A mixed record/other pair is a sema error, so the equal-record requirement
-    is the only admitted shape."""
+
+    A MIXED pair is admitted only when sema resolved the compare to a record
+    dunder declaring that other operand (`__eq__(self, other: str)`, and the
+    `!=` derived from it): the records driver emits
+    `friend bool operator OP (const T& lhs, <declared slot> other)`, so the
+    render is the same bare operator -- sema's resolution is the proof that
+    the pair fills the dunder's slots. Without a resolution a mixed pair is a
+    sema error, so the equal-record requirement stays the fallback."""
     lu = _record_compare_operand(lt)
-    return lu is not None and lu == _record_compare_operand(rt)
+    if lu is not None and lu == _record_compare_operand(rt):
+        return True
+    if rb is None:
+        return False
+    recv = _record_compare_operand(getattr(rb, "receiver_type", None))
+    # The receiver is the side sema pinned into `{self}`.
+    return recv is not None and _record_compare_operand(
+        rt if rb.is_reverse else lt) == recv
+
+
+def _compare_op_dunders(op: str) -> tuple[str, ...]:
+    """The comparison dunder(s) whose emitted friend operator serves `op`.
+
+    `!=` also lists `__eq__`: C++20 rewrites `a != b` from `operator==`, and
+    sema resolves no binop for that derived spelling."""
+    name = BINOP_TO_METHOD.get(op)
+    if name is None:
+        return ()
+    return (name, "__eq__") if op == "!=" else (name,)
+
+
+def _record_dunder_operand_slot(
+        op: str, e: TpyBinOp, lt: TpyType | None, rt: TpyType | None,
+        analyzer) -> 'tuple[TpyExpr, TpyType] | None':
+    """A user record compared against a NON-record operand its own comparison
+    dunder DECLARES (`__eq__(self, other: str)`), for the spelling sema
+    resolves no binop for -- the `!=` C++20 rewrites from `operator==`.
+
+    The records driver emits `friend bool operator OP (const T& lhs,
+    <the dunder's first param slot>)`, so the admission reads that same param
+    and tests it against the other operand with sema's OWN argument check --
+    the predicate the explicit `t.__eq__(x)` spelling goes through -- plus the
+    compare gate's family predicates for the operand's renderability. A record
+    compared to something no dunder declares, or to an operand that dunder's
+    slot does not accept, therefore rejects HERE with a located diagnostic
+    instead of narrowing silently in C++ (`t == 2.5` against an `Int32` slot
+    prints True where CPython prints False).
+
+    The REFLECTED spelling (`s == t`) rides C++20's reversed candidate, which
+    exists for `==`/`!=` only -- a relational op has no reversed form without
+    a spaceship, so the record stays pinned left there (CPython reflects the
+    same pair through `Tag.__eq__`).
+
+    Returns the non-record operand paired with that dunder param slot, so the
+    render can thread the slot the way a call arg threads its param (a bytes
+    literal's owned-vs-span spelling is target-driven); None when no dunder
+    admits the pair."""
+    recv, other_e, other_t = _record_compare_operand(lt), e.right, rt
+    if recv is None and op in ("==", "!="):
+        recv, other_e, other_t = _record_compare_operand(rt), e.left, lt
+    if recv is None or _record_compare_operand(other_t) is not None:
+        return None
+    ri = analyzer.registry.get_record_for_type(recv)
+    if ri is None:
+        return None
+    for name in _compare_op_dunders(op):
+        m = _record_method_with_parents(ri, name, analyzer)
+        if m is None or not m.params:
+            continue
+        pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            m.params[0].type)))
+        # Family agreement is not slot agreement: every scalar matches every
+        # other one, so the operator spelling would admit an argument sema
+        # rejects at the explicit call. Ask sema instead.
+        if other_t is None or not analyzer.compat.is_type_compatible(
+                other_t, pt):
+            continue
+        if ((_resolved_scalar(pt, analyzer)
+             and _resolved_scalar(other_t, analyzer))
+                or (_resolved_str_value(pt, analyzer) is not None
+                    and _str_compare_operand(other_e, other_t, analyzer))
+                or (_resolved_bytes_value(pt, analyzer) is not None
+                    and _bytes_compare_operand(other_e, other_t, analyzer))
+                or (_eligible_char(pt)
+                    and _char_compare_operand(other_e, other_t, analyzer))):
+            return (other_e, pt)
+    return None
+
+
+def _record_dunder_operand_pair(op: str, e: TpyBinOp, lt: TpyType | None,
+                                rt: TpyType | None, analyzer) -> bool:
+    """The admission half of `_record_dunder_operand_slot` -- see it for the
+    shape."""
+    return _record_dunder_operand_slot(op, e, lt, rt, analyzer) is not None
+
+
+def _bytes_literal_view_slot(pt: 'TpyType | None') -> bool:
+    """Whether a bytes literal landing in PARAM slot `pt` takes the
+    static-storage span render (`bytes_literal`) instead of the owning vector:
+    both `bytes` and `BytesView` are view-shaped at a parameter, so the owning
+    render would build a heap vector the callee only reads through.
+    `Own[BytesView]` is the same no-op spelling over the value view. Says
+    nothing about a non-param sink -- an owned binding init / return keeps the
+    owning render, which is why the plain retag helper asks a different
+    question."""
+    if (isinstance(pt, OwnType)
+            and is_bytes_view_type(unwrap_readonly(pt.wrapped))):
+        pt = unwrap_readonly(pt.wrapped)
+    return isinstance(pt, TpyType) and (is_bytes_type(pt)
+                                        or is_bytes_view_type(pt))
+
 
 def _optional_narrow_facts_ok(facts: dict[str, TpyType],
                               declared: dict[str, TpyType], analyzer) -> bool:

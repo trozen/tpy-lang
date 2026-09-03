@@ -8,8 +8,8 @@ from __future__ import annotations
 from .testutil import _emit_expr
 from .nodes import (
     Form, THIRAssign, THIRCall, THIRCoerce, THIRExprStmt, THIRFormConvert,
-    THIRMethodCall, THIRMove, THIRName, THIRPrint, THIRReturn, THIRSetItem,
-    THIRStrLiteral, THIRSubscript,
+    THIRDelItem, THIRMethodCall, THIRMove, THIRName, THIRPrint, THIRReturn,
+    THIRSetItem, THIRStrLiteral, THIRSubscript,
 )
 from .testutil import (
     _assert_routes_byte_identical, _fn, _lower_ctx, _lower_ctx_witnessed,
@@ -54,15 +54,33 @@ class TestDelAttrStatement:
         assert call.method_cpp == "__delattr__" and not call.is_arrow
         assert _emit_expr(call) == 'b.__delattr__("x")'
 
-    def test_multi_target_del_attr_falls_back(self):
-        # The AST arm emits one line per target; the single-node statement
-        # lowering rejects the multi-target form.
-        thir = _lower_ctx(
+    def test_multi_target_del_attr_routes_one_line_per_target(self):
+        # `del a.x, b.y` -> one `__delattr__` call line per target, in
+        # source order -- the THIRDelItem shape the multi-target del-ITEM
+        # form already uses.
+        thir, faces = _lower_ctx_witnessed(
             _DYN_BAG
             + "def f() -> None:\n"
+            + "    a = Bag()\n"
             + "    b = Bag()\n"
-            + "    del b.x, b.y\n")
-        assert _fn(thir, "f") is None
+            + "    del a.x, b.y\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("stmt.del_attr_multi", 0) == 1
+        stmt = fn.body[2]
+        assert isinstance(stmt, THIRDelItem)
+        assert [_emit_expr(c) for c in stmt.calls] == [
+            'a.__delattr__("x")', 'b.__delattr__("y")']
+
+    def test_multi_target_del_attr_renders_both_lines(self):
+        src = (_DYN_BAG
+               + "def f() -> None:\n"
+               + "    a = Bag()\n"
+               + "    b = Bag()\n"
+               + "    del a.x, b.y\n")
+        cpp = _assert_routes_byte_identical(src, comments=False)[1]
+        assert ('\n    a.__delattr__("x");\n    b.__delattr__("y");\n') in cpp
+
 
     def test_delattr_builtin_stmt_routes(self):
         # `delattr(b, "x")` -- a void TpyCall whose macro_expansion is the
@@ -120,6 +138,60 @@ class TestDynSetattrWrite:
         assert (_emit_expr(call)
                 == 'b.__setattr__("x", ::tpy::make_any(::tpy::BigInt(42)))')
 
+    def test_local_name_value_write_routes(self):
+        # `b.x = v` on a str / int local: the Any value slot takes the slice
+        # every into-Any WRITE position shares, so a bare declared name
+        # rides the `{0}` wrap like the literals do.
+        # The str leg pins a render that is WRONG at runtime -- `make_any(v)`
+        # on a view-typed local stores the view and reading it back as `str`
+        # panics (BUGS.md#any-str-local-stores-view). It is pinned as-is
+        # because the defect is the into-Any coerce's spelling, shared by all
+        # three write sinks, not this row: the pin must move when the coerce
+        # is fixed, and until then it records what is emitted, not what is
+        # right.
+        thir, faces = _lower_ctx_witnessed(
+            _DYN_BAG
+            + "def f() -> None:\n"
+            + "    b = Bag()\n"
+            + "    v = \"x\"\n"
+            + "    n = 7\n"
+            + "    b.host = v\n"
+            + "    b.port = n\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("method.dyn_setattr", 0) == 2
+        assert (_emit_expr(fn.body[3].expr)
+                == 'b.__setattr__("host", ::tpy::make_any(v))')
+        assert (_emit_expr(fn.body[4].expr)
+                == 'b.__setattr__("port", ::tpy::make_any(n))')
+
+    def test_already_any_name_value_write_routes(self):
+        # The other row of the shared slice: an ALREADY-Any name needs no
+        # wrap at all and passes bare.
+        thir, faces = _lower_ctx_witnessed(
+            _DYN_BAG
+            + "def f() -> None:\n"
+            + "    b = Bag()\n"
+            + "    a: Any = 3\n"
+            + "    b.raw = a\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("method.dyn_setattr", 0) == 1
+        assert _emit_expr(fn.body[2].expr) == 'b.__setattr__("raw", a)'
+
+    def test_call_result_value_still_falls_back(self):
+        # BOUNDARY: a CALL source is outside the shared slice -- its
+        # into_any render is not placeholder-transparent, so it must keep
+        # rejecting rather than ride the name row.
+        thir = _lower_ctx(
+            _DYN_BAG
+            + "def make() -> str:\n"
+            + "    return \"x\"\n"
+            + "def f() -> None:\n"
+            + "    b = Bag()\n"
+            + "    b.host = make()\n")
+        assert _fn(thir, "f") is None
+
     def test_unpinned_value_falls_back(self):
         # A bool literal's into_any render is not placeholder-pinned (no
         # corpus witness); the body stays on the AST path.
@@ -152,6 +224,28 @@ class TestDynSetattrWrite:
         call = fn.body[1].expr
         assert isinstance(call, THIRMethodCall)
         assert _emit_expr(call) == 's.__setattr__("host", "ok")'
+
+    def test_local_name_at_non_any_param_routes(self):
+        # The non-Any param's own slice takes the same shapes: a bare
+        # declared name is a plain method arg (`s.__setattr__("host", v)`).
+        thir, faces = _lower_ctx_witnessed(
+            "class Strict:\n"
+            "    _n: str\n"
+            "    _v: str\n"
+            "    def __init__(self) -> None:\n"
+            "        self._n = \"\"\n"
+            "        self._v = \"\"\n"
+            "    def __setattr__(self, name: str, value: str) -> None:\n"
+            "        self._n = name\n"
+            "        self._v = value\n"
+            "def f() -> None:\n"
+            "    s = Strict()\n"
+            "    v = \"x\"\n"
+            "    s.host = v\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert faces.get("method.dyn_setattr", 0) == 1
+        assert _emit_expr(fn.body[2].expr) == 's.__setattr__("host", v)'
 
     def test_bool_literal_at_non_any_param_falls_back(self):
         # A bool value param's literal is outside the bare-literal leg

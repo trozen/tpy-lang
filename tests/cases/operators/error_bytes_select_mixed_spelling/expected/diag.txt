@@ -1,0 +1,1 @@
+main.py:14: error: in function 'g': this construct is not yet supported by C++ code generation (stmt.var_decl:binop.shape.||)

@@ -1,0 +1,3 @@
+main.py:90: warning: non-exhaustive match on 'str'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:109: warning: non-exhaustive match on 'Int32'; no unconditional catch-all arm (add 'case _: pass' to suppress)
+main.py:116: warning: non-exhaustive match on 'str'; no unconditional catch-all arm (add 'case _: pass' to suppress)

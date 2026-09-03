@@ -22,6 +22,7 @@ from ...parse.nodes import (
     TpyBreak,
     TpyBytesLiteral,
     TpyCall,
+    TpyChainedCompare,
     TpyCoerce,
     TpyContinue,
     TpyDelAttr,
@@ -422,6 +423,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    _value_opt_scalar_elem_arg,
     _str_field_over_container_subscript_read,
     _borrow_form_tuple_call,
     _storage_field_ternary,
@@ -732,28 +734,27 @@ def _lower_dyn_setattr_call(call: TpyMethodCall, lc: '_LowerCtx',
     if not isinstance(name_arg, TpyStrLiteral):
         note_detail("setattr.name_shape")
         raise ThirUnsupported("stmt.assign")
-    # Only str/int-literal sources pin the coercion lambda's wrap to a
-    # placeholder-transparent template (`::tpy::make_any(std::string({0}))` /
-    # `::tpy::make_any(::tpy::BigInt({0}))`) with a bare inner render on both
-    # paths; other actual types take value-dependent renders. A user
+    # The Any value slot takes the slice every into-Any WRITE position shares
+    # (`_any_write_value_shape` -- the Any-dict setitem row and the Any field
+    # write): an already-Any bare name passes bare, and an `into_any` coerce
+    # over a placeholder-transparent inner (a bare declared name or a str/int
+    # literal) rides `_lower_into_any`'s `{0}` template. A user
     # `__setattr__` whose value param is NOT Any sees no coerce at all -- the
     # bare literal is a plain arg (`s.__setattr__("_private", "bad")`) and
     # lowers like the name arg.
-    if (isinstance(value_arg, TpyCoerce)
-            and value_arg.coercion.name == "into_any"
-            and isinstance(value_arg.expr, (TpyStrLiteral, TpyIntLiteral))):
-        wrap = value_arg.coercion.codegen(
-            "{0}", value_arg.actual_type, value_arg.expected_type,
-            value_arg.context_kind)
-        lowered_value: THIRExpr = THIRCoerce(
-            result_type=analyzer.get_expr_type(value_arg),
-            expr=_lower_expr(value_arg.expr, lc, declared),
-            coercion_name=value_arg.coercion.name,
-            wrap=wrap,
-            loc=getattr(value_arg, "loc", None),
-        )
-    elif (isinstance(value_arg, (TpyStrLiteral, TpyIntLiteral))
-          and not _is_any_type(fi.params[1].type)):
+    any_shape = _any_write_value_shape(value_arg, declared, lc.pointers,
+                                       lc.narrow.narrowed, analyzer)
+    if any_shape is not None:
+        lowered_value: THIRExpr = _lower_expr(value_arg, lc, declared)
+    elif (not _is_any_type(fi.params[1].type)
+          and (isinstance(value_arg, (TpyStrLiteral, TpyIntLiteral))
+               or (isinstance(value_arg, TpyName)
+                   and value_arg.name in declared
+                   and value_arg.name not in lc.pointers
+                   and value_arg.name not in lc.narrow.narrowed))):
+        # The non-Any param's own slice, kept the same shape as the Any one
+        # above (a str/int literal or a bare declared name): the generic
+        # method-arg lowering renders it, and rejects what it cannot.
         lowered_value = _lower_call_arg(value_arg, fi.params[1].type, lc,
                                         declared, method_arg=True)
     else:
@@ -4855,9 +4856,15 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
         if not isinstance(ptype, TpyType):
             note_detail("nesteddef.param_unresolved")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        # Param families the lambda body renders EXACTLY like a top-level
-        # function without any param seeding: value scalars / Char / enums,
-        # str family, and F1-record refs. Optional (either repr) / Own /
+        # Param families the lambda BODY renders like a top-level function
+        # without any param seeding: value scalars / Char / enums, str
+        # family, F1-record refs, and the mutable containers -- like an F1
+        # record they bind `T&` and are read bare, so the body renders the
+        # same with or without seeding. The SIGNATURE does not: a lambda
+        # param never gets the const-borrow verdict a top-level param gets,
+        # and the non-const `T&` propagates to the enclosing function
+        # (BUGS.md#nested-def-container-param-drops-const). Optional (either
+        # repr) / Own /
         # value-opt / union / tuple params would need a pointer/movable
         # classification no lambda param gets -- and their render is
         # ill-formed today (see BUGS.md) -- so they reject.
@@ -4866,7 +4873,9 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
                 or _eligible_enum(pt, analyzer) is not None
                 or _resolved_str_value(pt, analyzer) is not None
                 or _resolved_bytes_value(pt, analyzer) is not None
-                or _f1_record(pt, analyzer)):
+                or _f1_record(pt, analyzer)
+                or is_list(pt) or is_dict(pt) or is_set(pt)
+                or is_bytearray_type(pt)):
             note_detail("nesteddef.param_type")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         resolved = lc.render_resolve(ptype)
@@ -10486,16 +10495,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # store COPIES, never moves; _lift_to_element_storage). Other
                 # sources (None literal, narrowed names, rvalues) reject.
                 v = stmt.value
-                if not (isinstance(v, TpyName)
-                        and v.name not in lc.narrow.narrowed
-                        and _is_borrow_ptr_local(v, declared, lc.pointers)
-                        and not _is_move_source(v, lc)):
+                if isinstance(v, TpyNoneLiteral):
+                    # `xs[i] = None` clears the slot: the STORAGE-form
+                    # `std::nullopt`, the same spelling the value-repr
+                    # optional element and the Optional param slot use --
+                    # a None literal carries no source repr to convert.
+                    value = THIRLiteral(result_type=eu, value=None,
+                                        form=Form.STORAGE, loc=loc)
+                    _witness("setitem.optional_none")
+                elif not (isinstance(v, TpyName)
+                          and v.name not in lc.narrow.narrowed
+                          and _is_borrow_ptr_local(v, declared, lc.pointers)
+                          and not _is_move_source(v, lc)):
                     note_detail("setitem.optional_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                value = THIRFormConvert(
-                    result_type=eu, value=_lower_expr(v, lc, declared),
-                    form=Form.STORAGE, loc=loc)
-                _witness("setitem.borrow_lift")
+                else:
+                    value = THIRFormConvert(
+                        result_type=eu, value=_lower_expr(v, lc, declared),
+                        form=Form.STORAGE, loc=loc)
+                    _witness("setitem.borrow_lift")
             elif _value_opt_scalar(eu, analyzer) is not None:
                 # Value-repr Optional[scalar] element: a None literal stores
                 # the STORAGE-form `std::nullopt` (`::tpy::__setitem__(items,
@@ -10516,6 +10534,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value = _lower_expr(v, lc, declared,
                                         allow_whole_optional=True)
                     _witness("setitem.optval_elem_copy")
+                elif (not isinstance(v, TpyNoneLiteral)
+                      and _value_opt_scalar_elem_arg(v, eu, analyzer)):
+                    # A SCALAR source into the optional element slot
+                    # (`xs[0] = 5` on `list[Int32 | None]`): the scalar
+                    # renders bare and std::optional's converting ctor
+                    # wraps it -- the same row the append/insert arg table
+                    # already admits for this slot.
+                    value = _lower_expr(v, lc, declared)
+                    _witness("setitem.optval_scalar")
                 elif not isinstance(v, TpyNoneLiteral):
                     note_detail("setitem.optval_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -13392,21 +13419,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # `obj.__delattr__("attr")` call, one method-call statement line per
         # target. The generic method-call arm carries the emit (a
         # str-literal arg into a str slot, void result).
-        if len(stmt.targets) != 1:
-            note_detail("del_attr.multi_target")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        call = stmt.targets[0].dyn_delattr_call
-        if call is None:
-            note_detail("del_attr.unresolved")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        _witness("stmt.del_attr")
-        return THIRExprStmt(
-            expr=_flush_witness(
+        lowered_dels = []
+        for target in stmt.targets:
+            call = target.dyn_delattr_call
+            if call is None:
+                note_detail("del_attr.unresolved")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            lowered_dels.append(_flush_witness(
                 "flush.expr_stmt",
                 _lower_expr(call, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.DISCARD,
-                                         allow_temps=True))),
-            loc=loc)
+                                         allow_temps=True))))
+        _witness("stmt.del_attr")
+        if len(lowered_dels) == 1:
+            return THIRExprStmt(expr=lowered_dels[0], loc=loc)
+        # One `recv.__delattr__("name");` line per target, in source order --
+        # the del_item multi-target twin.
+        _witness("stmt.del_attr_multi")
+        return THIRDelItem(calls=tuple(lowered_dels), loc=loc)
     if isinstance(stmt, TpyWhile):
         if analyzer.if_branch_decls.get(id(stmt)):
             raise ThirUnsupported("stmt.while")
@@ -14770,6 +14800,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             use=_ExprUse(result=_ExprResultUse.DISCARD,
                                          allow_temps=True))),
                     loc=loc)
+        void_cast = False
         if isinstance(stmt.expr, TpyCall):
             eligible = True
         elif isinstance(stmt.expr, TpyMethodCall):
@@ -14781,6 +14812,21 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # / 0` evaluated for its ZeroDivisionError): the template render
             # + `;`, identical to its expression form.
             eligible = bool(_witness("expr_stmt.record_binop"))
+        elif isinstance(stmt.expr, (TpyBinOp, TpyUnaryOp, TpyChainedCompare,
+                                    TpyIfExpr, TpyFieldAccess)):
+            # A DISCARDED operator/ternary/field read (`n + 1`, `-n`,
+            # `0 < n < 5`, `n if c else 0`, `p.x`). Python evaluates and
+            # discards these too, and the checked render is the effect
+            # worth keeping (`add_check` raises on overflow, a field read
+            # off a property calls the getter), so the statement form is
+            # the expression render plus `;`. The operand ladders
+            # re-validate their own shapes.
+            # The cast to void is what keeps the PURE forms (`n < 2;`,
+            # `p.x;`) buildable under -Wunused-value + -Werror; it discards
+            # the value without suppressing the evaluation the row exists
+            # for. Decided here, not re-derived from the shape at emit.
+            eligible = bool(_witness("expr_stmt.value_discard"))
+            void_cast = True
         elif (isinstance(stmt.expr, TpySubscript)
                 and not isinstance(stmt.expr.index, TpySlice)
                 and stmt.expr.slice_function_info is None):
@@ -14790,17 +14836,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # -- the subscript arm re-validates receiver/index shapes.
             eligible = bool(_witness("expr_stmt.subscript_discard"))
         elif isinstance(stmt.expr, TpyName):
-            # A bare NAME statement (`x`): the name's own read render plus
-            # `;`, exactly its expression form. Python evaluates and
-            # discards it too, so nothing is dropped; the name arm
-            # re-validates the binding.
+            # A bare NAME statement (`x`): the name's own read render,
+            # exactly its expression form. Python evaluates and discards it
+            # too, so nothing is dropped; the name arm re-validates the
+            # binding. Cast to void for the same reason the pure operator
+            # forms are -- a bare `x;` is what -Wunused-value rejects under
+            # -Werror.
             eligible = bool(_witness("expr_stmt.name"))
+            void_cast = True
         elif isinstance(stmt.expr, TpyIntLiteral):
             # A bare int-literal statement -- the `0` the REPL appends to
             # every compile so `main()` is always emitted. Discarding a
             # literal has no effect to sequence, so the render is the
-            # literal itself plus `;`, exactly its expression form.
+            # literal itself, cast to void so -Wunused-value does not reject
+            # it under -Werror.
             eligible = True
+            void_cast = True
         else:
             eligible = _kind_detail("expr_stmt.", stmt.expr)
         if not eligible:
@@ -14812,6 +14863,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                     use=_ExprUse(
                                         result=_ExprResultUse.DISCARD,
                                         allow_temps=True))),
+                            void_cast=void_cast,
                             loc=loc)
     if isinstance(stmt, TpyWith):
         begin_stmt()

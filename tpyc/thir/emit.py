@@ -91,6 +91,7 @@ from .nodes import (
     THIRDefaultConstruct,
     THIRLiteral,
     THIRMatch,
+    THIRMatchArmEntry,
     THIRMatchBinding,
     THIRLambda,
     THIRMethodCall,
@@ -2985,6 +2986,25 @@ def _emit_match_binding(out: TextIO, binding: 'THIRMatchBinding | None',
         out.write(f"{inner}auto& {name} = {rhs};\n")
 
 
+def _emit_match_whole_bindings(out: TextIO, entry: THIRMatchArmEntry,
+                               subject: str, inner: str,
+                               case_var: 'str | None' = None) -> None:
+    # The arm's whole-subject binding lines, in source order: the `as`
+    # target last (`case x as y:` renders `x = ...;` then `y = ...;`). Every
+    # tier binds through here, including the tiers that still reject the
+    # two-binding arm, so admitting `case x as y:` on one of them cannot
+    # silently drop the first name.
+    #
+    # `case_var` is the rhs a `from_case_var` binding reads -- the tier's
+    # extracted alias (`__case_i`, the Optional deref). A tier with no such
+    # alias passes none and every binding reads the subject.
+    for b in (*entry.pre_bindings,
+              *((entry.binding,) if entry.binding is not None else ())):
+        rhs = (case_var if case_var is not None and b.from_case_var
+               else subject)
+        _emit_match_binding(out, b, rhs, inner)
+
+
 def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
                        state: _EmitState, subject: str) -> None:
     # _emit_switch_groups: the default-goto label draws its counter bump
@@ -3019,14 +3039,18 @@ def _emit_match_switch(out: TextIO, stmt: THIRMatch, indent_level: int,
             out.write(f"{indent}{{\n")
         if len(arm.entries) == 1 and arm.entries[0].guard is None:
             entry = arm.entries[0]
-            _emit_match_binding(out, entry.binding, subject, inner)
+            _emit_match_whole_bindings(out, entry, subject, inner)
             _emit_match_arm_body(out, entry, indent_level + 1, state)
         else:
             emitted: set[str] = set()
             for entry in arm.entries:
-                if entry.binding is not None and entry.binding.name not in emitted:
-                    _emit_match_binding(out, entry.binding, subject, inner)
-                    emitted.add(entry.binding.name)
+                for b in (*entry.pre_bindings,
+                          *((entry.binding,) if entry.binding is not None
+                            else ())):
+                    if b.name in emitted:
+                        continue
+                    _emit_match_binding(out, b, subject, inner)
+                    emitted.add(b.name)
             has_unguarded = any(e.guard is None for e in arm.entries)
             if_opened = False
             for entry in arm.entries:
@@ -3086,10 +3110,8 @@ def _emit_match_switch_union(out: TextIO, stmt: THIRMatch, indent_level: int,
         for fb in entry.field_bindings:
             # Keyword captures always draw the alias, so the base is it.
             _emit_match_binding(out, fb, entry.case_alias, inner, bases)
-        if entry.binding is not None:
-            rhs = ((entry.case_alias or get)
-                   if entry.binding.from_case_var else subject)
-            _emit_match_binding(out, entry.binding, rhs, inner)
+        _emit_match_whole_bindings(out, entry, subject, inner,
+                                   entry.case_alias or get)
         _emit_match_arm_body(out, entry, indent_level + 1, state)
         out.write(f"{inner}break;\n")
         out.write(f"{indent}}}\n")
@@ -3145,9 +3167,8 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
                 # below.
                 for fb in entry.field_bindings:
                     _emit_match_binding(out, fb, alias, bind_indent, bases)
-                if entry.binding is not None:
-                    rhs = alias if entry.binding.from_case_var else subject
-                    _emit_match_binding(out, entry.binding, rhs, bind_indent)
+                _emit_match_whole_bindings(out, entry, subject, bind_indent,
+                                           alias)
             if entry.field_conds or entry.guard is not None:
                 cond_parts = [f"{pre}{alias}{suf}"
                               for pre, suf in entry.field_conds]
@@ -3161,11 +3182,8 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
                     for fb in entry.field_bindings:
                         _emit_match_binding(out, fb, alias, body_indent,
                                             bases)
-                    if entry.binding is not None:
-                        rhs = (alias if entry.binding.from_case_var
-                               else subject)
-                        _emit_match_binding(out, entry.binding, rhs,
-                                            body_indent)
+                    _emit_match_whole_bindings(out, entry, subject,
+                                               body_indent, alias)
                 _emit_match_arm_body(out, entry, lvl, state)
                 out.write(f"{INDENT * lvl}goto {end_label};\n")
                 out.write(f"{bind_indent}}}\n")
@@ -3182,13 +3200,11 @@ def _emit_match_guarded_union(out: TextIO, stmt: THIRMatch,
     out.write(f"{end_label}:;\n")
 
 
-def _emit_poly_whole_binding(out: TextIO, entry, subject: str,
-                             at: str) -> None:
-    # The whole-subject capture/`as` binding: vs the `__case_i` alias for a
+def _emit_poly_whole_binding(out: TextIO, entry: THIRMatchArmEntry,
+                             subject: str, at: str) -> None:
+    # The whole-subject capture/`as` bindings: vs the `__case_i` alias for a
     # class arm (`from_case_var`), vs the subject otherwise.
-    if entry.binding is not None:
-        rhs = entry.case_alias if entry.binding.from_case_var else subject
-        _emit_match_binding(out, entry.binding, rhs, at)
+    _emit_match_whole_bindings(out, entry, subject, at, entry.case_alias)
 
 
 def _emit_match_poly_if_elif(out: TextIO, stmt: THIRMatch,
@@ -3323,7 +3339,7 @@ def _emit_match_optional(out: TextIO, stmt: THIRMatch, indent_level: int,
         entry = stmt.arms[0].entries[0]
         state.comments.case_(out, entry.loc, inner)
         out.write(f"{inner}{{\n")
-        _emit_match_binding(out, entry.binding, inner_name, inner2)
+        _emit_match_whole_bindings(out, entry, inner_name, inner2)
         _emit_stmts(out, entry.body, indent_level + 2, state)
         out.write(f"{inner}}}\n")
     elif stmt.inner_strategy == "if_elif":
@@ -3351,8 +3367,8 @@ def _opt_chain_cond(opt_conds, subject: str) -> str:
     return " || ".join(parts)
 
 
-def _emit_match_opt_arm_bindings(out: TextIO, entry, subject: str,
-                                 inner: str) -> None:
+def _emit_match_opt_arm_bindings(out: TextIO, entry: THIRMatchArmEntry,
+                                 subject: str, inner: str) -> None:
     # The Optional arm bindings: class-arm field captures
     # against the `(*subj)` deref, then the whole-subject capture/`as`
     # binding -- the deref for a value-side binding (from_case_var), the
@@ -3360,9 +3376,7 @@ def _emit_match_opt_arm_bindings(out: TextIO, entry, subject: str,
     deref = f"(*{subject})"
     for fb in entry.field_bindings:
         _emit_match_binding(out, fb, deref, inner)
-    if entry.binding is not None:
-        rhs = deref if entry.binding.from_case_var else subject
-        _emit_match_binding(out, entry.binding, rhs, inner)
+    _emit_match_whole_bindings(out, entry, subject, inner, deref)
 
 
 def _emit_match_if_elif_optional(out: TextIO, stmt: THIRMatch,
@@ -3453,7 +3467,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
         state.comments.case_(out, entry.loc, indent)
         cond = _opt_chain_cond(entry.opt_conds, subject)
         out.write(f"{indent}if ({cond}) {{\n")
-        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_whole_bindings(out, entry, subject, inner)
         _emit_match_goto_tail(out, entry, indent_level, state, end_label)
     if stmt.str_disc_kind == "char_at":
         out.write(f"{indent}if ({subject}.size() >= "
@@ -3474,7 +3488,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
             state.comments.case_(out, entry.loc, sw_inner)
             cond = _opt_chain_cond(entry.opt_conds, subject)
             out.write(f"{sw_inner}if ({cond}) {{\n")
-            _emit_match_binding(out, entry.binding, subject, sw_deep)
+            _emit_match_whole_bindings(out, entry, subject, sw_deep)
             _emit_stmts(out, entry.body, sw_level + 2, state)
             out.write(f"{sw_deep}goto {end_label};\n")
             out.write(f"{sw_inner}}}\n")
@@ -3487,7 +3501,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
     for entry in stmt.str_trailing:
         state.comments.case_(out, entry.loc, indent)
         out.write(f"{indent}{{\n")
-        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_whole_bindings(out, entry, subject, inner)
         _emit_match_goto_tail(out, entry, indent_level, state, end_label)
     out.write(f"{indent}{end_label}:;\n")
 
@@ -3519,7 +3533,7 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
                     else joined if not paren_or else f"({joined})")
             keyword = "if" if i == 0 else "} else if"
             out.write(f"{indent}{keyword} ({cond}) {{\n")
-        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_whole_bindings(out, entry, subject, inner)
         _emit_match_arm_body(out, entry, indent_level + 1, state)
     out.write(f"{indent}}}\n")
 
@@ -3546,7 +3560,7 @@ def _emit_match_if_elif_guarded(out: TextIO, stmt: THIRMatch,
             conds = [f"{subject} == {rhs}" for rhs in arm.labels]
             cond = conds[0] if len(conds) == 1 else "(" + " || ".join(conds) + ")"
             out.write(f"{indent}if ({cond}) {{\n")
-        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_whole_bindings(out, entry, subject, inner)
         if entry.guard is not None:
             out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
             _emit_match_arm_body(out, entry, indent_level + 2, state)
@@ -3602,7 +3616,7 @@ def _emit_match_if_elif_record(out: TextIO, stmt: THIRMatch,
         bases: dict[str, str] = {}
         for fb in entry.field_bindings:
             _emit_match_binding(out, fb, subject, inner, bases)
-        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_whole_bindings(out, entry, subject, inner)
         _emit_match_arm_body(out, entry, indent_level + 1, state)
     out.write(f"{indent}}}\n")
 
@@ -3648,7 +3662,7 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
         bases: dict[str, str] = {}
         for fb in entry.field_bindings:
             _emit_match_binding(out, fb, subject, inner, bases)
-        _emit_match_binding(out, entry.binding, subject, inner)
+        _emit_match_whole_bindings(out, entry, subject, inner)
         if entry.guard is not None:
             out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
             _emit_stmts(out, entry.body, indent_level + 2, state)
@@ -4286,7 +4300,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRExprStmt):
         expr_cpp = _emit_expr(stmt.expr, state)
         state.temps.flush(out, indent)
-        out.write(f"{indent}{expr_cpp};\n")
+        if stmt.void_cast:
+            out.write(f"{indent}(void)({expr_cpp});\n")
+        else:
+            out.write(f"{indent}{expr_cpp};\n")
     elif isinstance(stmt, THIRTupleUnpack):
         # Each non-discard target declares a fresh value-scalar local. The
         # source bind splits on shape -- a bare-name / loop-shadow source is

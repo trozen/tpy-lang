@@ -2191,12 +2191,13 @@ class THIRDelVar(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRDelItem(THIRStmt):
-    """Multi-target `del d[a], e[b]` -- a per-target loop: one
-    `::tpy::__delitem__(recv, key);` statement line per target, in
-    source order. A single-target del keeps the plain THIRExprStmt render
-    (identical bytes); this node exists because one source statement emits N
-    lines."""
-    calls: tuple[THIRCall, ...] = ()
+    """Multi-target `del` -- a per-target loop: one call statement line per
+    target, in source order. Both del forms sema desugars to a call ride
+    here: `del d[a], e[b]` (`::tpy::__delitem__(recv, key);`) and
+    `del a.x, b.y` through a user `__delattr__` (`a.__delattr__("x");`).
+    A single-target del keeps the plain THIRExprStmt render (identical
+    bytes); this node exists because one source statement emits N lines."""
+    calls: tuple[THIRExpr, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -2915,6 +2916,10 @@ class THIRMatchArmEntry:
     body: tuple[THIRStmt, ...] = ()
     loc: 'SourceLocation | None' = None
     binding: 'THIRMatchBinding | None' = None
+    # `case x as y:` binds the whole subject TWICE. These render on the
+    # lines before `binding`, off the same base, each with its own folded
+    # mode (the two names need not share a hoist verdict).
+    pre_bindings: tuple[THIRMatchBinding, ...] = ()
     guard: 'THIRExpr | None' = None
     # Resumable MatchDispatch mode: the arm BODY lives in the state machine
     # (an ordinary BB chain the skeleton walks), so `body` stays empty and
@@ -3226,6 +3231,12 @@ class THIRExprStmt(THIRStmt):
     call-lowering admission checks, statement position -- a discarded scalar
     or `None` return); the emitter renders `<expr>;`."""
     expr: THIRExpr
+    # A discarded expression statement (`n < 2`, `p.x`, `n + 1`, a bare
+    # name or literal) renders `(void)(<expr>);`: the operands still
+    # evaluate, but without the cast GCC's -Wunused-value rejects the pure
+    # forms under -Werror. Lowering decides this per row -- the render must
+    # not re-derive it by inspecting the expression's shape.
+    void_cast: bool = False
 
 
 # --- Function / module ---

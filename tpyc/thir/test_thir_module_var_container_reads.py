@@ -80,15 +80,16 @@ class TestModuleVarContainerReads:
 
     def test_bare_expression_statement_keeps_rejecting(self):
         # BOUNDARY: a discarded module-variable read has no consumer at all,
-        # so nothing pins the deref -- and the statement would emit a value
-        # the C++ compiler flags as having no effect.
+        # so nothing pins the deref. The statement position itself now
+        # admits a discarded field read, so the reject is the field ladder's
+        # own -- which is the gate that actually protects this shape.
         src = ("import sys\n"
                "def main() -> None:\n"
                "    sys.argv\n"
                "main()\n")
         _ctx, fell = _thir_ctx(src)
         _assert_rejects_at(fell, "body:stmt.expr_stmt",
-                           "expr_stmt.field_access")
+                           "field.module_var_type")
 
     def test_local_alias_of_a_module_container_keeps_rejecting(self):
         # BOUNDARY: binding the read to a local is an ALIAS decl, whose gate

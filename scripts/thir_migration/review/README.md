@@ -22,6 +22,30 @@ Scripts (run from the repo root with `uv run python`):
   routing claim.
 - `shapes_unit.py` -- body-shape coverage of the routing unit programs
   (`tpyc/thir/shape.py` survives the deletion, so this still runs).
+- `reprobe.py OUT_DIR` -- **the queue's re-measurement.** Runs every
+  BREAKS probe through the front end on the current tree and classifies it
+  (REJECTS with the live tag / COMPILES / FRONTEND_ERROR / CRASH), joined
+  with its bin row into `OUT_DIR/results.json`. Run it before choosing a
+  batch; the bins are a one-time binning and rows close as arms land. Its
+  output is not committed (40 seconds to regenerate); the figures below are
+  the 2026-09-03 run.
+- **The render oracle.** The deleted AST body emitter still exists at
+  commit `e5e9274af` (an ancestor of master: the flip commit, where THIR
+  authors by default and the AST is the fallback). `git worktree add
+  <path> e5e9274af`, then `uv run tpy --dump-code file.py` THERE renders a
+  rejecting body through the old emitter. A new lowering arm falls in one
+  of four classes against it: (1) byte mirror -- the default, diff the
+  comment-stripped `.cpp`/`.hpp` of every new case against the oracle
+  before review; (2) the oracle render is ill-formed or dangling -- keep a
+  located reject and file the shape in BUGS.md, never mirror it; (3) no
+  oracle -- the AST crashed on the shape, so the exec run, CPython parity
+  and the unit pins are the only check, and a sink matrix (local / return
+  / field / method-arg / container element) is mandatory for a value-form
+  row; (4) a valid oracle render deliberately changed -- say so in the
+  commit and the case. Name the shared tables and predicates a row must
+  reuse in the implementer brief (the op->dunder table, the runtime-view
+  predicate, the registry's conversion spellings): parallel implementers
+  otherwise grow private copies.
 - `probe_fallback.py`, `probe_site.py`, `probe_programs.py` -- **RETIRED.**
   Each emitted one program through both codegen paths and compared the
   outcomes, so all three stopped working when the AST body emitters were
@@ -46,4 +70,9 @@ Data:
 - `p2_*.json` -- the seven phase 2 layer reviews' findings.
 - `test_claims.json`, `program_verdicts.json` -- the phase 3 instruments'
   outputs.
+- Re-probe of 2026-09-03 (master `da1a92ee15`, before batch 1): of the 402
+  BREAKS rows 388 still reject (260 distinct live tags, 252 of the 299
+  tag x site groups are size one), 12 compile (ten `_lower_truthy` sites,
+  `expressions.py:10634`, `match.py:1191`), 2 have no probe, none crash or
+  fail in the front end.
 - `BRIEF_*.md` -- the briefs the review agents worked from.

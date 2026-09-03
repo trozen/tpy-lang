@@ -1055,6 +1055,15 @@ THIR_FACES: frozenset[str] = frozenset({
     # evaluated for its raise; statement lowering).
     "expr_stmt.name",               # a bare NAME statement (`x`) -> `x;`
     "expr_stmt.record_binop",
+    # A DISCARDED operator / ternary / field read in statement position
+    # (`n + 1;`, `-n;`, `0 < n < 5;`, `p.x;`) -> the expression render + `;`.
+    "expr_stmt.value_discard",
+    # `xs[i] = None` into a pointer-repr Optional[F1-record] element slot
+    # -> the STORAGE `std::nullopt`.
+    "setitem.optional_none",
+    # A scalar source into a value-repr Optional[scalar] element slot
+    # (`xs[0] = 5` on `list[Int32 | None]`) -> the bare scalar.
+    "setitem.optval_scalar",
     # Owned-BYTES element read off a list[bytes]/dict-value container
     # (lowering; STORAGE form -- owned sinks copy implicitly, view bindings
     # / span args convert implicitly, so every admitted sink lands it bare).
@@ -1165,6 +1174,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # skip-only dels stay on the no-code THIRNoOpStmt face).
     "stmt.del_var_sink",
     "stmt.del_item_multi",          # multi-target del: one __delitem__ line per target
+    "stmt.del_attr_multi",          # multi-target del: one __delattr__ line per target
     # Rebound container-literal local (lowering; the F2d two-slot machinery
     # with a container-literal init/reseat -- `std::vector<T>* xs = &__slot_1;
     # ... xs = &*(__slot_2 = {...});`).
@@ -1911,6 +1921,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.copy_record_ptr",
     # `copy(s)` of a str NAME -> `std::string(s)` (the explicit owned copy).
     "call.copy_str",
+    # ... the non-owned-str half of that row: a VIEW-resolved str source or
+    # the bytes family, spelled at the family's owned type.
+    "call.copy_viewfam",
+    # ... and the correction inside it: an owned-resolved bytes source that
+    # RENDERS as a span (a `bytes` param) -> `::tpy::bytes_copy(b)`, since
+    # the owned vector has no span ctor.
+    "call.copy_bytes_view_source",
     # `copy(big)` of a scalar NAME -> `::tpy::BigInt(big)` (the same
     # type-blind general tail; scalars are value types).
     "call.copy_scalar",
@@ -2537,6 +2554,17 @@ THIR_FACES: frozenset[str] = frozenset({
     "subscript.call_recv",          # container-returning CALL receiver ->
                                     # the checked dunder over the inline
                                     # call render (READ-only)
+    "binop.value_select_bytes",     # bytes-family and/or result -- the str
+                                    # row's twin (.empty() truthiness, the
+                                    # view-vs-owned form split)
+    "binop.value_select_span",      # Span[T] and/or result: a value view
+                                    # copied like a scalar (__len__ test)
+    "binop.record_dunder_operand",  # record compared against a NON-record
+                                    # operand its own dunder declares
+                                    # (`__eq__(self, other: str)`)
+    "subscript.ternary_recv",       # container TERNARY receiver of bare
+                                    # NAME arms -- the call row's sibling
+                                    # (READ-only, lvalue arms only)
     "subscript.borrow_tuple_elem",
     # An OPEN value-tuple container element at a borrow-bind position
     # (`copy(src[0])` on `list[tuple[T, int]]`): the same bare read.
@@ -2756,8 +2784,11 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.union_alias",            # `auto& __case_i = [*]std::get<idx>(...)`
     "match.union_none_arm",         # `case None:` -> the monostate index
     "match.union_default",          # wildcard/capture -> `default:` in place
-    "match.or_wildcard_default",    # or-group holding a wildcard/capture ->
-                                    # the same `default:` block
+    "match.or_wildcard_default",    # `case 1 | _:` -- an or-group holding a
+                                    # wildcard/capture IS the always-match arm
+                                    # (the union/switch `default:` block, the
+                                    # chain's `} else {`, the str tier's
+                                    # trailing arm)
     "match.guarded_union",          # per-index guard groups + goto end (M4b)
     "match.if_elif_record",         # record-subject unguarded chain
     "match.guarded_record",         # record standalone-if + goto tier
@@ -2821,6 +2852,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "match.str_guard_prefix",       # guarded literal arm before the switch
     "match.str_trailing_arm",       # wildcard/capture arm after the switch
     "match.wildcard_default",       # `case _:` -> the `default:` block
+    "match.bind_as_capture",        # `case x as y:` -> two binding lines
     "match.synthetic_default",      # non-exhaustive: `default: break;`
     "match.unreachable_tail",       # exhaustive + terminating arms tail
     "match.hoist_decl",             # sema-hoisted plain-value predecls

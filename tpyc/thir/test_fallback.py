@@ -972,7 +972,7 @@ def test_expr_stmt_lowering_reject_falls_back_at_sync_boundary():
     compiler, modules = _compile(
         "from tpy import Int32\n"
         "def rejected(n: Int32) -> Int32:\n"
-        "    n + 1\n"
+        "    (n, n)\n"
         "    return n\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
@@ -988,7 +988,7 @@ def test_expr_stmt_lowering_reject_falls_back_at_sync_boundary():
             else:
                 routed.append(fn.name)
     assert _tally(compiler).get(
-        "body:stmt.expr_stmt:expr_stmt.bin_op") == 1
+        "body:stmt.expr_stmt:expr_stmt.tuple_literal") == 1
     assert "clean" in routed
 
 
@@ -1128,18 +1128,15 @@ def test_del_attr_routes_at_sync_boundary():
     assert _tally(compiler) == {}
 
 
-def test_del_attr_multi_target_falls_back():
+def test_del_attr_multi_target_routes_at_sync_boundary():
     compiler, entry, f = _fn_body(
         _DELATTR_RECORD + "def drop(b: Bag) -> None:\n    del b.x, b.y\n",
         "drop")
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
-        if fn is None:
-            _record_reject("body")
-    assert fn is None
-    assert _tally(compiler) == {
-        "body:stmt.del_attr:del_attr.multi_target": 1}
+    assert fn is not None
+    assert _tally(compiler) == {}
 
 
 def test_del_attr_unresolved_falls_back():
@@ -1149,6 +1146,23 @@ def test_del_attr_unresolved_falls_back():
         _DELATTR_RECORD + "def drop(b: Bag) -> None:\n    del b.x\n",
         "drop")
     f.body[0].targets[0].dyn_delattr_call = None
+    with activate_compiler(compiler):
+        begin_attempt()
+        fn = lower_function(f, entry.analyzer, self_type=None)
+        if fn is None:
+            _record_reject("body")
+    assert fn is None
+    assert _tally(compiler) == {
+        "body:stmt.del_attr:del_attr.unresolved": 1}
+
+
+def test_del_attr_multi_target_unresolved_falls_back():
+    # The multi-target twin: the per-target guard has to hold for the
+    # SECOND target too, not just the one the single-target arm sees.
+    compiler, entry, f = _fn_body(
+        _DELATTR_RECORD + "def drop(b: Bag) -> None:\n    del b.x, b.y\n",
+        "drop")
+    f.body[0].targets[1].dyn_delattr_call = None
     with activate_compiler(compiler):
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)

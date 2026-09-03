@@ -808,7 +808,7 @@ class ClangReplBackend(REPLBackend):
             if stripped in ("static bool initialized = false;",
                             "if (initialized) return;",
                             "initialized = true;",
-                            "return 0;", "0;", ""):
+                            "return 0;", "0;", "(void)(0);", ""):
                 continue
             if stripped:
                 body_lines.append(stripped)

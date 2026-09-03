@@ -219,6 +219,25 @@ Shapes a user writes without thinking, all confirmed to fall back today:
   twenty unrelated argument shapes and will dominate any post-cutover
   error report; its message is a tag, not a diagnostic
 
+**Re-probed 2026-09-03 at master `da1a92ee15`, the post-deletion tree**
+(`scripts/thir_migration/review/reprobe.py`; its output is not committed,
+the script re-runs in under a minute): 388 of the 402 BREAKS rows still rejected, 12
+compiled, none crashed. Of the everyday shapes above, the truthiness family
+(all five spellings), the plain `print` keyword forms (`end=` / `sep=` /
+`flush=` with literal values; `**kw` and a computed `sep=` still reject),
+`with` inside an `if`, multi-target `del` on subscripts, the free-call
+ternary argument and the plain module-scope `list[str]` global compiled at
+that tree; the bins behind the `del` / `with` / global / `print` lines still
+reject at their own narrower spellings. The first step-6 batch (same day)
+then closed the three `match` rows (on the scalar, chain, str-switch and poly
+tiers; `case x as y` still rejects on the record / union / optional-record
+tiers, `BUGS.md#match-as-capture-composite-tiers`), `(a if c else b)[0]`, `a or b` on
+bytes / `Span` / `bytearray`, both Optional-element setitem rows, the bare
+`n + 1` statement, nested `def` with container params, `del a.x, b.y` and
+the non-literal `__setattr__` value. The queue is flat: 260 distinct live
+tags over the 388 rows, so batches are chosen by user-facing frequency,
+not by count; re-run the script before choosing one.
+
 Sites whose comments call them unreachable but are live: `match.py:1873`,
 `2429`, `1994`; `statements.py:4146`; the "defensive" rvalue-plus-hoist
 leg of the record match tier. Many DEAD sites are dead only because an

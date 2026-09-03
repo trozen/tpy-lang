@@ -3,10 +3,11 @@
 The REPL appends `0` to every compile so that `main()` is always emitted
 (typed module-level declarations become globals, not `main()` body), so this
 statement shape is on the path of every REPL line. Discarding a literal has
-nothing to sequence, so the render is the literal plus `;` -- an expression
-statement's ordinary shape, which is why the arm sits beside the call and
-subscript discards rather than skipping the statement the way a docstring is
-skipped.
+nothing to sequence, so the render is the literal cast to void -- an
+expression statement's ordinary shape, which is why the arm sits beside the
+call and subscript discards rather than skipping the statement the way a
+docstring is skipped. The cast is load-bearing: a bare `0;` is what GCC's
+`-Wunused-value` rejects under `-Werror`, which the suite builds with.
 """
 
 from __future__ import annotations
@@ -31,11 +32,11 @@ class TestBareIntLiteralStatement:
         assert reasons == [], reasons
         assert thir is not None
 
-    def test_renders_the_literal_and_a_semicolon(self):
+    def test_renders_the_literal_cast_to_void(self):
         hpp, cpp = _assert_routes_byte_identical(_SRC, comments=False)
         out = hpp + cpp
-        assert "\n    7;\n" in out
-        assert "\n    0;\n" in out
+        assert "\n    (void)(7);\n" in out
+        assert "\n    (void)(0);\n" in out
 
     def test_bare_name_statement_routes_on_its_own_row(self):
         # The NEIGHBOURING row, not a boundary: a discarded NAME reads
@@ -52,7 +53,7 @@ class TestBareIntLiteralStatement:
         _ctx, fell = _thir_ctx(src)
         assert fell == [], fell
         cpp = _assert_routes_byte_identical(src, comments=False)[1]
-        assert "\n    x;\n" in cpp
+        assert "\n    (void)(x);\n" in cpp
 
     def test_bare_float_literal_statement_keeps_rejecting(self):
         # BOUNDARY: the neighbouring literal kind. It is not needed by any

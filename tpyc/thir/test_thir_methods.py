@@ -3872,15 +3872,16 @@ class TestRecordTemplateMethodCall:
         assert "return (!(((*this)) == (other)));" in hpp + cpp
         assert "return (b) != (s);" in hpp + cpp
 
-    def test_operator_spelling_of_the_same_dunder_rejects(self):
-        # The `t == s` spelling of the routed `t.__eq__(s)` call is a
-        # SEPARATE, still-unrouted row. Pinned here so the pair is visible in
-        # one place -- no corpus case can carry the operator form while it is
-        # refused.
+    def test_operator_spelling_of_the_same_dunder_agrees(self):
+        # The `b != s` spelling of the routed `b.__ne__(s)` call: the two
+        # spellings of one method must render the same operator, which is
+        # why the pair is pinned in one place.
         src = (self.SRC.replace("    return b.__ne__(s)\n",
                                 "    return b != s\n"))
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:binop.shape.!=.record")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("binop.record_dunder_operand", 0) >= 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "return ((b) != (s));" in hpp + cpp
 
     def test_str_literal_arg_keeps_rejecting(self):
         # BOUNDARY: NAME args only. A str literal at a template slot raises

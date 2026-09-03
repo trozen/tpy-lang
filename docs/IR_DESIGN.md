@@ -465,7 +465,7 @@ THIRAugAssign
   resolved_inplace: ResolvedFunction | None  # __iadd__ etc. overload
 
 THIRDelItem
-  target: THIRExpr                     # subscript expression (del obj[key])
+  calls: tuple[THIRExpr, ...]          # one __delitem__ / __delattr__ call per target, in source order (del d[k], o.x)
 
 THIRForEach
   var: str

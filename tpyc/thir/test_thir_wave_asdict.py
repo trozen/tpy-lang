@@ -1301,7 +1301,7 @@ class TestOptvalElemCopySetitem:
     """A same-element-type whole-optional ELEMENT read at a value-opt setitem
     slot passes bare (`items[i] = items[0]` -> `__setitem__(items, i,
     __getitem__(items, 0))` -- the optional element copies whole); a
-    SCALAR value source keeps rejecting (its wrap is unwitnessed)."""
+    SCALAR value source stores bare on its own row."""
 
     def test_optval_elem_copy_routes(self):
         src = ("from tpy import Int32\n"
@@ -1321,7 +1321,9 @@ class TestOptvalElemCopySetitem:
         assert "::tpy::__setitem__(items, i, ::tpy::__getitem__(items, 0))" \
             in cpp
 
-    def test_scalar_value_source_stays_ast(self):
+    def test_scalar_value_source_stores_bare(self):
+        # The scalar source now rides its own row (setitem.optval_scalar):
+        # the value renders bare and std::optional wraps it.
         src = ("from tpy import Int32\n"
                "def f(items: list[Int32 | None], n: Int32) -> None:\n"
                "    items[0] = n\n"
@@ -1330,8 +1332,8 @@ class TestOptvalElemCopySetitem:
                "    f(xs, 5)\n"
                "    print(len(xs))\n"
                "main()\n")
-        fallback = _reject_tally(src)
-        assert fallback, "expected the scalar source to fall back"
+        w = _assert_identical(src)
+        assert w.get("setitem.optval_scalar", 0) >= 1
 
     def test_downstream_peephole_rides_the_retype(self):
         # The persisted fact: after the assert the subject's declared

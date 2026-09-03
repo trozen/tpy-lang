@@ -64,10 +64,15 @@ class TestBareNameStatement:
         assert faces["expr_stmt.name"] == 1
 
     def test_renders_the_discarded_read(self):
+        # Cast to void: a bare `x;` is a -Wunused-value diagnostic, which is
+        # an error under the suite's warning set.
         cpp = _assert_routes_byte_identical(_BARE_NAME_SRC, comments=False)[1]
-        assert "\n    x;\n" in cpp
+        assert "\n    (void)(x);\n" in cpp
 
-    def test_bare_field_read_statement_keeps_rejecting(self):
+    def test_bare_field_read_statement_routes_on_the_value_discard_row(self):
+        # The NEIGHBOURING row: a discarded FIELD read carries its own face
+        # (shared with the operator/ternary discards), not the name one,
+        # though both take the void cast.
         src = ("from tpy import Int32\n"
                "class Holder:\n"
                "    n: Int32\n"
@@ -79,8 +84,11 @@ class TestBareNameStatement:
                "def main() -> None:\n"
                "    f(Holder())\n"
                "main()\n")
-        _assert_rejects_at(_reject_tally(src), "body:stmt.expr_stmt",
-                           shape="expr_stmt.field_access")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces["expr_stmt.value_discard"] == 1
+        cpp = _assert_routes_byte_identical(src, comments=False)[1]
+        assert "\n    (void)(h.n);\n" in cpp
 
 
 class TestDunderRecordArg:
