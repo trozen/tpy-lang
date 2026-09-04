@@ -3,12 +3,11 @@
 The `T&`-returning call binds a plain record ref slot directly -- no temp,
 no copy -- exactly as it does at a marker callee's slot, so both families
 decide the shape in one cell. An OWN-returning call at the same slot is a
-prvalue the AST hoists through a temp and keeps rejecting.
+prvalue, which the const ref binds inline for the full expression -- the
+method arg loop has no ref-param temp arm to hoist it through.
 """
 
 from .testutil import (
-    _reject_tally,
-    _assert_rejects_at,
     _assert_routes_byte_identical,
     _compile,
     _entry,
@@ -52,7 +51,7 @@ class TestBorrowRetRecordCallAtMethodSlot:
         assert witnesses.get("arg.record_borrow_ret_marker", 0) >= 1, witnesses
 
 
-class TestOwnReturningCallAtSameSlotKeepsRejecting:
+class TestOwnReturningCallAtSameSlotBindsInline:
     SRC = (
         _PRE +
         "class Factory:\n"
@@ -65,5 +64,6 @@ class TestOwnReturningCallAtSameSlotKeepsRejecting:
         "main()\n"
     )
 
-    def test_rejects_at_the_arg_shape(self):
-        _assert_rejects_at(_reject_tally(self.SRC), 'body:stmt.expr_stmt', shape='method.arg_shape')
+    def test_binds_the_prvalue_inline(self):
+        _hpp, cpp = _assert_routes_byte_identical(self.SRC)
+        assert "s.absorb(f.make())" in cpp

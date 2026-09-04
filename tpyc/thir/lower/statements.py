@@ -260,6 +260,7 @@ from .predicates import (
     _call_iterable_lvalue,
     _post_if_narrow_plan,
     _const_exact_field_receiver_ok,
+    _container_elem_lvalue_subscript,
     _storage_tuple_alias_src_ok,
     _opt_view_arg_shim,
     _own_declared_call_ret,
@@ -285,6 +286,7 @@ from .predicates import (
     _container_rvalue_select,
     _native_iter_value_slot,
     _own_record_tuple,
+    _owned_container_slot,
     _open_t_tuple_slot,
     _tuple_has_own_element,
     _tuple_local_ptr_elem_subscript,
@@ -342,6 +344,7 @@ from .predicates import (
     _own_storage_opt_param,
     _nullable_static_protocol_param,
     _ptr_opt_borrow_call_ret,
+    _ptr_value_field_recv_ok,
     _resolve_plain_alias,
     _storage_optional_return_wide,
     _optional_ptr_borrow_name,
@@ -530,6 +533,7 @@ from .expressions import (
     _lower_tuple_literal,
     _rb_operand_slots,
     _retag_bytes_literal_view,
+    _lower_slice_bound,
     _slice_bound_supported,
     _slot_literal_retype,
     _value_opt_scalar_binding,
@@ -880,7 +884,8 @@ def _lower_range_arg(arg: TpyExpr, et: TpyType, lc: _LowerCtx,
             return _slot_literal_retype(lit, et, lc)
     return _slot_literal_retype(_lower_expr(arg, lc, declared), et, lc)
 
-def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType]) -> str | None:
+def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType],
+                     analyzer) -> str | None:
     # Classify a 3-arg range's step into a counter-loop arm, or None when the
     # step is not lowered here. Conservative slice over the fixed-int subset
     # the emitter renders:
@@ -888,12 +893,14 @@ def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType]) -> str | N
     #     (`Int32(2)` -- folded like _extract_int_literal) -> plus_one (+1) /
     #     unit_neg (-1) / literal_pos / literal_neg; a zero step is rejected
     #     (a zero step takes the Range ctor, not this counter loop).
-    #   * a bare fixed-int name -> variable (captured into `__step_N`).
+    #   * any other fixed-int-typed expression -> variable (captured once into
+    #     `__step_N`, which is what makes an arbitrary expression safe here:
+    #     Python reads range()'s step at call time and the C++ head would
+    #     otherwise re-evaluate it every iteration).
     # A ctor-literal step (`Int32(2)`) folds like a bound: the fold yields
     # the same bare token as a plain literal, so the stepped arms' overflow
     # helpers receive an identical render (pinned by the ctor-literal-step
-    # unit and the corpus exec run). Binop/call steps are not admitted, for
-    # the same net-confidence reason as the bound slice.
+    # unit and the corpus exec run).
     lit = _range_bound_literal_value(step_arg)
     if lit is not None:
         # A wide literal step is deferred: the stepped arms thread the step
@@ -910,6 +917,12 @@ def _range_step_kind(step_arg: TpyExpr, declared: dict[str, TpyType]) -> str | N
             return "unit_neg"
         return "literal_pos" if lit > 0 else "literal_neg"
     if isinstance(step_arg, TpyName) and is_fixed_int_type(declared.get(step_arg.name)):
+        return "variable"
+    st = analyzer.get_expr_type(step_arg)
+    if st is None:
+        return None
+    stu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
+    if is_fixed_int_type(stu) or _runtime_bigint(stu, analyzer):
         return "variable"
     return None
 
@@ -1012,6 +1025,9 @@ class _ForEachRoute:
     # plain lvalue capture (`auto& __obj_N = oi;`), consuming `auto&&` elem
     # binding, no wrap.
     consuming_name: bool = False
+    # A 3-arg range whose `variable` step is a computed expression rather than
+    # a bare name -- witnessed apart so the name leg cannot stand in for it.
+    step_expr_computed: bool = False
 
 
 def _for_range_route(stmt: TpyForEach, analyzer,
@@ -1020,10 +1036,10 @@ def _for_range_route(stmt: TpyForEach, analyzer,
                      = frozenset()) -> '_ForEachRoute | None':
     # `for v in range(stop | start, stop [, step])` over a fixed-int or runtime-
     # BigInt counter (loop var not used after the loop). The shared shape guards
-    # exclude the other richer for-shapes. A 3-arg stepped range is admitted only
-    # for a fixed-int counter with a slice-eligible step (see _range_step_kind);
-    # the BigInt-counter stepped emit (a `__step_N` temp even for a literal, no
-    # overflow check) is not lowered.
+    # exclude the other richer for-shapes. A 3-arg stepped range needs a
+    # slice-eligible step (see _range_step_kind); both counter widths share the
+    # `__step_N` capture, and only the upfront overflow check is fixed-int-only
+    # (an arbitrary-precision counter cannot overflow).
     it = stmt.iterable
     if not _is_range_call(it) or not _for_loop_shape_ok(
             stmt, analyzer, declared, allow_hoist=True,
@@ -1044,20 +1060,16 @@ def _for_range_route(stmt: TpyForEach, analyzer,
     nargs = len(it.args)
     step_kind = "plus_one"
     if nargs == 3:
-        step_kind = _range_step_kind(it.args[2], declared)
+        step_kind = _range_step_kind(it.args[2], declared, analyzer)
         if step_kind is None:
-            return None
-        # A BigInt counter admits LITERAL step kinds only: the emit renders
-        # a `__step_N` temp with no overflow check (fixed-int only). The
-        # `variable` kind's nonzero-check + ternary render is unwitnessed
-        # for BigInt, so the route declines.
-        if not is_fixed_int_type(et) and step_kind == "variable":
             return None
     lowered_et = resolve_int_literals(
         et, analyzer.ctx.default_int_for_literal)
     return _ForEachRoute(
         route="range", elem_type=lowered_et, step_kind=step_kind,
-        bigint_counter=bigint_counter)
+        bigint_counter=bigint_counter,
+        step_expr_computed=(step_kind == "variable"
+                            and not isinstance(it.args[2], TpyName)))
 
 def _resolved_loop_elem_type(stmt: TpyForEach, analyzer) -> 'TpyType | None':
     # resolve_int_literals: a literal-seeded container's elem_type is still
@@ -1298,7 +1310,13 @@ def _for_each_container_route(
         it_type = unwrap_readonly(unwrap_send_sync(ret))
         iterable_lvalue = True
     elif isinstance(it, TpyFieldAccess):
-        if not _field_receiver_ok(it, declared, analyzer):
+        if not (_field_receiver_ok(it, declared, analyzer)
+                # A container member reached THROUGH a Ptr binding
+                # (`for seg in subsector.segs:` on `subsector:
+                # Ptr[SubSector]`): the field's own pointer arm renders the
+                # `deref_check(subsector).segs` hop, and the lvalue capture
+                # binds to it exactly as to a plain member read.
+                or _ptr_value_field_recv_ok(it, declared, analyzer)):
             # A module-attr GLOBAL iterable is a user record in every
             # witnessed shape, so it rides the user-iterator route's own
             # module-var leg -- no admission here (a native-container
@@ -1613,6 +1631,26 @@ def _for_tuple_unpack_route(
         if len(elem.element_types) != len(up.targets):
             return None  # defensive: sema errors on arity mismatch
         iterable_lvalue = True
+    elif isinstance(it, TpyArrayLiteral):
+        # A list-LITERAL iterable (`for name, n in [("a", 1), ("b", 2)]:`):
+        # the same target-less rvalue capture (`auto __obj_N = {..};`) the
+        # single-var route takes, only the head unpack differs.
+        rt = analyzer.get_expr_type(it)
+        it_type = resolve_pending_container(rt, analyzer) or rt
+        if it_type is None:
+            return None
+        it_type = unwrap_readonly(unwrap_send_sync(it_type))
+        # No `allow_record` here (unlike the lvalue legs): the literal captures
+        # as a CONST `initializer_list` element, so an is_ref target's
+        # tuple_to_pointer lift would take the address of a const element and
+        # fail to compile. Value elements keep routing.
+        if not _container_scalar_tuple_iter(it_type, analyzer,
+                                            allow_storage_opt=True):
+            return None
+        elem = unwrap_readonly(it_type.type_args[0])
+        if len(elem.element_types) != len(up.targets):
+            return None  # defensive: sema errors on arity mismatch
+        iterable_lvalue = False
     else:
         return None
     if not is_native_iterable(it_type, analyzer.registry):
@@ -2281,7 +2319,10 @@ def _standalone_unpack_target_binds(
                 continue
             if not (_f1_record(tt, analyzer)
                     or isinstance(unwrap_readonly(tt),
-                                  RecursiveAliasInstanceType)):
+                                  RecursiveAliasInstanceType)
+                    # An owned CONTAINER element drains the same way
+                    # (`std::vector<double> a = std::move(std::get<i>(..));`).
+                    or _owned_container_slot(tt)):
                 return None
             out.append((tt, "move"))
             continue
@@ -3939,7 +3980,15 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
             # lvalue NAME (a container member -- `v: int | set[int] = s`)
             # falls through to the UNION_ADDR arm below: the address bind
             # is member-shape-blind (`v{&(s)}`).
-            if (_eligible_scalar(it_u) and isinstance(init, TpyCall)
+            # An OWNED-buffer member (`bytes`/`str`) rides the same branch:
+            # its variant member spells the owned type, so the slot copies
+            # whatever the call hands back and nothing borrows the callee's
+            # temporary. A METHOD call is the same rvalue (`s.encode()`).
+            # View members (StrView / BytesView / Span) stay out -- their
+            # slot would hold a view of the dead temporary.
+            if ((_eligible_scalar(it_u) or is_str_type(it_u)
+                 or is_bytes_type(it_u))
+                    and isinstance(init, (TpyCall, TpyMethodCall))
                     and is_rvalue_source(analyzer, init)):
                 scalar_member = True
             elif not (isinstance(init, TpyName)
@@ -6054,9 +6103,9 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
         receiver=recv,
         native_name=sub.slice_function_info.native_name,
         value=value,
-        lower=_lower_expr(sl.lower, lc, declared) if sl.lower is not None else None,
-        upper=_lower_expr(sl.upper, lc, declared) if sl.upper is not None else None,
-        step=_lower_expr(sl.step, lc, declared) if sl.step is not None else None,
+        lower=_lower_slice_bound(sl.lower, lc, declared, loc),
+        upper=_lower_slice_bound(sl.upper, lc, declared, loc),
+        step=_lower_slice_bound(sl.step, lc, declared, loc),
         stepped=sub.is_stepped_slice,
         value_vector_cpp=value_vector_cpp,
         loc=loc,
@@ -12280,10 +12329,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             and stmt.value.name in declared
             and _wrapper_union_like(declared[stmt.value.name], analyzer)
             == lc.prescan.ret_own_wrapper)
+        # A REASSIGNED container local is a rebind-slot pointer, so the
+        # owning-container return reads it through the same deref+move arm
+        # (`return std::move((*best));`). Both the init slot and every
+        # rebind slot are function locals, so the move cannot outlive them.
+        _cont_ptr_local = False
+        if (lc.prescan.ret_container_storage is not None
+                and isinstance(stmt.value, TpyName)
+                and stmt.value.name in declared):
+            _cpl_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                declared[stmt.value.name])))
+            if isinstance(_cpl_t, OwnType):
+                _cpl_t = unwrap_readonly(_cpl_t.wrapped)
+            _cont_ptr_local = bool(is_list(_cpl_t) or is_dict(_cpl_t)
+                                   or is_set(_cpl_t))
         if (isinstance(stmt.value, TpyName)
                 and stmt.value.name in lc.pointers
                 and stmt.value.name not in narrowed
                 and (_ow_ptr_local
+                     or (_cont_ptr_local
+                         and _witness("ret.container_ptr_local"))
                      or ((lc.prescan.ret_record_borrow is not None
                           or lc.prescan.ret_record_storage is not None)
                          and (_optional_ptr_borrow_name(
@@ -12390,6 +12455,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 ft = unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(analyzer.get_expr_type(source))))
                 cb_ok = bool(ft == cb and _witness("ret.container_borrow"))
+            elif _container_elem_lvalue_subscript(source, declared, analyzer):
+                # `return self.rows[i]` -- a nested container's ELEMENT
+                # lvalue at the borrow slot: `::tpy::__getitem__(this->rows,
+                # i)` already IS the `T&` the slot binds, the same bare
+                # passthrough the record-borrow return's subscript arm takes.
+                et = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(analyzer.get_expr_type(source))))
+                cb_ok = bool(et == cb and _witness("ret.container_borrow_elem"))
             if (not cb_ok
                     and isinstance(source, (TpyCall, TpyMethodCall))
                     and source.resolved_function_info is not None
@@ -12425,8 +12498,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         unwrap_send_sync(declared[source.name])))
                     if isinstance(dt, OwnType):
                         dt = unwrap_readonly(dt.wrapped)
+                    # bytearray rides the same NRVO name render as the
+                    # list/dict/set slots -- the storage-return slot admits
+                    # it, so the source arm must too.
                     container_ok = bool(
-                        (is_list(dt) or is_dict(dt) or is_set(dt))
+                        (is_list(dt) or is_dict(dt) or is_set(dt)
+                         or is_bytearray_type(dt))
                         and _witness("ret.container_name"))
             elif isinstance(source, (TpyArrayLiteral, TpyDictLiteral,
                                      TpySetLiteral)):
@@ -12453,6 +12530,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         source, lc, declared,
                         target_type=lc.prescan.ret_container_storage),
                     loc=loc)
+            elif isinstance(source, TpyBinOp) and is_rvalue_source(
+                    analyzer, source):
+                # A container OPERATOR rvalue (`return a + b`, `a | b`,
+                # `a & b`, `a - b`, `a ^ b`): the builtin operator builds a
+                # fresh container and returns it by value, so the slot takes
+                # the operator's own render bare -- the same passthrough the
+                # rvalue method-call leg takes. `is_rvalue_source` is the
+                # discriminator: a borrow-returning user dunder aliases an
+                # operand and stays out. The type guard keeps a result that
+                # is not the returned container off the bare leg.
+                _bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(source))))
+                if isinstance(_bt, OwnType):
+                    _bt = unwrap_readonly(_bt.wrapped)
+                container_ok = bool(
+                    _bt == lc.prescan.ret_container_storage
+                    and _witness("ret.container_binop"))
             elif type(source) in _comprehensions._COMP_KINDS:
                 # A comprehension source renders the same position-independent
                 # stmt-expr as the decl-init arm, target-typed by the storage
@@ -14521,7 +14615,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             step = None
             step_kind = route.step_kind
             if nargs == 3:
-                _witness(f"range.step_{step_kind}")
+                _witness("range.step_variable_expr"
+                         if route.step_expr_computed
+                         else f"range.step_{step_kind}")
                 # The unit-step arms (plus_one / unit_neg) reference no step expr;
                 # the other three render it (retype is a no-op for the fixed-int
                 # counter this arm requires).

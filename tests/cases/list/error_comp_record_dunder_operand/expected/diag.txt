@@ -1,0 +1,1 @@
+main.py:22: error: in function 'a': this construct is not yet supported by C++ code generation (expr.list_comp)

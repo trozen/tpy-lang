@@ -15,6 +15,7 @@ from ...parse.nodes import (
     TpyGeneratorExpression,
     TpyIntLiteral,
     TpyListComprehension,
+    TpyListRepeat,
     TpyMethodCall,
     TpyName,
     TpySetComprehension,
@@ -987,6 +988,13 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
         value = _lower_checked_container_elem(
             e, vt, lc, body_declared, threaded=True, forced=True,
             allow_nested=True, field_str_ok=True)
+    elif isinstance(e, TpyListRepeat):
+        # A list-REPEAT element (`[[0.0] * n for _ in range(k)]`): the slot is
+        # its materialization target, so the repeat renders self-describing
+        # (`from_range<std::vector<double>>(..)`) and pushes bare like a nested
+        # comprehension does. Without the target it would stay the LAZY
+        # `repeat_range` the annotated slot cannot take.
+        value = _lower_expr(e, lc, body_declared, target_type=vt)
     elif _comp_container_name_elem(e, vt, lc, body_declared):
         # A bare NAME at a container slot (`[xs for i in range(3)]` at
         # `list[list[Int32]]`): the slot init copies the container by value,
@@ -1331,12 +1339,14 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
 
 
 def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
-                      self_receiver) -> str:
+                      self_receiver, module_globals=frozenset()) -> str:
     """The `&local, ` capture prefix for the outer names a genexpr lambda
     reads. Refs come from the element
     (+ filter conditions, + `extra_refs` for the IIFE's iterable refs); keep only
     function locals not shadowed by the comprehension scope; `self` maps to the
-    captured `this`."""
+    captured `this`. Module globals are seeded into `declared` alongside the
+    locals but have static storage duration, so capturing one is ill-formed
+    C++ -- `module_globals` takes them back out."""
     refs = collect_name_refs(element)
     for c in conditions:
         refs |= collect_name_refs(c)
@@ -1348,10 +1358,25 @@ def _genexpr_captures(element, conditions, extra_refs, declared, comp_vars,
     if needs_this:
         parts.append("this")
     parts.extend(f"&{escape_cpp_name(n)}"
-                 for n in sorted((refs & set(declared)) - comp_vars))
+                 for n in sorted((refs & set(declared))
+                                 - comp_vars - set(module_globals)))
     if not parts:
         return ""
     return ", ".join(parts) + ", "
+
+
+def _module_global_names(lc: '_LowerCtx') -> frozenset:
+    """Every module-global name lowering seeded into `declared`. They are
+    namespace-scope objects, so a lambda names them directly instead of
+    capturing them."""
+    return (frozenset(lc.prescan.global_readonly)
+            | frozenset(lc.prescan.global_slots)
+            | frozenset(lc.prescan.global_cpp)
+            | frozenset(lc.prescan.global_write_cpp)
+            # A `global`-declared name and a native-linkage global are
+            # namespace-scope too: capturing either is ill-formed C++.
+            | frozenset(lc.prescan.global_seeded)
+            | frozenset(lc.prescan.native_globals))
 
 
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
@@ -1387,7 +1412,10 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     # lambda's init-capture to name, so the render is ill-formed C++
     # (BUGS.md#genexpr-dict-view-iterator-typedef).
     if not (is_list(it_type) or is_set(it_type) or is_dict(it_type)
-            or is_array(it_type) or is_span(it_type)):
+            or is_array(it_type) or is_span(it_type)
+            # A str source iterates its chars off the same begin/end pair
+            # (`char x = *__beg++;` -- the Char loop-var binding below).
+            or _resolved_str_value(it_type, analyzer) is not None):
         raise ThirUnsupported("genexpr.iterable_shape")
     if not is_native_iterable(it_type, analyzer.registry):
         raise ThirUnsupported("genexpr.iterable_shape")
@@ -1496,9 +1524,10 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
             lc.storage_opt_locals.discard(uname)
     if gen.conditions:
         _witness("genexpr.filter")
+    mod_globals = _module_global_names(lc)
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
-                                       lc.self_receiver)
+                                       lc.self_receiver, mod_globals)
     _witness("genexpr.native_iterable")
     if moved:
         elements = tuple(_lower_container_elem(el, sema_elem, lc, declared)
@@ -1520,7 +1549,7 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         )
     iife_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                       {it.name}, declared, comp_vars,
-                                      lc.self_receiver)
+                                      lc.self_receiver, mod_globals)
     return THIRGenExpr(
         result_type=analyzer.get_expr_type(expr),
         iterable=_lower_expr(it, lc, declared),
@@ -1583,7 +1612,8 @@ def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
         _witness("genexpr.filter")
     inner_captures = _genexpr_captures(expr.element_expr, gen.conditions,
                                        None, declared, comp_vars,
-                                       lc.self_receiver)
+                                       lc.self_receiver,
+                                       _module_global_names(lc))
     var_cpp = escape_cpp_name(gen.var)
     binding_cpp = (f"{counter_cpp} {var_cpp} = __i++;" if len(it.args) <= 2
                    else f"{counter_cpp} {var_cpp} = __i;")

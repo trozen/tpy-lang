@@ -411,6 +411,7 @@ from .predicates import (
     _bytes_field_value_read,
     _str_name_form,
     _storage_call_container,
+    _container_rebind_call_ret,
     _container_storage_return_call_ret,
     _nested_owned_tuple_call_ret,
     _owned_tuple_call_ret,
@@ -593,7 +594,9 @@ from .checks import (
     _container_method_arg_ok,
     _stub_method_ret_ok,
     _native_iterable_iterator_call_arg,
+    _comp_own_container,
     _native_iterable_comp_arg,
+    _stub_comp_target,
     _native_iterable_literal_arg,
     _native_protocol_field_arg,
     _whole_value_opt_field_arg,
@@ -666,6 +669,8 @@ from .checks import (
     _borrow_ret_record_marker_arg,
     _required_protocol_union_slot,
     _union_ctor_temp_arg,
+    _own_record_rvalue_arg,
+    _own_slot_payload,
     _own_tuple_call_rvalue_slot,
     _own_union_call_pass_arg,
     _own_union_storage_name_arg,
@@ -1175,6 +1180,12 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and call_returns_cpp_ref(analyzer, fi)
                   and _nonvalue_container_ret(ret)
                   and _witness("call.container_borrow_ret"))
+              # ... and the OWNING container return at the same bind, the
+              # container twin of the record row above -- the same predicate
+              # the decl-binding admission uses, so gate and render agree.
+              or (result is _ExprResultUse.BORROW_BIND
+                  and _container_rebind_call_ret(e, ret, analyzer)
+                  and _witness("call.container_rebind_ret"))
               # An async-def FACTORY call under the make_adapter wrap: the
               # concrete coro frame is consumed whole by the adapter.
               or (use.coro_factory and fi is not None and fi.is_async)
@@ -2285,6 +2296,32 @@ def _slice_bound_supported(b: 'TpyExpr | None', analyzer) -> bool:
         resolve_int_literals(bt, analyzer.ctx.default_int_for_literal))
 
 
+def _lower_slice_bound(b: 'TpyExpr | None', lc: '_LowerCtx',
+                       declared: dict[str, TpyType], loc) -> 'THIRExpr | None':
+    """One slice BOUND (lower / upper / step), for the READ arm and the
+    slice-ASSIGN arm alike -- `::tpy::Slice` / `::tpy::BasicSlice` take
+    `std::optional<int>` members either way, so a runtime-BigInt bound
+    appends the `.to_fixed_check<int32_t>()` narrow (non-literal only -- the
+    gate rejects literal BigInt bounds, whose render is ill-formed). The
+    BigInt test keys on the DECLARED type, like `is_runtime_bigint`.
+    A composite over a retro-widened local has no mirrored render, so it
+    rejects; the enclosing statement composes the tag."""
+    if b is None:
+        return None
+    analyzer = lc.analyzer
+    key = _narrow_key_type(b, declared, analyzer)
+    if key is _NARROW_UNMIRRORED:
+        note_detail("slice.bound_widened_local")
+        raise ThirUnsupported("expr.subscript", detail=True)
+    lowered = _lower_expr(b, lc, declared)
+    if not _runtime_bigint(key, analyzer):
+        return lowered
+    _witness("narrow.slice_bound")
+    return THIRCoerce(result_type=INT32, expr=lowered,
+                      coercion_name=_BIGINT_NARROW,
+                      wrap="{0}.to_fixed_check<int32_t>()", loc=loc)
+
+
 def _str_slice_receiver_supported(
         recv: TpyExpr, lc: '_LowerCtx',
         declared: dict[str, TpyType]) -> bool:
@@ -2592,6 +2629,14 @@ def _name_recv_is_arrow(obj: TpyExpr, lc: '_LowerCtx') -> bool:
             and (_ptr_read_derefs(obj.name, lc)
                  or (obj.name == lc.self_receiver and lc.self_is_pointer
                      and obj.name not in lc.narrow.spelled)))
+
+
+def _ptr_recv_access(ptr_non_null: bool) -> 'tuple[bool, bool]':
+    """The `(is_arrow, deref_check)` pair for an explicit `Ptr[record]`
+    receiver: `recv->member` where sema proved the pointer non-null,
+    `::tpy::deref_check(recv).member` otherwise. One helper so the arrow and
+    the check stay each other's complement at every Ptr receiver."""
+    return ptr_non_null, not ptr_non_null
 
 
 def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
@@ -3307,6 +3352,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     # The mixed-sign fixed-int compare's `::std::cmp_*` spelling, set in
     # the compare gate for the target-less non-literal slice.
     mixed_cmp_tpl: 'str | None' = None
+    # This is the CONTAINER-result native dunder leg (list concat / the set
+    # operators), whose operands render inline inside the dunder template.
+    # Set in the gate, consumed by the operand render below.
+    container_native_binop = False
     if e.op in _ARITH_OPS or e.op in _BITWISE_OPS:
         if rb is None or not getattr(rb.method, "cpp_template", None):
             # A structural-protocol operand pair (`result = a + b` in a
@@ -3396,6 +3445,13 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                         unwrap_send_sync(t))) if t is not None else None)
                     if not (is_list(tu) or is_set(tu)):
                         return False
+                    # A COMPREHENSION operand (`[2] + [el for el in xs if
+                    # el]`): the stmt-expr renders inline inside the dunder
+                    # template, target-typed by the comprehension's own
+                    # container -- the same inline shape the native call
+                    # slot takes, and like the call row it needs no temp.
+                    if _comp_own_container(side, analyzer) is not None:
+                        return True
                     # A container-producing free CALL operand
                     # (`set(range(1, 4)) | {7}`): the fresh value renders
                     # inline inside the dunder template, with no temp and
@@ -3408,6 +3464,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 if not (_container_binop_operand(e.left, lt)
                         and _container_binop_operand(e.right, rt)):
                     reject()
+                container_native_binop = True
                 _witness("binop.list_concat")
             elif e.op == "+":
                 # bytes concat -> ::tpy::bytes_concat(l, r): both operands
@@ -4437,14 +4494,32 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             return _ExprUse(allow_temps=temps_ok, slot_threaded=True,
                             indirect_read=True)
 
-        left = _lower_unproven_opt_scalar(e.left, lc, declared)
+        def _comp_operand(side: TpyExpr) -> 'THIRExpr | None':
+            # The comprehension operand the container gate admitted: the
+            # stmt-expr renders INLINE into the dunder template, target-typed
+            # by the comprehension's own container (the const ref binds the
+            # prvalue for the full expression, so no temp hoists).
+            if not container_native_binop:
+                return None
+            comp_c = _comp_own_container(side, analyzer)
+            if comp_c is None:
+                return None
+            from .comprehensions import _lower_comprehension
+            _witness("binop.comprehension_operand")
+            return _lower_comprehension(
+                side, comp_c, lc, declared,
+                _comp_shadow_pointers(lc.pointers, declared, analyzer))
+
+        left = _comp_operand(e.left) or _lower_unproven_opt_scalar(
+            e.left, lc, declared)
         if left is None:
             left = _slot_literal_retype(
                 _lower_expr(e.left, lc, declared,
                             use=_arith_operand_use(e.left),
                             field_owned_str_ok=isinstance(e.left, TpyFieldAccess)),
                 lslot, lc)
-        right = _lower_unproven_opt_scalar(e.right, lc, declared)
+        right = _comp_operand(e.right) or _lower_unproven_opt_scalar(
+            e.right, lc, declared)
         if right is None:
             right = _slot_literal_retype(
                 _lower_expr(e.right, lc, declared,
@@ -5860,6 +5935,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # `::tpy::deref_check(<recv>).field` (unproven), picked by sema's
             # `ptr_non_null`. Read and write target alike.
             _witness("field.ptr_value")
+            fa_arrow, fa_deref = _ptr_recv_access(e.ptr_non_null)
             return THIRFieldAccess(
                 result_type=rtype,
                 receiver=_lower_expr(
@@ -5867,8 +5943,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     use=_ExprUse(result=_ExprResultUse.RECEIVER),
                     field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                 field_cpp=_field_cpp(e),
-                is_arrow=e.ptr_non_null,
-                deref_check=not e.ptr_non_null,
+                is_arrow=fa_arrow,
+                deref_check=fa_deref,
                 narrowed_deref=narrowed_opt,
                 form=_viewfam_result_form(fa_str),
                 loc=loc,
@@ -6094,33 +6170,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     index=_lower_expr(e.index, lc, declared), form=form, loc=loc)
             sl = e.index
 
-            def _bound(b: 'TpyExpr | None') -> 'THIRExpr | None':
-                # A runtime-BigInt bound appends the
-                # `.to_fixed_check<int32_t>()` narrow (non-literal only --
-                # the gate rejects literal BigInt bounds, whose render is
-                # ill-formed). The BigInt test keys on the DECLARED type,
-                # like `is_runtime_bigint`.
-                if b is None:
-                    return None
-                key = _narrow_key_type(b, declared, analyzer)
-                if key is _NARROW_UNMIRRORED:
-                    note_detail("slice.bound_widened_local")
-                    raise ThirUnsupported("expr.subscript", detail=True)
-                lowered = _lower_expr(b, lc, declared)
-                if not _runtime_bigint(key, analyzer):
-                    return lowered
-                _witness("narrow.slice_bound")
-                return THIRCoerce(result_type=INT32, expr=lowered,
-                                  coercion_name=_BIGINT_NARROW,
-                                  wrap="{0}.to_fixed_check<int32_t>()", loc=loc)
-
             return THIRStrSlice(
                 result_type=rtype,
                 receiver=recv,
                 cpp_template=tpl,
-                lower=_bound(sl.lower),
-                upper=_bound(sl.upper),
-                step=_bound(sl.step),
+                lower=_lower_slice_bound(sl.lower, lc, declared, loc),
+                upper=_lower_slice_bound(sl.upper, lc, declared, loc),
+                step=_lower_slice_bound(sl.step, lc, declared, loc),
                 stepped=e.is_stepped_slice,
                 form=form,
                 loc=loc,
@@ -9131,6 +9187,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 p_str = _resolved_str_value(rtype, analyzer)
                 if p_str is None:
                     p_str = _resolved_bytes_value(rtype, analyzer)
+                mc_arrow, mc_deref = _ptr_recv_access(e.ptr_non_null)
                 return THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
                     receiver=_lower_expr(
@@ -9144,8 +9201,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             e, a, pfi.params[i].type, i, lc, declared,
                             temp_args=temp_args)
                         for i, a in enumerate(e.args)),
-                    is_arrow=e.ptr_non_null,
-                    deref_check=not e.ptr_non_null,
+                    is_arrow=mc_arrow,
+                    deref_check=mc_deref,
                     form=_viewfam_result_form(p_str),
                     loc=loc,
                 )
@@ -13252,6 +13309,32 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     indirect-name render -- only records become pointer-locals, so the
     membership test alone keys the retag); every other arg lowers
     position-blind."""
+    if (method_arg and not method_arg_stub and not temp_args
+            and _container_comp_arg(a, ptype)):
+        # A comprehension at a USER-record method's container slot: the
+        # method arg loop has no ref-param hoist, so the same stmt-expr the
+        # free-call position wraps in an ArgTemp renders INLINE and the
+        # const ref binds it for the full expression. The gate
+        # (`_comp_container_method_arg`) owns the slot's const verdict, so
+        # a mutated `T&` slot never reaches here.
+        from .comprehensions import _lower_comprehension
+        comp_slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+        comp_ptrs = _comp_shadow_pointers(lc.pointers, declared, lc.analyzer)
+        return _lower_comprehension(a, comp_slot, lc, declared, comp_ptrs)
+    if method_arg_stub:
+        _stub_comp_c = _stub_comp_target(a, ptype, lc.analyzer)
+        if _stub_comp_c is not None:
+            # The STUB-receiver twin of the arm above (`primes.extend([i for
+            # i in xs])`, `",".join([str(x) for x in xs])`, `d.update({k: k
+            # for k in ks})`): the stub arg loop has no hoist either, so the
+            # stmt-expr renders inline, target-typed by the comprehension's
+            # OWN container -- the free-call loop's native/template row.
+            from .comprehensions import _lower_comprehension
+            _stub_ptrs = _comp_shadow_pointers(lc.pointers, declared,
+                                               lc.analyzer)
+            _witness("arg.native_comprehension")
+            return _lower_comprehension(a, _stub_comp_c, lc, declared,
+                                        _stub_ptrs)
     if (isinstance(a, TpyFieldAccess)
             and _container_module_var_arg(a, ptype, declared, lc.analyzer)):
         # A module-variable container at a plain container ref slot
@@ -13781,7 +13864,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if isinstance(a, TpyStrLiteral) and _eligible_char(ptype):
         return _lower_char_targeted(a, ptype, lc, declared)
     if (isinstance(a, TpyFieldAccess)
-            and _record_field_ref_arg(a, ptype, declared, lc.analyzer)):
+            and _record_field_ref_arg(a, ptype, declared, lc.analyzer,
+                                      lc.narrow.narrowed)):
         # An F1-record FIELD read binding a record ref slot: the bare
         # member read (`pass_both(h.a, h.b)`), aliasing semantics preserved.
         # The predicate re-ran the marker/receiver checks, so the gates are
@@ -14606,8 +14690,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # into the Own slot's storage.
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.STORAGE))
-    ow_slot = _plain_own_slot(ptype) if isinstance(a, TpyMethodCall) else None
-    if (ow_slot is not None
+    ow_slot = (_own_slot_payload(ptype)
+               if isinstance(a, (TpyCall, TpyMethodCall)) else None)
+    ow_method = isinstance(a, TpyMethodCall)
+    if (ow_slot is not None and ow_method
             and is_dyn_protocol(unwrap_readonly(unwrap_send_sync(ow_slot)))
             and _own_dyn_method_rvalue_ok(a)):
         # An Own[@dynamic P] slot fed by an Own[P]-returning method-call
@@ -14619,7 +14705,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
-    if ow_slot is not None and _f1_record(ow_slot, lc.analyzer):
+    if ow_slot is not None and ow_method and _f1_record(ow_slot, lc.analyzer):
         # An Own-slot record METHOD-call rvalue (admitted by
         # _own_record_rvalue_arg -- `Arc.new(Mutex.new(0))`): the inline
         # rvalue binds the T&& slot; lower under BORROW_BIND like the
@@ -14631,7 +14717,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if (ow_slot is not None
             and _storage_call_ret(
                 unwrap_readonly(unwrap_send_sync(ow_slot)),
-                lc.analyzer) is not None):
+                lc.analyzer) is not None
+            and (ow_method
+                 # The FREE-call face of the same row
+                 # (`table.append(make_row(1.0))`). Gate-keyed rather than
+                 # shape-keyed so a free call some OTHER row claims at this
+                 # slot keeps the render it has.
+                 or _own_record_rvalue_arg(a, ptype, declared,
+                                           lc.analyzer))):
         # The container sibling (`g.set(acked.copy())`): STORAGE use, the
         # container-returning method result's storage sink.
         return _lower_expr(a, lc, declared,
@@ -16446,6 +16539,36 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 return THIRIfExpr(result_type=result_t, cond=cond,
                                   then=prv[0], orelse=prv[1],
                                   form=Form.VALUE, loc=loc)
+            if any(p is not None for p in prv):
+                # A record NAME arm beside a prvalue arm
+                # (`V3(0.0) if e is None else e`): C++ converts the lvalue
+                # operand into the prvalue result, so the member-init still
+                # direct-initializes from a VALUE -- a copy of the named
+                # object, which is what a record FIELD stores anyway. TWO
+                # lvalue arms make the `?:` an lvalue and belong to the
+                # BORROW slice below, so at least one prvalue arm is
+                # required here.
+                mixed: 'list[THIRExpr] | None' = []
+                for arm, p in zip((e.then_expr, e.else_expr), prv):
+                    if p is not None:
+                        mixed.append(p)
+                        continue
+                    at = analyzer.get_expr_type(arm)
+                    if not (isinstance(arm, TpyName) and arm.name in declared
+                            and unwrap_readonly(unwrap_ref_type(
+                                unwrap_send_sync(at))) == rec_t):
+                        mixed = None
+                        break
+                    # The same read the copy arm takes for its source: a
+                    # pointer-bound name (a narrowed `T | None` param)
+                    # carries its `(*p)` deref here too.
+                    mixed.append(_lower_expr(
+                        arm, lc, declared, use=_ExprUse(indirect_read=True)))
+                if mixed is not None:
+                    _witness("ifexpr.record_prvalue_name_arm")
+                    return THIRIfExpr(result_type=result_t, cond=cond,
+                                      then=mixed[0], orelse=mixed[1],
+                                      form=Form.VALUE, loc=loc)
             note_detail("ifexpr.record_prvalue_arm")
             raise ThirUnsupported("expr.ifexpr")
         for arm in (e.then_expr, e.else_expr):
@@ -16770,6 +16893,15 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
     narrowed_opt = _narrowed_opt_field_read(e, rtype, declared, lc.analyzer)
     if narrowed_opt:
         _witness("field.narrowed_deref")
+    # An explicit `Ptr[record]` receiver reaches its member the same way here
+    # as at a value read (`field.ptr_value`): `->` when sema proved the
+    # pointer non-null, `::tpy::deref_check(<recv>).field` otherwise. The
+    # pointer SET the arrow rule below reads holds borrow bindings, not
+    # Ptr values, so without this the source would spell a `.` on a pointer.
+    ptr_recv = _ptr_value_field_recv_ok(e, declared, lc.analyzer)
+    ptr_arrow, ptr_deref = _ptr_recv_access(e.ptr_non_null)
+    if ptr_recv:
+        _witness("field.ptr_value_storage")
     return _self_recv_positioned(THIRFieldAccess(
         result_type=rtype,
         # RECEIVER, like every sibling field arm: an indirect receiver reaches
@@ -16781,7 +16913,8 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
             field_prechecked=isinstance(e.obj, TpyFieldAccess),
             subscript_prechecked=isinstance(e.obj, TpySubscript)),
         field_cpp=_field_cpp(e),
-        is_arrow=_field_is_arrow(e, lc),
+        is_arrow=(ptr_arrow if ptr_recv else _field_is_arrow(e, lc)),
+        deref_check=ptr_recv and ptr_deref,
         narrowed_deref=narrowed_opt,
         form=Form.STORAGE,
         loc=getattr(e, "loc", None),

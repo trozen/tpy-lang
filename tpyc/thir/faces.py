@@ -261,6 +261,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.list_concat",            # list + list -> ::tpy::list_concat;
                                     # a literal operand takes the
                                     # typed-brace prefix
+    "binop.comprehension_operand",  # ... and a COMPREHENSION operand of the
+                                    # same helper: the inline stmt-expr,
+                                    # target-typed by its own container
     "ifexpr.container",             # container ternary: the bare
                                     # form-blind arm render
     "ifexpr.isin_narrow",           # isinstance-condition ternary: holds
@@ -631,6 +634,14 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # builtin-method template
     "method.recv.bytes_literal",    # the bytes twin -- the OWNED literal
                                     # receiver substituted into the template
+    "method.recv.fstring",          # `f"<p>{n}</p>".encode()` -- an f-string
+                                    # receiver, the std::format rvalue
+                                    # substituted into the method template
+    "method.record_call_rvalue_arg",   # `a.add(mk(x))` -- a record-returning
+                                    # free call bound inline by a const-ref
+                                    # method slot
+    "method.record_method_rvalue_arg",  # `a.add(b.muls(x))` -- the method-call
+                                    # source of that same rvalue
     "method.protocol_field_recv",   # protocol method over a one-level field
                                     # receiver (this->factory.make())
     "arg.native_module_var",        # module-variable deref read pinned at a
@@ -720,6 +731,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "mil.container_name",           # `self.xs = p` -> `xs(p)` / `xs(std::move(p))`
     "mil.container_repeat",         # `self.xs = [e] * n` -> the threaded
                                     # from_range(repeat_range(..)) prvalue
+    "mil.container_comp",           # `self.xs = [f(i) for i in ..]` -> the
+                                    # comprehension stmt-expr in the MIL cell
     "with.str_target",              # str/StrView __enter__ as-target
     # Container subscript writes (lowering; THIRSetItem's emit arms plus
     # the owned-str element sink copy and the aug-assign desugar).
@@ -1329,6 +1342,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # admission is the distinguishing site).
     "ret.container_name",
     "ret.container_borrow",         # borrow-slot name/field returns bare
+    "ret.container_borrow_elem",    # `return self.rows[i];` -- the element
+                                    # lvalue at the borrow slot
     "ret.container_literal",
     "ret.container_call",           # `return make_list(n);` -- bare call source
     "ret.container_method_call",    # `return path.split('/');` -- the rvalue
@@ -2083,6 +2098,17 @@ THIR_FACES: frozenset[str] = frozenset({
     "range.step_literal_pos",       # non-unit positive literal step
     "range.step_literal_neg",       # non-unit negative literal step
     "range.step_variable",          # fixed-int-name step (captured `__step_N`)
+    # A COMPUTED fixed-int step (binop / call / field / ternary) at the same
+    # `__step_N` capture. Split from the name leg so the name leg cannot
+    # witness it: only the capture makes an arbitrary expression sound here
+    # (Python evaluates the step once; the C++ head would re-read it).
+    "range.step_variable_expr",
+    # An owning-container return off a REASSIGNED (rebind-slot pointer)
+    # local, through the shared deref+move indirect-name arm.
+    "ret.container_ptr_local",
+    # A container OPERATOR rvalue at the owning-container return
+    # (`return a + b` / `a | b`): the operator's own render, bare.
+    "ret.container_binop",
     # Bool-field truthiness condition (lowering admission; `if self.closed:` --
     # a bool value's truthiness render IS its value render, so the admitted
     # field-read emit carries the condition unchanged).
@@ -2587,6 +2613,26 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # BORROW_BIND sink (the arg wrap)
     "subscript.record_elem_borrow", # checked F1-record element lvalue at a
                                     # BORROW_BIND sink (record ref-slot arg)
+    "subscript.recv_field_chain",   # `self.scene.objects[i]` -- a multi-level
+                                    # plain-record field chain as the
+                                    # container receiver
+    "subscript.recv_ptr_field",     # `sector.flags[i]` -- a container member
+                                    # off an explicit Ptr[record] binding
+    "deref.ptr_field_recv",         # `hit.material.bounce(x)` -- a Deref
+                                    # wrapper read through a Ptr[record]
+                                    # field hop
+    "arg.record_deref_field",       # `base.mul(b.material.color)` -- a record
+                                    # field read through a Deref wrapper hop,
+                                    # bound bare by a record ref slot
+    "ifexpr.record_prvalue_name_arm",  # `V3(0) if e is None else e` at a ctor
+                                    # member-init: a record NAME arm beside a
+                                    # prvalue arm, the ?: still a prvalue
+    "own.container_call_rvalue",    # `table.append(make_row(1.0))` -- a
+                                    # container-returning FREE call bound
+                                    # bare by an Own[container] slot
+    "arg.comprehension_method",     # `pgm.saverow([f(i) for i in r])` -- the
+                                    # stmt-expr rendered inline into a
+                                    # record method's const container slot
     "arg.record_borrow_call",       # T&-returning call bound inline at a
                                     # record ref slot (bump(find_first(..)))
     "arg.recursive_union_borrow_call",  # the wrapper-slot twin
@@ -3067,6 +3113,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # (proven non-null) or `::tpy::deref_check(p).field` (unproven), picked from
     # sema's `ptr_non_null`. Read and write target alike.
     "field.ptr_value",
+    # The same explicit `Ptr[record]` receiver at the STORAGE-form field
+    # access (the assign-target / storage-sink arm) -- the twin of
+    # `field.ptr_value`, which fires at the value read.
+    "field.ptr_value_storage",
     # `.field` auto-dereffed through a USER Deref wrapper -> `r.__deref__().x`
     # (N = deref_depth). Bare `.` receiver; read and scalar-write target alike.
     "field.user_deref_chain",
@@ -3130,6 +3180,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.ptr_opt_passthrough",   # method call at that write
     "call.container_borrow_ret",    # borrow container return at the T&
                                     # alias-decl sink
+    "call.container_rebind_ret",    # ... and the OWNING one filling a
+                                    # reassigned local's rebind slot
     "call.recv_borrow_ret",         # borrow-returning record call under a
                                     # RECEIVER position's own `&(...)` lift
     "call.er_ref_bind",             # ref-returning @error_return callee at

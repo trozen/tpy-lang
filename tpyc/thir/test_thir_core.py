@@ -617,12 +617,16 @@ class TestForRange:
         assert loop.step_kind == "literal_pos"
         assert isinstance(loop.step, THIRLiteral) and loop.step.value == 2
 
-    def test_binop_step_is_ineligible(self):
-        # An arithmetic step is deferred (net-confidence, like the bound slice).
-        thir = _lower(_PRELUDE
-                      + "def f(n: Int32, s: Int32) -> Int32:\n    acc = 0\n"
-                      + "    for i in range(0, n, s + 1):\n        acc = acc + i\n    return acc\n")
-        assert _fn(thir, "f") is None
+    def test_binop_step_routes(self):
+        # An arithmetic step rides the variable arm: captured once into
+        # `__step_N`, so it is evaluated exactly once as Python does.
+        src = (_PRELUDE
+               + "def f(n: Int32, s: Int32) -> Int32:\n    acc = 0\n"
+               + "    for i in range(0, n, s + 1):\n        acc = acc + i\n    return acc\n")
+        thir = _lower(src)
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForRange)
+        assert loop.step_kind == "variable"
 
     def test_bigint_counter_stepped_routes(self):
         # A BigInt counter's stepped emit (literal-step temp, no overflow
@@ -5015,15 +5019,45 @@ class TestForRangeBigIntAndObject:
         assert faces.get("foreach.range_object", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_variable_bigint_step_still_defers(self):
-        # BOUNDARY: the variable-step BigInt render (nonzero check +
-        # ternary, no overflow) is unwitnessed and stays on the AST path.
+    def test_variable_bigint_step_routes(self):
+        # The variable-step BigInt loop: the same `__step_N` capture and
+        # nonzero check as the fixed-int arm, minus the overflow check
+        # (arbitrary precision cannot overflow).
         src = ("def f(s: int) -> None:\n"
                "    base = 1 << 100"
                "  # tpyc: warning(/outside default Int32 range/)\n"
                "    for i in range(base, base + 10, s):\n"
                "        print(i)\n"
                "f(4)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("range.bigint_counter", 0) >= 1
+        assert faces.get("range.step_variable", 0) >= 1
+        _, cpp = _assert_byte_identical(src)
+        assert "::tpy::BigInt __step_0 = s;" in cpp
+        assert "::tpy::range_check_step_nonzero(__step_0);" in cpp
+        assert "range_check_overflow" not in cpp
+
+    def test_computed_step_routes(self):
+        # A COMPUTED step (a binop, not a bare name) rides the same capture.
+        src = ("from tpy import Int32\n"
+               "def f(s: Int32) -> None:\n"
+               "    for i in range(0, 20, 2 * s):\n"
+               "        print(i)\n"
+               "f(4)\n")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("range.step_variable_expr", 0) >= 1
+        _, cpp = _assert_byte_identical(src)
+        assert "int32_t __step_0 = (::tpy::mul_check<int32_t>(2, s));" in cpp
+        assert "::tpy::range_check_step_nonzero(__step_0);" in cpp
+
+    def test_wide_literal_step_still_defers(self):
+        # BOUNDARY: a step literal outside the int32 range keeps rejecting --
+        # the stepped arms' overflow helpers are pinned for int32 only.
+        src = ("from tpy import Int64\n"
+               "def f(e: Int64) -> None:\n"
+               "    for i in range(Int64(0), e, 4000000000):\n"
+               "        print(i)\n"
+               "f(Int64(20000000000))\n")
         _assert_rejects_at(_reject_tally(src),
                            "body:stmt.for_each:iter.range_shape")
 

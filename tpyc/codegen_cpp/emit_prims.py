@@ -1486,6 +1486,9 @@ CTOR_DEMOTE_BODY_LOCAL = (
 CTOR_DEMOTE_READS_INHERITED = (
     "the initializer reads a `self.<field>` written by an earlier "
     "inherited-field assignment in the body")
+CTOR_DEMOTE_READS_DEFAULT_ONLY = (
+    "the initializer reads a `self.<field>` that has only a class-level "
+    "default, which is not in place until the member initializer list has run")
 CTOR_DEMOTE_NEEDS_TEMP = (
     "the initializer expression requires a codegen temporary that cannot be "
     "declared in the member initializer list (e.g. a varargs call). Refactor "
@@ -1529,6 +1532,7 @@ __all__ = [
     "CTOR_DEMOTE_NEEDS_TEMP",
     "CTOR_DEMOTE_NESTED_DEF",
     "CTOR_DEMOTE_PRIOR_STATEMENT",
+    "CTOR_DEMOTE_READS_DEFAULT_ONLY",
     "CTOR_DEMOTE_READS_INHERITED",
     "FLOAT_STR_CONSTANTS",
     "PARAM_LOCAL_SET_FIELDS",

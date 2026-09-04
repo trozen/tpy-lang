@@ -26,6 +26,7 @@ from ...parse.nodes import (
     TpyDictLiteral,
     TpyExpr,
     TpyFieldAccess,
+    TpyFString,
     TpyFloatLiteral,
     TpyGeneratorExpression,
     TpyIfExpr,
@@ -308,6 +309,7 @@ from .predicates import (
     _owned_tuple_call_ret,
     _span_open_t_value,
     _span_value,
+    _container_rebind_call_ret,
     _storage_call_ret,
     _storage_optional_return_type,
     _unwrap_own,
@@ -973,7 +975,11 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 return True
         return note_detail("container_lit.elem.union") if note else False
     if fam == "tuple":
-        if not threaded:
+        # A tuple LITERAL element spells its own type (`std::tuple<
+        # std::string, int32_t>{"a", 1}`), so like the str/bytes literal rows
+        # above its render is form-neutral and survives an un-threaded parent
+        # (`for a, b in [("a", 1)]:`). Other sources need the elem target.
+        if not threaded and not isinstance(e, TpyTupleLiteral):
             return note_detail("container_lit.elem.tuple") if note else False
         vt = _value_tuple(su, analyzer)
         if (vt is None and isinstance(su, TupleType)
@@ -1801,6 +1807,13 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                 and target_type is not None
                 and _container_literal_shape_ok(stmt.init, target_type,
                                                 analyzer, note=True)):
+            return binding
+        # ... and the container-returning CALL beside it: the owning result
+        # fills the rebind slot exactly as the literal does, and the call's
+        # own gates validate callee and args.
+        if (isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                and _container_rebind_call_ret(
+                    stmt.init, analyzer.get_expr_type(stmt.init), analyzer)):
             return binding
         return None
     if isinstance(stmt.init, (TpyCall, TpyMethodCall)):
@@ -4888,6 +4901,32 @@ def _container_comp_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     return False
 
 
+def _comp_container_method_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
+                               method_fi) -> bool:
+    """A comprehension at a USER-record method's plain container slot
+    (`pgm.saverow([2.0 * a[i] for i in range(n)])`): the method arg loop has
+    no ref-param temp arm, so the comprehension's position-independent
+    `({ ... })` statement-expression renders INLINE and the const ref binds
+    it for the full expression -- the comprehension sibling of the
+    container-LITERAL row beside it. The free-call position keeps its
+    `__tmp_N` ArgTemp (`_container_comp_arg`), whose shape test this shares.
+
+    Signature-const slots only (`const_borrow_params`, the verdict
+    `_method_ctor_rvalue_arg` reads for the same reason): a MUTATED `T&`
+    slot cannot bind the stmt-expr prvalue at all, so that shape keeps
+    rejecting rather than emitting C++ that does not compile."""
+    if not _container_comp_arg(a, ptype):
+        return False
+    if isinstance(ptype, TpyType) and isinstance(
+            unwrap_ref_type(unwrap_send_sync(ptype)), (OwnType, ReadonlyType)):
+        # An Own slot is a by-value move-in and a readonly-ANNOTATED slot
+        # has its own const spelling; both keep their existing rows.
+        return False
+    cbp = getattr(method_fi, "const_borrow_params", None)
+    return bool(cbp is not None and idx in cbp
+                and _witness("arg.comprehension_method"))
+
+
 def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
                              storage_tuple_locals: 'AbstractSet[str]'
                              ) -> 'TupleType | None':
@@ -5484,13 +5523,21 @@ def _native_iterable_comp_arg(a: TpyExpr, ptype: 'TpyType | None',
     Like the genexpr row this admits broadly; an element shape
     `_lower_comprehension` cannot render raises and falls the body back.
     Returns the comprehension's container type, or None."""
-    if not isinstance(a, (TpyListComprehension, TpySetComprehension,
-                          TpyDictComprehension)):
-        return None
     pb = _protocol_binding(ptype)
     # Sized joins the iterable pair: `len([...comp...])` renders the same
     # inline stmt-expr into `::tpy::__len__` (the slot only sizes it).
     if pb is None or pb.name not in ("Iterable", "Sequence", "Sized"):
+        return None
+    return _comp_own_container(a, analyzer)
+
+
+def _comp_own_container(a: TpyExpr, analyzer) -> 'TpyType | None':
+    """A comprehension's OWN resolved container -- the render target every
+    inline (no-`__tmp_N`) comprehension arg takes, whatever the slot's
+    spelling. Returns None for anything that is not a container
+    comprehension."""
+    if not isinstance(a, (TpyListComprehension, TpySetComprehension,
+                          TpyDictComprehension)):
         return None
     at = analyzer.get_expr_type(a)
     if at is None:
@@ -5509,12 +5556,58 @@ def _native_iterable_comp_arg(a: TpyExpr, ptype: 'TpyType | None',
     return at if (is_list(at) or is_set(at) or is_dict(at)) else None
 
 
+def _stub_comp_target(a: TpyExpr, ptype: 'TpyType | None',
+                      analyzer) -> 'TpyType | None':
+    """The render target for a comprehension at a builtin STUB method's arg
+    slot -- structural (`primes.extend([i for i in xs])`) or concrete
+    (`d.update({k: k for k in ks})`) alike. Always the comprehension's own
+    container, never the slot: a stub's element slot spells the insert's
+    ownership (`dict[K, Own[V]]`), which is a param-passing fact and not a
+    container the comprehension can build."""
+    if _protocol_binding(ptype) is not None:
+        return _native_iterable_comp_arg(a, ptype, analyzer)
+    if not _container_comp_arg(a, ptype):
+        return None
+    own = _comp_own_container(a, analyzer)
+    if own is None:
+        return None
+    # sema stamps the comprehension with the SLOT's spelling, so a stub's
+    # `dict[K, Own[V]]` / `list[Own[T]]` insert slot reaches here as the
+    # comprehension's own type. Own on an element is the insert's ownership,
+    # not part of the container the comprehension builds.
+    unowned = _unown_type_args(own)
+    return own if unowned == own else unowned
+
+
+def _bare_field_read_shape(a: TpyExpr, locals_: dict[str, TpyType], analyzer,
+                           narrowed: 'AbstractSet[str]') -> 'str | None':
+    """Which admitted shape a FIELD read whose whole render is the bare
+    member access has: "plain" (a markers-clean one-level member off a
+    routed receiver) or "deref" (the same read one user-Deref hop deeper,
+    `body.material.color` -> `body.material.__deref__().color`). None
+    outside the slice.
+
+    The arg GATE and the arg RENDER both ask, so the two cannot drift on
+    which reads bind a ref slot bare. The pointer set is passed empty: a
+    narrowed Optional-wrapper NAME receiver renders through its pointer,
+    and an arg position cannot see that set."""
+    if not isinstance(a, TpyFieldAccess):
+        return None
+    if _field_markers_clean(a) and _field_receiver_ok(a, locals_, analyzer):
+        return "plain"
+    if _user_deref_field_recv_ok(a, locals_, narrowed, analyzer, frozenset()):
+        return "deref"
+    return None
+
+
 def _record_field_ref_arg(a: TpyExpr, ptype: 'TpyType | None',
-                          locals_: dict[str, TpyType], analyzer) -> bool:
+                          locals_: dict[str, TpyType], analyzer,
+                          narrowed: 'AbstractSet[str]' = frozenset()) -> bool:
     """An F1-record FIELD read into a record ref slot (`pass_both(h.a,
     h.b)`): the bare member read binds the `T&`/`const T&` param, aliasing
     the caller's object (the plain field-access
-    render). Markers-clean fields off routed receivers only; exact
+    render). Markers-clean fields off routed receivers, or the same read
+    through a user-Deref hop (`_bare_field_read_shape`); exact
     slot/field type match (the subclass-upcast lvalue bind stays deferred
     until witnessed)."""
     if not isinstance(a, TpyFieldAccess):
@@ -5528,8 +5621,7 @@ def _record_field_ref_arg(a: TpyExpr, ptype: 'TpyType | None',
            if at is not None else None)
     if atb != slot:
         return False
-    return (_field_markers_clean(a)
-            and _field_receiver_ok(a, locals_, analyzer))
+    return _bare_field_read_shape(a, locals_, analyzer, narrowed) is not None
 
 
 def _own_iter_special_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
@@ -6448,6 +6540,21 @@ def _own_dyn_method_rvalue_ok(a: TpyMethodCall) -> bool:
         return True
     return isinstance(mret, NominalType) and is_dyn_protocol(mret)
 
+def _own_slot_payload(ptype: 'TpyType | None') -> 'TpyType | None':
+    """The payload a plain `Own[...]` slot binds, with a DOUBLE `Own`
+    peeled: a literal-seeded container local can resolve its element to an
+    `Own[...]` (the seeding call's own return spelling), so the substituted
+    `Own[T]` insert slot arrives as `Own[Own[list[T]]]`. Ownership is the
+    slot's ABI, not part of the type identity a bare rvalue bind matches
+    on, so the second wrapper peels exactly as the source side peels the
+    call's own `Own` return. Gate and render arm share it."""
+    w = _plain_own_slot(ptype)
+    if w is None:
+        return None
+    u = unwrap_readonly(unwrap_send_sync(w))
+    return unwrap_readonly(u.wrapped) if isinstance(u, OwnType) else w
+
+
 def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType], analyzer) -> bool:
     """A same-module record rvalue CALL (a ctor `A(7)` or a by-value
@@ -6458,7 +6565,7 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
     borrow-returning callee is not an rvalue source (it copies
     through a temp) -> reject; the same-nominal check is a slice guard (sema
     rejects an upcast into an Own slot outright)."""
-    w = _plain_own_slot(ptype)
+    w = _own_slot_payload(ptype)
     if w is None:
         return False
     w_container = _storage_call_ret(
@@ -6483,9 +6590,28 @@ def _own_record_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
         return (atu == unwrap_readonly(unwrap_send_sync(w))
                 and is_rvalue_source(analyzer, a)
                 and _witness("own.record_rvalue"))
-    if w_container or w_dyn:
-        # Container / dyn-protocol Own slots admit only the method-rvalue
-        # face here; names/literals ride the copy-temp and literal rows.
+    if w_container:
+        # The FREE-call face of the method row above
+        # (`table.append(make_row(1.0))` at `Own[list[float]]`): a
+        # container-returning free call is an rvalue that binds the `T&&`
+        # slot bare exactly as the method-call rvalue does, and its own
+        # lowering validates callee and args. Names / literals still ride
+        # the copy-temp and literal rows.
+        if not isinstance(a, TpyCall):
+            return False
+        at = analyzer.get_expr_type(a)
+        atu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+               if at is not None else None)
+        if isinstance(atu, OwnType):
+            atu = unwrap_readonly(atu.wrapped)
+        atu = _resolve_literal_seeded(atu, analyzer)
+        return bool(atu == unwrap_readonly(unwrap_send_sync(w))
+                    and is_rvalue_source(analyzer, a)
+                    and _rvalue_free_call_shape(a, analyzer)
+                    and _witness("own.container_call_rvalue"))
+    if w_dyn:
+        # A dyn-protocol Own slot admits only the method-rvalue face here;
+        # names/literals ride the copy-temp and literal rows.
         return False
     if not isinstance(a, TpyCall):
         return False
@@ -8098,6 +8224,15 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         # OWNED (`::tpy::bytes_literal_owned`), the `{self}` substitution
         # the slice arm already spells; the view family gates the method.
         return _witness("method.recv.bytes_literal")
+    if isinstance(recv, TpyFString):
+        # An f-string receiver (`f"<p>{n}</p>".encode()`): the interpolation
+        # renders an owned-str rvalue (`std::format(...)`) that substitutes
+        # into the native view-method's receiver slot exactly as the literal
+        # and concat receivers do. The f-string's own parts keep gating at
+        # its lowering arm, so an ineligible interpolation still rejects.
+        return bool(_dot_receiver_value_kind(
+            analyzer.get_expr_type(recv), analyzer) == "str"
+            and _witness("method.recv.fstring"))
     if isinstance(recv, TpyBinOp):
         # A record-result dunder-binop receiver (`(dt + td).isoformat()`):
         # the postfix member chains off the parenthesized template
@@ -8158,8 +8293,8 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         if kind == "record":
             return _witness("method.recv.select_record")
         return False
-    # Every other receiver kind (a literal, an f-string, an operator
-    # result) has no admitted row yet.
+    # Every other receiver kind (a non-str literal, a container literal, a
+    # comprehension) has no admitted row yet.
     return False
 
 
@@ -8874,7 +9009,9 @@ def _r_container_module_var(req: _ArgReq) -> bool:
 
 
 def _record_field_marker_arg(a: TpyExpr, ptype: 'TpyType | None',
-                             locals_: dict[str, TpyType], analyzer) -> bool:
+                             locals_: dict[str, TpyType], analyzer,
+                             narrowed: 'AbstractSet[str]' = frozenset()
+                             ) -> bool:
     """An F1-record FIELD read at a plain record ref slot
     (`::mylog::log_dispatch(mod._logger, ...)`, `self.soak(other.inner)`):
     the member read binds the
@@ -8884,14 +9021,20 @@ def _record_field_marker_arg(a: TpyExpr, ptype: 'TpyType | None',
     decoration, so the marker and user-record-method families share the
     cell. Keyed on the DECLARED field type, so a
     narrowed `Optional[record]` field (whose occurrence types at the
-    member) keeps needing the unwrap. `Own[T]` and
-    Optional slots keep their own cascades -- the Own slot copies the
-    field through a `__tmp_N`."""
-    if not isinstance(a, TpyFieldAccess):
+    member) keeps needing the unwrap -- except through a user-Deref hop
+    (`_bare_field_read_shape`'s "deref"), where the field lives on the
+    DEREFFED record and only the read's own resolved type names it.
+    `Own[T]` and Optional slots keep their own cascades -- the Own slot
+    copies the field through a `__tmp_N`."""
+    shape = _bare_field_read_shape(a, locals_, analyzer, narrowed)
+    if shape is None:
         return False
-    if not _field_receiver_ok(a, locals_, analyzer):
-        return False
-    ft = _field_decl_type(a, locals_, analyzer)
+    deref_hop = shape == "deref"
+    # A Deref hop puts the field on the DEREFFED record, which
+    # `_field_decl_type` (it peels the receiver's own type) cannot answer,
+    # so that shape types on the read's own resolved type.
+    ft = (analyzer.get_expr_type(a) if deref_hop
+          else _field_decl_type(a, locals_, analyzer))
     ftu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
            if isinstance(ft, TpyType) else None)
     if not (isinstance(ftu, NominalType) and _f1_record(ftu, analyzer)):
@@ -8903,7 +9046,8 @@ def _record_field_marker_arg(a: TpyExpr, ptype: 'TpyType | None',
     pt = unwrap_readonly(pt)
     if not (pt == ftu or analyzer.registry.is_subclass_of(ftu, pt)):
         return False
-    return _witness("arg.record_field_marker")
+    return _witness("arg.record_deref_field" if deref_hop
+                    else "arg.record_field_marker")
 
 
 def _value_tuple_field_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10810,9 +10954,14 @@ def _r_container_field_pass(req: _ArgReq) -> bool:
                                      req.analyzer)
 
 
+def _r_comp_container_method(req: _ArgReq) -> bool:
+    return _comp_container_method_arg(req.a, req.ptype, req.index,
+                                      req.overload)
+
+
 def _r_record_field_marker(req: _ArgReq) -> bool:
     return _record_field_marker_arg(req.a, req.ptype, req.locals_,
-                                    req.analyzer)
+                                    req.analyzer, req.narrowed)
 
 
 def _r_value_tuple_field_pass(req: _ArgReq) -> bool:
@@ -11604,6 +11753,10 @@ _VIEW_ARG_SINK = register_sink(_ArgSink(
         # os.listdir(base)))` -> the bare inline bind) -- the same
         # position-blind render at the top of _lower_call_arg.
         _ArgRow("native_iterable_call", _r_native_iterable_call),
+        # ... and the COMPREHENSION sibling (`",".join([str(x) for x in
+        # xs])`): the stmt-expr renders inline into the template slot,
+        # target-typed by the comprehension's own container.
+        _ArgRow("native_iterable_comp", _r_native_iterable_comp),
     )))
 
 
@@ -11798,12 +11951,24 @@ _CONTAINER_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("native_iterable_literal", _r_native_iterable_literal),
         _ArgRow("native_iterable_container", _r_native_iterable_container),
         _ArgRow("native_iterable_call", _r_native_iterable_call),
+        # ... and the COMPREHENSION source at the same structural slot
+        # (`primes.extend([i for i in xs if p(i)])`): the stmt-expr renders
+        # INLINE into the template slot, target-typed by the comprehension's
+        # own container -- the native family's row, and the same
+        # `_lower_call_arg` arm renders it here.
+        _ArgRow("native_iterable_comp", _r_native_iterable_comp),
         _ArgRow("own_iter_special", _r_own_iter_special),
         # A nested list literal into an Own[list] element slot
         # (`rows.append([9, 9])` -> `push_back({9, 9})`).
         _ArgRow("own_container_literal", _r_own_container_literal),
         _ArgRow("any_pass_through", _r_any_pass_through),
         _ArgRow("container_literal_method", _r_container_literal_method),
+        # ... and the COMPREHENSION at the same concrete container slot
+        # (`d.update({k: k for k in ks})`): the free-call family's row, with
+        # no flush guard -- the stub arg loop renders the stmt-expr inline
+        # where the free-call position hoists an ArgTemp, and every such
+        # stub slot is a const ref.
+        _ArgRow("container_comp", _r_container_comp),
         # `None` into a value-repr Optional element slot
         # (`items.append(None)` on `list[Int32 | None]`) -> the
         # STORAGE-form `std::nullopt`, like the free-call row.
@@ -11915,6 +12080,15 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     # A whole value-repr Optional[Callable] name into a matching
     # value-opt slot passes bare (`os.walk(top, onerror=cb)`).
     _ArgRow("value_opt_callable_pass", _r_value_opt_callable_pass),
+    # ... and the SCALAR twin (`requests.request(.., timeout, ..)` at
+    # `timeout: float | None`): the un-narrowed binding IS the
+    # `std::optional<double>` the slot takes, so it passes bare.
+    _ArgRow("value_opt_pass_through", _r_value_opt_pass_through),
+    # ... and the value-TUPLE twin (`requests.request(.., auth, ..)` at
+    # `auth: tuple[str, str] | None`): a value tuple is a value type, so the
+    # whole optional binds the by-value slot bare -- the free-call and
+    # record-method families' row, rendered by the same position-blind arm.
+    _ArgRow("value_opt_tuple_pass", _r_value_opt_tuple_pass),
     _ArgRow("none_unit", _r_none_unit),
     _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
     _ArgRow("own_record_rvalue", _r_own_record_rvalue),
@@ -12607,6 +12781,12 @@ _RECORD_METHOD_ARG_SINK = register_sink(_ArgSink(
         # the spelled container in place (`os.environ.update({...})` ->
         # `update(::tpy::ordered_map<..>({{..}}))`), like the stub loop.
         _ArgRow("container_literal_method", _r_container_literal_method),
+        # ... and the COMPREHENSION sibling of that row
+        # (`pgm.saverow([2.0 * a[i] for i in range(n)])`): the stmt-expr
+        # renders inline into the const-ref slot, where the free-call
+        # position hoists an ArgTemp.
+        _ArgRow("comp_container_method", _r_comp_container_method,
+                face="arg.comprehension_method"),
         # The M4c wrapper-slot rows, the record-method twins of the
         # free-call ladder's: a same-wrapper NAME binds bare
         # (`h.matches(probe)`); a member-typed NAME / literal /
@@ -13844,11 +14024,13 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
 def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
                             method_fi, locals_: dict[str, TpyType],
                             analyzer) -> bool:
-    """A record-ctor rvalue arg into a CONST same-record method slot
+    """A record RVALUE arg into a CONST same-record method slot
     (`a.combine(A(9))` where `other` is emitted `const A&`): the method-call
     arg loop has no ref-param rvalue-temp arm (unlike the free-fn loop), so
-    the ctor expansion renders inline -- the THIRCtorCall
-    bytes. Admission requires the callee param be signature-const
+    the source expansion renders inline -- the THIRCtorCall
+    bytes for a ctor, the bare call render for a record-returning free /
+    method call (`a.add(b.muls(x))`), which the const ref binds for the
+    full expression. Admission requires the callee param be signature-const
     (`const_borrow_params`, the materialized `decide_param_const` verdict,
     the same fact `_param_is_const` reads for body locals): the MUTATED-ref
     shape (`a.absorb(A(4))`) inlines the same way but that
@@ -13858,7 +14040,7 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
     slots only (an rvalue UPCAST is deferred with the other rvalue rows); a
     FREE-fn ctor rvalue hoists a `__tmp_N` even into a const slot (the
     ref-param temp arm) and stays off free-call lowering's arms entirely."""
-    if not isinstance(a, TpyCall):
+    if not isinstance(a, (TpyCall, TpyMethodCall)):
         return False
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
@@ -13882,12 +14064,20 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
         # past the const gate.
         if (method_fi.direct_mutated_params is None
                 and method_fi.call_edges is None):
-            return _ctor_shape_ok(a, analyzer)
+            return isinstance(a, TpyCall) and _ctor_shape_ok(a, analyzer)
         return False
     if idx not in cbp:
         return False
-    return (_ctor_shape_ok(a, analyzer)
-            or _typed_dict_ctor_call(a, analyzer) is not None)
+    # The CALL sources of the same rvalue: a record-returning free call and
+    # a record-returning method call each render bare, so the const ref
+    # binds the returned prvalue exactly as it binds the ctor expansion.
+    if isinstance(a, TpyMethodCall):
+        return bool(_method_rvalue_f1_record(a, analyzer)
+                    and _witness("method.record_method_rvalue_arg"))
+    return bool(_ctor_shape_ok(a, analyzer)
+                or _typed_dict_ctor_call(a, analyzer) is not None
+                or (_record_rvalue_call_shape(a, analyzer)
+                    and _witness("method.record_call_rvalue_arg")))
 
 def _is_builtin_print(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """`e` is a call to the builtin `print` (not a user/local shadow): the builtin

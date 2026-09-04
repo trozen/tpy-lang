@@ -2605,20 +2605,24 @@ class TestFieldReceiverSubscript:
         sub = _fn(thir, "at").body[0].value
         assert isinstance(sub.index, THIRCoerce)
 
-    def test_deep_chain_ineligible(self):
-        # `self.inner.ys[i]` -- a two-level receiver chain stays AST
-        # (_field_receiver_ok pins the receiver base to a bare name).
-        thir = _lower_ctx(
-            "from tpy import Int32\n"
-            "class G:\n    ys: list[Int32]\n"
-            "    def __init__(self):\n        self.ys = [5]\n"
-            "class H:\n    inner: G\n"
-            "    def __init__(self):\n        self.inner = G()\n"
-            "    def deep(self, i: Int32) -> Int32:\n"
-            "        return self.inner.ys[i]\n"
-            "    def deep_put(self, i: Int32) -> None:\n"
-            "        self.inner.ys[i] = 1\n")
-        assert _fn(thir, "deep") is None and _fn(thir, "deep_put") is None
+    def test_deep_chain_routes(self):
+        # `self.inner.ys[i]` -- a two-level plain-record receiver chain
+        # renders as the flat postfix chain, read and write alike.
+        src = ("from tpy import Int32\n"
+               "class G:\n    ys: list[Int32]\n"
+               "    def __init__(self):\n        self.ys = [5]\n"
+               "class H:\n    inner: G\n"
+               "    def __init__(self):\n        self.inner = G()\n"
+               "    def deep(self, i: Int32) -> Int32:\n"
+               "        return self.inner.ys[i]\n"
+               "    def deep_put(self, i: Int32) -> None:\n"
+               "        self.inner.ys[i] = 1\n")
+        thir = _lower_ctx(src)
+        assert _fn(thir, "deep") is not None
+        assert _fn(thir, "deep_put") is not None
+        hpp, _cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::__getitem__(this->inner.ys, i)" in hpp
+        assert "::tpy::__setitem__(this->inner.ys, i, 1)" in hpp
 
     def test_narrowed_optional_field_read_and_write_route(self):
         # Both halves resolve the narrowed Optional[list] FIELD at its inner
@@ -2767,9 +2771,9 @@ class TestContainerCallSlots:
         assert "::tpy::ordered_set<int32_t> s = make_set();" in cpp
         assert "return make_list(n);" in cpp
 
-    def test_reassigned_container_local_ineligible(self):
-        # A reassigned container local takes the AST's pointer-local + rebind
-        # slot machinery -- the whole body stays on the AST path.
+    def test_reassigned_container_local_routes(self):
+        # A reassigned container local takes the two-slot rebind machinery:
+        # the first bind fills `__slot_1`, the reseat the optional `__slot_2`.
         src = (
             _PRELUDE.replace("import Int32", "import Own, Int32")
             + "def make_list(n: Int32) -> Own[list[Int32]]:\n    return [n]\n"
@@ -2778,8 +2782,11 @@ class TestContainerCallSlots:
             + "    xs = make_list(n + 1)\n"
             + "    return xs[0]\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.var_decl:decl.container_call_reassigned")
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("call.container_rebind_ret", 0) >= 1
+        _hpp, cpp = _assert_byte_identical(src)
+        assert "std::vector<int32_t>* xs = &__slot_1;" in cpp
+        assert "xs = &*(__slot_2 = make_list(" in cpp
 
     def test_record_element_container_call_decl_and_return_route(self):
         # A container-of-records RETURN from a call lands bare (the whole
@@ -5184,9 +5191,9 @@ class TestListConcatBinop:
         _assert_rejects_at(_reject_tally(src),
                            "body:stmt.expr_stmt:binop.shape.<")
 
-    def test_return_container_concat_still_defers(self):
-        # BOUNDARY: the RETURN container row is a separate unrouted gate
-        # (return.container_source) -- the concat leg must not open it.
+    def test_return_container_concat_routes(self):
+        # The concat rvalue fills the by-value container return slot with the
+        # operator's own render -- no alias of either operand.
         src = ("from tpy import Int32, Own\n"
                "def concat(a: list[Int32], b: list[Int32])"
                " -> Own[list[Int32]]:\n"
@@ -5196,8 +5203,8 @@ class TestListConcatBinop:
                "    b: list[Int32] = [2]\n"
                "    print(concat(a, b))\n"
                "go()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.container_source")
+        _, cpp = _assert_byte_identical(src)
+        assert "return (::tpy::list_concat(a, b));" in cpp
 
 
 class TestCallableElementLiteral:
@@ -5384,7 +5391,7 @@ class TestElemFieldChainSetitem:
         assert ('::tpy::__setitem__(::tpy::__getitem__(root.kids, "a").kids,'
                 ' "b", Node(99));') in cpp
 
-    def test_field_of_field_chain_stays_ast(self):
+    def test_field_of_field_chain_routes(self):
         src = (
             "from __future__ import annotations\n"
             "from tpy import Int32\n"
@@ -5401,8 +5408,11 @@ class TestElemFieldChainSetitem:
             "    put(ns)\n"
             "    print(ns[0].inner.slots[\"k\"])\n"
             "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.assign:setitem.recv.field_chain")
+        # The element's own field chain is a receiver too: the write
+        # renders the flat postfix chain off the element read.
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert ('::tpy::__setitem__(::tpy::__getitem__(nodes, 0).inner.slots,'
+                ' "k", 5);') in cpp
 
 
 class TestContainerBorrowCallDecl:

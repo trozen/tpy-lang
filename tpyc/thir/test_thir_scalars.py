@@ -651,17 +651,18 @@ class TestBitwiseBinops:
         assert ("return (static_cast<int32_t>((static_cast<int32_t>(x & 255)) | 1));"
                 in cpp)
 
-    def test_set_intersection_ineligible(self):
-        # A set `&` returns a container, not a scalar -- rejected at the arm's
-        # `_resolved_scalar` result check, so it stays on the AST path.
+    def test_set_intersection_not_a_scalar_binop(self):
+        # A set `&` returns a container, not a scalar, so the scalar-binop arm
+        # declines at its `_resolved_scalar` result check; the body still
+        # lowers through the container-operator return arm.
         src = (
             "from tpy import Int32, Own\n"
             + "def inter(a: set[Int32], b: set[Int32]) -> Own[set[Int32]]:\n"
             + "    return a & b\n"
             + "def main():\n    print(len(inter({1, 2}, {2, 3})))\nmain()\n"
         )
-        thir = _lower_ctx(src)
-        assert _fn(thir, "inter") is None
+        _, cpp = _assert_byte_identical(src)
+        assert "return (::tpy::set_intersection(a, b));" in cpp
 
 
 _MACRO_MOD = '''# tpy: macro_module

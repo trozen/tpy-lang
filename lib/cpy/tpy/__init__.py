@@ -662,8 +662,26 @@ class NativeIterable(_Protocol[T]):
 
 @_runtime_checkable
 class Deref(_Protocol[T]):
-    """Types that can be dereferenced to yield T."""
+    """Types that can be dereferenced to yield T.
+
+    Attribute access the wrapper does not define forwards to the payload,
+    mirroring the compiler's auto-deref member access (the wrapper's own
+    members always win, which is also how `__getattr__` behaves)."""
     def __deref__(self): ...
+
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self.__deref__(), name)
+
+    def __setattr__(self, name, value):
+        # A member WRITE through the wrapper lands on the payload too, unless
+        # the wrapper itself declares the name (its own state, e.g. `_ptr`).
+        if name.startswith("_") or name in type(self).__dict__ \
+                or any(name in c.__dict__ for c in type(self).__mro__[1:]):
+            object.__setattr__(self, name, value)
+        else:
+            setattr(self.__deref__(), name, value)
 
 
 class Covariant(_Protocol[T]):

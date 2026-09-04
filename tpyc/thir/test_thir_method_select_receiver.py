@@ -1,9 +1,9 @@
 """Ternary and walrus method receivers. Over BARE value operands they render
 as the plain C++ select / comma form with `.` access on both paths, so a
 str/bytes-value or plain-record select receiver routes. An operand that is a
-pointer-local or a narrowed Optional name renders through its pointer, and
-every other non-name receiver kind (a literal, an f-string, a container) has
-no row: those reject at the receiver row, never escape the classifier."""
+pointer-local or a narrowed Optional name renders through its pointer, and a
+container-literal receiver has no row: those reject at the receiver row,
+never escape the classifier."""
 
 from __future__ import annotations
 
@@ -192,8 +192,14 @@ class TestSelectReceiverRejects:
                       "    print([1, 2, 1].count(1))\n"
                       "main()\n", "body:stmt.expr_stmt")
 
-    def test_fstring_receiver_rejects(self):
-        self._rejects("def main() -> None:\n"
-                      "    x = 5\n"
-                      "    print(f\"{x}\".upper())\n"
-                      "main()\n", "body:stmt.expr_stmt")
+
+class TestFStringReceiverRoutes:
+    def test_fstring_receiver(self):
+        # The std::format rvalue substitutes into the native str method's
+        # receiver slot, like the literal and concat receivers.
+        src = ("def main() -> None:\n"
+               "    x = 5\n"
+               "    print(f\"{x}\".upper())\n"
+               "main()\n")
+        _, cpp = _assert_routes_byte_identical(src)
+        assert "::tpy::str_upper(std::format(\"{}\", x))" in cpp

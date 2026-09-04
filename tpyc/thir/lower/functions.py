@@ -15,6 +15,7 @@ from ...parse.nodes import (
     TpyBytesLiteral,
     TpyCall,
     TpyCoerce,
+    TpyDictComprehension,
     TpyDictLiteral,
     TpyExpr,
     TpyFieldAccess,
@@ -25,6 +26,7 @@ from ...parse.nodes import (
     TpyImport,
     TpyIntLiteral,
     TpyLambda,
+    TpyListComprehension,
     TpyListRepeat,
     TpyMatch,
     TpyMethodCall,
@@ -33,6 +35,7 @@ from ...parse.nodes import (
     TpyNestedDef,
     TpyNoneLiteral,
     TpyPassStmt,
+    TpySetComprehension,
     TpySetLiteral,
     TpySlice,
     TpyStmt,
@@ -1430,6 +1433,15 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             # reject.
             return _container_literal_shape_ok(
                 source, ftype, analyzer, threaded=True)
+        if isinstance(source, (TpyListComprehension, TpySetComprehension,
+                               TpyDictComprehension)):
+            # A comprehension builds the field's container in place: its
+            # `({...})` statement-expression is self-describing and
+            # position-independent, so the member-init takes it verbatim.
+            # The comprehension's own route owns every shape reject; reads
+            # of a field the ctor BODY writes are already demoted by the
+            # caller's `expr_reads_self_field` check.
+            return True
         if isinstance(source, TpyName):
             # A container param copies bare into the field (`f(p)`); an Own
             # container param at its last use moves (`f(std::move(p))`, the
@@ -1868,6 +1880,23 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             note("ctor.base_init")
             return None
         field_inits: list[THIRMilInit] = []
+        mil_done_fields: set[str] = set()  # own fields already hoisted
+        body_done_fields: set[str] = set()  # own fields whose init went to the body
+        # The EMITTED member order, which decides the order the member inits
+        # run in -- not the `__init__` assignment order they are written in.
+        # The two agree only where `reorder_fields_by_init` applied.
+        field_index = {f.name: i for i, f in enumerate(record.fields)}
+        # An own field never assigned at the top level of `__init__` keeps its
+        # class-level default. That is an NSDMI, which the ctor body sees in
+        # place, so a source reading one demotes instead of rejecting. A field
+        # with BOTH a default and a ctor assign takes the assign: its NSDMI
+        # does not run, so it is not in this set.
+        ctor_assigned_fields = {s.target.field for s in init_method.body
+                                if _is_self_own_field_assign(s, own_field_names)}
+        nsdmi_only_fields = {
+            f.name for f in record.fields
+            if f.name not in ctor_assigned_fields
+            and (f.default_value is not None or f.default_expr is not None)}
         body_stmts: list[TpyStmt] = []  # demoted inits + non-init stmts + trivia, source order
         body_written_self_fields: set[str] = set()
         # The demote triggers: a nested-def-name / bare non-param-name
@@ -1898,16 +1927,52 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             is_own_init = _is_self_own_field_assign(stmt, own_field_names)
             ast_demotes = is_own_init and _ast_demotes_init(
                 stmt, lc.prescan.param_names, nested_def_names, body_local_names)
-            reads_written_field = (
+            # A second assignment to an already-hoisted field is a
+            # re-assignment, not a member init: the list holds one entry per
+            # member, so this one runs in the body over the value it set.
+            reassigns_hoisted = (is_own_init
+                                 and stmt.target.field in mil_done_fields)
+            # The demote triggers, decided BEFORE the ordering check: they say
+            # where the init runs, and the two destinations do not have the
+            # same fields in place. A read of an inherited field the body
+            # writes, or of a field with only a class-level default, is exactly
+            # a source the body can serve and the list cannot.
+            reads_inherited = (
                 is_own_init
-                and expr_reads_self_field(
-                    stmt.value, body_written_self_fields))
-            if (not chain_broken and is_own_init
+                and expr_reads_self_field(stmt.value, body_written_self_fields))
+            reads_default_only = (
+                is_own_init and not reads_inherited
+                and _reads_self_fields(stmt.value, nsdmi_only_fields))
+            reads_written_field = reads_inherited or reads_default_only
+            demotes = (chain_broken or ast_demotes or reassigns_hoisted
+                       or reads_written_field)
+            # Which own fields hold a value where this init will actually run.
+            # In the member init list that is the fields laid out BEFORE the
+            # target (C++ runs member inits in declaration order) that the
+            # chain has also already hoisted -- source order and layout order
+            # can disagree, since the assignment-order reorder does not reach a
+            # record with bases. In the body it is every field the list set,
+            # every class-level default (an NSDMI runs before the body), and
+            # every body init already emitted.
+            unready: set[str] = set()
+            if is_own_init:
+                if demotes:
+                    readable = (mil_done_fields | nsdmi_only_fields
+                                | body_done_fields)
+                else:
+                    target_idx = field_index[stmt.target.field]
+                    readable = {f for f in mil_done_fields
+                                if field_index[f] < target_idx}
+                unready = own_field_names - readable
+            if is_own_init and _reads_self_fields(stmt.value, unready):
+                raise ThirUnsupported("ctor.mil_reads_unready_field", loc=stmt.loc)
+            if (not chain_broken and is_own_init and not reassigns_hoisted
                     and not reads_written_field and not ast_demotes):
                 mil_node = _attempt_ctor_mil_init(
                     stmt, own_param_names, own_field_names, declared, lc)
                 if mil_node is not None:
                     field_inits.append(mil_node)
+                    mil_done_fields.add(stmt.target.field)
                     continue
                 # DYNAMIC demote (the probe-registers-a-temp trigger,
                 # e.g. a varargs std::array in the init): the init goes to
@@ -1916,16 +1981,22 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                                           emit_prims.CTOR_DEMOTE_NEEDS_TEMP)
                 _witness("mil.demote_probe")
                 chain_broken = True
+                body_done_fields.add(stmt.target.field)
                 body_stmts.append(stmt)
                 continue
             if is_own_init:
-                _reject_nondef_ctor_field(
-                    stmt, analyzer,
-                    _ctor_demote_reason(stmt, chain_broken, nested_def_names,
-                                        lc.prescan.param_names,
-                                        body_local_names))
+                # A re-assignment needs no default-construction check: the
+                # member initializer list already gave the field its value.
+                if not reassigns_hoisted:
+                    _reject_nondef_ctor_field(
+                        stmt, analyzer,
+                        _ctor_demote_reason(stmt, chain_broken, nested_def_names,
+                                            lc.prescan.param_names,
+                                            body_local_names,
+                                            reads_default_only))
                 if not chain_broken and ast_demotes:
                     _witness("mil.demote_mirror")
+                body_done_fields.add(stmt.target.field)
             # Demote to the body. Demoting breaks the chain: the MIL runs
             # before the body, so a later otherwise-hoistable init
             # must also demote to preserve source evaluation order.
@@ -2038,7 +2109,8 @@ def _ast_demotes_init(stmt: TpyAssign, param_names: set[str],
 
 def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
                         nested_def_names: set[str], param_names: set[str],
-                        body_local_names: set[str]) -> str:
+                        body_local_names: set[str],
+                        reads_default_only: bool = False) -> str:
     """Which demote trigger fired for this own-field init, in the order the
     triggers are tested.
 
@@ -2058,6 +2130,8 @@ def _ctor_demote_reason(stmt: TpyAssign, chain_broken: bool,
             return emit_prims.CTOR_DEMOTE_BODY_LOCAL
     if body_local_names and (collect_name_refs(stmt.value) & body_local_names):
         return emit_prims.CTOR_DEMOTE_BODY_LOCAL
+    if reads_default_only:
+        return emit_prims.CTOR_DEMOTE_READS_DEFAULT_ONLY
     return emit_prims.CTOR_DEMOTE_READS_INHERITED
 
 
@@ -2075,6 +2149,27 @@ def _reject_nondef_ctor_field(stmt: TpyAssign, analyzer, reason: str) -> None:
     emit_prims.reject_nondef_ctor_field_in_body(
         stmt.target.field, analyzer.registry.get_record_for_type(ftype).name,
         reason, stmt.loc)
+
+
+def _reads_self_fields(expr: TpyExpr, fields: set[str]) -> bool:
+    """True if `expr` reads `self.X` for any X in `fields`.
+
+    The field-read half of `expr_reads_self_field`, without its
+    treat-any-self-method-call-as-a-read rule: sema already warns on a
+    method call in the init section with fields still uninitialized, and
+    escalating that warned shape to a lowering reject is a separate call.
+    """
+    if not fields:
+        return False
+    stack: list[TpyExpr] = [expr]
+    while stack:
+        node = stack.pop()
+        if (isinstance(node, TpyFieldAccess)
+                and isinstance(node.obj, TpyName) and node.obj.name == "self"
+                and node.field in fields):
+            return True
+        stack.extend(node.children())
+    return False
 
 
 def _is_self_own_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
@@ -2363,6 +2458,19 @@ def _lower_ctor_mil_init(
             value=THIRCall(result_type=ftype, callee=source.func.name,
                            args=(), cpp_template=f"{lc.render_type(ftype)}()",
                            loc=loc))
+    if (_container_storage_field(ftype)
+            and isinstance(source, (TpyListComprehension, TpySetComprehension,
+                                    TpyDictComprehension))):
+        # The comprehension's stmt-expr goes straight into the member-init
+        # (`buffer(({ std::vector<V3> __result; ...; std::move(__result); }))`)
+        # -- the same render the decl-init position emits. Late import:
+        # comprehensions imports this module.
+        from .comprehensions import _lower_comprehension
+        _witness("mil.container_comp")
+        return THIRMilInit(
+            field_cpp=field_cpp,
+            value=_lower_comprehension(source, ftype, lc, declared,
+                                       lc.pointers))
     if _container_storage_field(ftype):
         if isinstance(source, TpyListRepeat):
             _witness("mil.container_repeat")

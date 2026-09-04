@@ -54,7 +54,8 @@ def main() -> None:
 main()
 '''
 
-# A record-valued conditional in the member-init list: the constructor fold.
+# A record-valued conditional of two LVALUE arms in the member-init list --
+# the `?:` is an lvalue there, not the prvalue the member-init row renders.
 CTOR_SRC = '''from tpy import Int32
 
 
@@ -68,13 +69,13 @@ class A:
 class H:
     a: A
 
-    def __init__(self, c: bool, other: A) -> None:
-        self.a = A(1) if c else other
+    def __init__(self, c: bool, other: A, alt: A) -> None:
+        self.a = other if c else alt
 
 
 def main() -> None:
     o = A(2)
-    h = H(True, o)
+    h = H(True, o, A(3))
     print(h.a.n)
 
 

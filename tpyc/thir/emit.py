@@ -2268,9 +2268,10 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
         stop_cpp = f"__stop_{n}"
     # The step arms. The unit steps are the plain ascending / descending
     # loop; the non-unit literal / variable steps add an upfront
-    # range_check_overflow (fixed-int only -- the gate admits no
-    # other counter here) and, for a variable step, a `__step_N` capture with a
-    # nonzero check and a ternary direction condition.
+    # range_check_overflow, which is fixed-int only -- a BigInt counter
+    # cannot overflow, so its arms skip the check -- and, for a variable
+    # step, a `__step_N` capture with a nonzero check and a ternary
+    # direction condition.
     if stmt.step_kind == "plus_one":
         out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
                   f"{counter} < {stop_cpp}; ++{counter}) {{\n")
@@ -2294,8 +2295,11 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
         step_cpp = _emit_expr(stmt.step, state)
         out.write(f"{indent}{cpp_elem} __step_{n} = {step_cpp};\n")
         out.write(f"{indent}::tpy::range_check_step_nonzero(__step_{n});\n")
-        out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
-                  f"{start_cpp}, {stop_cpp}, __step_{n});\n")
+        if not is_big_int_type(stmt.elem_type):
+            # An arbitrary-precision counter cannot overflow, so the check
+            # is fixed-int only -- same split as the literal-step arms.
+            out.write(f"{indent}::tpy::range_check_overflow<{cpp_elem}>("
+                      f"{start_cpp}, {stop_cpp}, __step_{n});\n")
         out.write(f"{indent}for ({cpp_elem} {counter} = {start_cpp}; "
                   f"__step_{n} > 0 ? {counter} < {stop_cpp} : {counter} > {stop_cpp}; "
                   f"{counter} += __step_{n}) {{\n")

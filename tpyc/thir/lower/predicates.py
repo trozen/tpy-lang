@@ -813,6 +813,10 @@ def _span_slot(t: 'TpyType | None', analyzer) -> bool:
         return False
     elem = _peel_readonly(args[0])
     return (_eligible_scalar(elem) or _f1_record(elem, analyzer)
+            # A str-family element (`argv = sys.argv[1:]` ->
+            # `std::span<std::string>`) spells the same plain copy; its reads
+            # are the ordinary str-element rows.
+            or _resolved_str_value(elem, analyzer) is not None
             or _type_param_value_slot(elem))
 
 
@@ -3603,7 +3607,13 @@ def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
         # the plain chained read: the inner hops render bare, this arm
         # wraps the Ptr-valued tail (`deref_check(this->inner.node).value`).
         if not (_field_receiver_ok(recv, declared, analyzer)
-                or _chained_field_read_ok(recv, analyzer)):
+                or _chained_field_read_ok(recv, analyzer)
+                # A Ptr-valued field read that is ITSELF taken through a
+                # pointer (`seg.sector_front.floor_h`): the inner hop
+                # renders its own `deref_check(seg).sector_front` and this
+                # arm wraps that whole render, so the deref nests one level
+                # per Ptr hop.
+                or _ptr_value_field_recv_ok(recv, declared, analyzer)):
             return False
         rt = analyzer.get_expr_type(recv)
     elif isinstance(recv, (TpyCall, TpyMethodCall)):
@@ -3702,18 +3712,31 @@ def _deref_wrapper_receiver_record(recv: TpyExpr,
     -- a plain value binding (bare `.` chain), or a PROVEN Optional-ptr
     local (`r: Ref | None` narrowed non-None, in `pointers` -- the lowering
     spells the `->` first hop off the pointer set), whose wrapper record is
-    the Optional's inner; a markers-clean FIELD read of one; or a container
-    ELEMENT read of one. None outside the slice."""
+    the Optional's inner; a markers-clean FIELD read of one (or one behind a
+    `Ptr[record]` hop, which carries an auto-deref marker of its own); or a
+    container ELEMENT read of one. None outside the slice."""
     if isinstance(recv, TpyFieldAccess):
         # A markers-clean FIELD receiver (`self.val.speak()` off
         # `val: Optional[Box[Pet]]` proven non-None): the field lowering
         # renders its own storage-optional unwrap via narrowed_deref
         # (`(*this->val).__deref__()...`); an UNPROVEN read carries
         # needs_optional_runtime_check and fails the markers gate.
-        if not (_field_markers_clean(recv)
+        if (_field_markers_clean(recv)
                 and _field_receiver_ok(recv, declared, analyzer)):
+            ft = _field_decl_type(recv, declared, analyzer)
+        elif _ptr_value_field_recv_ok(recv, declared, analyzer):
+            # A field read THROUGH a `Ptr[record]` binding (`hit.material`
+            # on `hit: Ptr[Body]`): the field's own pointer arm renders the
+            # `hit->material` hop and the `.__deref__()` chain composes
+            # postfix off it, exactly as off a plain member read. The Ptr
+            # hop is itself an auto-deref marker on the field node, which is
+            # why the markers-clean leg above cannot reach this shape; the
+            # declared map holds the POINTER, so the field's own type is
+            # what carries the wrapper record.
+            ft = analyzer.get_expr_type(recv)
+            _witness("deref.ptr_field_recv")
+        else:
             return None
-        ft = _field_decl_type(recv, declared, analyzer)
         if ft is None:
             return None
         u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ft)))
@@ -6265,8 +6288,12 @@ def _container_elem_family(t: 'TpyType | None', analyzer, elem_ok,
         # loop). The record family passes its own element gate.
         if span_elem_ok is not None:
             return bool(args) and span_elem_ok(args[0])
+        # An OWNED-str element joins the scalar slice: it reads bare off a
+        # span exactly as it does off the list both `span_ok` callers admit
+        # it in. VIEW-typed str elements stay out (the static-storage pin).
         return (span_ok and bool(args)
-                and _eligible_scalar(_peel_readonly(args[0])))
+                and (_eligible_scalar(_peel_readonly(args[0]))
+                     or _owned_str_slot(_peel_readonly(args[0]), analyzer)))
     if is_dict(t):
         if not args or len(args) < 2:
             return False
@@ -6712,7 +6739,12 @@ def _const_exact_field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType],
     Render-const-blind consumers (field reads/writes, arg lifts, reseats,
     MIL copies) keep the plain `_field_receiver_ok`."""
     if not _field_receiver_ok(e, declared, analyzer):
-        return False
+        # An explicit `Ptr[record]` receiver (`fl = sector.flags` on
+        # `sector: Ptr[Sector]`, `pic = seg.sector_front.ceil_pic` off a Ptr
+        # FIELD) spells its const-ness the same way a reference receiver
+        # does: the verdict comes from the init's raw sema type, which
+        # carries `readonly[..]` for a `Ptr[readonly[T]]` binding.
+        return _ptr_value_field_recv_ok(e, declared, analyzer)
     return _optional_ptr_borrow_name(e.obj, declared, analyzer) is None
 
 
@@ -6877,6 +6909,13 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
         if rt.inner.is_value_type():
             return None
         rt = rt.inner
+    if isinstance(rt, PtrType):
+        # An explicit `Ptr[record]` binding declares the same members as the
+        # pointee; which of `->field` / `deref_check(recv).field` renders is
+        # the field arm's call off `ptr_non_null`, not a difference in what
+        # the field IS. Receiver ADMISSION stays with the callers -- the ones
+        # that do not name a Ptr receiver shape reject before reaching here.
+        rt = unwrap_readonly(rt.pointee)
     if not (isinstance(rt, NominalType) and rt.is_record):
         return None
     record = analyzer.registry.get_record_for_type(rt)
@@ -6938,7 +6977,21 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
     if isinstance(recv, TpyName):
         return locals_.get(recv.name)
     if (isinstance(recv, TpyFieldAccess)
-            and _field_receiver_ok(recv, locals_, analyzer)):
+            and (_field_receiver_ok(recv, locals_, analyzer)
+                 # A deeper chain of plain record members
+                 # (`self.scene.objects[i]`) resolves the same way: the
+                 # container binding is the last link's DECLARED type and
+                 # the receiver renders as the flat postfix chain the
+                 # Ptr-field arm already composes.
+                 or (_chained_field_read_ok(recv, analyzer)
+                     and _witness("subscript.recv_field_chain"))
+                 # ... and a member off an explicit `Ptr[record]` binding
+                 # (`sector.flags[i]` on `sector: Ptr[Sector]`): the field
+                 # arm renders `->field` / `deref_check(recv).field` off
+                 # `ptr_non_null`, and the container binding is the field's
+                 # declared type exactly as for a reference receiver.
+                 or (_ptr_value_field_recv_ok(recv, locals_, analyzer)
+                     and _witness("subscript.recv_ptr_field")))):
         dt = _field_decl_type(recv, locals_, analyzer)
         if isinstance(dt, TpyType) and contains_type_param(dt):
             # A monomorphized generic receiver's field declares the RAW T
@@ -7208,6 +7261,26 @@ def _own_ptr_union_element(e: 'TpyType', analyzer) -> bool:
     return _eligible_ptr_union(unwrap_readonly(u.wrapped), analyzer) is not None
 
 
+def _owned_container_slot(t: 'TpyType | None') -> bool:
+    """An owned CONTAINER slot (`list` / `dict` / `set`) once the Own marker is
+    peeled: a self-contained by-value C++ container, so it moves in and out of
+    a storage tuple exactly like an owned record does."""
+    if t is None:
+        return False
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return bool(is_list(u) or is_dict(u) or is_set(u))
+
+
+def _own_container_element(e: 'TpyType') -> bool:
+    """An `Own[list/dict/set]` tuple element: the Own marker pushes the owned
+    container to STORAGE form, so the tuple is a by-value
+    `std::tuple<std::vector<double>, ...>` whose literal returns the same
+    spelled brace-init the pointer-repr flavors do. The `Own[record]` sibling
+    is already a by-value slot that `_value_tuple_return` admits."""
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
+    return isinstance(u, OwnType) and _owned_container_slot(u.wrapped)
+
+
 def _own_storage_tuple_return(rt: 'TpyType | None',
                               analyzer) -> 'TupleType | None':
     """An `Own[tuple[...]]` STORAGE return slot with a NON-VALUE member
@@ -7231,6 +7304,9 @@ def _own_storage_tuple_return(rt: 'TpyType | None',
                         # spelled brace-init (the variant's converting ctor
                         # absorbs the member rvalue).
                         or _own_ptr_union_element(e, analyzer)
+                        # ... and the owned-CONTAINER element flavor, whose
+                        # storage tuple holds the container by value.
+                        or _own_container_element(e)
                         for e in t.element_types)):
             return t
         return None
@@ -8568,9 +8644,19 @@ def _optional_field_none_subject(e: TpyExpr, locals_: dict[str, TpyType],
     renders the identical bare-member `.has_value()` through the
     narrowed-field recovery arm, so it is admitted the same way. Same
     receiver/marker shape as the plain field arm."""
-    if not (isinstance(e, TpyFieldAccess) and _field_markers_clean(e)):
+    if not isinstance(e, TpyFieldAccess):
         return False
-    if isinstance(e.obj, TpyName):
+    if _ptr_value_field_recv_ok(e, locals_, analyzer):
+        # An explicit `Ptr[record]` receiver -- a NAME or a Ptr-valued field
+        # one link up (`seg.sector_front.ceil_pic is not None`): the member
+        # is reached through the field arm's `->` / `deref_check(..)`, and
+        # the optional it names is the same storage `std::optional<T>`.
+        # (That arm owns the marker guard: a Ptr member access carries
+        # `deref_depth`, which the plain-receiver guard below excludes.)
+        pass
+    elif not _field_markers_clean(e):
+        return False
+    elif isinstance(e.obj, TpyName):
         if not _field_receiver_ok(e, locals_, analyzer):
             return False
     elif (isinstance(e.obj, TpyFieldAccess)
@@ -8818,7 +8904,11 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                     # The Own[A | B] element (`pair() -> tuple[Own[A|B],
                     # Int32]`): the capture holds the VALUE variant, and
                     # the target lifts it per element via to_ptr_variant.
-                    or _eligible_ptr_union(ew, analyzer) is not None):
+                    or _eligible_ptr_union(ew, analyzer) is not None
+                    # The Own[list/dict/set] element: the capture holds the
+                    # container by value and the target moves it out, the
+                    # same shape the Own[record] row spells.
+                    or _own_container_element(e)):
                 return None
         elif not (_eligible_scalar(e)
                   or _resolved_str_value(unwrap_ref_type(e), analyzer)
@@ -8906,6 +8996,20 @@ def _storage_call_container(t: TpyType) -> bool:
     one whose reassigned locals take the pointer-local machinery
     (tuples/unions are value types; their reassign is a plain value assign)."""
     return is_list(t) or is_dict(t) or is_set(t)
+
+def _container_rebind_call_ret(call: TpyExpr, ret: TpyType | None,
+                               analyzer) -> bool:
+    """A container-returning call filling a rebindable two-slot local
+    (`r = make(3)` reseated by `r = other(7)` -> `r = &*(__slot_2 =
+    other(7));`). RVALUE sources only: a borrow (`T&`) return reseats via
+    `&(call)`, the pointer arm's lift, not this slot. One predicate for the
+    decl-binding admission and the call-render gate so the two layers cannot
+    drift."""
+    if not is_rvalue_source(analyzer, call):
+        return False
+    fam = _storage_call_ret(ret, analyzer)
+    return fam is not None and (_storage_call_container(fam)
+                                or is_bytearray_type(fam))
 
 def _btuple_owning_call_init(init: TpyExpr, analyzer) -> bool:
     """An init call that OWNS its tuple result WHOLE -- the decl-position
@@ -9943,6 +10047,11 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # and the movable last use the same temp-free `std::move(name)`.
         return w if at == w else None
     wu = unwrap_readonly(unwrap_send_sync(w))
+    # The SLOT can be pending too when the receiver container is itself an
+    # unannotated literal (`outer = []` fed only by `outer.append(inner)`):
+    # both sides then carry the same unresolved literal type, so resolve the
+    # slot exactly as the argument is resolved below.
+    wu = resolve_pending_container(wu, analyzer) or wu
     if is_list(wu) or is_dict(wu) or is_set(wu) or is_bytearray_type(wu):
         # A builtin-container payload (`g.set(live)` into `Own[list[T]]`):
         # the same copy temp (`auto __tmp_N = live;` + the move wrap) and

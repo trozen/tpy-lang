@@ -33,8 +33,8 @@ def main() -> None:
     server = create_server((args.host, args.port))
     print(f"listening on {server.getsockname()}")
 
-    conn = server.accept()
-    print(f"accepted connection from {conn.getpeername()}")
+    conn, peer = server.accept()
+    print(f"accepted connection from {peer}")
 
     # Drain the client (one chunk at a time) and echo back. Loop exits
     # when recv returns empty bytes (peer's half-close -> EOF).

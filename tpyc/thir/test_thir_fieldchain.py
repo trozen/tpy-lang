@@ -146,17 +146,34 @@ class TestPtrValuedIntermediate:
         _, witnessed = _lower_ctx_witnessed(_PTR_CHAIN)
         assert witnessed.get("field.chain_ptr_recv", 0) >= 1
 
-    def test_second_ptr_hop_keeps_rejecting(self):
-        # BOUNDARY: the row admits ONE marked inner hop, so a chain whose
-        # intermediate is ALSO a Ptr field stays on the AST path.
-        src = _PTR_CHAIN.replace("class S:\n    a: A\n"
-                                 "    def __init__(self, f: Int32):\n"
-                                 "        self.a = A(f)\n",
-                                 "class S:\n    a: Ptr[A]\n"
-                                 "    def __init__(self, a: Ptr[A]):\n"
-                                 "        self.a = a\n")
-        src = src.replace("    s = S(7)\n", "    inner = A(7)\n    s = S(inner)\n")
-        assert _fn(_lower_ctx(src), "via_name") is None
+    def _second_ptr_hop_src(self) -> str:
+        return _PTR_CHAIN.replace(
+            "class S:\n    a: A\n"
+            "    def __init__(self, f: Int32):\n"
+            "        self.a = A(f)\n",
+            "class S:\n    a: Ptr[A]\n"
+            "    def __init__(self, a: Ptr[A]):\n"
+            "        self.a = a\n"
+        ).replace("    s = S(7)\n", "    inner = A(7)\n    s = S(inner)\n")
+
+    def test_second_ptr_hop_routes(self):
+        # A chain whose intermediate is ALSO a Ptr field: each hop wraps the
+        # render below it, so the deref nests.
+        thir = _lower_ctx(self._second_ptr_hop_src())
+        for name in ("via_name", "proven"):
+            assert _fn(thir, name) is not None, name
+
+    def test_second_ptr_hop_render(self):
+        compiler, modules = _compile(self._second_ptr_hop_src())
+        hpp, cpp = compiler.generate_code_to_strings(
+            _entry(modules),
+            options=CodeGenOptions(emit_source_comments=False))
+        out = hpp + cpp
+        assert ("return ::tpy::deref_check(::tpy::deref_check(s).a).q.flag;"
+                in out)
+        assert ("::tpy::deref_check(::tpy::deref_check(this->s).a).q.flag = v;"
+                in out)                                     # write target
+        assert "return ::tpy::deref_check(p->a).q.flag;" in out  # non-null
 
     def test_user_deref_intermediate_keeps_rejecting(self):
         # BOUNDARY: a USER `__deref__` proxy mid-chain

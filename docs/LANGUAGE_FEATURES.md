@@ -711,7 +711,7 @@ log(f"x={x}")
 - **Working**: `bytearray` type -- mutable byte sequence -> `std::vector<uint8_t>`
 - **Working**: `BytesView` (`tpy.BytesView`) -- non-owning read-only view -> `std::span<const uint8_t>`
 - **Working**: Byte literals (`b"hello"`, `b"\x00\xff"`) -- use static storage (C++ string literal) when used as `BytesView` or function arguments (zero heap allocation)
-- **Working**: `bytes(n)` zero-fill constructor, `bytes(b)` / `bytearray(b)` copy constructors
+- **Working**: `bytes(n)` zero-fill constructor, `bytes(b)` / `bytearray(b)` copy constructors Caveats: `bytearray(n)` with a runtime `BigInt` size fails the C++ build (`BUGS.md#bytearray-size-bigint-unnarrowed`), and a `bytearray` field initialized in a constructor rejects (`BUGS.md#bytearray-ctor-field-and-list-conv`).
 - **Working**: `bytes(iter)` / `bytearray(iter)` from `Iterable[UInt8]` (fast path) or `Iterable[Int32]` (runtime range-checked 0..255); generator expressions work too
 - **Working**: `bytearray.extend(iter)` accepts `Iterable[UInt8]` or `Iterable[Int32]` (range-checked)
 - **Working**: Subscript (`b[i]` -> `UInt8`), `len()`, `in` operator
@@ -3637,7 +3637,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Membership
 - **Working**: `in`, `not in` (for list, Array, Span, str, tuple literals)
-- Against a tuple literal, `x in (a, b, c)` expands to an `==` OR-chain, so the needle renders once per element. Anything but a name or literal (a call, a `@property` / `__getattr__` access, a field read) binds to a temp first so its access path runs once. The temp aliases rather than snapshots, so an element that assigns to the needle's own storage is still observed -- an evaluation-order gap tracked in BUGS.md, not a property of the temp.
+- Against a tuple literal, `x in (a, b, c)` expands to an `==` OR-chain, so the needle renders once per element. Anything but a name or literal (a call, a `@property` / `__getattr__` access, a field read) binds to a temp first so its access path runs once. The temp aliases rather than snapshots, so an element that assigns to the needle's own storage is still observed -- an evaluation-order gap tracked in BUGS.md, not a property of the temp. A `bytes` needle against a tuple literal is a compile error today: the chain would need the resolved `bytes_eq` free-function spelling (`BUGS.md#bytes-needle-tuple-membership`).
 
 ### Logical
 - **Working**: `and`, `or`, `not`

@@ -1,5 +1,0 @@
-Arc method auto-deref (`data.lock()` resolving through Arc's Deref[Mutex[T]]
-to Mutex.lock(), no explicit `.get()`) is a compile-time deref-chain feature
-the CPython Arc stub does not model -- same as tests/cases/tplib/rc_auto_deref.
-This case exists specifically to exercise that TPy-only auto-deref, so it can't
-run under CPython (`data.lock()` raises AttributeError on the stub Arc).

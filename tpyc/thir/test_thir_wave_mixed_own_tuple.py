@@ -61,9 +61,8 @@ class TestMixedOwnTuplePass:
 class TestMixedOwnTupleBoundaries:
     def test_pure_owned_container_element_still_defers(self):
         # The fully-owned sibling with a container element
-        # (`tuple[Own[list[Int32]], Own[Box]]`): the pass row's predicate
-        # is element-unrestricted, but the surrounding gates (the inner
-        # call's result family) keep the shape out today -- pin that so a
+        # (`tuple[Own[list[Int32]], Own[Box]]`): its RETURN routes, but the
+        # pass row still keeps the shape out at the ARG -- pin that so a
         # future widening re-measures the render instead of inheriting
         # the bare bind unverified.
         src = _HDR + (
@@ -75,7 +74,7 @@ class TestMixedOwnTupleBoundaries:
             "    print(take_lc(make_lc()))\n"
         )
         _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.slot_type")
+                           "body:expr.call:call.native_arg.container")
 
     def test_own_container_element_still_defers(self):
         # An `Own[list]` element keeps the tuple outside the F1 slice --
@@ -175,7 +174,8 @@ class TestMixedOwnStorageSinks:
     def test_own_container_elem_mixed_call_still_defers(self):
         # Boundary: an `Own[list]`-element mixed call stays outside the F1
         # slice at the storage sinks too (the container-literal twin of the
-        # pass-row pins above).
+        # pass-row pins above) -- the owned-container tuple RETURN routes,
+        # the container-element sink does not.
         src = _HDR + (
             "def make_lc() -> tuple[Own[list[Int32]], Own[Box]]:\n"
             "    return ([1, 2], Box(3))\n"
@@ -185,5 +185,4 @@ class TestMixedOwnStorageSinks:
             "def main() -> None:\n"
             "    print(lc_in_list())\n"
             "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.slot_type")
+        _assert_rejects_at(_reject_tally(src), "body:expr.container_literal")

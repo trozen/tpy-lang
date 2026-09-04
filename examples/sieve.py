@@ -15,7 +15,7 @@ def sieveOfAtkin(end: int) -> Own[list[int]]:
     # TODO: error without wrapping literals with int(0)
     x_max, x2, xd = int(sqrt((end-1)/4.0)), int(0), int(4)
     # TODO: error without these
-    y_max, n, end, n_diff, m = int(0), int(0), int(0), int(0), int(0)
+    y_max, n, n_diff, m = int(0), int(0), int(0), int(0)
     for xd in range(4, 8*x_max + 2, 8):
         x2 += xd
         y_max = int(sqrt(end-x2))

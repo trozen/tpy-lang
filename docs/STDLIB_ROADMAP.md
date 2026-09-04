@@ -361,7 +361,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `pi`, `tau`, `e`, `inf`, `nan` | Done | Constants as `Final[float]`. `nan` is `Final[float] = float("nan")` -- the `float(str)` literal forms (`"nan"`, `"inf"`, `"-inf"`, plus case/whitespace variants) fold at codegen to constexpr `std::numeric_limits<double>::quiet_NaN()` / `::infinity()`, bypassing the non-constexpr `tpy::float_from_str` runtime |
 | `log`, `log10`, `log2` | Done | `log(x, base)` is pure-TPy overload |
 | `log1p`, `expm1` | Done | Thin `std::log1p` / `std::expm1` |
-| `sqrt`, `cbrt`, `pow`, `exp`, `exp2` | Done | `cbrt` / `exp2` are Python 3.11+ |
+| `sqrt`, `cbrt`, `pow`, `exp`, `exp2` | Done | `cbrt` / `exp2` are Python 3.11+. `sqrt` of a negative returns NaN where CPython raises `ValueError` (`BUGS.md#math-sqrt-negative-nan`) |
 | `floor`, `ceil`, `trunc` | Done | Return `int` (BigInt) / generic `T` |
 | `sin`, `cos`, `tan` | Done | |
 | `asin`, `acos`, `atan`, `atan2` | Done | |
@@ -1455,7 +1455,7 @@ response's dup-fd reader is exercised as in normal use). Test:
 
 ### tplib.requests
 
-Current: `lib/tpy/tplib/requests.py` -- a `requests`-style client (pure TPy)
+Current: `lib/tpy/tplib/requests.py` -- a `requests`-style client (pure TPy); its CPython stub `lib/cpy/tplib/requests.py` does not import on current CPython (`BUGS.md#cpy-requests-stub-import`), so programs using it have no parity run
 over `http.client`. Module fns `get`/`post`/`put`/`patch`/`delete`/`head` +
 `request(method, url, ...)` with `params`/`headers`/`data`/`files`/`json`/`auth`
 kwargs. `Response` exposes `.status_code`/`.reason`/`.url`/`.ok`/`.text`

@@ -538,22 +538,34 @@ class TestBytearrayStorageCallDecl:
                "        ba = bytearray(b\"ab\")\n"
                "        print(len(ba))\n")
         assert _fn(_lower(src), "f") is not None
-        _assert_byte_identical(src)
+        _, cpp = _assert_byte_identical(src)
+        # Single-assignment: a plain by-value slot, no rebind machinery.
+        assert ("std::vector<uint8_t> ba = ::tpy::bytes_copy("
+                "::tpy::bytes_literal(\"ab\", 2));") in cpp
+        assert "__slot_" not in cpp
 
-    def test_reassigned_falls_back(self):
+    def test_reassigned_routes(self):
+        # The reassigned owning-call bind takes the two-slot rebind
+        # machinery, like the other reference containers.
         src = ("def f() -> None:\n"
                "    ba = bytearray(b\"ab\")\n"
                "    ba = bytearray(b\"cd\")\n"
                "    print(len(ba))\n")
-        assert _fn(_lower(src), "f") is None
+        assert _fn(_lower(src), "f") is not None
+        _, cpp = _assert_byte_identical(src)
+        assert "std::optional<std::vector<uint8_t>> __slot_2;" in cpp
+        assert "std::vector<uint8_t>* ba = &__slot_1;" in cpp
+        assert ("ba = &*(__slot_2 = ::tpy::bytes_copy("
+                "::tpy::bytes_literal(\"cd\", 2)));") in cpp
+        assert "::tpy::__len__((*ba))" in cpp
 
-    def test_branch_reassigned_falls_back(self):
+    def test_branch_reassigned_routes(self):
         src = ("def f(c: bool) -> None:\n"
                "    if c:\n"
                "        ba = bytearray(b\"ab\")\n"
                "        ba = bytearray(b\"cd\")\n"
                "        print(len(ba))\n")
-        assert _fn(_lower(src), "f") is None
+        assert _fn(_lower(src), "f") is not None
 
 
 class TestBytearrayRefAlias:

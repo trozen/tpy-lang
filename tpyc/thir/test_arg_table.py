@@ -78,6 +78,7 @@ class TestViewSinkShape:
             "native_iterable_container",
             "native_iterable_field",
             "native_iterable_call",
+            "native_iterable_comp",
         ]
 
     def test_note_tail_is_verbatim(self):
@@ -221,10 +222,12 @@ class TestContainerSinkShape:
             "native_iterable_literal",
             "native_iterable_container",
             "native_iterable_call",
+            "native_iterable_comp",
             "own_iter_special",
             "own_container_literal",
             "any_pass_through",
             "container_literal_method",
+            "container_comp",
             "none_value_opt",
             "opt_view_own_elem",
             "opt_view_param_own_elem",
@@ -303,6 +306,8 @@ class TestMarkerSinkSplit:
             "func_ref",
             "lambda",
             "value_opt_callable_pass",
+            "value_opt_pass_through",
+            "value_opt_tuple_pass",
             "none_unit",
             "value_union_temp",
             "own_record_rvalue",
@@ -602,7 +607,7 @@ class TestPlainSinkShape:
                      _CONTAINER_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 30
+        assert len(shared) == 33
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -922,6 +927,7 @@ class TestRecordMethodSinkShape:
             "protocol_bare_name",
             "protocol_slot",
             "container_literal_method",
+            "comp_container_method",
             "ru_wrapper_name",
             "ru_wrapper_member_name",
             "ru_wrapper_scalar_literal",
@@ -948,6 +954,7 @@ class TestRecordMethodSinkShape:
             ("nullable_proto_addr", "arg.nullable_proto_addr"),
             ("union_pass_deep_const", "method.union_pass_arg"),
             ("bytes_literal_value_opt", "method.bytes_literal_value_opt"),
+            ("comp_container_method", "arg.comprehension_method"),
         ]
 
     def test_flush_gated_cells_are_pinned(self):
@@ -1029,6 +1036,7 @@ class TestRecordMethodSinkShape:
             "optional_ptr_container",
             "optional_ptr_container_literal",
             "optional_ptr_scalar_temp",
+            "comp_container_method",
         ]
 
     def test_the_lookalike_cells_are_not_the_shared_ones(self):

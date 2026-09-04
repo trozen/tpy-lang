@@ -68,13 +68,30 @@ class TestCtorListRepeatMil:
         assert ("tags(::tpy::from_range<std::vector<int32_t>>("
                 "::tpy::repeat_range<int32_t>(4, {n})))" in hpp)
 
-    def test_comprehension_member_init_keeps_rejecting(self):
-        # The adjacent source shape: a comprehension materializes through
-        # machinery the target-threaded literal render does not spell.
+    def test_comprehension_member_init_routes(self):
+        # The adjacent source shape: a comprehension takes the same cell, with
+        # its statement-expression as the member-init value.
         src = _REPEAT_SRC.replace("        self.cells = [0] * 8\n",
                                   "        self.cells = [i for i in range(8)]\n")
+        ctx, faces, reasons = _thir_ctx_witnessed(src)
+        assert ctx is not None and not reasons
+        assert faces["mil.container_comp"] == 1
+        hpp = _assert_routes_byte_identical(src)[0]
+        assert "cells(({" in hpp and "__result.push_back(i);" in hpp
+
+    def test_comprehension_call_element_keeps_rejecting(self):
+        # BOUNDARY: the comprehension's own element rules still apply, and a
+        # member-init reject fails the whole constructor.
+        src = _REPEAT_SRC.replace(
+            "from tpy import Int32\n",
+            "from tpy import Int32, Own\n"
+            "def mk(i: Int32) -> Own[list[Int32]]:\n    return [i]\n"
+        ).replace("    cells: list[Int32]\n", "    cells: list[list[Int32]]\n"
+        ).replace("        self.cells = [0] * 8\n",
+                  "        self.cells = [mk(i) for i in range(8)]\n"
+        ).replace("g.cells[0], ", "")
         _assert_rejects_at(_reject_tally(src), "ctor",
-                           shape="ctor.mil_field.container.listcomprehension")
+                           shape="comp.container_value")
 
 
 class TestProtocolUnionIterTemp:

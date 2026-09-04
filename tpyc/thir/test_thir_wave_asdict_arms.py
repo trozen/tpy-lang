@@ -212,9 +212,10 @@ class TestMacroPrintArg:
 
 
 class TestAsdictBoundaries:
-    def test_set_literal_tuple_member_still_defers(self):
-        # The unwitnessed sibling: a SET literal tuple member keeps
-        # deferring.
+    def test_set_literal_tuple_whole_decl_still_defers(self):
+        # The RETURN of an owned-container tuple routes; what still defers is
+        # the caller's WHOLE-tuple decl -- binding the storage tuple to one
+        # local is a slot the decl cascade does not spell (an unpack does).
         src = _HDR + (
             "from tpy import Own\n"
             "def make() -> tuple[Own[set[Int32]], Int32]:\n"
@@ -224,7 +225,7 @@ class TestAsdictBoundaries:
             "    print(len(t[0]), t[1])\n"
         )
         _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.slot_type")
+                           "body:stmt.var_decl:decl.slot_type")
 
     def test_narrowed_optional_dict_field_view_still_defers(self):
         # A narrowed Optional dict FIELD receiver: declared-type keyed,

@@ -241,7 +241,11 @@ walrus and ternary source shapes, `with` in branches and loops, module-scope
 global slots, hook-mode `match` tiers, generator param yields). The queue is
 flat -- 260 distinct live tags over the 388 rows at the first re-probe -- so
 batches are chosen by user-facing frequency, not by count; re-run the
-script before choosing one.
+script before choosing one. The third batch (also 2026-09-04) took named
+PROGRAMS as its unit -- every entry under `examples/` and in the sibling
+`tpy-examples` repo -- and worked each until it compiled, built, ran and
+matched CPython; eight of nine now compile, and a failing named program
+outranks any tag count when the next batch is chosen.
 
 Sites whose comments call them unreachable but are live: `match.py:1873`,
 `2429`, `1994`; `statements.py:4146`; the "defensive" rvalue-plus-hoist

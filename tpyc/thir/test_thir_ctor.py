@@ -1204,16 +1204,27 @@ class TestConstructorContainerFields:
             "::tpy::repeat_range<int32_t>(3, {0}))) {}\n")
         _assert_routes_byte_identical(src)
 
-    def test_comprehension_member_init_stays_rejected(self):
-        # BOUNDARY: a comprehension materializes through machinery the
-        # target-threaded literal render does not spell.
-        ctor = _lower_ctor(
-            _PRELUDE
-            + "class A:\n    items: list[Int32]\n"
-            + "    def __init__(self):\n"
-            + "        self.items = [i for i in range(3)]\n",
-            "A")
-        assert ctor is None
+    def test_comprehension_member_init_routes_and_renders(self):
+        # The comprehension's statement-expression IS the member-init value,
+        # so the cell spells it verbatim -- no body demotion, no temp.
+        src = (_PRELUDE
+               + "class A:\n    items: list[Int32]\n"
+               + "    def __init__(self):\n"
+               + "        self.items = [i for i in range(3)]\n"
+               + "def main():\n    a = A()\n    print(len(a.items))\nmain()\n")
+        ctor = _lower_ctor(src, "A")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == (
+            " : items(({\n"
+            "    std::vector<int32_t> __result;\n"
+            "    const int32_t __stop_0 = 3;\n"
+            "    if (__stop_0 > 0) __result.reserve("
+            "static_cast<size_t>(__stop_0));\n"
+            "    for (int32_t i = 0; i < __stop_0; ++i) {\n"
+            "        __result.push_back(i);\n"
+            "    }\n"
+            "    std::move(__result);\n"
+            "})) {}\n")
 
     def test_float_key_dict_stays_ast(self):
         # Dict keys keep the receiver-slice rule (fixed-int / BigInt / owned

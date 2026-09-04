@@ -5874,6 +5874,8 @@ class StatementAnalyzer:
             return False
         if self.compat.is_copy_call(expr):
             return False
+        if isinstance(expr, TpyIfExpr):
+            return self._ternary_arm_copies(expr)
         if not isinstance(expr, TpyName):
             return False
         scope_type = self.ctx.func.current_scope.lookup(expr.name) if self.ctx.func.current_scope else None
@@ -5887,6 +5889,34 @@ class StatementAnalyzer:
         if scope_type is None:
             return False
         return True
+
+    def _ternary_arm_copies(self, expr: TpyIfExpr) -> bool:
+        """Whether either arm of a ternary store source copies into storage.
+
+        The unified Ref/Own check keys on the whole right-hand side, so a name
+        behind a ternary is unclaimed there -- including the Ref and Own
+        spellings `_is_non_owned_var_copy` defers to it. Each arm stores on its
+        own, so classify per arm. The arm render is a plain C++ `?:` operand
+        and never a move (an owned local arm does not lower at all today), so a
+        last-use mark on the name does not exempt it.
+        """
+        for arm in (expr.then_expr, expr.else_expr):
+            if isinstance(arm, TpyIfExpr):
+                if self._ternary_arm_copies(arm):
+                    return True
+                continue
+            # A prvalue arm (constructor call, literal) materializes in place;
+            # only a named arm names storage that outlives the store.
+            if not isinstance(arm, TpyName):
+                continue
+            scope_type = (self.ctx.func.current_scope.lookup(arm.name)
+                          if self.ctx.func.current_scope else None)
+            if scope_type is None:
+                continue
+            inner = unwrap_qualifiers(unwrap_own(unwrap_ref_type(scope_type)))
+            if not inner.is_value_type():
+                return True
+        return False
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""

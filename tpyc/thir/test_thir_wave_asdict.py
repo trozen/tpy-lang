@@ -2059,9 +2059,11 @@ class TestStubContainerCallArg:
         w = _assert_identical(src)
         assert w.get("arg.container_call_rvalue", 0) >= 1
 
-    def test_own_elem_slot_stays_ast(self):
-        # BOUNDARY: an Own[container] ELEMENT slot is outside the row's
-        # concrete-container slot family -- the body falls back.
+    def test_own_elem_slot_takes_the_own_row(self):
+        # BOUNDARY: an Own[container] ELEMENT slot is outside THIS row's
+        # concrete-container slot family -- the owning-slot row claims the
+        # same call rvalue instead, so the arg is admitted but the
+        # container-slot face never fires.
         src = ("from tpy import Own\n"
                "def make_list() -> Own[list[int]]:\n"
                "    return [7]\n"
@@ -2070,8 +2072,9 @@ class TestStubContainerCallArg:
                "    rows.append(make_list())\n"
                "    print(len(rows))\n"
                "main()\n")
-        fallback = _reject_tally(src)
-        assert fallback, "expected the Own-elem slot call arg to fall back"
+        w = _assert_identical(src)
+        assert w.get("arg.container_call_rvalue", 0) == 0
+        assert w.get("own.container_call_rvalue", 0) >= 1
 
 
 class TestPrintKwargsTail:

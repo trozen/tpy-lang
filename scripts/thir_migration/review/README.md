@@ -74,5 +74,8 @@ Data:
   reading a number here. For the record: at master `da1a92ee15` (before
   batch 1) 388 of the 402 BREAKS rows rejected over 260 distinct live tags
   (252 of the 299 tag x site groups size one); batch 1 closed ten shapes,
-  batch 2 (2026-09-04) 57 rows.
+  batch 2 (2026-09-04) 57 rows, batch 3 (2026-09-04) the nine failing NAMED
+  programs (`examples/**` and `../tpy-examples`), eight of which compile now.
+  Selection rule since batch 3: a failing named program outranks any tag
+  count; probe them first.
 - `BRIEF_*.md` -- the briefs the review agents worked from.

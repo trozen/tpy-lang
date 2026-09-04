@@ -1,0 +1,1 @@
+main.py:4: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.for_each:tuple.ref_target)
