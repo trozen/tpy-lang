@@ -234,10 +234,9 @@ class TestPerStubBoundaries:
         assert all(fn is not None for fn, _ in results)
         _assert_byte_identical(src)
 
-    def test_literal_stub_arity_mismatch_rejects(self):
-        # BOUNDARY: a SHORT stub in a literal-only group has no mirrored
-        # missing-param prologue on the mangled path -- it keeps the arity
-        # reject while the full-length sibling routes.
+    def test_literal_stub_short_arity_routes(self):
+        # A SHORT stub in a literal-only group needs no missing-param
+        # prologue: the emitted signature is the IMPL's, defaults included.
         src = (
             "from typing import overload, Literal\n"
             "from tpy import Int32\n"
@@ -249,7 +248,10 @@ class TestPerStubBoundaries:
             "    return b\n"
         )
         results = _per_stub_results(src, "h")
-        _assert_rejects_at(_reject_tally(src), "body:sig.overload_set.arity")
+        assert len(results) == 2
+        assert all(fn is not None for fn, _ in results), results
+        _hpp, cpp = _assert_byte_identical(src)
+        assert "int32_t h__lit_x(std::string_view a, int32_t b) {" in cpp
 
     def test_literal_decided_compare_outside_folds(self):
         # A compare the EXPRESSION-level fold decides (`m == "z"` under

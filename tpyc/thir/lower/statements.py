@@ -2565,7 +2565,16 @@ def _with_target_arm(item, declared: dict[str, TpyType], prescan: _Prescan,
         if not (_eligible_scalar(resolved)
                 or _eligible_char(resolved)
                 or _eligible_enum(resolved, analyzer) is not None
-                or _resolved_str_value(resolved, analyzer) is not None):
+                or _resolved_str_value(resolved, analyzer) is not None
+                or _resolved_bytes_value(resolved, analyzer) is not None
+                # A VALUE tuple / value union enter deduces its own
+                # self-contained shape (`std::tuple<...>`,
+                # `std::variant<...>`), so the copy is the whole value and
+                # reads ride the declared type's rows -- no borrow into the
+                # manager. A pointer-repr tuple would alias `__enter__()`'s
+                # result and is excluded by `_value_tuple`.
+                or _value_tuple(resolved, analyzer) is not None
+                or _eligible_value_union(resolved) is not None):
             return None
         return WithTargetArm.VALUE, resolved
     if not _f1_record(resolved, analyzer):
@@ -4241,14 +4250,19 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
       * first rvalue      -> `static T __global_slot_N = init;`
                              `g = &__global_slot_N;`
       * later rvalue      -> `g = &(__global_slot_N = init);` (slot reuse)
+      * hoisted name      -> `g = &*(__global_slot_N = init);` (an optional
+                             slot on the hoist lines, reused by every write)
       * pointer-global    -> `g = other;`      (already a `T*`)
-      * other lvalue      -> `g = &(other);`
+      * other lvalue      -> `g = &(other);`   (a name or a FIELD read)
+
+    Slot reuse is recorded in `lc.global_slot_assigned`, which is
+    branch-scoped: an allocation inside a branch is reusable by later writes
+    in that same branch but not by a sibling branch or a write after it.
 
     Rejected here (each is a DIFFERENT render this arm does not carry): a
-    ptr-repr Optional SOURCE (the `optional_to_ptr` lift / pass-through
-    branches), a @dynamic-protocol or structural-protocol target (the
-    adapter-slot `.emplace` rebind / `auto` slot), a hoisted name, and a
-    polymorphic subclass rvalue retyping a record slot."""
+    ptr-repr Optional SOURCE other than the pass-through call and the
+    storage-field lift, and a @dynamic-protocol or structural-protocol
+    target (the adapter-slot `.emplace` rebind / `auto` slot)."""
     analyzer = lc.analyzer
     vtype = declared.get(stmt.name)
     # `check_escape` hoists the SOURCE of a `g2 = g1` binding, which makes
@@ -4359,10 +4373,12 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         # passes it through bare (`g = find(...);`). An `Own[Optional[T]]`
         # callee (storage form) takes the slot + `optional_to_ptr` lift, an
         # OPTIONAL_STORAGE name source the bare lift, and a value-emit
-        # rvalue the materializing slot -- all separate renders.
+        # rvalue the materializing slot -- all separate renders. A slot this
+        # global already allocated is irrelevant to the pass-through: the
+        # bare assign does not touch it, and emit keeps the plain THIRAssign
+        # off the `&*(__slot_N = ...)` reseat arm via `global_slot_locals`.
         if (init_bare.uses_pointer_repr()
                 and isinstance(stmt.init, (TpyCall, TpyMethodCall))
-                and stmt.name not in lc.global_slot_assigned
                 and not _own_declared_call_ret(stmt.init)):
             _witness("top_level.global_opt_passthrough")
             return THIRAssign(
@@ -4373,6 +4389,25 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
                                  ptr_opt_passthrough=True),
                     allow_whole_optional=True),
+                loc=loc)
+        if (isinstance(stmt.init, TpyFieldAccess)
+                and _optional_ptr_borrow(init_bare, analyzer) is not None
+                and unwrap_readonly(init_bare.inner) == slot_t):
+            # An Optional[record] FIELD is STORAGE form
+            # (`std::optional<T>`), so the pointer-slot global lifts the
+            # member read (`g = ::tpy::optional_to_ptr(h->value);`) -- no
+            # slot, the owner keeps the storage.
+            _witness("top_level.global_opt_field_lift")
+            return THIRAssign(
+                target=THIRName(result_type=vtype, name=stmt.name,
+                                form=Form.BORROW, loc=loc),
+                value=THIRFormConvert(
+                    result_type=init_bare,
+                    value=_lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE),
+                        allow_whole_optional=True),
+                    form=Form.BORROW, loc=loc),
                 loc=loc)
         note_detail("top_level.global_slot_opt_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -4398,6 +4433,20 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.RECEIVER,
                                  addr_call=True)),
+                loc=loc)
+        if (isinstance(stmt.init, TpyFieldAccess)
+                and init_bare is not None and init_bare == slot_t):
+            # A FIELD lvalue source (`ys = h.xs`): the owner holds the
+            # storage, so the slot points AT the field -- the same
+            # address-of catch-all as the borrow-returning call above, with
+            # no `__global_slot_N` allocated. Same-type only, for the same
+            # reason.
+            _witness("top_level.global_addr_field")
+            return THIRPtrLocalRebind(
+                name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
+                value=_lower_expr(
+                    stmt.init, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
                 loc=loc)
         if not isinstance(stmt.init, TpyName):
             note_detail("top_level.global_slot_shape")
@@ -4437,8 +4486,36 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                 loc=loc)
         note_detail("top_level.global_slot_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    if isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
-                              TpySetLiteral, TpyListRepeat)):
+    if isinstance(slot_t, UnionType):
+        # A VALUE-variant global slot (`u: Point | Line = Point(1)`): the
+        # rvalue converts into the variant at its own member type, so the
+        # slot spells the union and the init renders as the member -- one arm
+        # for every rvalue source the union conversion admits. A container
+        # literal has no union-typed lowering at all, so it renders at its
+        # MEMBER type and the variant slot constructs from that.
+        _u_target = slot_t
+        if isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
+                                  TpySetLiteral, TpyListRepeat)):
+            _u_kind = (is_dict if isinstance(stmt.init, TpyDictLiteral)
+                       else is_set if isinstance(stmt.init, TpySetLiteral)
+                       else is_list)
+            _u_cands = [m for m in slot_t.members
+                        if _u_kind(unwrap_readonly(m))]
+            if len(_u_cands) != 1:
+                note_detail("top_level.global_slot_shape")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            _u_target = unwrap_readonly(_u_cands[0])
+        _witness("top_level.global_slot_union")
+        init = _lower_expr(stmt.init, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        allow_temps=True),
+                           target_type=_u_target)
+        if isinstance(init, THIRContainerLiteral):
+            # A bare brace-init cannot pick the variant alternative, so the
+            # literal self-describes (`std::vector<int32_t>{1, 2}`).
+            init = replace(init, typed_brace_cpp=lc.render_type(_u_target))
+    elif isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
+                                TpySetLiteral, TpyListRepeat)):
         if not (is_list(slot_t) or is_dict(slot_t) or is_set(slot_t)
                 or is_array(slot_t)):
             note_detail("top_level.global_slot_shape")
@@ -4473,10 +4550,18 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                                use=_ExprUse(result=_ExprResultUse.STORAGE),
                                target_type=slot_t)
     elif isinstance(slot_t, NominalType):
-        if init_bare != slot_t:
-            # A subclass rvalue retypes the slot (the polymorphic arm).
+        if init_bare != slot_t and not (
+                init_bare is not None
+                and analyzer.registry.is_subclass_of(init_bare, slot_t)):
             note_detail("top_level.global_slot_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        if init_bare != slot_t:
+            # A SUBCLASS rvalue: the slot keeps the ANNOTATED type and the
+            # construction slices into it, which is the upcast sema already
+            # warns about ("only 'Base' fields and methods will be
+            # accessible") -- so the slot spelling stays slot_t and no
+            # separate polymorphic render is involved.
+            _witness("top_level.global_slot_upcast")
         # allow_temps: the module-init body is an ordinary flush
         # position (`__tpy_init` hoists `__tmp_N` decls ahead of the
         # `static __global_slot_N` init like any statement), so the
@@ -4488,26 +4573,27 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
     else:
         note_detail("top_level.global_slot_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    if stmt.name in lc.global_slot_assigned:
-        if hoisted:
-            # A hoisted global's slot is an OPTIONAL, so its reuse render is
-            # `&*(slot = ..)`, not GLOBAL_REBIND's plain `&(slot = ..)`.
-            note_detail("top_level.global_hoist_shape")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        _witness("top_level.global_slot_reuse")
-        return THIRPtrLocalRebind(name=stmt.name,
-                                  kind=PtrSlotKind.GLOBAL_REBIND,
-                                  value=init, loc=loc)
-    lc.global_slot_assigned.add(stmt.name)
     if hoisted:
-        # `in_branch` is deliberately NOT consulted: it drops the `static` on
-        # the in-place GLOBAL_RVALUE decl, but a hoist line keys off
-        # `slots.global_scope` and keeps it in both paths.
+        # A hoisted global's slot is an OPTIONAL on the hoist lines, so EVERY
+        # write lifts through it (`g = &*(__global_slot_N = ..)`), not just
+        # the first: emit keys that slot by NAME, so a later write reuses it
+        # instead of allocating a second one. `in_branch` is deliberately NOT
+        # consulted: it drops the `static` on the in-place GLOBAL_RVALUE
+        # decl, but a hoist line keys off `slots.global_scope` and keeps it
+        # in both paths -- and it sits at the body top, so a write inside a
+        # branch still finds the slot in scope.
+        lc.global_slot_assigned.add(stmt.name)
         lc.unhandled_hoists.discard(stmt.name)
         _witness("top_level.global_hoist_slot")
         return THIRPtrLocalRebind(
             name=stmt.name, kind=PtrSlotKind.GLOBAL_HOIST_RVALUE,
             value=init, val_cpp=lc.render_type(slot_t), loc=loc)
+    if stmt.name in lc.global_slot_assigned:
+        _witness("top_level.global_slot_reuse")
+        return THIRPtrLocalRebind(name=stmt.name,
+                                  kind=PtrSlotKind.GLOBAL_REBIND,
+                                  value=init, loc=loc)
+    lc.global_slot_assigned.add(stmt.name)
     _witness("top_level.global_slot")
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype,
@@ -4780,9 +4866,11 @@ def _nested_def_entry_reject(func, lc: '_LowerCtx', reason_for) -> None:
     if func.type_params or func.error_return is not None:
         note_detail("nesteddef.signature")
         raise ThirUnsupported(reason_for())
+    # A param DEFAULT is unreachable here -- sema requires the argument at
+    # every call of a nested def -- so the lambda's param list carries none
+    # and the default is simply not rendered.
     if any(d is not None for d in func.defaults):
-        note_detail("nesteddef.param_default")
-        raise ThirUnsupported(reason_for())
+        _witness("nesteddef.unused_default")
     if analyzer.function_global_decls.get(id(func)):
         note_detail("nesteddef.global_decl")
         raise ThirUnsupported(reason_for())
@@ -4951,6 +5039,27 @@ def _persistent_alias_name(var: str, lc: _LowerCtx) -> str:
     while f"{base}_{n}" in lc.narrow.persistent_aliases:
         n += 1
     return f"{base}_{n}"
+
+def _single_fact_narrow(facts: dict, declared: dict[str, TpyType],
+                        lc: _LowerCtx
+                        ) -> 'tuple[str, UnionType, TpyType] | None':
+    """`(var, union, member)` for a branch-fact map that narrows exactly ONE
+    declared union subject to one of its members, or None. For a condition no
+    narrowing arm claimed: the facts are all that is left of sema's narrowing,
+    so anything wider than one var (or a var already narrowed, whose live
+    alias the extraction would shadow) has no render."""
+    if len(facts) != 1:
+        return None
+    var, ft = next(iter(facts.items()))
+    if (parse_deref_view_key(var) is not None or var not in declared
+            or var in lc.narrow.narrowed or var in lc.narrow.spelled
+            or var in lc.prescan.global_seeded):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[var])))
+    if not isinstance(u, UnionType):
+        return None
+    member = _narrow_fact_member(u, facts, var)
+    return (var, u, member) if member is not None else None
 
 def _make_narrow_alias(alias: str, var: str, member: TpyType, u: UnionType,
                        lc: _LowerCtx, loc) -> THIRNarrowAlias:
@@ -7583,16 +7692,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _gvu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     _gvt))) if _gvt is not None else None)
                 # In-branch flavors that lower: the @dynamic rebind (static
-                # slot hoists, emplace inline), a first RVALUE write inside
-                # a FOR body (only there does the emit leave global_ns and
-                # drop `static`; if/while/with/try bodies KEEP it -- a
-                # static flavor this arm does not render, so those
-                # reject), and a pointer-NAME source (the bare `g = p;`
-                # copy).
+                # slot hoists, emplace inline), an RVALUE write in a
+                # non-loop branch (the `static` slot initializes on the
+                # first pass through that branch, which is that branch's
+                # only pass) or inside a FOR body (only there does the emit
+                # leave global_ns and drop `static`), and a pointer-NAME
+                # source (the bare `g = p;` copy). A WHILE body is the one
+                # loop scope left out: it keeps `static`, so the slot would
+                # initialize once and freeze the first iteration's value.
                 if not (
                         (isinstance(_gvu, NominalType)
                          and is_dyn_protocol(_gvu))
-                        or (lc.in_for_body
+                        or ((lc.in_for_body or scope.loop_depth == 0)
                             and stmt.init is not None
                             and is_rvalue_source(lc.analyzer, stmt.init))
                         or (isinstance(stmt.init, TpyName)
@@ -10709,13 +10820,37 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # stores bare (`__setitem__(d, 0, std::tuple<...>{9,
                 # ::tpy::tuple_to_storage<S2>(..)})`); nested members carry
                 # their per-level lifts through the shared literal render.
-                if not (isinstance(stmt.value, TpyTupleLiteral)
-                        and len(stmt.value.elements)
-                        == len(eu.element_types)):
+                _nt_vb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(stmt.value))))
+                if _nt_vb == eu and (
+                        isinstance(stmt.value, (TpyCall, TpyMethodCall,
+                                                TpySubscript))
+                        or (isinstance(stmt.value, TpyName)
+                            and stmt.value.name in declared)):
+                    # A same-typed SOURCE EXPRESSION hands the whole nested
+                    # tuple over BY VALUE -- a call's return slot, a local's
+                    # copy, an element read -- so it stores bare with no
+                    # per-level lift (the borrow-tuple arms' storage twin).
+                    # `_nested_storage_tuple` also admits a RECORD element
+                    # somewhere in the nest, which the bare store copies
+                    # where CPython would alias; sema warns per record
+                    # element ("copies T into container (tuple element ..)")
+                    # at every such write, so the divergence is signalled.
+                    # No move is taken: a later read of a name source must
+                    # still see its value.
+                    value = _lower_expr(
+                        stmt.value, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                     tuple_source=True, allow_temps=True))
+                    _witness("setitem.nested_tuple_source")
+                elif not (isinstance(stmt.value, TpyTupleLiteral)
+                          and len(stmt.value.elements)
+                          == len(eu.element_types)):
                     note_detail("setitem.nested_tuple_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                value = _lower_tuple_literal(stmt.value, eu, lc, declared)
-                _witness("setitem.nested_tuple_literal")
+                else:
+                    value = _lower_tuple_literal(stmt.value, eu, lc, declared)
+                    _witness("setitem.nested_tuple_literal")
             elif (isinstance(eu, TupleType)
                     and _value_tuple(eu, analyzer) is not None):
                 # VALUE tuple value slot (`self._store[lk] = (key, value)` on
@@ -12977,6 +13112,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # partially-mutated lc is discarded with it.
         hoist_decls, hoist_slots = _lower_if_hoist_predecls(
             stmt, hoists, declared, lc, scope.in_branch)
+        # Per-branch narrowing facts for a condition NO narrowing arm claims
+        # (set in the plain-condition arm below; every arm that returns from
+        # here on emits its own extraction).
+        then_fact = None
+        else_fact = None
         if info is not None:
             var, u, _members, folded, _isin = info
             # A non-member ELSE fact (the remaining NULLABLE union, e.g.
@@ -13221,11 +13361,22 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # condition no shape reader spells can still carry one that
             # needs an extraction. The else side follows the elif-continuation
             # skip: an elif link seeds its own facts instead.
-            if _facts_emit_alias(stmt.then_type_facts) or (
-                    stmt.else_body and _elif_link(stmt) is None
+            # A single-var concrete fact IS renderable: the branch carries
+            # the extraction alias the narrowing arms would have emitted
+            # (`_lower_narrowed_branch` below). Anything wider still rejects.
+            if _facts_emit_alias(stmt.then_type_facts):
+                then_fact = _single_fact_narrow(stmt.then_type_facts,
+                                                declared, lc)
+                if then_fact is None:
+                    note_detail("if.cond_facts_unmirrored")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+            if (stmt.else_body and _elif_link(stmt) is None
                     and _facts_emit_alias(stmt.else_type_facts)):
-                note_detail("if.cond_facts_unmirrored")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
+                else_fact = _single_fact_narrow(stmt.else_type_facts,
+                                                declared, lc)
+                if else_fact is None:
+                    note_detail("if.cond_facts_unmirrored")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
             try:
                 condition = _lower_truthy(stmt.condition, lc, declared,
                                           temps_ok=True)
@@ -13274,19 +13425,33 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             else_is_nested = inner is not None
             saved_else_lf = _seed_literal_facts(stmt.else_type_facts, lc)
             try:
-                else_stmts = _lower_scoped_stmts(stmt.else_body, lc,
-                                                 dict(declared),
-                                                 branch_decls_ok=True,
-                                                 loop_depth=scope.loop_depth)
+                if else_fact is not None:
+                    _witness("if.cond_facts_alias")
+                    else_stmts = _lower_narrowed_branch(
+                        stmt.else_body, else_fact[2], else_fact[0],
+                        else_fact[1], lc, declared,
+                        getattr(stmt.else_body[0], "loc", loc),
+                        loop_depth=scope.loop_depth)
+                else:
+                    else_stmts = _lower_scoped_stmts(
+                        stmt.else_body, lc, dict(declared),
+                        branch_decls_ok=True,
+                        loop_depth=scope.loop_depth)
             finally:
                 if saved_else_lf is not None:
                     lc.literal_facts = saved_else_lf
         saved_then_lf = _seed_literal_facts(stmt.then_type_facts, lc)
         try:
-            then_stmts = _lower_scoped_stmts(
-                stmt.then_body, lc, dict(declared),
-                branch_decls_ok=True,
-                loop_depth=scope.loop_depth)
+            if then_fact is not None:
+                _witness("if.cond_facts_alias")
+                then_stmts = _lower_narrowed_branch(
+                    stmt.then_body, then_fact[2], then_fact[0], then_fact[1],
+                    lc, declared, loc, loop_depth=scope.loop_depth)
+            else:
+                then_stmts = _lower_scoped_stmts(
+                    stmt.then_body, lc, dict(declared),
+                    branch_decls_ok=True,
+                    loop_depth=scope.loop_depth)
         finally:
             if saved_then_lf is not None:
                 lc.literal_facts = saved_then_lf
@@ -13368,6 +13533,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                               or recv.name in lc.narrow.narrowed):
                 raise ThirUnsupported("stmt.del_item:recv_shape")
             recv_t = _subscript_container_recv_type(recv, declared, analyzer)
+            if (recv_t is None and isinstance(recv, TpySubscript)
+                    and recv.slice_function_info is None
+                    and not recv.needs_optional_runtime_check):
+                # One level deeper (`del d['a']['b']`): the inner read
+                # renders `::tpy::__getitem__(d, "a")`, which the del takes
+                # as its receiver lvalue -- the read arm gates its own shape,
+                # so only the family check below is this row's business.
+                recv_t = analyzer.get_expr_type(recv)
+                if recv_t is not None:
+                    _witness("delitem.subscript_recv")
             # A user record defining `__delitem__` takes the same
             # `::tpy::__delitem__(recv, key)` form the container path
             # emits -- so the record receiver rides the container arm's key
@@ -13465,14 +13640,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         elif oinfo is not None:
             # An isinstance leaf under `||`: the bare membership test
             # composed along the source tree, exactly as the or-chain `if`
-            # renders it. `or` installs no fact, so the body walks
-            # UN-narrowed (no extraction alias) -- a fact-carrying chain is
-            # the narrowing tiers' business and stays rejected here.
+            # renders it. A plain `or` installs no fact, so the body walks
+            # UN-narrowed; a NEGATED chain (`while not (isinstance(u, A) or
+            # flag)`) leaves one concrete fact, and the body carries its
+            # loop-entry extraction alias like any narrowed body.
             var, u, _leaf_infos, _neg = oinfo
             if (var in lc.narrow.narrowed
-                    or not _narrow_facts_ok(u, stmt.then_type_facts, var)
-                    or _narrow_fact_member(u, stmt.then_type_facts,
-                                           var) is not None):
+                    or not _narrow_facts_ok(u, stmt.then_type_facts, var)):
                 raise ThirUnsupported("stmt.while")
             saved_inline = dict(lc.inline_narrowed)
             try:
@@ -13481,7 +13655,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             finally:
                 lc.inline_narrowed = saved_inline
             _witness("while.or_chain")
-            body = _lower_narrowed_branch(stmt.body, None, var, u, lc,
+            om = _narrow_fact_member(u, stmt.then_type_facts, var)
+            if om is not None:
+                _witness("while.or_chain_narrowed")
+            body = _lower_narrowed_branch(stmt.body, om, var, u, lc,
                                           declared, loc,
                                           loop_depth=scope.loop_depth + 1)
         else:
@@ -13499,15 +13676,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 raise ThirUnsupported("stmt.while:while.mixed_walrus_temps")
             _literal_fact_fence(stmt.then_type_facts, stmt,
                                 "while.literal_fact")
-            if _facts_emit_alias(stmt.then_type_facts):
+            wfact = (_single_fact_narrow(stmt.then_type_facts, declared, lc)
+                     if _facts_emit_alias(stmt.then_type_facts) else None)
+            if _facts_emit_alias(stmt.then_type_facts) and wfact is None:
                 # A while head extracts its facts at loop entry; no
-                # narrowing arm claimed this condition, so nothing here does.
+                # narrowing arm claimed this condition, and the facts are
+                # wider than the one-var extraction below renders.
                 raise ThirUnsupported(
                     "stmt.while:while.cond_facts_unmirrored")
-            body = _lower_scoped_stmts(
-                stmt.body, lc, dict(declared),
-                branch_decls_ok=True,
-                loop_depth=scope.loop_depth + 1)
+            if wfact is not None:
+                # A compound condition sema still narrowed through (`while
+                # not isinstance(u, B) and flag`): the plain truthy render
+                # installs no narrowing, so the BODY carries the extraction
+                # alias the narrowing arms would have emitted at loop entry.
+                wvar, wu, wmember = wfact
+                _witness("while.cond_facts_alias")
+                body = _lower_narrowed_branch(
+                    stmt.body, wmember, wvar, wu, lc, declared, loc,
+                    loop_depth=scope.loop_depth + 1)
+            else:
+                body = _lower_scoped_stmts(
+                    stmt.body, lc, dict(declared),
+                    branch_decls_ok=True,
+                    loop_depth=scope.loop_depth + 1)
         return THIRWhile(
             condition=condition,
             body=body,
@@ -15156,10 +15347,11 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     the per-layer normal-exit elision folds at emit. Sema's hoist
     (`if_branch_decls`) renders like `_lower_try`'s -- the plain-value
     predecl family entering the CALLER's `declared` (body writes lower as
-    reassigns against the predecl slot) -- but ADMITS less: a with nested in
-    a branch or loop still rejects, where the try side does not. Nothing is
-    known to break if this widens; it simply has no witness, so the narrower
-    gate stands until one appears.
+    reassigns against the predecl slot). A with nested in a branch or loop
+    hoists at the with itself, like the try sibling, so the predecl's C++
+    scope is the enclosing block and the name enters the caller's
+    branch-local `declared` -- narrower than Python's function scope, but
+    fail-safe (a read after the branch finds no binding and rejects).
 
     A resumable LEAF with (suspension-free body) lowers here too: targets
     are frame-resident (the FRAME_SLOT emplace / FRAME_FIELD assign arms),
@@ -15179,10 +15371,15 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     for name, raw in hoists.items():
         if name in declared:
             continue
-        if (name in lc.prescan.native_globals
-                or in_branch or loop_depth > 0):
+        if name in lc.prescan.native_globals:
             note_detail("with.hoist")
             raise ThirUnsupported(stmt_reject_reason(stmt))
+        # A with inside a branch / loop hoists here rather than at function
+        # top, like the try sibling: the predecl is emitted at the with
+        # itself, so the C++ scope IS the enclosing block, and the name
+        # enters the caller's branch-local `declared` -- narrower than
+        # Python's function scope, but fail-safe (a read after the branch
+        # finds no binding and rejects rather than mis-rendering).
         if _try_hoist_type_ok(unwrap_ref_type(raw), lc.analyzer):
             continue
         # Non-value single-bind hoists take the if flavor's OPTIONAL_STORAGE
@@ -15198,10 +15395,10 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         # Borrow-only / reassigned plain non-value hoists take the if
         # flavor's pointer predecl (`T* name;`; a with-as target is
         # borrow-only by sema's stmt-borrow fact, so this is the hoisted
-        # with-target arm). An rvalue-reassigned name would need the
-        # if-head rebind slot, which THIRWith has no field for -- reject.
-        if (flavor == "other" and is_plain_nonvalue(var_type)
-                and name not in lc.prescan.rvalue_reassigned):
+        # with-target arm). An rvalue-reassigned name rides too, like the
+        # try sibling: its reseats allocate the FUNCTION-TOP `__slot_N`
+        # lazily (the BRANCH_RVALUE arm), so no THIRWith field is needed.
+        if flavor == "other" and is_plain_nonvalue(var_type):
             pointer_hoists.add(name)
             continue
         note_detail("with.hoist")
@@ -15267,17 +15464,18 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         if arm_et is None:
             raise ThirUnsupported(stmt_reject_reason(stmt))
         arm, et = arm_et
-        # In-branch (a with nested in a try/branch body) the fresh pointer
-        # DECL's placement is unverified; the already-declared
-        # `name = &(...)` assign is position-neutral (the slot lives at the
-        # enclosing scope) and routes.
-        if arm is WithTargetArm.PTR_DECL and in_branch:
-            raise ThirUnsupported(stmt_reject_reason(stmt))
         if item.manager_borrowed:
             manager_ok = (
                 isinstance(ctx, TpyName) and ctx.name in declared
                 and ctx.name not in lc.narrow.narrowed
-                and _f1_record(declared[ctx.name], lc.analyzer))
+                # A None-narrowed `A | None` name is a bare `A*` binding, so
+                # the manager is the DEREF of it (`auto& __ctx_N = *(c);`).
+                # Sema rejects the un-narrowed spelling outright ("cannot be
+                # used as a context manager"), so reaching here IS the
+                # non-null proof.
+                and (_f1_record(declared[ctx.name], lc.analyzer)
+                     or _optional_ptr_borrow_name(ctx, declared, lc.analyzer)
+                     is not None))
             if (not manager_ok and isinstance(ctx, TpyFieldAccess)
                     and isinstance(ctx.obj, TpyName)
                     and ctx.obj.name not in lc.narrow.narrowed
@@ -15311,10 +15509,9 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         # `std::optional<CM> __slot_N` and `__ctx_N` binds through it
         # (`_with_manager_needs_hoist`'s facts; the ASSIGN_PTR arm IS the
         # declared-and-not-optional case, ASSIGN_OPT the
-        # optional-storage one). The slot decl drains at function top,
-        # which the module-init walk has no spelling for (`static
-        # __global_slot_N`) -- reject there rather than emit a dead-frame
-        # slot.
+        # optional-storage one). The slot decl drains at the body top, which
+        # at module-init scope spells the `static __global_slot_N` lifetime
+        # the emit arm draws from the scope's own prefix.
         frame_ctx_n = (owned_ctx[item_idx]
                        if owned_ctx is not None
                        and item_idx < len(owned_ctx) else None)
@@ -15324,9 +15521,6 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 and arm is WithTargetArm.ASSIGN_PTR
                 and item.manager_owns_enter_result
                 and item.target_read_after):
-            if lc.top_level_scope:
-                note_detail("with.manager_hoist_global")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
             mgr_hoist_cpp = lc.render_type(
                 unwrap_ref_type(lc.analyzer.get_expr_type(ctx)))
             _witness("with.manager_hoist")

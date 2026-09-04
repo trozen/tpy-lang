@@ -473,13 +473,42 @@ class TestDictCompContainerValue:
         assert "const int32_t __stop_1 = i;" in cpp
         assert "__result.push_back(k);" in cpp
 
-    def test_name_value_rejects(self):
-        # A container NAME value (per-entry copy semantics) is unvetted --
-        # only the literal / nested-comp sources route.
+    def test_name_value_routes_bare(self):
+        # A container NAME value lands bare: the slot init copies the named
+        # container per entry (sema warns about the copy). The source must
+        # stay live past the comp -- see test_dead_name_value_rejects.
         src = (_PRELUDE
                + "def f(n: Int32) -> Int32:\n"
                + "    xs = [1, 2]\n"
                + "    d = {i: xs for i in range(n)}\n"
+               + "    return len(d) + len(xs)\n"
+               + "print(f(3))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert "__result.insert_or_assign(i, xs);" in _cpp(src)
+
+    def test_dead_name_value_rejects(self):
+        # BOUNDARY: the same NAME value read at its LAST use. Sema takes that
+        # read for a move and drops the copy warning, but the value renders
+        # once per entry, so the bare read would copy N times unwarned.
+        src = (_PRELUDE
+               + "def f(n: Int32) -> Int32:\n"
+               + "    xs = [1, 2]\n"
+               + "    d = {i: xs for i in range(n)}\n"
+               + "    return len(d)\n"
+               + "print(f(3))\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is None
+
+    def test_call_value_rejects(self):
+        # BOUNDARY: a CALL value at a container slot has no vetted spelling --
+        # the container-slot render is element-shape-sensitive.
+        src = (_PRELUDE
+               + "from tpy import Own\n"
+               + "def mk() -> Own[list[Int32]]:\n"
+               + "    return [1, 2]\n"
+               + "def f(n: Int32) -> Int32:\n"
+               + "    d = {i: mk() for i in range(n)}\n"
                + "    return len(d)\n"
                + "print(f(3))\n")
         thir = _lower(src)

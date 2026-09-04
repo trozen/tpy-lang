@@ -16,6 +16,7 @@ from .lower.statements import _with_target_arm
 from .nodes import THIRCall, THIRWith, WithTargetArm
 from .testutil import (
     _compile, _entry, _fn, _lower_ctor, _lower_ctx, _lower_ctx_witnessed,
+    _top_level,
 )
 
 
@@ -383,8 +384,9 @@ class TestWithGateRejections:
         assert cpp.index("std::optional<CM> r;") < cpp.index("__ctx_")
         assert "r->n" in cpp
 
-    def test_hoist_inside_branch_stays_ast(self):
-        # The statement-level-only rule (_lower_try's in_branch guard).
+    def test_hoist_inside_branch_routes(self):
+        # A with nested in a branch predeclares its body-first-decl AT the
+        # with, so the C++ scope is the branch block the name belongs to.
         src = (
             _CM
             + "def f(cm: CM, b: bool) -> None:\n"
@@ -394,7 +396,11 @@ class TestWithGateRejections:
             + "        print(y)\n"
             + "f(CM(1), True)\n"
         )
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("with.hoist_decl", 0) > 0
+        out = _cpp(src)
+        assert "        int32_t y;\n        auto& __ctx_1 = cm;" in out
 
     def test_walrus_manager_stays_ast(self):
         # The temp-registering manager shape behind the BUGS.md pre-decl
@@ -977,10 +983,10 @@ class TestManagerHoistBoundary:
         assert out == _cpp(src)
         assert "auto& __ctx_1 = o.mgr;" in out
 
-    def test_top_level_hoist_defers(self):
-        # A TOP-LEVEL reuse chain with a trailing read needs the hoist slot
-        # at module scope (`static __global_slot_N` spelling the arm does
-        # not produce) -- the module-init walk falls back byte-identically.
+    def test_top_level_hoist_routes_static_slot(self):
+        # A TOP-LEVEL reuse chain with a trailing read keeps its manager in
+        # the module-init scope's own slot lifetime (`static __global_slot_N`,
+        # drawn from the scope's prefix), not a frame slot.
         src = (
             _SELFG
             + "with G(1) as g:\n"
@@ -989,13 +995,21 @@ class TestManagerHoistBoundary:
             + "    print(g.n)\n"
             + "print(g.n)\n"
         )
-        thir = _lower_ctx(src)
-        assert thir.top_level is None
+        top, w, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert w.get("with.manager_hoist", 0) > 0
+        out = _cpp(src)
+        assert "    static std::optional<G> __global_slot_1;\n" in out
+        assert "    __global_slot_1.emplace(G(2));\n" in out
 
-    def test_rvalue_reassigned_with_hoist_defers(self):
-        # A with-owned hoist name that is ALSO rvalue-reassigned needs the
-        # if-head rebind slot THIRWith has no field for -- the body falls
-        # back byte-identically.
+    def test_rvalue_reassigned_with_hoist_routes(self):
+        # A with-body hoist name that is ALSO rvalue-reassigned takes the
+        # pointer predecl; its reseat allocates a function-top slot lazily,
+        # so no THIRWith field is involved. Both slots here (the kept
+        # manager's and the reseat's) are function-top optionals, drawn in
+        # emit order -- the deleted emitter numbered them the other way
+        # round, a permutation of two equivalent slot names.
         src = (
             "from tpy import Int32, Own\n"
             "class G:\n"
@@ -1017,7 +1031,15 @@ class TestManagerHoistBoundary:
             "    return inner.n\n"
             "run()\n"
         )
-        assert _fn(_lower_ctx(src), "run") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "run") is not None
+        assert w.get("with.hoist_ptr_local", 0) > 0
+        assert w.get("with.manager_hoist", 0) > 0
+        out = _cpp(src)
+        assert "    std::optional<G> __slot_1;\n" in out
+        assert "    std::optional<G> __slot_2;\n" in out
+        assert "    G* inner;\n" in out
+        assert "        inner = &*(__slot_2 = inner->next());\n" in out
 
     def test_multi_item_second_hoists(self):
         # One statement, two managers: only the item whose (branch-hoisted,

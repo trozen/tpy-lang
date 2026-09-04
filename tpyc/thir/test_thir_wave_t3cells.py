@@ -77,9 +77,9 @@ class TestTopLevelGenericRefSlotTemps:
                 "create_pair<int32_t, std::string>(__tmp_1, __tmp_2);"
                 in cpp[1])
 
-    def test_subclass_rvalue_global_still_rejects(self):
-        # The widened NominalType branch keeps its shape guard: a SUBCLASS
-        # rvalue retypes the slot (the polymorphic arm) and stays AST.
+    def test_subclass_rvalue_global_slices_into_the_base_slot(self):
+        # A SUBCLASS rvalue keeps the ANNOTATED slot type and slices into it
+        # -- the upcast sema already warns about, not a separate render.
         src = ("from tpy import Int32\n"
                "class B:\n"
                "    v: Int32\n"
@@ -88,8 +88,10 @@ class TestTopLevelGenericRefSlotTemps:
                "class D(B): ...\n"
                "g: B = D(7)\n"
                "print(g.v)\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "top_level:stmt.var_decl:top_level.global_slot_shape")
+        top, faces, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert faces.get("top_level.global_slot_upcast", 0) >= 1
 
 
 class TestGenericStaticMethodChain:

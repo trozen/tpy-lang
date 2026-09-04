@@ -2993,17 +2993,20 @@ class TestLoopElseEmit:
             entry, options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("loop.break_else_goto", 0) >= 3
 
-    def test_unlowerable_else_body_falls_back(self):
-        # The else block lowers on the body's fallback boundary: an
-        # unroutable statement inside it (a nested def with a param default)
-        # rejects the whole function, never a hybrid loop-without-else.
+    def test_unlowerable_else_body_rejects_the_body(self):
+        # The else block lowers on the body's reject boundary: an unroutable
+        # statement inside it (a nested def whose name collides with a module
+        # function) rejects the whole function, never a hybrid
+        # loop-without-else.
         thir = _lower(
             _PRELUDE
+            + "def g(a: Int32) -> Int32:\n"
+            + "    return a\n"
             + "def f(d: dict[Int32, Int32], n: Int32) -> Int32:\n"
             + "    for i in range(n):\n        pass\n"
             + "    else:\n"
-            + "        def g(a: Int32 = 1) -> Int32:\n"
-            + "            return a\n"
+            + "        def g(a: Int32) -> Int32:\n"
+            + "            return a + 1\n"
             + "        d[0] = g(2)\n"
             + "    return len(d)\n")
         assert _fn(thir, "f") is None

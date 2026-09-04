@@ -352,7 +352,7 @@ def _stub_default_locals(func: TpyFunction, stub: TpyFunction, analyzer,
 
 def _literal_stub_facts(func: TpyFunction, stub: TpyFunction) -> dict:
     """The literal-fact map a literal-only stub injects: impl param names
-    zipped to the stub's Literal types."""
+    zipped to the stub's Literal types (a SHORT stub pairs as a prefix)."""
     return {pname: stub_pt
             for (pname, _), (_, stub_pt) in zip(func.params, stub.params)
             if isinstance(stub_pt, LiteralType)}
@@ -365,11 +365,19 @@ def _admit_literal_only_stub(func: TpyFunction, analyzer,
     type and folds if-chains via the injected literal facts (equality,
     truthiness, membership, chain coverage -- `_overload_resolve_static`).
 
+    A SHORT stub (the impl carries defaulted trailing params) needs no
+    prologue here, unlike the non-literal path: the emitted signature IS the
+    impl's, defaults included, so the omitted params stay C++ params. Its
+    names must be a positional PREFIX of the impl's, which is what makes the
+    fact pairing below a plain zip.
+
     A body that WRITES a fact-carrying param rejects
     (`sig.overload_set.literal_fact_write`): a literal fact dies at the
     reassign, while the injected map here is frozen -- folding past the
     write would decide compares that must stay runtime code."""
-    if len(stub.params) != len(func.params):
+    impl_names = [n for n, _t in func.params]
+    if (len(stub.params) > len(func.params)
+            or impl_names[:len(stub.params)] != [n for n, _t in stub.params]):
         raise ThirUnsupported("sig.overload_set.arity")
     facts = _literal_stub_facts(func, stub)
     if facts:

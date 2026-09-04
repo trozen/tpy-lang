@@ -347,6 +347,20 @@ class TestGeneratorShape:
 
 
 class TestLocalStorage:
+    def test_annotation_only_frame_local_emits_nothing(self):
+        # `x: Int32` on a name the frame declares as a field: the slot exists
+        # already, so the statement emits no code at all.
+        src = (_PRE
+               + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+               + "async def f() -> Int32:\n"
+               + "    x: Int32\n"
+               + "    await step(0)\n"
+               + "    x = 1\n"
+               + "    return x\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses = _assert_identical(src)
+        assert witnesses.get("res.decl_no_init") == 1
+
     def test_str_bytes_locals_route(self):
         # R1a: str/bytes frame locals are bare `std::string` / view fields,
         # reusing THIR's ported str slice -- no frame_slot machinery.
@@ -1795,21 +1809,32 @@ class TestMatchDispatch:
         witnesses = _assert_identical(src)
         assert witnesses.get("res.match_dispatch", 0) >= 1
 
-    def test_str_switch_tier_defers(self):
+    def _str_switch_src(self, first_case: str) -> str:
+        return ("from typing import Iterator\n"
+                + "from tpy import Int32\n\n"
+                + "def emit(s: str) -> Iterator[Int32]:\n"
+                + "    match s:\n"
+                + f"        case {first_case}:\n            yield 1\n"
+                + "        case \"b\":\n            yield 2\n"
+                + "        case \"c\":\n            yield 3\n"
+                + "        case \"d\":\n            yield 4\n"
+                + "        case \"e\":\n            yield 5\n"
+                + "        case _:\n            yield 0\n\n"
+                + "def main() -> None:\n    pass\nmain()\n")
+
+    def test_str_switch_tier_routes(self):
         # A str subject at/over the switch-dispatch threshold takes the
-        # switch_str tier -- not in the dispatch-hook slice.
-        src = ("from typing import Iterator\n"
-               + "from tpy import Int32\n\n"
-               + "def emit(s: str) -> Iterator[Int32]:\n"
-               + "    match s:\n"
-               + "        case \"a\":\n            yield 1\n"
-               + "        case \"b\":\n            yield 2\n"
-               + "        case \"c\":\n            yield 3\n"
-               + "        case \"d\":\n            yield 4\n"
-               + "        case \"e\":\n            yield 5\n"
-               + "        case _:\n            yield 0\n\n"
-               + "def main() -> None:\n    pass\nmain()\n")
-        _assert_rejects_at(_reject_tally(src), "resumable:res.match_strategy")
+        # switch_str tier, which carries the dispatch hook: the buckets, the
+        # guarded prefix and the trailing arms all reach the arm emitter.
+        witnesses = _assert_identical(self._str_switch_src('"a"'))
+        assert witnesses.get("res.match_dispatch", 0) >= 1
+        assert witnesses.get("match.switch_str", 0) >= 1
+
+    def test_str_switch_or_arm_defers(self):
+        # An or-arm's body is emitted once per alternative string, so in hook
+        # mode it would walk one frame block twice.
+        _assert_rejects_at(_reject_tally(self._str_switch_src('"a" | "z"')),
+                           "resumable:res.match_strategy")
 
     def test_union_dispatch_routes(self):
         # A union-subject match stamps arm narrowings (entry_narrowings);
@@ -3739,8 +3764,8 @@ class TestValueOptReturns:
 
 class TestContainerYieldBorrow:
     """Container yield slots (val_or_ref<C> skeleton signature): a yielded
-    frame_slot LOCAL hands out the deref borrow `(*buf)`; other value
-    shapes at the slot stay a named rung."""
+    frame_slot LOCAL hands out the deref borrow `(*buf)`, a PARAM the bare
+    reference member; other shapes at the slot stay a named rung."""
 
     def test_frame_local_list_yield_routes(self):
         src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
@@ -3767,17 +3792,32 @@ class TestContainerYieldBorrow:
         witnesses = _assert_identical(src)
         assert witnesses.get("res.yield_container_borrow", 0) >= 2
 
-    def test_param_source_yield_defers(self):
-        # A container yield whose source is a PARAM (not a frame_slot
-        # local) stays rejected -- the param field's bare read is a
-        # different render than the frame-slot deref. (A literal/call
-        # source is sema-rejected outright: "cannot yield local or
-        # temporary as reference", so the name arm's reject is the only
-        # live non-frame-slot shape.)
+    def test_param_source_yield_routes_bare(self):
+        # A container yield whose source is a PARAM reads BARE -- the frame
+        # captures it as a reference member, so the plain name already is the
+        # borrow the slot wants (no deref, unlike a frame_slot local).
+        # (A literal/call source is sema-rejected outright: "cannot yield
+        # local or temporary as reference".)
         src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
                + "def gen(xs: list[Int32]) -> Iterator[list[Int32]]:\n"
                + "    yield xs\n"
                + "    yield xs\n\n"
+               + "def main() -> None:\n    pass\nmain()\n")
+        witnesses = _assert_identical(src)
+        assert witnesses.get("res.yield_container_param", 0) >= 2
+        _, _hpp, cpp = _gen(src)
+        assert "return xs;" in cpp
+
+    def test_field_source_yield_defers(self):
+        # A container FIELD at the slot is a different read from either the
+        # param's reference member or the frame slot's deref.
+        src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
+               + "class H:\n    buf: list[Int32]\n"
+               + "    def __init__(self) -> None:\n"
+               + "        self.buf = [1]\n\n"
+               + "def gen(h: H) -> Iterator[list[Int32]]:\n"
+               + "    yield h.buf\n"
+               + "    yield h.buf\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _assert_rejects_at(_reject_tally(src), "resumable:res.yield_type")
 
@@ -3799,10 +3839,10 @@ class TestContainerYieldBorrow:
         _, _hpp, cpp = _gen(src)
         assert "return (*b);" in cpp
 
-    def test_record_param_source_yield_defers(self):
-        # A record yield of a PARAM name (bare `Record&` field read, and
-        # possibly narrowed if Optional) stays rejected -- only the routed
-        # loop-var / frame_slot names take the deref arm.
+    def test_record_param_source_yield_routes_bare(self):
+        # A record yield of a PARAM name reads bare off the frame's `Box&`
+        # reference member -- the container arm's record sibling, and NOT the
+        # deref the routed loop-var / frame_slot names take.
         src = ("from tpy import Int32\nfrom typing import Iterator\n\n"
                + "class Box:\n    v: Int32\n"
                + "    def __init__(self, v: Int32) -> None:\n"
@@ -3811,7 +3851,10 @@ class TestContainerYieldBorrow:
                + "    yield b\n"
                + "    yield b\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _assert_rejects_at(_reject_tally(src), "resumable:res.yield_type")
+        witnesses = _assert_identical(src)
+        assert witnesses.get("res.yield_record_param", 0) >= 2
+        _, _hpp, cpp = _gen(src)
+        assert "return b;" in cpp
 
     def test_value_opt_loop_var_narrowed_yield_routes(self):
         # A value-opt-scalar dict-view loop var in a generator frame: the
@@ -4312,14 +4355,32 @@ class TestFinallyHelper:
         witnesses = _assert_identical(src)
         assert witnesses.get("res.finally_stop") == 1
 
-    def test_narrowing_if_in_helper_defers(self):
-        # A narrowing early-return `if` inside a finally helper: the guard
-        # rejects with res.narrowed_resume BEFORE the nested return's own
-        # res.finally_return -- pinning that the helper walk names its
-        # missing post-if arm, not just the return render. (A raise-arm `if`
-        # produces the same post-if fact -- the fact reader mirrors the
-        # AST's early-EXIT arm, return and raise alike -- so the guard's domain
-        # is both flavors; the return one is what this fixture exercises.)
+    def _helper_post_if_src(self, exit_stmt: str) -> str:
+        return ("from tpy import Int32\n\n"
+                + "class Dog:\n"
+                + "    def sound(self) -> str:\n        return \"woof\"\n\n"
+                + "class Cat:\n"
+                + "    def sound(self) -> str:\n        return \"meow\"\n\n"
+                + "async def step(n: Int32) -> Int32:\n    return n + 1\n\n"
+                + "async def f(a: Dog | Cat, n: Int32) -> Int32:\n"
+                + "    try:\n        n = await step(n)\n"
+                + "    finally:\n"
+                + "        if isinstance(a, Dog):\n"
+                + f"            {exit_stmt}\n"
+                + "        print(a.sound())\n"
+                + "    return n\n\n"
+                + "def main() -> None:\n    pass\nmain()\n")
+
+    def test_narrowing_if_in_helper_routes(self):
+        # A narrowing early-EXIT `if` inside a finally helper: the helper walk
+        # emits the post-if extraction at the helper's own C++ scope, where it
+        # lives to the end of that member function rather than a BB.
+        witnesses = _assert_identical(self._helper_post_if_src('raise ValueError("d")'))
+        assert witnesses.get("res.postif_narrow") == 1
+
+    def test_narrowing_assert_in_helper_routes(self):
+        # The assert flavor of the same helper-scope extraction: one shared
+        # arm serves both walks, so the flat-assert face witnesses here too.
         src = ("from tpy import Int32\n\n"
                + "class Dog:\n"
                + "    def sound(self) -> str:\n        return \"woof\"\n\n"
@@ -4329,12 +4390,19 @@ class TestFinallyHelper:
                + "async def f(a: Dog | Cat, n: Int32) -> Int32:\n"
                + "    try:\n        n = await step(n)\n"
                + "    finally:\n"
-               + "        if isinstance(a, Dog):\n"
-               + "            return 0\n"
+               + "        assert isinstance(a, Dog)\n"
                + "        print(a.sound())\n"
                + "    return n\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
-        _assert_rejects_at(_reject_tally(src), "resumable:res.narrowed_resume")
+        witnesses = _assert_identical(src)
+        assert witnesses.get("res.flat_assert_narrow") == 1
+
+    def test_narrowing_if_in_helper_return_defers(self):
+        # Same fact with a RETURN arm: the narrowing lowers, and what is left
+        # rejecting is the helper's return render -- so the reject names that,
+        # not the extraction.
+        _assert_rejects_at(_reject_tally(self._helper_post_if_src("return 0")),
+                           "resumable:res.finally_return")
 
     def test_generator_helper_finally_routes(self):
         # A generator with a try/finally around a yield: the finally helper

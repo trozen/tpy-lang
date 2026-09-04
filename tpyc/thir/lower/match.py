@@ -1297,7 +1297,8 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     kind = route.kind
     if arm_body_hooks and (kind not in (
             "switch_enum", "switch_primitive", "if_elif", "if_elif_guarded",
-            "switch_union", "if_elif_record", "optional_partition")
+            "switch_union", "if_elif_record", "optional_partition",
+            "switch_str")
             # opt_ptr_frame IS a frame-field binding (no decl mechanics);
             # every other non-value hoist kind stays out of hook mode.
             or any(hk not in ("value", "opt_ptr_frame")
@@ -1419,6 +1420,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if kind == "switch_str":
         return _lower_match_switch_str(stmt, lc, declared, loc, pointers,
                                        hoist_decls, loop_depth=loop_depth,
+                                       arm_body_hooks=arm_body_hooks,
                                        subject_rvalue=route.subject_rvalue)
     subj_type = (declared.get(stmt.subject.name)
                  if isinstance(stmt.subject, TpyName)
@@ -1473,8 +1475,10 @@ def _lower_scalar_arms(
     (optional inner: the subject narrows to the inner type; the value
     unwrap is the name arm's deref-on-narrow); the top-level tiers reject
     facts (a LiteralType fact can rewrite arm bodies). `chain_guards_ok`
-    distinguishes if_elif_guarded's standalone-if chain from the optional
-    inner chain, whose inline `cond && guard` shape is not lowered yet."""
+    distinguishes if_elif_guarded's standalone-if chain, where a guard gets
+    its own nested `if` inside the arm block, from the optional inner chain,
+    where it folds into the arm's own condition -- so there the arm must have
+    a condition to fold into and no binding to read."""
     is_chain = kind in ("if_elif", "if_elif_guarded")
     arms: list[THIRMatchArm] = []
     groups: dict[str, tuple[tuple[str, ...], list[THIRMatchArmEntry]]] = {}
@@ -1486,8 +1490,6 @@ def _lower_scalar_arms(
         lit_facts = {n: f for n, f in facts.items()
                      if isinstance(f, LiteralType)}
         if facts and not allow_facts and not lit_facts:
-            raise ThirUnsupported("stmt.match")
-        if is_chain and case.guard is not None and not chain_guards_ok:
             raise ThirUnsupported("stmt.match")
         parts = _match_arm_parts_two(case)
         if parts is None:
@@ -1515,6 +1517,14 @@ def _lower_scalar_arms(
             if not _match_label_ok(test, kind):
                 raise ThirUnsupported("stmt.match")
             labels = (_match_case_label(test, kind, lc.analyzer),)
+        if (is_chain and case.guard is not None and not chain_guards_ok
+                and (not labels or bnode is not None
+                     or inner_bnode is not None)):
+            # The optional inner chain folds a guard INTO the arm condition
+            # (`inner == "a" && flag`), which needs a condition to fold into
+            # and no binding: a labelless arm has none, and a binding line is
+            # emitted after the `if`, so the guard could not read it.
+            raise ThirUnsupported("stmt.match")
         if not is_chain:
             prior = (default_entries if not labels
                      else groups.get("|".join(labels), ((), []))[1])
@@ -1858,10 +1868,19 @@ def _hook_mode_binding(b: 'THIRMatchBinding | None', lc: _LowerCtx
     by an EARLIER dispatch in the same body and registered at that
     dispatch's site) can still be a frame_slot local, and the plain
     assign would not even compile (`frame_slot<T>` has no `operator=`).
-    Every other flavor (a genuine block local, alias temps, pointer
-    binds) has no frame render -- reject (`res.match_binding`)."""
+    A `field_alias` row is not a capture and passes through untouched.
+    Every other flavor (a genuine block local, the addr/move bind
+    variants) has no frame render -- reject (`res.match_binding`)."""
     if b is None:
         return None
+    if b.mode == "field_alias":
+        # Not a capture at all: an extraction temp whose spelled name the
+        # emit derives from the runtime base (`__field_{parent}_{field}`),
+        # declared in the dispatch block that the arm's BB walk follows and
+        # read only by the sibling rows composed against it. `b.name` holds a
+        # FIELD name, so matching it against the frame's LOCALS would reject
+        # on a coincidence of spelling and can never be a real collision.
+        return b
     if b.name in lc.frame_slots:
         if b.mode in ("assign", "copy", "ref"):
             return replace(b, mode="frame_emplace")
@@ -1871,6 +1890,33 @@ def _hook_mode_binding(b: 'THIRMatchBinding | None', lc: _LowerCtx
     if b.mode in ("copy", "ref") and b.name in lc.plain_frame_fields:
         return replace(b, mode="assign")
     raise ThirUnsupported("res.match_binding")
+
+
+def _hook_mode_field_bindings(field_bindings: tuple, lc: _LowerCtx) -> tuple:
+    """A hook-mode arm's field-capture rows, re-keyed on the frame facts.
+
+    Plus the two the re-key cannot serve, both grounded in the same fact --
+    the slot is a COPY of what it emplaces:
+
+    - a row whose CAPTURED TYPE is a reference type. The source `f` names the
+      subject's field; a frame_slot emplace duplicates it, so the arm's
+      writes through `f` never reach what the caller holds.
+    - a row whose `base_name` names a capture that became `frame_emplace`.
+      The emit spells such a base by its bare name, but a frame_slot holds
+      its payload behind a deref, so the composed `{base}.field` would read
+      the slot wrapper -- and even spelled right it would read the copy."""
+    out = tuple(_hook_mode_binding(fb, lc) for fb in field_bindings)
+    emplaced = {b.name for b in out if b is not None
+                and b.mode == "frame_emplace"}
+    for name in emplaced:
+        t = lc.frame_local_types.get(name)
+        # An unrecorded slot type cannot prove the copy unobservable.
+        if t is None or not unwrap_readonly(t).is_value_type():
+            raise ThirUnsupported("res.match_binding")
+    if emplaced and any(b is not None and b.base_name in emplaced
+                        for b in out):
+        raise ThirUnsupported("res.match_binding")
+    return out
 
 
 def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
@@ -1982,10 +2028,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         if arm_body_hooks:
             # Dispatch-hook mode: the arm body is a BB chain the skeleton
             # walks; captures re-key on the frame facts (assign / emplace)
-            # or reject (`_hook_mode_binding` -- the field_alias extraction
-            # temp is a block local, its addr/move flavors likewise).
-            field_bindings = tuple(_hook_mode_binding(fb, lc)
-                                   for fb in field_bindings)
+            # or reject -- the addr/move bind flavors have no frame render.
+            field_bindings = _hook_mode_field_bindings(field_bindings, lc)
             binding = _hook_mode_binding(binding, lc)
             entry = THIRMatchArmEntry(
                 body=(), loc=case.loc, binding=binding, guard=guard,
@@ -2492,16 +2536,19 @@ def _lower_optional_value_dispatch(
     """The optimized-optional value-repr form (O2): the has_value
     split, then the multi-arm inner dispatch over the `__match_inner_N`
     deref alias -- the enum/primitive switch (`_emit_switch_groups` with
-    the inner subject) or the unguarded literal `==` chain
+    the inner subject) or the literal `==` chain
     (`_emit_optional_inner_if_elif`). The inner arm walk follows the scalar
     tiers against the alias; per-arm subject narrowing (type_facts) only
     retypes the declared view -- the value unwrap on narrowed reads is the
     name arm's deref-on-narrow, decided from sema's per-node types. Record
     inners (unreachable today -- value-repr `Optional[record]` names are
-    param/decl-gated upstream; see `_lower_optional_inner_record`),
-    guarded/multi None arms, and the guarded `==` chain (inline
-    `cond && guard`, a shape the scalar chain tier never emits) stay
-    rejected."""
+    param/decl-gated upstream; see `_lower_optional_inner_record`) and
+    guarded/multi None arms stay rejected. A guard on a CHAIN arm folds
+    into that arm's own condition (`inner == lit && guard`), so the arm
+    needs a literal condition to fold into and no binding to read -- a
+    labelless or binding arm rejects (`_lower_scalar_arms`,
+    `chain_guards_ok=False`); a switch arm nests its guard in the case
+    block instead and needs no such shape."""
     inner_type = unwrap_readonly(unwrap_readonly(stmt.subject_type).inner)
     if _eligible_enum(inner_type, lc.analyzer) is not None:
         kind = "switch_enum"
@@ -2841,6 +2888,7 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
                             pointers: AbstractSet[str],
                             hoist_decls: 'list[tuple[str, str]]', *,
                             loop_depth: int = 0,
+                            arm_body_hooks: bool = False,
                             subject_rvalue: bool = False) -> THIRMatch:
     """Lower a switch_str `match` -- the discriminator
     dispatch (see THIRMatch.str_disc_kind): cases partition into guarded
@@ -2884,6 +2932,11 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
         if strs is not None:
             if inner_bnode is not None:
                 raise ThirUnsupported("stmt.match")
+            if arm_body_hooks and len(strs) > 1:
+                # An or-arm's body re-lowers (re-emits) per alternative
+                # string; in hook mode that walks ONE BB chain twice and
+                # duplicates its suspension states.
+                raise ThirUnsupported("res.match_strategy")
             if case.guard is not None:
                 guarded_src.append((i, case, strs, bnode))
             else:
@@ -2914,7 +2967,23 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
                 else "copy" if bnode.bind_by_value else "ref")
         _witness(f"match.bind_{mode}")
         arm_declared[bnode.name] = bind_type
-        return THIRMatchBinding(name=bnode.name, mode=mode)
+        b = THIRMatchBinding(name=bnode.name, mode=mode)
+        return _hook_mode_binding(b, lc) if arm_body_hooks else b
+
+    def lower_arm_body(case, arm_declared) -> tuple:
+        # Dispatch-hook mode: the arm body is a BB chain the skeleton walks,
+        # reached through the body key -- exactly the scalar tiers' hook
+        # entry. The hook fires once per EMISSION, so an or-arm (whose body
+        # re-lowers per alternative string) would walk one BB chain twice and
+        # duplicate its suspension states -- the caller keeps those rejecting.
+        if arm_body_hooks:
+            return ()
+        return _statements._lower_scoped_stmts(
+            case.body, lc, arm_declared,
+            branch_decls_ok=True, loop_depth=loop_depth)
+
+    def body_key(case) -> 'int | None':
+        return id(case.body) if arm_body_hooks else None
 
     str_guarded: list[THIRMatchArmEntry] = []
     for _i, case, strs, bnode in guarded_src:
@@ -2923,11 +2992,9 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
         arm_declared = dict(declared)
         binding = lower_binding(bnode, arm_declared)
         guard = _lower_match_guard(case.guard, lc, arm_declared)
-        body = _statements._lower_scoped_stmts(
-            case.body, lc, arm_declared,
-            branch_decls_ok=True, loop_depth=loop_depth)
         str_guarded.append(THIRMatchArmEntry(
-            body=body, loc=case.loc, binding=binding, guard=guard,
+            body=lower_arm_body(case, arm_declared), loc=case.loc,
+            binding=binding, guard=guard, body_key=body_key(case),
             opt_conds=_str_lit_cond_group(strs)))
 
     all_strings = [s for _i, _c, strs, _b in unguarded_src for s in strs]
@@ -2946,11 +3013,9 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
             # alternative (emit-side counters advance per emission).
             arm_declared = dict(declared)
             binding = lower_binding(bnode, arm_declared)
-            body = _statements._lower_scoped_stmts(
-                case.body, lc, arm_declared,
-                branch_decls_ok=True, loop_depth=loop_depth)
             entries.append(THIRMatchArmEntry(
-                body=body, loc=case.loc, binding=binding,
+                body=lower_arm_body(case, arm_declared), loc=case.loc,
+                binding=binding, body_key=body_key(case),
                 opt_conds=_str_lit_cond_group((s,))))
         arms.append(THIRMatchArm(labels=(case_label(key, kind),),
                                  entries=tuple(entries)))
@@ -2962,17 +3027,19 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
         pre_bindings: tuple[THIRMatchBinding, ...] = ()
         if inner_bnode is not None:
             _witness("match.bind_as_capture")
+            if arm_body_hooks:
+                # A second whole-subject binding needs its own frame re-key;
+                # the hook path carries exactly one, like the scalar tiers.
+                raise ThirUnsupported("res.match_strategy")
             pre_bindings = (lower_binding(inner_bnode, arm_declared),)
         binding = lower_binding(bnode, arm_declared)
         guard = None
         if case.guard is not None:
             _witness("match.guard_arm")
             guard = _lower_match_guard(case.guard, lc, arm_declared)
-        body = _statements._lower_scoped_stmts(
-            case.body, lc, arm_declared,
-            branch_decls_ok=True, loop_depth=loop_depth)
         str_trailing.append(THIRMatchArmEntry(
-            body=body, loc=case.loc, binding=binding, guard=guard,
+            body=lower_arm_body(case, arm_declared), loc=case.loc,
+            binding=binding, guard=guard, body_key=body_key(case),
             pre_bindings=pre_bindings))
 
     emit_unreachable = (stmt.is_exhaustive and bool(stmt.cases)
@@ -3131,8 +3198,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
             if arm_body_hooks:
                 # Hook-mode captures re-key on the frame facts (assign /
                 # emplace) or reject -- see _hook_mode_binding.
-                field_bindings = tuple(_hook_mode_binding(fb, lc)
-                                       for fb in field_bindings)
+                field_bindings = _hook_mode_field_bindings(field_bindings, lc)
                 binding = _hook_mode_binding(binding, lc)
             body = (() if arm_body_hooks else _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,
@@ -3291,16 +3357,19 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                             _match_pattern_captures(pattern))
                     guard = _lower_match_guard(case.guard, lc, arm_declared)
             if arm_body_hooks:
-                # Dispatch-hook mode: the arm body is a BB chain the
-                # skeleton walks; field-subpattern mechanics are
-                # unverified against the frame, so they keep rejecting.
-                if field_conds or field_bindings:
-                    raise ThirUnsupported("res.match_strategy")
+                # Dispatch-hook mode: the arm body is a BB chain the skeleton
+                # walks; the field conditions and captures precede it in the
+                # dispatch block, so they carry exactly as the unguarded union
+                # tier's do -- captures re-keyed on the frame facts by
+                # `_hook_mode_binding`, or rejected there.
                 binding = _hook_mode_binding(binding, lc)
                 return THIRMatchArmEntry(
                     body=(), loc=case.loc, binding=binding, guard=guard,
                     variant_index=idx if kind == "class" else None,
                     case_alias=alias if kind == "class" else None,
+                    field_conds=field_conds,
+                    field_bindings=_hook_mode_field_bindings(
+                        field_bindings, lc),
                     body_key=id(case.body))
             body = _statements._lower_stmts(
                 case.body, lc, arm_declared, in_branch=True,

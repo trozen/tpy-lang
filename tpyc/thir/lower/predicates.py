@@ -281,12 +281,6 @@ _ADDR_PTR_COERCIONS = frozenset({
     "record_to_ptr", "record_to_const_ptr", "value_to_ptr",
     "upcast_to_ptr", "upcast_to_const_ptr"})
 
-# The coercions that pre-deref an indirect-name inner (the "need
-# dereferencing for globals" set): the addr family above + the
-# method-calling BigInt cast. The coerce arm derefs un-narrowed names
-# in lc.pointers.
-_INDIRECT_DEREF_COERCIONS = _ADDR_PTR_COERCIONS | {"bigint_to_fixed_int"}
-
 # Position-independent identity coercions on the ptr/span/slice axis: both
 # sides are C++-implicitly convertible (`T*` -> `const T*`, `Slice`'s
 # BasicSlice ctor, span -> const-span), so the inner render passes through
@@ -302,13 +296,20 @@ _PTR_IDENTITY_COERCIONS = frozenset({
 _SPANLIKE_COERCIONS = frozenset({"spanlike_to_span", "spanlike_to_span_arg"})
 
 # `__span__()`-method / Spannable-protocol coercions (sema's pre-built pair,
-# not in COERCIONS): a user-record actual renders `{0}.__span__()` (the
-# indirect-receiver deref is guarded at the coerce arm). The
+# not in COERCIONS): a user-record actual renders `{0}.__span__()`. The
 # protocol-typed actual (bare as_span
 # render) stays out -- protocol params/locals reject upstream, so the row
 # would be dead.
 _SPAN_METHOD_COERCIONS = frozenset({"span_method_to_span",
                                     "span_method_to_span_arg"})
+
+# The coercions that pre-deref an indirect-name inner (the "need
+# dereferencing for globals" set): the addr family, the method-calling BigInt
+# cast, and the `__span__()` call above -- the coerce arm derefs un-narrowed
+# names in lc.pointers, so an indirect receiver reaches its member as
+# `(*name).__span__()`.
+_INDIRECT_DEREF_COERCIONS = (_ADDR_PTR_COERCIONS | {"bigint_to_fixed_int"}
+                             | _SPAN_METHOD_COERCIONS)
 
 def _coerce_wrap(e: TpyCoerce) -> 'str | None':
     """The `{0}` render template for the scalar-cast coercion family, else
@@ -6977,6 +6978,34 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
     return None
 
 
+def _container_elem_lvalue_subscript(e: TpyExpr, locals_: dict[str, TpyType],
+                                     analyzer) -> bool:
+    """`e` is a plain container-ELEMENT subscript whose read is a live lvalue:
+    a single index (no slice), no Optional runtime check pending on it, off a
+    receiver shape `_subscript_container_recv_type` resolves, and an accessor
+    that hands back storage rather than a value (a native container, or a user
+    `__getitem__` returning a C++ reference). Positions that alias or take the
+    address of an element read need exactly this proof -- a slice yields a fresh
+    view, and a by-value accessor result or an unproven-Optional element read
+    would address a dying temporary.
+
+    A TUPLE receiver is excluded (the carve-out `reads_storage_form_optional`
+    makes for the same reason): a borrow-form tuple's `std::get<N>` yields the
+    element POINTER, not the referent, so aliasing it drops a deref and
+    addressing it yields `T**`. Whether a given tuple binding renders borrow or
+    storage form is walk state this predicate cannot see, so every tuple is out."""
+    if not (isinstance(e, TpySubscript)
+            and not isinstance(e.index, TpySlice)
+            and e.slice_function_info is None
+            and not e.needs_optional_runtime_check):
+        return False
+    recv_t = _subscript_container_recv_type(e.obj, locals_, analyzer)
+    if recv_t is None or isinstance(unwrap_qualifiers(recv_t), TupleType):
+        return False
+    return (e.getitem_function_info is None
+            or call_returns_cpp_ref(analyzer, e.getitem_function_info))
+
+
 def _narrowed_ptr_opt_recv(recv: TpyExpr, recv_t: 'TpyType | None',
                            pointers) -> 'TpyType | None':
     """The narrowed INNER container of a None-narrowed pointer-repr
@@ -7774,13 +7803,18 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
     receiver in const_ref_params (param) or const_indirect_locals (a const F1
     local, tracked in `const_locals`)); a method-call source adds the
     readonly-method ref-return branch. The bare-NAME const rule does not
-    apply to a field/call source."""
+    apply to a field/call source.
+
+    The arms that read only the init EXPRESSION live in
+    `_expr_is_const_source`, shared with the walrus derivation; what stays
+    here is what needs the decl node or the binding kind."""
     if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
-        return True
-    if isinstance(analyzer.get_expr_type(stmt.init), ReadonlyType):  # raw sema type
         return True
     svt = analyzer.var_types.get(id(stmt))
     if isinstance(svt, OptionalType) and isinstance(svt.inner, ReadonlyType):
+        return True
+    if _expr_is_const_source(stmt.init, func, analyzer, const_locals,
+                             record_name):
         return True
     if binding is LocalBinding.OPTIONAL_TO_PTR:
         if isinstance(stmt.init, TpyName):
@@ -7811,37 +7845,6 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
             # read's sema type ReadonlyType, caught there). Adding a
             # const-rooted or readonly-fi disjunct here gives the WRONG
             # const-ness on an inferred-readonly inner method.
-    # A readonly method's ref return binds `const T&` -- the method-call
-    # branch of the indirect-const rule.
-    if isinstance(stmt.init, TpyMethodCall):
-        fi = stmt.init.resolved_function_info
-        if (fi is not None and fi.is_readonly
-                and call_returns_cpp_ref(analyzer, fi)):
-            return True
-    # Operator dispatch follows that arm: a readonly dunder's borrow return is
-    # const-projected on the friend shim, so `c = a + b` / `c = -a` bind
-    # `const T&`. Keyed on the RAW `fi.is_readonly`
-    # -- readonly-ness here is usually INFERRED, so it never shows up as a
-    # ReadonlyType on the init and the raw-sema branches above miss it.
-    if isinstance(stmt.init, TpyBinOp) and stmt.init.resolved_binop is not None:
-        fi = stmt.init.resolved_binop.method
-        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
-            return True
-    if (isinstance(stmt.init, TpyUnaryOp)
-            and stmt.init.resolved_unaryop is not None):
-        fi = stmt.init.resolved_unaryop.method
-        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
-            return True
-    # A subscript / method call on a const-rooted receiver binds const even
-    # when sema resolved the MUTABLE twin (the enclosing method's
-    # readonly-ness is INFERRED post body-analysis, so fi.is_readonly above
-    # misses; C++ overload resolution on the const receiver picks the const
-    # twin regardless) -- the receiver-const arm of the indirect-const
-    # rule.
-    if isinstance(stmt.init, (TpySubscript, TpyMethodCall)) \
-            and _f1_const_rooted_source(stmt.init.obj, func, analyzer,
-                                        const_locals, record_name):
-        return True
     # Borrow-alias of an lvalue rooted in a const source (`p = ps[i]`,
     # `r = obj.field`, `c = self.store[k]`): REF_ALIAS const propagation
     # via `is_const_union_source` -- recurse through chained field/subscript
@@ -7881,6 +7884,75 @@ def _f1_const_rooted_source(expr: TpyExpr, func: TpyFunction, analyzer,
                                                  record_name))
         return _f1_const_rooted_source(obj, func, analyzer, const_locals, record_name)
     return False
+
+def _expr_is_const_source(src: TpyExpr, func: TpyFunction, analyzer,
+                          const_locals: set[str],
+                          record_name: str | None) -> bool:
+    """The const-ness a borrow binding's SOURCE EXPRESSION carries on its own,
+    independent of the binding kind and of any decl node: a readonly raw sema
+    type, a readonly method / dunder whose borrow return is const-projected on
+    the shim, and a subscript / method call on a const-rooted receiver.
+
+    Shared by the decl (`_f1_is_const`) and walrus (`_walrus_src_is_const`)
+    derivations so the two cannot drift; each adds the arms only it can see."""
+    if isinstance(analyzer.get_expr_type(src), ReadonlyType):  # raw sema type
+        return True
+    # A readonly method's ref return binds `const T&` -- the method-call
+    # branch of the indirect-const rule.
+    if isinstance(src, TpyMethodCall):
+        fi = src.resolved_function_info
+        if (fi is not None and fi.is_readonly
+                and call_returns_cpp_ref(analyzer, fi)):
+            return True
+    # Operator dispatch follows that arm: a readonly dunder's borrow return is
+    # const-projected on the friend shim, so `c = a + b` / `c = -a` bind
+    # `const T&`. Keyed on the RAW `fi.is_readonly`
+    # -- readonly-ness here is usually INFERRED, so it never shows up as a
+    # ReadonlyType on the source and the raw-sema branch above misses it.
+    if isinstance(src, TpyBinOp) and src.resolved_binop is not None:
+        fi = src.resolved_binop.method
+        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
+            return True
+    if isinstance(src, TpyUnaryOp) and src.resolved_unaryop is not None:
+        fi = src.resolved_unaryop.method
+        if fi.is_readonly and call_returns_cpp_ref(analyzer, fi):
+            return True
+    # A subscript / method call on a const-rooted receiver binds const even
+    # when sema resolved the MUTABLE twin (the enclosing method's
+    # readonly-ness is INFERRED post body-analysis, so fi.is_readonly above
+    # misses; C++ overload resolution on the const receiver picks the const
+    # twin regardless) -- the receiver-const arm of the indirect-const
+    # rule.
+    return (isinstance(src, (TpySubscript, TpyMethodCall))
+            and _f1_const_rooted_source(src.obj, func, analyzer,
+                                        const_locals, record_name))
+
+def _walrus_src_is_const(src: TpyExpr, func: TpyFunction, analyzer,
+                        const_locals: set[str],
+                        record_name: str | None) -> bool:
+    """`const T*` for a walrus borrow-alias / pointer-Optional predecl: the
+    source expression is const on its own (`_expr_is_const_source`), it is a
+    select with a const arm, or its lvalue is rooted in a const param / const
+    F1 local.
+
+    The decl sibling of this is `_f1_is_const`, which cannot serve a walrus: it
+    keys `var_types` and `stmt.init` off a TpyVarDecl node a walrus has not
+    got. What the two share is the expression-keyed core; the rest of
+    `_f1_is_const` reads a binding kind the walrus ladder decides for itself."""
+    if _expr_is_const_source(src, func, analyzer, const_locals, record_name):
+        return True
+    if isinstance(src, TpyIfExpr):
+        # A select is const-rooted iff EITHER arm is: the C++ `?:` over a const
+        # and a non-const pointer yields the const type. The recursion lives
+        # here rather than in `_f1_const_rooted_source`, which deliberately
+        # mirrors codegen's `is_const_union_source` and answers False for a
+        # ternary.
+        return (_walrus_src_is_const(src.then_expr, func, analyzer,
+                                     const_locals, record_name)
+                or _walrus_src_is_const(src.else_expr, func, analyzer,
+                                        const_locals, record_name))
+    return _f1_const_rooted_source(src, func, analyzer, const_locals,
+                                   record_name)
 
 def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
     # Codegen's `get_resolved_type` for a NAME: the tracked DECLARED type, not
@@ -8296,7 +8368,11 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
         # the walrus arm validates target/source shapes during lowering.
         wt = analyzer.get_expr_type(operand)
         if (_optional_ptr_borrow(wt, analyzer) is not None
-                or _value_opt_scalar(wt, analyzer) is not None):
+                or _value_opt_scalar(wt, analyzer) is not None
+                # The view family (`str | None` / `bytes | None`) tests the
+                # same way -- has_value is repr-blind, so owned and view
+                # inners share the arm.
+                or _value_opt_view(wt, analyzer) is not None):
             return operand
         return None
     if (isinstance(operand, TpyFieldAccess)

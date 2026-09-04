@@ -129,14 +129,17 @@ def test_end_to_end_first_reject_reasons():
 
 
 def test_function_lowering_reject_falls_back_without_scope_residue():
-    # A nested def with a param default is a durable mid-body reject
-    # (`nesteddef.param_default` -- the lambda emit has no default-arg
-    # spelling). Multi-target del, the previous vehicle, routes now.
+    # A nested def whose name collides with a module function is a durable
+    # mid-body reject (`nesteddef.name_collision` -- the body's const
+    # verdicts are looked up by name). A param default, the previous
+    # vehicle, routes now.
     compiler, modules = _compile(
         "from tpy import Int32\n"
+        "def g(a: Int32) -> Int32:\n"
+        "    return a\n"
         "def rejected(d: dict[Int32, Int32]) -> Int32:\n"
-        "    def g(a: Int32 = 1) -> Int32:\n"
-        "        return a\n"
+        "    def g(a: Int32) -> Int32:\n"
+        "        return a + 1\n"
         "    return g(2)\n"
         "def clean(n: Int32) -> Int32:\n"
         "    return n + 1\n"
@@ -152,19 +155,21 @@ def test_function_lowering_reject_falls_back_without_scope_residue():
             else:
                 routed.append(fn.name)
     assert _tally(compiler).get(
-        "body:stmt.nested_def:nesteddef.param_default") == 1
+        "body:stmt.nested_def:nesteddef.name_collision") == 1
     assert "clean" in routed
 
 
 def test_constructor_lowering_reject_falls_back():
     compiler, modules = _compile(
         "from tpy import Int32\n"
+        "def g(a: Int32) -> Int32:\n"
+        "    return a\n"
         "class R:\n"
         "    n: Int32\n"
         "    def __init__(self, n: Int32):\n"
         "        self.n = n\n"
-        "        def g(a: Int32 = 1) -> Int32:\n"
-        "            return a\n"
+        "        def g(a: Int32) -> Int32:\n"
+        "            return a + 1\n"
         "        self.n = g(2)\n"
     )
     entry = _entry(modules)
@@ -178,7 +183,7 @@ def test_constructor_lowering_reject_falls_back():
             _record_reject("ctor")
     assert ctor is None
     assert _tally(compiler).get(
-        "ctor:stmt.nested_def:nesteddef.param_default") == 1
+        "ctor:stmt.nested_def:nesteddef.name_collision") == 1
 
 
 def test_base_init_arg_lowering_reject_falls_back():

@@ -842,9 +842,10 @@ class TestTupleYield:
         _hpp, cpp = _assert_routes_byte_identical(src)
         assert "auto __tup_1 = __for_tup_0;" in cpp
 
-    def test_name_tuple_yield_stays_ast(self):
-        # A yielded tuple NAME (a loop var) is not the literal shape --
-        # falls back (byte-identical via fallback).
+    def test_name_tuple_yield_lifts_to_pointer(self):
+        # A yielded tuple NAME (a storage-registered loop var) at a
+        # pointer-repr slot takes the storage->borrow lift.
+        from .testutil import _assert_routes_byte_identical
         src = (self._BOX
                + "def relay(items: list[tuple[Int32, Box]])"
                + " -> Iterator[tuple[Int32, Box]]:\n"
@@ -856,8 +857,9 @@ class TestTupleYield:
                + "    for i, x in relay(items):\n"
                + "        x.val = 9\n"
                + "    print(b.val)\nmain()\n")
-        fallback = _reject_tally(src)
-        assert fallback, "expected the name-source tuple yield to fall back"
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert ("::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(it)"
+                in (cpp + hpp))
 
 
 class TestRebindSlotDrain:
@@ -1112,9 +1114,9 @@ class TestSgenPtrTupleLoopVar:
         witnesses = _assert_identical(src)
         assert witnesses.get("sgen.tuple_yield_name", 0) >= 1
 
-    def test_storage_form_relay_stays_out(self):
-        # BOUNDARY: a container-element (storage-registered) tuple relayed
-        # whole is not the borrow-name yield; the body stays AST.
+    def test_storage_form_relay_lifts_to_pointer(self):
+        # A container-element (storage-registered) tuple relayed whole takes
+        # the storage->borrow lift, not the borrow-name yield's bare render.
         src = self._PRE + (
             "def storage_relay(items: list[tuple[Int32, C]])"
             " -> Iterator[tuple[Int32, C]]:\n"
@@ -1125,8 +1127,11 @@ class TestSgenPtrTupleLoopVar:
             "    for t in storage_relay(xs):\n"
             "        print(t[0])\n"
             "main()\n")
-        fallback = _reject_tally(src)
-        assert any("sgen.tuple_yield_source" in k for k in fallback), fallback
+        witnesses = _assert_identical(src)
+        assert witnesses.get("sgen.tuple_yield_storage_name_lift", 0) >= 1
+        _, hpp, cpp = _gen(src)
+        assert ("::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(pair)"
+                in (cpp + hpp))
 
     def test_span_source_registers_storage_form(self):
         # The registration keys the AST's builtin-NativeIterable predicate

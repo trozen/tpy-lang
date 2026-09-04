@@ -892,8 +892,8 @@ class THIRMethodCall(THIRExpr):
     deref_check: bool = False
     # A generic method call's explicit template args
     # (`b.transform<::tpy::BigInt>(42)`), spelled
-    # at lowering via render_type over the inferred args. Plain member arm
-    # only (the deref_check arm gate-excludes type args).
+    # at lowering via render_type over the inferred args. Composes with
+    # `deref_check` (`::tpy::deref_check(p).conv<int32_t>(3)`).
     method_targs_cpp: tuple[str, ...] | None = None
     # A USER Deref-wrapper method call: N `.__deref__()` calls between the
     # receiver and the member call (`r.sum()` -> `r.__deref__().sum()`),
@@ -914,7 +914,6 @@ class THIRMethodCall(THIRExpr):
 
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
-        assert not (self.deref_check and self.method_targs_cpp)
         assert not (self.deref_chain and self.deref_check)
         # move_receiver composes with is_arrow (a pointer-local receiver
         # moves its deref: `std::move(*w).take()`), never with the checked
@@ -971,12 +970,20 @@ class THIRContainerLiteral(THIRExpr):
     dict-comp `insert_or_assign` value slot): the resolver-rendered
     destination type, prefixed onto the render ONLY when it starts with `{`
     (the make_container / empty-list spellings are already
-    self-describing)."""
+    self-describing).
+
+    `bare_empty` drops the empty-LIST type spelling: at an immediate
+    container-element slot the outer brace supplies the element type, so `{}`
+    deduces there and the T*-assignment ambiguity the spelling guards against
+    cannot arise. It presumes a BRACE-init parent -- under `make_container`
+    each element deduces from its own argument, and lowering rejects an empty
+    element there rather than emitting an undeducible `{}`."""
     elements: tuple[THIRExpr, ...]
     values: tuple[THIRExpr, ...] = ()
     make_container: bool = False
     elem_cpp: str | None = None
     typed_brace_cpp: str | None = None
+    bare_empty: bool = False
 
 
 @dataclass(frozen=True)

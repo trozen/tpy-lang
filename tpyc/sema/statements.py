@@ -3214,6 +3214,17 @@ class StatementAnalyzer:
         return_type = self.type_ops.resolve_type(func.return_type)
         func.return_type = make_ref(return_type)
 
+        # A nested def emits as a lambda taking the full param list, so a
+        # declared default is unreachable and an omitting call is rejected
+        # with an arity error instead -- say so where the default is written.
+        for (pname, _), default in zip(params, func.defaults):
+            if default is not None:
+                self.ctx.warning(
+                    f"default value for parameter '{pname}' of nested function "
+                    f"'{func.name}' is ignored -- a nested function takes every "
+                    f"argument at every call; move it to module level to keep "
+                    f"the default", stmt)
+
         self_is_receiver = self.ctx.receiver_self_in_scope()
 
         # Analyze body in isolated scope

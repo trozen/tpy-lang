@@ -1,0 +1,2 @@
+main.py:10: warning: default value for parameter 'x' of nested function 'scale' is ignored -- a nested function takes every argument at every call; move it to module level to keep the default
+main.py:13: warning: default value for parameter 'n' of nested function 'label' is ignored -- a nested function takes every argument at every call; move it to module level to keep the default

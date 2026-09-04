@@ -8,14 +8,13 @@ from __future__ import annotations
 import pytest
 
 from ..codegen_cpp import CodeGenOptions
+from ..codegen_cpp.context import ThirRejectError
 from ..parse.nodes import TpyAssign, TpyIf, TpyName, TpyNoneLiteral, TpyVarDecl
 from .reject import ThirUnsupported
 from .lower import _LowerCtx
 from .lower.statements import _lower_stmt
 from .nodes import THIRAssign, THIRLiteral, Form
-from .testutil import (
-    _assert_rejects_at, _compile, _entry,
-                      _reject_tally)
+from .testutil import _compile, _entry
 
 _PTR = (
     "from tpy import Int32, Ptr\n"
@@ -138,9 +137,13 @@ class TestRawAssignGlobalSlot:
         assert "xs = &(__global_slot_1 = {3, 4});" in "".join(thir)
 
     def test_branch_global_write_rejects(self):
-        # BOUNDARY: the in-branch flavors are decided per kind on the
-        # var-decl side (static-keyword placement differs by branch kind)
-        # and none is witnessed through a raw assign -- so the whole body
-        # falls back rather than pick one.
-        _assert_rejects_at(_reject_tally('from tpy import Int32\nxs: list[Int32] = [1, 2]\nif len(xs) > 1:\n    xs = [3, 4]\nprint(len(xs))\n'),
-                           "top_level:stmt.var_decl:top_level.global_slot_branch")
+        # BOUNDARY: the var-decl side admits a non-loop branch write, but no
+        # raw assign witnesses one, so this path keeps its own reject rather
+        # than duplicating the var-decl gate's loop-kind check.
+        with pytest.raises(ThirRejectError, match="assign.global_slot_branch"):
+            _raw_global_write(
+                "from tpy import Int32\n"
+                "xs: list[Int32] = [1, 2]\n"
+                "if len(xs) > 1:\n"
+                "    xs = [3, 4]\n"
+                "print(len(xs))\n", in_branch=True)

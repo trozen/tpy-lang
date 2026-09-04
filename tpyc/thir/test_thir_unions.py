@@ -332,7 +332,8 @@ class TestUnionReviewRoundPins:
     def test_string_member_union_stays_out(self):
         # BOUNDARY: tpy.String is STR-class -- the builtin-value member
         # rung must not admit it (the owned-buffer insert/extract renders
-        # belong to the str-family rungs).
+        # belong to the str-family rungs), so the isinstance CONDITION over
+        # such a union has no render and the body rejects there.
         src = (
             "from tpy import Int32, String\n"
             "def f(v: Int32 | String) -> Int32:\n"
@@ -342,8 +343,7 @@ class TestUnionReviewRoundPins:
             "def main() -> None:\n"
             "    print(f(3))\n"
             "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.if:if.cond_facts_unmirrored")
+        _assert_rejects_at(_reject_tally(src), "body:stmt.if", "cond.call")
 
 
 class TestBuiltinValueMemberUnion:

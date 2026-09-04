@@ -457,6 +457,42 @@ def ephemeral_borrow_root(ephemeral_vars: set[str],
     return None
 
 
+def _borrow_kind_of_init(init_unwrapped: TpyExpr) -> BorrowKind:
+    """The borrow kind an init shape hands out: a subscript loans the ELEMENT,
+    a field access the FIELD, anything else the whole storage (ALIAS)."""
+    if isinstance(init_unwrapped, TpySubscript):
+        return BorrowKind.ELEMENT
+    if isinstance(init_unwrapped, TpyFieldAccess):
+        return BorrowKind.FIELD
+    return BorrowKind.ALIAS
+
+
+def _select_arm_loans(expr: TpyIfExpr) -> list[tuple[str, BorrowKind]]:
+    """The (storage key, kind) loans a select hands out -- one per borrowing arm.
+
+    A select of lvalue arms stays an lvalue in C++ (`T& r = c ? a[0] : b[0]`,
+    or `&elem` into a pointer slot), so the binding aliases WHICHEVER arm is
+    taken: both arms are loaned, and arms naming different containers loan
+    both of them. An arm with no storage root (a call, a literal, `None`)
+    loans nothing. When both arms loan the same root the most-restrictive kind
+    wins, since either one can be the live borrow.
+    """
+    loans: dict[str, BorrowKind] = {}
+    for arm in (expr.then_expr, expr.else_expr):
+        inner = arm.expr if isinstance(arm, TpyCoerce) else arm
+        if isinstance(inner, TpyIfExpr):
+            arm_loans = _select_arm_loans(inner)
+        else:
+            arm_root = _borrow_storage_root(arm)
+            arm_loans = ([] if arm_root is None
+                         else [(arm_root, _borrow_kind_of_init(inner))])
+        for root, kind in arm_loans:
+            prev = loans.get(root)
+            if prev is None or BORROW_KIND_RANK[kind] > BORROW_KIND_RANK[prev]:
+                loans[root] = kind
+    return list(loans.items())
+
+
 def register_binding_borrow(ctx: 'SemanticContext', name: str,
                             init_expr: TpyExpr) -> None:
     """Register `name` as a borrower of `init_expr`'s storage root (ELEMENT /
@@ -464,10 +500,11 @@ def register_binding_borrow(ctx: 'SemanticContext', name: str,
     paths.
 
     A self-assignment (t = t) aliases nothing new; registering it would put
-    a self-edge in the borrow graph. For non-simple init shapes (ternary,
-    deep chains like `outer.inner[i]`) there is no single root to record, so
-    every address-taken root is eagerly marked mutated instead (the binding
-    aliases into them, so they must stay `T&`, not `const T&`).
+    a self-edge in the borrow graph. A select registers one loan per arm (see
+    `_select_arm_loans`). For the remaining non-simple init shapes (deep
+    chains like `outer.inner[i]`) there is no root to record, so every
+    address-taken root is eagerly marked mutated instead (the binding aliases
+    into them, so they must stay `T&`, not `const T&`).
 
     8a.5: marking the source mutated is DEFERRED until the borrower is
     actually written through for ELEMENT borrows (v = items[i]) and for ALIAS
@@ -480,6 +517,17 @@ def register_binding_borrow(ctx: 'SemanticContext', name: str,
     """
     init_unwrapped = (init_expr.expr if isinstance(init_expr, TpyCoerce)
                       else init_expr)
+    if isinstance(init_unwrapped, TpyIfExpr):
+        bt = ctx.func.borrow_tracker
+        for arm_root, arm_kind in _select_arm_loans(init_unwrapped):
+            if arm_root != name:
+                bt.add_borrow(arm_root, name, arm_kind)
+        # The arms stay eagerly marked mutated rather than deferred: a select
+        # has no single root that a later write through the borrower could
+        # re-mark, so the conservative mark is the only one it gets.
+        for alias_root in addr_taken_roots(init_expr):
+            ctx.mark_param_mutated(alias_root)
+        return
     root = _borrow_storage_root(init_expr)
     if root is None:
         for alias_root in addr_taken_roots(init_expr):
@@ -487,12 +535,7 @@ def register_binding_borrow(ctx: 'SemanticContext', name: str,
         return
     if root == name:
         return
-    if isinstance(init_unwrapped, TpySubscript):
-        kind = BorrowKind.ELEMENT
-    elif isinstance(init_unwrapped, TpyFieldAccess):
-        kind = BorrowKind.FIELD
-    else:
-        kind = BorrowKind.ALIAS
+    kind = _borrow_kind_of_init(init_unwrapped)
     bt = ctx.func.borrow_tracker
     bt.add_borrow(root, name, kind)
     if not (kind in (BorrowKind.ELEMENT, BorrowKind.ALIAS)

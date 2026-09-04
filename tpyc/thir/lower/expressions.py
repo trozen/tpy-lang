@@ -288,6 +288,7 @@ from .predicates import (
     _native_cond_scalar,
     _truthiness_mode,
     _f1_const_rooted_source,
+    _walrus_src_is_const,
     _plain_container_read,
     _container_field_bare_read,
     _method_member_cpp,
@@ -363,6 +364,7 @@ from .predicates import (
     _opt_pointee_wide,
     _optional_ptr_borrow,
     _optional_ptr_borrow_wide,
+    _optional_ptr_borrow_wide_name,
     _storage_optional_return_wide,
     _optional_ptr_borrow_name,
     _optional_checked_field,
@@ -418,6 +420,7 @@ from .predicates import (
     _record_getitem_key,
     _subscript_index_and_tuple,
     _subscript_container_recv_type,
+    _container_elem_lvalue_subscript,
     _narrowed_ptr_opt_name,
     _narrowed_ptr_opt_recv,
     _template_init_call_fi,
@@ -4250,8 +4253,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                                     lc.analyzer)
                           is not None)))) or (
             isinstance(operand, TpyNamedExpr)
-            and _value_opt_scalar(analyzer.get_expr_type(operand),
-                                  lc.analyzer) is not None) or (
+            and (_value_opt_scalar(analyzer.get_expr_type(operand),
+                                   lc.analyzer) is not None
+                 # The view family's walrus target: the same has_value test.
+                 or _value_opt_view(analyzer.get_expr_type(operand),
+                                    lc.analyzer) is not None)) or (
             not isinstance(operand, (TpyName, TpyFieldAccess))
             and _value_opt_rvalue(operand, lc.analyzer) is not None)
         lowered_operand = _lower_expr(
@@ -7051,17 +7057,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # Borrow-alias pointer target (`(q := b)` on a record/container
             # lvalue, `(v := h.view())` on a ref-returning call):
             # `[const ]T* q = nullptr;` + `(q = &(v), *q)`; an
-            # already-pointer NAME source assigns bare. A slot global
-            # rejects: `&(g)` there addresses the slot pointer, not the
-            # value.
+            # already-pointer NAME source assigns bare -- a slot GLOBAL is one
+            # of those (its `T* g{}` slot is seeded into lc.pointers), so it
+            # copies the slot pointer instead of addressing it.
             src = e.value
             if not (_f1_record(vtu, analyzer)
                     or _alias_ref_container(vtu)):
                 note_detail("walrus.borrow_alias_shape")
                 raise ThirUnsupported("expr.walrus")
             if isinstance(src, TpyName):
-                if (src.name not in declared
-                        or src.name in lc.prescan.global_slots):
+                if src.name not in declared:
                     note_detail("walrus.borrow_alias_shape")
                     raise ThirUnsupported("expr.walrus")
                 lowered_value = _lower_expr(src, lc, declared)
@@ -7076,6 +7081,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     src, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
                 already_ptr = False
+            elif _field_receiver_ok(src, declared, analyzer):
+                # A record / container FIELD source (`(q := h.inner)`): the
+                # alias addresses the member lvalue, the same storage-form
+                # read a borrow-local decl binds by reference.
+                lowered_value = _lower_field_source(src, lc, declared)
+                already_ptr = False
+                _witness("walrus.alias_field_src")
             else:
                 note_detail("walrus.borrow_alias_shape")
                 raise ThirUnsupported("expr.walrus")
@@ -7083,7 +7095,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # The comma form consumes the raw pointer; the value-read
                 # deref belongs to the `*n` tail, not the source.
                 lowered_value = replace(lowered_value, deref=False)
-            is_const = borrow_decls[e.target]
+            # A const-rooted source makes the alias `const T*` whatever sema's
+            # borrow-decl verdict says: that verdict is keyed on the target's
+            # USES and never sees the source's indirect const.
+            is_const = (borrow_decls[e.target]
+                        or _walrus_src_is_const(src, lc.func, analyzer,
+                                                lc.const_locals,
+                                                lc.record_name))
             declared[e.target] = vtu
             lc.pointers.add(e.target)
             if is_const:
@@ -7103,11 +7121,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         opt_ptr = (None if resumable
                    else _optional_ptr_borrow(vtu, analyzer))
         if opt_ptr is not None:
-            # Pointer-repr Optional target (`(t := h.opt)`): `T* t =
+            # Pointer-repr Optional target (`(t := h.opt)`): `[const ]T* t =
             # nullptr;` + the borrow-lifted assign -- a storage-Optional
-            # FIELD source lifts via optional_to_ptr (THIRFormConvert
-            # BORROW), `None` assigns nullptr, an already-pointer NAME
-            # passes bare. Other sources reject.
+            # FIELD or container-ELEMENT source lifts via optional_to_ptr
+            # (THIRFormConvert BORROW), `None` assigns nullptr, an
+            # already-pointer NAME passes bare. Other sources reject.
             lowered_value = _walrus_opt_ptr_source(
                 e.value, vtu, opt_ptr.inner, lc, declared, loc,
                 allow_none=True)
@@ -7116,9 +7134,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported("expr.walrus")
             declared[e.target] = vtu
             lc.pointers.add(e.target)
+            # A const-rooted source lifts to `const T*`; sema's borrow-decl
+            # verdict is keyed on the target's USES and does not see it.
+            opt_const = _walrus_src_is_const(e.value, lc.func, analyzer,
+                                             lc.const_locals, lc.record_name)
+            if opt_const:
+                lc.const_locals.add(e.target)
             cpp_type = None
             if need_predecl:
-                cpp_type = lc.render_type(unwrap_readonly(opt_ptr.inner)) + "*"
+                cpp_type = (("const " if opt_const else "")
+                            + lc.render_type(unwrap_readonly(opt_ptr.inner))
+                            + "*")
                 lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_opt_ptr")
             return THIRWalrus(
@@ -7276,8 +7302,18 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 value=lowered_value,
                 cpp_type=f"std::optional<{lc.render_type(vtu)}>",
                 tail="deref", loc=loc)
-        if (not resumable
-                and _value_opt_scalar(vtu, analyzer) is not None):
+        wal_value_opt = (
+            ValueOptKind.SCALAR
+            if not resumable and _value_opt_scalar(vtu, analyzer) is not None
+            # The OWNED-view twin (`str | None` / `bytes | None`): the same
+            # bare `std::optional<std::string>` slot and in-place assign, one
+            # binding kind over -- what differs is only the narrowed deref
+            # verdict the binding registration carries.
+            else ValueOptKind.VIEW
+            if (not resumable
+                and _value_opt_owned_view(vtu, analyzer) is not None)
+            else None)
+        if wal_value_opt is not None:
             # Value-opt scalar walrus: REASSIGN (`(x := None)` on a
             # declared `Int32 | None` local) is the plain in-place assign
             # -- `None` renders `std::nullopt`, a scalar RHS assigns bare
@@ -7289,12 +7325,24 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             if isinstance(e.value, TpyNoneLiteral):
                 lowered_value = THIRLiteral(result_type=vtu, value=None,
                                             form=Form.STORAGE, loc=loc)
+            elif (wal_value_opt is ValueOptKind.VIEW
+                  and isinstance(e.value, TpyName)
+                  and _opt_view_arg_shim(
+                      _param_declared_type(e.value.name, lc), vtu, analyzer)):
+                # A BORROW-form value-opt view PARAM source: the target's
+                # owned `optional<owned>` slot needs the per-element copy the
+                # decl sink spells (`optional`'s converting assignment does
+                # not reach `span` -> `vector` at all, and would leave the
+                # str face's copy implicit).
+                lowered_value = THIROptViewArg(
+                    result_type=vtu, name=e.value.name, form=Form.VALUE,
+                    loc=loc)
             else:
                 lowered_value = _lower_expr(e.value, lc, declared,
                                             target_type=vtu,
                                             allow_whole_optional=True)
             declared[e.target] = vtu
-            lc.value_opt_bindings[e.target] = ValueOptKind.SCALAR
+            lc.value_opt_bindings[e.target] = wal_value_opt
             cpp_type = None
             if need_predecl:
                 cpp_type = lc.render_type(vtu)
@@ -8703,6 +8751,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     elem_cpp = (_union_storage_val_cpp(_su)
                                 if isinstance(_su, UnionType)
                                 else lc.render_type(slot))
+        if make and any(isinstance(x, TpyArrayLiteral) and not x.elements
+                        for x in e.elements):
+            # An empty nested literal is spelling-free only under a BRACE-init
+            # parent, which hands its element type down. The reserve+emplace
+            # helpers deduce each element from its own argument instead, so a
+            # bare `{}` there has nothing to deduce from and spelling the type
+            # would not preserve the helper's move.
+            note_detail("containerlit.make_empty_elem")
+            raise ThirUnsupported("expr.container_literal")
         return THIRContainerLiteral(
             result_type=container_type,
             elements=tuple(
@@ -8730,6 +8787,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 for x in e.elements),
             make_container=make,
             elem_cpp=elem_cpp,
+            # An IMMEDIATE container element (`elem_storage`, which does not
+            # propagate deeper) of a BRACE-init parent: the outer brace deduces
+            # the element type, so an empty list drops its spelling. The
+            # make_container parent, which deduces per argument instead, is
+            # rejected above rather than reaching this render.
+            bare_empty=elem_storage and not e.elements,
             loc=loc,
         )
     if isinstance(e, TpyDictLiteral):
@@ -8963,13 +9026,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 args=tuple(_lower_expr(a, lc, declared) for a in e.args),
                 form=Form.STORAGE, loc=loc)
         # A plain generic METHOD call's type args ride the member spelling
-        # (`recv.method<targs>(args)`), so they are not a marker here. The
-        # runtime-check receiver + targs combination is conservatively
-        # rejected pending a corpus witness (this arm's deref_check face
-        # does not carry targs yet).
-        if (e.type_args or e.inferred_type_args) and \
-                e.needs_optional_runtime_check:
-            raise ThirUnsupported(call_reject_reason("expr.method_call"))
+        # (`recv.method<targs>(args)`), so they are not a marker here; they
+        # compose with an unproven-Optional receiver's checked deref
+        # (`::tpy::deref_check(p).conv<int32_t>(3)`).
         if e.is_callable_field and not e.kwargs \
                 and e.double_star_unpack is None:
             # Callable-field invocation (`h.cb(3)` -> `h.cb(3)`): the bare
@@ -9340,7 +9399,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 note_detail(_recv_shape_reject(e.obj, declared, analyzer))
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
             if (e.needs_optional_runtime_check
-                    and _optional_ptr_borrow_name(
+                    # The WIDE pointee class: the checked deref is
+                    # pointee-blind (a `T*` null check plus a `.` member
+                    # call), so a @dynamic-protocol / wrapper pointee reads
+                    # the same as an F1-record one.
+                    and _optional_ptr_borrow_wide_name(
                         e.obj, declared, analyzer) is None
                     and not _optional_checked_recv_call(e.obj, analyzer)):
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
@@ -9950,13 +10013,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         disp = _coerce_disposition(e, own_slot_arg=own_slot_coerce)
         if disp is None:
             raise ThirUnsupported("expr.coerce")
-        if (e.coercion.name in _SPAN_METHOD_COERCIONS
-                and isinstance(e.expr, TpyName)
-                and (e.expr.name in lc.pointers
-                     or e.expr.name == lc.self_receiver)):
-            # An indirect receiver needs a pre-deref (`(*name).__span__()`);
-            # record names lower bare here, so it rejects.
-            raise ThirUnsupported("expr.coerce")
         # A materializing coerce IS the owned sink for its view source, so a
         # StrView field inner is admitted here (the `std::string(x)` over
         # the bare member read renders through the S1 chokepoint below).
@@ -10178,6 +10234,22 @@ def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
             result_type=vtu,
             value=_lower_field_source(value, lc, declared),
             form=Form.BORROW, loc=loc)
+    if (_container_elem_lvalue_subscript(value, declared, analyzer)
+            and isinstance(src_t, OptionalType)
+            and unwrap_readonly(src_t.inner) == unwrap_readonly(inner)
+            and reads_storage_form_optional(analyzer, value)):
+        # A container ELEMENT whose element type IS the Optional: the raw
+        # element read is the storage optional, lifted by the same convert the
+        # OPTIONAL_TO_PTR decl uses for one. `subscript_prechecked` keeps the
+        # ELEMENT's optional whole (its None check belongs to the walrus
+        # target's narrowing, not to the read); the shared predicate is what
+        # rules out an unproven-Optional RECEIVER, whose own deref check the
+        # same flag would suppress.
+        _witness("walrus.optptr_subscript_src")
+        return THIRFormConvert(
+            result_type=vtu,
+            value=_lower_expr(value, lc, declared, subscript_prechecked=True),
+            form=Form.BORROW, loc=loc)
     if (isinstance(value, (TpyCall, TpyMethodCall))
             and isinstance(src_t, OptionalType)
             and unwrap_readonly(src_t.inner) == unwrap_readonly(inner)
@@ -10189,6 +10261,15 @@ def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
         _witness("walrus.optptr_call_src")
         return _lower_expr(value, lc, declared,
                            use=_ExprUse(ptr_opt_passthrough=True))
+    if (isinstance(value, TpyIfExpr)
+            and isinstance(src_t, OptionalType)
+            and unwrap_readonly(src_t.inner) == unwrap_readonly(inner)):
+        # A TERNARY source: the ifexpr lowering normalized both arms to the
+        # `T*` the target holds (per-arm optional_to_ptr / addr-of / nullptr),
+        # so the select IS that shape and lands bare -- the OPTIONAL_TO_PTR
+        # decl's ternary row, one sink over.
+        _witness("walrus.optptr_ternary_src")
+        return _lower_expr(value, lc, declared)
     if allow_none and isinstance(value, TpyNoneLiteral):
         return THIRLiteral(result_type=vtu, value=None, form=Form.BORROW,
                            loc=loc)
@@ -10800,6 +10881,17 @@ def lower_print_sink(file_val: TpyExpr, lc: '_LowerCtx',
     (`::tpy::as_ostream(<sink>)`), so route the bare `(*slot)` read here.
     Any other sink shape rejects as `print.file_sink_shape`."""
     analyzer = lc.analyzer
+    if isinstance(file_val, TpyIfExpr):
+        # A ternary sink (`file=sys.stdout if c else sys.stderr`): each arm is
+        # an admitted sink read of its own and the `?:` over two same-type
+        # lvalues is one too, so the pinned consumer takes the select whole.
+        _witness("print.file_ternary_sink")
+        return THIRIfExpr(
+            result_type=analyzer.get_expr_type(file_val),
+            cond=_lower_truthy(file_val.condition, lc, declared),
+            then=lower_print_sink(file_val.then_expr, lc, declared),
+            orelse=lower_print_sink(file_val.else_expr, lc, declared),
+            form=Form.BORROW, loc=getattr(file_val, "loc", None))
     if isinstance(file_val, TpyFieldAccess):
         rtype = analyzer.get_expr_type(file_val)
         loc = getattr(file_val, "loc", None)
@@ -11174,8 +11266,12 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                                  lc, declared)
     if isinstance(su_elem, TypeParamRef):
         # A `T` element slot: the plain declared NAME renders bare
-        # (`return {x};`). Narrowed / pointer-form / movable names carry
-        # renders (alias, deref, std::move) this row does not spell.
+        # (`return {x};`), a MOVABLE one through the shared exit move
+        # (`make_vector<T>(std::move(a))` -- the literal switched to the
+        # reserve+emplace helper on the same verdict, and a brace-init's const
+        # initializer_list elements would have copied). Narrowed and
+        # pointer-form names carry alias / deref renders this row does not
+        # spell.
         _tp_copy_src = copy_call_arg(e, lc.analyzer)
         if (isinstance(_tp_copy_src, TpyName)
                 and _tp_copy_src.name in declared
@@ -11189,11 +11285,12 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
             return _lower_expr(e, lc, declared)
         if not (isinstance(e, TpyName) and e.name in declared
                 and e.name not in lc.pointers
-                and e.name not in lc.narrow.narrowed
-                and not _is_move_source(e, lc)):
+                and e.name not in lc.narrow.narrowed):
             raise ThirUnsupported("expr.container_literal")
         _witness("containerlit.tparam_elem")
-        return _lower_expr(e, lc, declared)
+        return _elem_maybe_move(_lower_expr(e, lc, declared), e, lc,
+                                suppress_move=suppress_move,
+                                tuple_elem=tuple_elem)
     if (isinstance(su_elem, UnionType) and not su_elem.needs_wrapper()
             and isinstance(e, TpyName)):
         # A NAME at a value-union element slot. The verdict is the BINDING's
@@ -11314,7 +11411,23 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         e, lc, declared, use=_ExprUse(indirect_read=True,
                                       allow_temps=allow_temps),
         elem_storage=True,
-        container_threaded=retype_scalars,
+        # A nested LIST element takes its type from the outer brace, so an
+        # EMPTY literal deduces there (`{{}, {1}}`) even though scalar
+        # retyping is off for a list's elements.
+        container_threaded=retype_scalars or is_list(su0),
+        # An Optional ELEMENT slot fed by a source that is still Optional-typed
+        # (un-narrowed): the element IS the optional, so the read goes whole
+        # rather than through the value-opt narrowed deref. A NARROWED source
+        # keeps its deref -- that render is already witnessed here. A
+        # str/bytes-family Optional PARAM stays out: it spells a VIEW inner
+        # against the slot's owned buffer, so it needs the per-element
+        # materialization shim, which is not this bare read.
+        allow_whole_optional=(
+            isinstance(su0, OptionalType)
+            and isinstance(unwrap_readonly(lc.analyzer.get_expr_type(e)),
+                           OptionalType)
+            and not (isinstance(e, TpyName)
+                     and _value_opt_view_param(e.name, lc))),
         field_owned_str_ok=((field_str_ok or _vu_field)
                             and isinstance(e, TpyFieldAccess)))
     if retype_scalars:
@@ -11345,14 +11458,24 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         if bt is not None and is_bytes_type(bt) and el.form is Form.BORROW:
             el = THIRFormConvert(result_type=bt, value=el, form=Form.STORAGE,
                                  loc=getattr(e, "loc", None))
-    # A list-repeat element is copied into EVERY slot (one source, N slots), so
-    # it must never move; moving would use-after-move the source for slots
-    # 1..N-1.
+    return _elem_maybe_move(el, e, lc, suppress_move=suppress_move,
+                            tuple_elem=tuple_elem)
+
+
+def _elem_maybe_move(el: THIRExpr, e: TpyExpr, lc: '_LowerCtx', *,
+                     suppress_move: bool, tuple_elem: bool) -> THIRExpr:
+    """Wrap one lowered container element in `std::move` if its source is
+    movable -- the element-lowering exit rule, shared by the dispatch tail and
+    the arms that return early.
+
+    A list-repeat element is copied into EVERY slot (one source, N slots), so
+    it must never move; moving would use-after-move the source for slots
+    1..N-1 -- that is what `suppress_move` says."""
     if not suppress_move and _container_elem_move_source(
             e, lc, tuple_elem=tuple_elem):
         _witness("containerlit.move")
-        el = THIRMove(result_type=el.result_type, value=el, form=el.form,
-                      loc=getattr(e, "loc", None))
+        return THIRMove(result_type=el.result_type, value=el, form=el.form,
+                        loc=getattr(e, "loc", None))
     return el
 
 def _container_elem_move_source(e: TpyExpr, lc: '_LowerCtx', *,
@@ -15694,6 +15817,17 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             use=_ExprUse(result=_ExprResultUse.TRUTHY, allow_temps=temps_ok)),
         loc=loc)
 
+def _str_ternary_form(str_rt: TpyType, then_view: bool,
+                      else_view: bool) -> Form:
+    """The whole-select form for a str-family ternary RESULT: BORROW iff the
+    result is a runtime view (a StrView-resolved select, or both arms
+    view-at-runtime), which is exactly when an owned sink must copy it. Shared
+    by the general select and the isinstance-narrowed one so the copy verdict
+    cannot drift between them."""
+    return (Form.BORROW if is_str_view_type(str_rt) or (then_view and else_view)
+            else Form.STORAGE)
+
+
 def _str_view_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
     """Whether an admitted ternary arm spells std::string_view at C++
     runtime: a str literal and a `str`-declared PARAM are runtime
@@ -15762,14 +15896,19 @@ def _bytes_owned_call_arm(e: TpyExpr, lc: '_LowerCtx') -> bool:
     return rt is not None and not is_bytes_view_type(rt)
 
 def _ifexpr_container(rtype: 'TpyType | None', analyzer) -> 'TpyType | None':
-    """A list/dict/set ternary RESULT (pending containers resolve through
+    """A list/dict/set/Array ternary RESULT (pending containers resolve through
     the shared record): the ternary renders bare and its arms gate
-    themselves, so the result family is the whole admission."""
+    themselves, so the result family is the whole admission.
+
+    `Array[T, N]` belongs here despite being a value type: a NAME binding of
+    one already aliases (`std::array<T, N>& x = a;`), so its ternary is the
+    same lvalue `?:` the other three render."""
     if rtype is None:
         return None
     tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
     tu = resolve_pending_container(tu, analyzer) or tu
-    return tu if (is_list(tu) or is_dict(tu) or is_set(tu)) else None
+    return tu if (is_list(tu) or is_dict(tu) or is_set(tu)
+                  or is_array(tu)) else None
 
 
 def _lvalue_container_ternary(e: TpyExpr, analyzer) -> bool:
@@ -15863,6 +16002,21 @@ def _lower_value_opt_ternary_arm(arm: TpyExpr, vopt: 'OptionalType',
         # int32_t>{a, b}`) against the Optional's inner tuple.
         inner = _lower_tuple_literal(arm, _vot, lc, declared)
         _witness("ifexpr.storage_opt_tuple_arm")
+    elif (not isinstance(_vos := _peel_coerce(arm), TpyName)
+          and _eligible_scalar(resolve_int_literals(
+              unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                  lc.analyzer.get_expr_type(_vos)))),
+              lc.analyzer.ctx.default_int_for_literal))):
+        # A scalar-VALUED expression arm (`(a + b) if c else None`, a
+        # scalar-returning call): scalars carry no form facts, so the wrap
+        # composes over the arm's plain render exactly as over a literal. The
+        # sema-inserted coercion to the Optional IS that wrap, so it peels --
+        # lowering it would spell the optional twice. `cond_eager` is what
+        # keeps a temp-producing arm out: the arm evaluates conditionally, and
+        # only an audited temp may defer.
+        inner = _lower_expr(_vos, lc, declared, target_type=vopt.inner,
+                            cond_eager=True)
+        _witness("ifexpr.value_opt_scalar_expr")
     else:
         note_detail("ifexpr.value_opt_arm")
         raise ThirUnsupported("expr.ifexpr")
@@ -15909,6 +16063,16 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
                 result_type=popt,
                 value=_lower_field_source(arm, lc, declared),
                 form=Form.BORROW, loc=loc)
+        if (_container_elem_lvalue_subscript(arm, declared, analyzer)
+                and reads_storage_form_optional(analyzer, arm)):
+            # An Optional container ELEMENT arm: the stored optional lifts
+            # through the same convert the field arm takes.
+            _witness("ifexpr.optptr_elem_lift")
+            return THIRFormConvert(
+                result_type=popt,
+                value=_lower_expr(arm, lc, declared,
+                                  subscript_prechecked=True),
+                form=Form.BORROW, loc=loc)
     elif isinstance(arm, TpyName) and arm.name not in lc.narrow.narrowed:
         dt = declared.get(arm.name)
         dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
@@ -15918,6 +16082,15 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
             return THIROptionalPtrArg(
                 result_type=popt, form=Form.BORROW,
                 value=_lower_expr(arm, lc, declared), addr_of=True, loc=loc)
+    elif (_container_elem_lvalue_subscript(arm, declared, analyzer)
+          and _f1_record(at, analyzer)):
+        # A plain record ELEMENT arm (`ns[0] if c else None`): the address of
+        # the live element, the NAME arm's addr-of one receiver shape over.
+        _witness("ifexpr.optptr_elem_addr")
+        return THIROptionalPtrArg(
+            result_type=popt, form=Form.BORROW,
+            value=_lower_expr(arm, lc, declared, subscript_prechecked=True),
+            addr_of=True, loc=loc)
     note_detail("ifexpr.optptr_arm")
     raise ThirUnsupported("expr.ifexpr")
 
@@ -16003,7 +16176,12 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
     var, u, then_m, else_m = ifn
     result_t = slot if slot is not None else rtype
     rbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(result_t)))
-    if not _eligible_scalar(rbare):
+    if not (_eligible_scalar(rbare)
+            # A str result joins the slice: the arms take the same
+            # slot-targeted literal render the scalar arms do, and the
+            # owned/view decision belongs to the SINK (a `str` return wraps
+            # the whole select in `std::string(...)`), not to either arm.
+            or _resolved_str_value(rbare, analyzer) is not None):
         raise ThirUnsupported("ifexpr.narrow_result", detail=True)
     cond = _lower_isinstance_cond((var, u, (then_m,), False), e.condition,
                                   lc)
@@ -16022,9 +16200,20 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
 
     then = _arm(e.then_expr, then_m)
     orelse = _arm(e.else_expr, else_m)
+    form = Form.VALUE
+    str_rt = _resolved_str_value(rbare, analyzer)
+    if str_rt is not None:
+        tv = _str_view_arm(e.then_expr, lc)
+        ev = _str_view_arm(e.else_expr, lc)
+        if tv != ev:
+            # A MIXED view/owned arm pair needs the general select's per-arm
+            # materialization, which has no narrowed witness.
+            raise ThirUnsupported("ifexpr.narrow_str_mixed", detail=True)
+        form = _str_ternary_form(str_rt, tv, ev)
+        _witness("ifexpr.isin_narrow_str")
     _witness("ifexpr.isin_narrow")
     return THIRIfExpr(result_type=result_t, cond=cond, then=then,
-                      orelse=orelse, form=Form.VALUE, loc=loc)
+                      orelse=orelse, form=form, loc=loc)
 
 
 def _lower_record_prvalue_arm(arm: TpyExpr, rec_t: 'TpyType',
@@ -16216,7 +16405,8 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         _witness("ifexpr.container_comp_arm")
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.VALUE, loc=loc)
-    if ((is_list(rec_t) or is_dict(rec_t) or is_set(rec_t))
+    if ((is_list(rec_t) or is_dict(rec_t) or is_set(rec_t)
+         or is_array(rec_t))
             and isinstance(e.then_expr, TpyName)
             and isinstance(e.else_expr, TpyName)):
         # A container ternary of NAME arms: same-type lvalues make the C++
@@ -16260,7 +16450,11 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
             raise ThirUnsupported("expr.ifexpr")
         for arm in (e.then_expr, e.else_expr):
             if not (isinstance(arm, TpyName)
-                    or _rec_arm_borrow_call(arm)):
+                    or _rec_arm_borrow_call(arm)
+                    # A container-ELEMENT subscript arm (`rs[0] if c else
+                    # rs[1]`) is an lvalue too, so the `?:` stays one.
+                    or _container_elem_lvalue_subscript(arm, declared,
+                                                        analyzer)):
                 note_detail("ifexpr.record_arm")
                 raise ThirUnsupported("expr.ifexpr")
         def _rec_arm_lower(arm):
@@ -16268,6 +16462,10 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 return _lower_expr(
                     arm, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
+            if isinstance(arm, TpySubscript):
+                _witness("ifexpr.record_elem_arm")
+                return _lower_expr(arm, lc, declared,
+                                   subscript_prechecked=True)
             return _lower_expr(arm, lc, declared,
                                use=_ExprUse(indirect_read=True),
                                target_type=rec_t)
@@ -16323,11 +16521,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 orelse = THIRFormConvert(result_type=str_rt, value=orelse,
                                          form=Form.STORAGE, loc=loc)
             _witness("ifexpr.str_mixed")
-        # The whole-ternary owned-sink copy fires iff the RESULT is a runtime
-        # view: a StrView-resolved ternary or a both-view arm pair (a
-        # top-level literal is never one).
-        form = (Form.BORROW if is_str_view_type(str_rt) or (tv and ev)
-                else Form.STORAGE)
+        form = _str_ternary_form(str_rt, tv, ev)
         _witness("ifexpr.str")
     elif _is_string_owned(rtype):
         # A String result (both arms concat results): an owned rvalue.

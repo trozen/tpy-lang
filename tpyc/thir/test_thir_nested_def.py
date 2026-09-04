@@ -107,15 +107,19 @@ class TestNestedDefRejects:
         assert _fn(thir, name) is None
         assert _reject_tally(src)
 
-    def test_param_default_rejects(self):
-        # A nested-def default is dead surface (sema resolves calls against
-        # full arity; the AST lambda header drops it) -- the guard keeps THIR
-        # off the shape rather than mirroring the drop.
-        self._rejects(
+    def test_param_default_routes_without_the_default(self):
+        # A nested-def default is dead surface: sema resolves calls against
+        # full arity, so no call can omit the argument and the lambda header
+        # carries no default.
+        src = (
             _PRELUDE
             + "def main() -> None:\n"
             + "    def f(x: Int32 = 1) -> Int32:\n        return x\n"
             + "    print(f(1))\n")
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "main") is not None
+        assert w.get("nesteddef.unused_default", 0) >= 1
+        assert "auto f = [](int32_t x) -> int32_t {" in _cpp(src)
 
     def test_nested_body_hoist_residue_rejects(self):
         # FORWARD-COMPAT pin: sema stores NO per-nested-func hoist facts

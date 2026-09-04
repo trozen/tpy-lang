@@ -141,7 +141,6 @@ from .predicates import (
     _poly_narrow_info,
     _storage_optional_return_type,
     _callable_value,
-    _post_if_ast_facts,
     _post_if_narrow_plan,
     _eligible_char,
     _eligible_enum,
@@ -488,6 +487,27 @@ def _bare_yield_tuple_name_ok(name: str, lc: '_LowerCtx',
     raw = dict(lc.params).get(name)
     raw_u = unwrap_send_sync(raw) if raw is not None else None
     return not (isinstance(raw_u, OwnType) or tu.is_owned_movable())
+
+
+def _bare_yield_param_ok(name: str, yt_bare: TpyType, lc: '_LowerCtx',
+                         declared: 'dict[str, TpyType]') -> bool:
+    """Whether a non-value PARAM yielded at its own slot type reads BARE.
+
+    The frame captures such a param as a reference member (`std::vector<T>&
+    xs;`, `P& b;`), so the plain name read already IS the borrow the
+    `val_or_ref` slot wants -- no deref, no lift. Pointer-form and frame-slot
+    names have their own arms; a narrowed name reads its alias; and an
+    `Own[...]` param owns frame storage under a declared type that no longer
+    equals the slot, so it stays out by the type check."""
+    if name not in lc.prescan.param_names:
+        return False
+    if (name in lc.frame_slots or name in lc.pointers
+            or name in lc.narrow.narrowed or name in lc.narrow.spelled):
+        return False
+    dt = declared.get(name)
+    if dt is None:
+        return False
+    return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt))) == yt_bare
 
 
 def _alias_frame_collision(var: str, frame_fields: 'set[str]') -> bool:
@@ -1824,7 +1844,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
             begin_stmt()
             if stmt.init is None:
-                raise ThirUnsupported("stmt.decl.no_init")
+                # An annotation-only decl (`x: Int32`) of a name the frame
+                # already declares as a field: nothing is emitted for it and
+                # only leading trivia survives -- the sync global no-init
+                # arm's shape, for the same reason (the slot exists already).
+                _witness("res.decl_no_init")
+                return THIRNoOpStmt(trivia_loc=getattr(stmt, "loc", None))
             # A view-resolved frame field fed a stale view->owned coerce
             # renders the source bare -- same peel as the sync decl.
             init = _peel_stale_view_owned_coerce(
@@ -1932,21 +1957,26 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     stmt, declared, lc.narrow.persistent_narrowed,
                     analyzer) is not None)
 
-    def _apply_leaf_post_if(stmt: TpyIf, leaf: THIRStmt,
-                            bb: 'rcfg.BB') -> THIRStmt:
-        """Mirror `_lower_stmts`' early-return narrowing arm for a leaf `if`
-        (the persistent extraction lands inline after the close brace and
-        extends the live narrow scope). The scope must
-        stay BB-LOCAL: the env walk (`_resume_narrow_envs`) doesn't model
-        mid-BB facts, so only a BB whose control leaves the frame (ReturnT /
-        RaiseT terminator) admits one -- anything else rejects whole."""
+    def _apply_post_if_narrow(stmt: TpyIf, leaf: THIRStmt,
+                              saved: 'dict[str, TpyType | None]',
+                              bb: 'rcfg.BB | None') -> THIRStmt:
+        """Mirror `_lower_stmts`' early-return narrowing arm for an `if` at a
+        flat walk position (the persistent extraction lands inline after the
+        close brace and extends the live narrow scope). `saved` is the restore
+        record for the scope the alias lives in.
+
+        In the CFG walk (`bb` given) the scope must stay BB-LOCAL: the env walk
+        (`_resume_narrow_envs`) doesn't model mid-BB facts, so only a BB whose
+        control leaves the frame (ReturnT / RaiseT terminator) admits one --
+        anything else rejects whole. A finally helper is a self-contained
+        member function instead, so it passes no BB and the alias simply lives
+        to the end of that body."""
         plan = _post_if_narrow_plan(stmt, declared, lc.narrow, analyzer)
         if not plan:
             return leaf
-        if not isinstance(bb.terminator, (rcfg.ReturnT, rcfg.RaiseT)):
+        if bb is not None and not isinstance(bb.terminator,
+                                             (rcfg.ReturnT, rcfg.RaiseT)):
             raise ThirUnsupported("res.narrowed_resume")
-        saved = postif_saved[0]
-        assert saved is not None
         lc.narrow = lc.narrow.snapshot()
         nodes = []
         for var, post, u in plan:
@@ -1969,6 +1999,45 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             declared[var] = post
         _witness("res.postif_narrow")
         return THIRStmtSeq(stmts=(leaf, *nodes))
+
+    def _flat_assert_narrow_leaf(
+            stmt: TpyStmt,
+            saved: 'dict[str, TpyType | None]') -> THIRStmt:
+        """A narrowing `assert isinstance` at a FLAT walk position, with the
+        persistent extraction alias appended inline after it.
+
+        The alias does NOT need to survive a BB: the CFG flows the assert's
+        then_type_facts into every successor's entry_narrowings
+        (resumable_cfg's `_active_narrowings`), and each resume case
+        re-establishes ALL its stamped facts as `__{var}` -- which is exactly
+        what `_resume_narrow_envs` walks. So the alias is walk-local here,
+        unlike the post-`if` fact, whose scope the env walk does not model.
+        `saved` is the caller's restore record for the scope the alias lives
+        in (the BB for the CFG walk, the helper body for a finally helper)."""
+        av = _assert_narrow_info(stmt, declared, analyzer)
+        rv = _reassert_bump_info(
+            stmt, declared, lc.narrow.persistent_narrowed, analyzer)
+        nvar = (av or rv or (None,))[0]
+        if nvar is None or _alias_frame_collision(nvar, frame_fields):
+            raise ThirUnsupported("res.narrowed_resume")
+        # SNAPSHOT before mutating, and record the declared entry --
+        # `_append_assert_narrow` mutates lc.narrow IN PLACE and rebinds
+        # declared[var] with no restore of its own. The BB driver's
+        # `saved_narrow = lc.narrow` holds a REFERENCE, so without the
+        # snapshot its restore is a no-op and the narrowing would leak into
+        # every later BB in the walk (the driver's own snapshot at the
+        # narrowed-BB scope is inside `if env:`, which is empty for the BB
+        # that does the asserting). Same discipline as `_apply_leaf_post_if`.
+        lc.narrow = lc.narrow.snapshot()
+        if nvar not in saved:
+            saved[nvar] = declared.get(nvar)
+        leaf = _lower_leaf(stmt)
+        post: list[THIRStmt] = []
+        _append_assert_narrow(stmt, post, lc, declared)
+        if not post:
+            raise ThirUnsupported("res.narrowed_resume")
+        _witness("res.flat_assert_narrow")
+        return THIRStmtSeq(stmts=(leaf, *post))
 
     def _lower_bb(bb: 'rcfg.BB') -> None:
         for stmt in bb.stmts:
@@ -2037,46 +2106,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Pure skeleton (pending-return replay + exc rethrow); no leaf.
                 continue
             if _flat_narrowing_assert(stmt):
-                # The alias appended inline after the assert. It does
-                # NOT need to survive the BB: the CFG flows the assert's
-                # then_type_facts into every successor's entry_narrowings
-                # (resumable_cfg's _active_narrowings), and each resume case
-                # re-establishes ALL its stamped facts as `__{var}` -- which
-                # is exactly what `_resume_narrow_envs` walks. So the alias
-                # is BB-local here, unlike the post-`if` fact, whose scope
-                # the env walk does not model.
-                av = _assert_narrow_info(stmt, declared, analyzer)
-                rv = _reassert_bump_info(
-                    stmt, declared, lc.narrow.persistent_narrowed, analyzer)
-                nvar = (av or rv or (None,))[0]
-                if nvar is None or _alias_frame_collision(nvar, frame_fields):
-                    raise ThirUnsupported("res.narrowed_resume")
-                # SNAPSHOT before mutating, and record the declared entry --
-                # `_append_assert_narrow` mutates lc.narrow IN PLACE and
-                # rebinds declared[var] with no restore of its own. The BB
-                # driver's `saved_narrow = lc.narrow` holds a REFERENCE, so
-                # without the snapshot its restore is a no-op and the
-                # narrowing would leak into every later BB in the walk (the
-                # driver's own snapshot at the narrowed-BB scope is inside
-                # `if env:`, which is empty for the BB that does the
-                # asserting). Same discipline as `_apply_leaf_post_if`.
                 saved = postif_saved[0]
                 if saved is None:
                     raise ThirUnsupported("res.narrowed_resume")
-                lc.narrow = lc.narrow.snapshot()
-                if nvar not in saved:
-                    saved[nvar] = declared.get(nvar)
-                leaf = _lower_leaf(stmt)
-                post: list[THIRStmt] = []
-                _append_assert_narrow(stmt, post, lc, declared)
-                if not post:
-                    raise ThirUnsupported("res.narrowed_resume")
-                _witness("res.flat_assert_narrow")
-                leaves[id(stmt)] = THIRStmtSeq(stmts=(leaf, *post))
+                leaves[id(stmt)] = _flat_assert_narrow_leaf(stmt, saved)
                 continue
             leaf = _lower_leaf(stmt)
             if isinstance(stmt, TpyIf):
-                leaf = _apply_leaf_post_if(stmt, leaf, bb)
+                saved = postif_saved[0]
+                assert saved is not None
+                leaf = _apply_post_if_narrow(stmt, leaf, saved, bb)
             leaves[id(stmt)] = leaf
         t = bb.terminator
         if isinstance(t, rcfg.ReturnT):
@@ -2125,14 +2164,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # type is authoritative.
             # A capture with no frame entry stays unregistered -- its arm
             # reads keep rejecting fail-closed.
-            for m_arm in m_node.arms:
-                for m_entry in m_arm.entries:
-                    for mb in (*m_entry.field_bindings,
-                               *((m_entry.binding,)
-                                 if m_entry.binding is not None else ())):
-                        ft = lc.frame_local_types.get(mb.name)
-                        if ft is not None and mb.name not in declared:
-                            declared[mb.name] = ft
+            # Every entry list a tier fills, not just `arms`: the str switch
+            # keeps its guarded-prefix and trailing arms in their own tuples,
+            # and a capture there is as much a frame write as a bucket's.
+            for m_entry in (*(e for a in m_node.arms for e in a.entries),
+                            *m_node.str_guarded, *m_node.str_trailing):
+                for mb in (*m_entry.field_bindings,
+                           *((m_entry.binding,)
+                             if m_entry.binding is not None else ())):
+                    ft = lc.frame_local_types.get(mb.name)
+                    if ft is not None and mb.name not in declared:
+                        declared[mb.name] = ft
             _witness("res.match_dispatch")
         elif isinstance(t, rcfg.Branch):
             # A narrowing isinstance condition takes the sync narrow-cond
@@ -2269,6 +2311,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
                     _witness("res.yield_container_walrus")
                     return
+                if (isinstance(yv_src, TpyName)
+                        and _bare_yield_param_ok(yv_src.name, yt_bare, lc,
+                                                 declared)):
+                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                    _witness("res.yield_container_param")
+                    return
                 if not (isinstance(yv_src, TpyName)
                         and yv_src.name in lc.frame_slots):
                     raise ThirUnsupported("res.yield_type")
@@ -2312,6 +2360,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE))
                     _witness("res.yield_own_ctor")
+                    return
+                if (isinstance(yv_src, TpyName)
+                        and _bare_yield_param_ok(yv_src.name, yt_bare, lc,
+                                                 declared)):
+                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                    _witness("res.yield_record_param")
                     return
                 if not (isinstance(yv_src, TpyName)
                         and (yv_src.name in lc.frame_slots
@@ -2493,18 +2547,30 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     lc.in_finally_helper = True
     try:
         for _helper_name, body_stmts in cfg.finally_helpers:
-            for stmt in body_stmts:
-                if (isinstance(stmt, TpyIf) and _post_if_ast_facts(
-                        stmt, declared, lc.narrow, analyzer)):
-                    # A post-if extraction belongs inside the helper too,
-                    # but the helper walk has no post-if arm -- reject.
-                    # Asked of the FACTS, not of the condition shape: a
-                    # condition-shape reader answers "no" for every shape it
-                    # cannot spell, and the extraction vanishes.
-                    raise ThirUnsupported("res.narrowed_resume")
-                if _flat_narrowing_assert(stmt):
-                    raise ThirUnsupported("res.narrowed_resume")
-                leaves[id(stmt)] = _lower_leaf(stmt)
+            # The helper is its own C++ member function, so an alias declared
+            # in it lives to the end of THAT body and no further: a per-helper
+            # restore record, unwound before the next helper (and before the
+            # nested-def member walk) sees the declared types.
+            helper_saved: 'dict[str, TpyType | None]' = {}
+            saved_narrow = lc.narrow
+            try:
+                for stmt in body_stmts:
+                    if _flat_narrowing_assert(stmt):
+                        leaves[id(stmt)] = _flat_assert_narrow_leaf(
+                            stmt, helper_saved)
+                        continue
+                    leaf = _lower_leaf(stmt)
+                    if isinstance(stmt, TpyIf):
+                        leaf = _apply_post_if_narrow(stmt, leaf, helper_saved,
+                                                     None)
+                    leaves[id(stmt)] = leaf
+            finally:
+                lc.narrow = saved_narrow
+                for _v, _t0 in helper_saved.items():
+                    if _t0 is None:
+                        declared.pop(_v, None)
+                    else:
+                        declared[_v] = _t0
             _witness("res.finally_helper")
     finally:
         lc.in_finally_helper = False

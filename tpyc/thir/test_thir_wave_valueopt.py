@@ -123,10 +123,9 @@ class TestOwnedViewBytesLiteralDecl:
         assert "(*b).has_value()" not in thir[1]
 
 
-class TestScalarValueOptTernaryDefers:
-    # BOUNDARY: the value-opt ternary gate admits the SCALAR family, but the
-    # arm helper lowers only None/str/bytes literals and scalar NAMES -- a
-    # scalar CALL arm admits at the gate and defers at the arms.
+class TestScalarValueOptTernaryCtorArm:
+    # A scalar type-ctor arm is a scalar-VALUED expression: it renders bare
+    # under the optional wrap, like a literal or a scalar name.
     SRC = (
         "from tpy import Int32\n"
         "def pick(flag: bool) -> Int32 | None:\n"
@@ -136,9 +135,9 @@ class TestScalarValueOptTernaryDefers:
         "main()\n"
     )
 
-    def test_defers_byte_identical(self):
-        fb = _reject_tally(self.SRC)
-        assert fb.get("body:expr.ifexpr") == 1, fb
+    def test_routes_byte_identical(self):
+        compiler, thir = _gen(self.SRC)
+        assert "std::optional<int32_t>(1)" in thir[1]
 
 
 class TestScalarNameValueOptTernaryArm:

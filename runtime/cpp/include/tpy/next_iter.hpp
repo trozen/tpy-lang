@@ -60,7 +60,12 @@ struct NextIterator {
 
     NextIterator& operator++() {
         auto r = parent->__next__();
-        current = r.has_value() ? std::optional<T>(std::move(*r)) : std::nullopt;
+        // Destroy-then-construct, never assign: T may carry references
+        // (zip/enumerate yield std::tuple<..., U&>), and assigning into an
+        // engaged optional would write the NEW element THROUGH the old
+        // element's reference, corrupting the source container.
+        current.reset();
+        if (r.has_value()) current.emplace(std::move(*r));
         return *this;
     }
     decltype(auto) operator*() { return unwrap_ref(*current); }

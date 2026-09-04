@@ -6267,19 +6267,24 @@ def _module_qual_ctor_shape(a: TpyExpr, analyzer) -> bool:
 
 def _own_scalar_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                            locals_: dict[str, TpyType], analyzer) -> bool:
-    """An rvalue-shaped eligible scalar into a plain `Own[scalar]` slot: the
-    by-value slot binds the rvalue directly (no `_maybe_move` for a non-name,
-    no copy temp for a non-simple-lvalue, the value-type `else` tail), so
-    the render is bare -- a coerced int literal (`takes(5)`), a scalar
-    ctor / call rvalue, a binop. A bare NAME / field lvalue hoists the
+    """An rvalue-shaped eligible scalar or Char into a plain `Own[scalar]` /
+    `Own[Char]` slot: the by-value slot binds the rvalue directly (no
+    `_maybe_move` for a non-name, no copy temp for a non-simple-lvalue, the
+    value-type `else` tail), so the render is bare -- a coerced int literal
+    (`takes(5)`), a scalar ctor / call rvalue, a binop, a select of two Chars.
+    A bare NAME / field lvalue hoists the
     copy+move temp (`_own_lvalue_arg`); a coerce-WRAPPED lvalue splits on
     the rendered-identity check (`needs_copy`) -- the real-conversion
-    NAME face routes via `_own_coerce_cast_arg`, the rest rejects."""
+    NAME face routes via `_own_coerce_cast_arg`, the rest rejects.
+
+    Char rides the scalar row rather than a parallel one: it is a value type
+    spelled `char`, so `Own[Char]` is the same by-value slot binding the same
+    bare render."""
     w = _plain_own_slot(ptype)
     # An inference-pending float slot (`Rc.new(3.14)` substitutes the
     # unresolved FloatLiteralType) resolves to the default double like the
     # concrete float slot.
-    if w is None or not (_eligible_scalar(w)
+    if w is None or not (_eligible_scalar(w) or _eligible_char(w)
                          or isinstance(w, FloatLiteralType)):
         return False
     peeled = _peel_coerce(a)
@@ -6297,7 +6302,7 @@ def _own_scalar_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
         # expr type is still an IntLiteralType; the render is the bare
         # literal either way.
         at = resolve_int_literals(at, analyzer.ctx.default_int_for_literal)
-    return (_eligible_scalar(at)
+    return ((_eligible_scalar(at) or _eligible_char(at))
             and _witness("own.scalar_rvalue"))
 
 def _own_coerce_cast_arg(a: TpyExpr, ptype: TpyType | None,
@@ -8104,7 +8109,13 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                      and _witness("method.recv.binop"))
                     # The scalar twin (`(int(1) << 64).bit_length()`): the
                     # stub member chains off the parenthesized binop render.
-                    or _scalar_call_recv_ok(rt, analyzer))
+                    or _scalar_call_recv_ok(rt, analyzer)
+                    # The str/bytes twin (`(a + b).upper()`): the concat
+                    # rvalue substitutes into the native method template
+                    # exactly as a slice rvalue does -- the same "str" family
+                    # verdict the SELECT receiver row reads.
+                    or (_dot_receiver_value_kind(rt, analyzer) == "str"
+                        and _witness("method.recv.binop_str")))
     if isinstance(recv, TpyMethodCall):
         return _method_call_receiver_ok(recv, locals_, analyzer)
     if isinstance(recv, TpyCall):

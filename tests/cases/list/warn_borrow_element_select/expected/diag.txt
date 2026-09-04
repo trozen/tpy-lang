@@ -1,0 +1,5 @@
+main.py:17: warning: Mutation of 'rs' while borrowed ('append' may invalidate references)
+main.py:25: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:26: warning: Mutation of 'ys' while borrowed ('append' may invalidate references)
+main.py:34: warning: ternary copies a reference type where CPython would alias the variable arm; use copy() to acknowledge the copy
+main.py:37: warning: Mutation of 'rs' while borrowed ('append' may invalidate references)

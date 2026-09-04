@@ -193,6 +193,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `[const ]T* n = nullptr;` +
                                     # `(n = &(v), *n)` (bare for a
                                     # pointer-name source)
+    "walrus.alias_field_src",       # ... off a record/container FIELD
+                                    # source: `(q = &(h.inner), *q)`
     "field.walrus_recv",            # field read off a walrus receiver
                                     # (`(q = &(b), *q).v`, dot access)
     "expr.walrus_value_opt",        # value-opt scalar walrus reassign:
@@ -622,6 +624,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # walrus receiver, `.` access
     "method.recv.binop",            # `(dt + td).isoformat()` -- a record-
                                     # result dunder-binop receiver (gate)
+    "method.recv.binop_str",        # `(a + b).upper()` -- the str/bytes-VALUE
+                                    # binop receiver, substituted bare
     "method.recv.str_literal",      # `"a,b,c".split(",")` -- a str-literal
                                     # receiver rendered bare into the resolved
                                     # builtin-method template
@@ -745,6 +749,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # non-move tuple_to_storage
     "setitem.nested_tuple_literal", # nested-storage tuple value slot: the
                                     # bare spelled literal, lifts inside
+    "setitem.nested_tuple_source",  # the same slot from a same-typed source
+                                    # expression: the whole tuple stores bare
     "setitem.value_tuple_literal",  # VALUE tuple value slot: the spelled
                                     # brace-init stores directly, each
                                     # element carrying its own view->owned
@@ -894,6 +900,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (`h.payload = ::tpy::make_any(n);`) or
                                     # an already-Any name copied bare
     "delitem.container",            # del over an element-blind container
+    "delitem.subscript_recv",       # `del d[a][b]`: the inner read is the
+                                    # receiver lvalue
     "delitem.user_record",          # `del recv[k]` on a user record with
                                     # __delitem__ -> ::tpy::__delitem__(recv, k)
     "field_write.container_narrowed_optptr",  # narrowed ptr-opt param at a
@@ -2427,6 +2435,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # THIRNestedDef (lowering): a nested `def` -> a lambda emit,
     # capture list spelled from sema's node facts.
     "stmt.nested_def",
+    # A nested def with a param DEFAULT: unreachable (sema requires the
+    # argument at every call), so the lambda param list carries none.
+    "nesteddef.unused_default",
     # (emit) A nested def whose own body produced hoist lines: they drain at
     # the lambda's prologue, not the enclosing body's.
     "stmt.nested_def_hoist",
@@ -2528,6 +2539,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the recursive stmt-expr render
     "comp.storage_opt_elem",        # ptr-repr Optional[F1] loop var: storage
                                     # binding registered for the body walk
+    "comp.combinator_source",       # zip/map/filter/reversed/enumerate/iter
+                                    # rvalue source: owning capture, begin/end
+    "comp.storage_opt_const_elem",  # ... bound off a CONST source, so the
+                                    # lift-decl twin spells `const P*`
     "argtemp.comprehension",        # slot-typed comp ArgTemp at a plain
                                     # container ref slot (accept([x for ..]))
     "arg.borrow_tuple_field",       # storage F3-tuple field wrapped
@@ -2705,6 +2720,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # TuplePrinter
     "print.container_slice_arg",    # list/Array/Span slice read print arg ->
                                     # ListPrinter(list_slice/list_stepped_slice)
+    "print.file_ternary_sink",      # `file=` sink is a ternary of two
+                                    # admitted sink reads
     "print.walrus_arg",             # container walrus print arg -> the
                                     # kind-keyed wrap over the walrus render
     "print.container_call_arg",     # container-returning CALL print arg -> its
@@ -2899,6 +2916,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.leaf_try_except",          # except-only leaf try (sync tiers mid-state)
     "res.leaf_match_sync",          # non-suspending leaf match (sync tiers)
     "res.yield_container_borrow",   # container yield of a frame_slot name (*buf)
+    "res.yield_container_param",    # container yield of a PARAM name, bare
+    "res.decl_no_init",             # annotation-only frame-field decl, no code
     "res.yield_container_ternary",  # ternary of frame-slot containers hands
                                     # out the branch-picked deref borrow
     "res.yield_record_field",       # `yield self.a` at a record slot reads
@@ -2943,6 +2962,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
     "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted
     "res.yield_record_borrow",      # record yield of a routed loop-var name
+    "res.yield_record_param",       # record yield of a PARAM name, bare
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.frame_comp_write",         # a comp init emplaces its stmt-expr:
@@ -2978,6 +2998,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "sgen.tuple_yield_name",        # borrow-form tuple NAME relayed whole
     "sgen.tuple_yield_storage_name",  # storage-form Own-elem tuple NAME:
                                     # bare `auto __val = t;`
+    "sgen.tuple_yield_storage_name_lift",  # ... at a POINTER-REPR slot:
+                                    # tuple_to_pointer over the name
     "sgen.tuple_yield_elem_lift",   # container-elem source lifts borrow:
                                     # tuple_to_pointer(__getitem__(c, i))
                                     # (`yield pair` -- bare value copy)
@@ -3143,6 +3165,23 @@ THIR_FACES: frozenset[str] = frozenset({
     "top_level.global_ptr_copy",    # `g = other;` (pointer-slot source)
     "top_level.global_addr_local",  # address-of a plain LOCAL lvalue (the
                                     # desugared unpack alias) into the slot
+    # Address-of a FIELD lvalue (`ys = h.xs`): the owner holds the storage.
+    "top_level.global_addr_field",
+    # A SUBCLASS rvalue into an annotated base slot: the sema-warned upcast
+    # slices into the base-spelled slot.
+    "top_level.global_slot_upcast",
+    # A VALUE-variant global slot: the rvalue converts at its member type.
+    "top_level.global_slot_union",
+    # An Optional[record] FIELD source: the storage member lifts to the slot
+    # pointer (`g = optional_to_ptr(h->value);`).
+    "top_level.global_opt_field_lift",
+    # A branch whose COMPOUND condition sema narrowed: the body carries the
+    # branch-entry extraction alias.
+    "if.cond_facts_alias",
+    # The while twin, at loop entry.
+    "while.cond_facts_alias",
+    # The same for a NEGATED or-chain head, whose fact survives the negation.
+    "while.or_chain_narrowed",
     "top_level.import_init",
     "top_level.final_skip",
     # Walrus whose target is a resumable-frame FIELD -- one row per
@@ -3155,6 +3194,21 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `(x = &((*buf)), *x)`
     "expr.walrus_frame_btuple",     # borrow tuple field: `(bt = v, bt)`
     "expr.walrus_frame_field",      # plain field: `(n = v)`
+    "ifexpr.isin_narrow_str",       # isinstance-narrowed select at a str
+                                    # result: the shared view/owned verdict
+    "ifexpr.value_opt_scalar_expr",  # value-opt ternary arm: a scalar-valued
+                                    # expression under the optional wrap
+    "ifexpr.record_elem_arm",       # F1-record ternary arm: a container
+                                    # ELEMENT subscript lvalue
+    "ifexpr.optptr_elem_addr",      # ptr-Optional ternary arm: `&(elem)` off
+                                    # a plain record container element
+    "ifexpr.optptr_elem_lift",      # ... optional_to_ptr off an Optional
+                                    # container element
+    "walrus.optptr_ternary_src",    # ptr-Optional walrus source rung: a
+                                    # ternary whose arms are already `T*`
+    "walrus.optptr_subscript_src",  # ptr-Optional walrus source rung: a
+                                    # storage-Optional container element
+                                    # lifted by optional_to_ptr
     "walrus.optptr_call_src",       # ptr-Optional walrus source rung: a
                                     # BORROWING call's `T*` lands bare
     "res.yield_container_walrus",   # container yield slot walrus delegates

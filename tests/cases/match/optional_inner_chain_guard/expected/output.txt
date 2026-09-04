@@ -1,0 +1,7 @@
+a-flag a none other
+ab-flag ab none
+b-flag other a
+wild-flag other
+got:a a
+a-flag
+a

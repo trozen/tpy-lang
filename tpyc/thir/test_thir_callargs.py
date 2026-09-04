@@ -3469,19 +3469,18 @@ class TestOwnCharSlotCopyTemp:
         _, faces, _ = _thir_ctx_witnessed(self.SRC)
         assert faces.get("argtemp.own_copy", 0) >= 4
 
-    def test_ternary_char_arg_defers(self):
-        # BOUNDARY: an `Own[value-type]` slot is a plain by-value param an
-        # lvalue binds directly, so the AST hoists NO temp for a ternary
-        # there -- the copy row must not claim it.
-        _, fell = _thir_ctx(
-            self._PRELUDE
-            + "def pick(s: Sink, flag: bool, a: Char, b: Char) -> None:\n"
-            + "    s.put(a if flag else b)\n"
-            + "def main() -> None:\n"
-            + "    pick(Sink(), True, Char('a'), Char('b'))\n"
-            + "main()\n")
-        _assert_rejects_at(fell, "body:expr.method_call",
-                           shape="method.arg_shape")
+    def test_ternary_char_arg_stays_bare(self):
+        # An `Own[value-type]` slot is a plain by-value param the select binds
+        # directly, so NO temp hoists -- the rvalue row claims it and the copy
+        # row must not.
+        src = (self._PRELUDE
+               + "def pick(s: Sink, flag: bool, a: Char, b: Char) -> None:\n"
+               + "    s.put(a if flag else b)\n"
+               + "def main() -> None:\n"
+               + "    pick(Sink(), True, Char('a'), Char('b'))\n"
+               + "main()\n")
+        cpp = _assert_routes_byte_identical(src)
+        assert "s.put(((flag) ? (a) : (b)));" in cpp[1]
 
     def test_scalar_ternary_own_slot_stays_bare(self):
         # The same value-payload boundary one family over: a fixed-int

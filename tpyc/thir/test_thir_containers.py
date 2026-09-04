@@ -1054,24 +1054,30 @@ class TestContainerLiteralElementFamilies:
         cpp = self._both(src)
         assert "std::vector<std::vector<int32_t>> m = {{1, 2}, {3}};" in cpp
 
-    def test_nested_empty_inner_vector_outer_ineligible(self):
-        # An un-threaded (list-element) empty inner renders bare `{}` on the
-        # AST; the spelled THIR emit would diverge -> AST path.
-        thir = _lower(
-            _PRELUDE
-            + "def f() -> Int32:\n"
-            + "    m: list[list[Int32]] = [[], [1]]\n    return len(m)\n")
-        assert _fn(thir, "f") is None
+    def test_nested_empty_inner_routes(self):
+        # An EMPTY inner literal takes its type from the outer brace, so it
+        # renders bare -- the type spelling exists only to disambiguate a
+        # top-level `{}` against a T* assignment.
+        src = (_PRELUDE
+               + "def f() -> Int32:\n"
+               + "    m: list[list[Int32]] = [[], [1]]\n    return len(m)\n"
+               + "def main():\n    print(f())\nmain()\n")
+        cpp = self._both(src)
+        assert "std::vector<std::vector<int32_t>> m = {{}, {1}};" in cpp
 
-    def test_nested_view_source_ineligible(self):
-        # A view-form str element inside an un-threaded nested literal: the
-        # AST has no elem target there, so the S5 wrap never fires -> AST path
-        # (only literal elements stay admitted).
-        thir = _lower(
-            "from tpy import Int32, StrView\n"
-            + "def f(sv: StrView) -> Int32:\n"
-            + "    m: list[list[str]] = [[sv]]\n    return len(m)\n")
-        assert _fn(thir, "f") is None
+    def test_nested_view_source_routes(self):
+        # A view-form str element inside a nested literal takes the S5
+        # view->owned copy. The AST rendered it bare, which does not compile
+        # (`std::string`'s string_view ctor is explicit), so the wrap is a
+        # deliberate divergence from that render.
+        src = ("from tpy import Int32, StrView\n"
+               + "def f(sv: StrView) -> Int32:\n"
+               + "    m: list[list[str]] = [[sv]]\n    return len(m)\n"
+               + "def main():\n    print(f(\"a\"))\nmain()\n")
+        thir = _lower(src)
+        assert _fn(thir, "f") is not None
+        assert ("std::vector<std::vector<std::string>> m = "
+                "{{std::string(sv)}};" in self._cpp(src))
 
     def test_nested_str_literals_route(self):
         src = (_PRELUDE
@@ -1877,13 +1883,20 @@ class TestNativeIterableBuiltins:
                       "    return all(x > 0 for x in xs if x < 10)\n")
         assert _fn(thir, "f") is not None
 
-    def test_genexpr_dict_source_stays_ast(self):
-        # A dict `*__beg` yields a key/value pair, so the scalar loop-var binding
-        # would misroute -- the slice excludes dict sources (guards the exclusion:
-        # re-adding dict without key-extraction would route + emit wrong C++).
+    def test_genexpr_dict_source_routes(self):
+        # `ordered_map::begin()` is the KEY iterator, so a dict source binds the
+        # loop var exactly as a list element does.
         thir = _lower(_PRELUDE + "def f(d: dict[Int32, Int32]) -> bool:\n"
                       "    return all(k for k in d)\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
+
+    def test_genexpr_dict_view_source_stays_rejected(self):
+        # BOUNDARY: a dict VIEW has no nested `iterator` typedef for the
+        # lambda's init-capture to name, so its render would be ill-formed.
+        src = (_PRELUDE + "def f(d: dict[Int32, Int32]) -> bool:\n"
+               "    return all(v for v in d.values())\n")
+        _assert_rejects_at(_reject_tally(src),
+                           "body:genexpr.iterable_shape")
 
     def test_genexpr_narrowed_source_stays_ast(self):
         # A narrowed-Optional source is outside the slice -- stays AST.

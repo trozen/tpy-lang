@@ -435,6 +435,22 @@ def _lower_loop_body(loop_stmt, lc: _LowerCtx, declared: dict[str, TpyType],
                 # bare name render (`auto __val = t;`).
                 yv = _lower_expr(yv_src, lc, body_declared)
                 _witness("sgen.tuple_yield_storage_name")
+            elif (isinstance(yv_src, TpyName)
+                  and yv_src.name in lc.storage_tuple_locals
+                  and yt_bare.has_pointer_repr_element()
+                  and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                      body_declared.get(yv_src.name)))) == yt_bare):
+                # A STORAGE-form tuple NAME at a POINTER-REPR slot (`yield
+                # pair` off `for pair in items:` over
+                # `list[tuple[Int32, C]]`): the same storage->borrow lift the
+                # container-ELEMENT source below takes
+                # (`tuple_to_pointer<std::tuple<int32_t, C*>>(pair)`).
+                yv = THIRFormConvert(
+                    result_type=yt_bare,
+                    value=_lower_expr(yv_src, lc, body_declared),
+                    form=Form.BORROW, move=False,
+                    loc=getattr(yv_src, "loc", None))
+                _witness("sgen.tuple_yield_storage_name_lift")
             elif (isinstance(yv_src, TpySubscript)
                   and yt_bare.has_pointer_repr_element()
                   and isinstance(yv_src.obj, TpyName)

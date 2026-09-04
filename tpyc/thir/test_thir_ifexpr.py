@@ -245,9 +245,9 @@ class TestIfExprRejects:
         cpp = _assert_routes_byte_identical(src)
         assert "std::optional<int32_t>(a)" in cpp[1]
 
-    def test_value_opt_call_arm_rejected(self):
-        # BOUNDARY: the value-opt arm slice is literals plus a scalar NAME --
-        # a CALL arm keeps the named reject.
+    def test_value_opt_call_arm_routes(self):
+        # A scalar-VALUED arm rides the same optional wrap the literal and
+        # scalar-name arms do -- scalars carry no form facts to disagree over.
         src = ("from tpy import Int32\n"
                "def one() -> Int32:\n"
                "    return 1\n"
@@ -256,7 +256,8 @@ class TestIfExprRejects:
                "def main() -> None:\n"
                "    print(f(True))\n"
                "main()\n")
-        _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
+        cpp = _assert_routes_byte_identical(src)
+        assert "std::optional<int32_t>(one())" in cpp[1]
 
     def test_container_result_routes(self):
         # RE-PINNED ROUTED (decl-slot track): the container ternary renders

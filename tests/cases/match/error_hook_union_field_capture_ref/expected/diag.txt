@@ -1,0 +1,1 @@
+main.py:30: error: in function 'guarded': this construct is not yet supported by C++ code generation (res.match_binding)

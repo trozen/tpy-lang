@@ -509,14 +509,18 @@ class TestCompRouteRows:
         assert _fn(thir, "f") is not None
         _assert_byte_identical(src)
 
-    def test_narrowing_ternary_element_stays_ast(self):
-        # The boundary: a narrowing ternary over the Optional loop var
-        # needs per-element narrowing machinery -- keeps rejecting.
+    def test_narrowing_ternary_element_routes(self):
+        # A narrowing ternary over the storage-optional loop var, bound off the
+        # const-borrow param source: the field read derefs the storage optional.
         src = (_P
                + "def f(items: list[P | None]) -> None:\n"
                + "    xs = [i.x if i is not None else -1 for i in items]\n"
                + "    print(len(xs))\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("comp.storage_opt_const_elem", 0) >= 1
+        emitted = _assert_byte_identical(src)
+        assert "(((i.has_value())) ? ((*i).x) : (-1))" in "".join(emitted)
 
     def test_values_record_loop_routes(self):
         # The dict-view widening's sibling: a record-VALUE dict's values()

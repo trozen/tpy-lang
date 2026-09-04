@@ -70,9 +70,9 @@ Data:
 - `p2_*.json` -- the seven phase 2 layer reviews' findings.
 - `test_claims.json`, `program_verdicts.json` -- the phase 3 instruments'
   outputs.
-- Re-probe of 2026-09-03 (master `da1a92ee15`, before batch 1): of the 402
-  BREAKS rows 388 still reject (260 distinct live tags, 252 of the 299
-  tag x site groups are size one), 12 compile (ten `_lower_truthy` sites,
-  `expressions.py:10634`, `match.py:1191`), 2 have no probe, none crash or
-  fail in the front end.
+- Re-probe figures go stale within a batch -- run `reprobe.py` rather than
+  reading a number here. For the record: at master `da1a92ee15` (before
+  batch 1) 388 of the 402 BREAKS rows rejected over 260 distinct live tags
+  (252 of the 299 tag x site groups size one); batch 1 closed ten shapes,
+  batch 2 (2026-09-04) 57 rows.
 - `BRIEF_*.md` -- the briefs the review agents worked from.

@@ -85,10 +85,10 @@ class TestHoistedContainerGlobal:
 
 
 class TestHoistedGlobalBoundaries:
-    def test_second_rvalue_write_stays_ast(self):
-        # The hoisted slot is an OPTIONAL, so its reuse render is
-        # `&*(slot = ..)`; GLOBAL_REBIND spells the plain `&(slot = ..)` and
-        # must not claim it.
+    def test_second_rvalue_write_reuses_the_optional_slot(self):
+        # The hoisted slot is an OPTIONAL, so EVERY write lifts through it
+        # (`V = &*(__global_slot_1 = Box(5));`) -- emit keys the slot by name,
+        # so the second write reuses it instead of allocating another.
         src = PRELUDE + (
             "V = Box(2)\n"
             "S: Box = V\n"
@@ -97,8 +97,10 @@ class TestHoistedGlobalBoundaries:
             "    print(V.n, S.n)\n"
             "main()\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "top_level:stmt.var_decl:top_level.global_hoist_shape")
+        top, w, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert w.get("top_level.global_hoist_slot", 0) >= 2
 
     def test_unhoisted_global_keeps_the_plain_slot(self):
         # The same global with no second binding takes the plain

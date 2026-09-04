@@ -1176,17 +1176,17 @@ class TestConstructorContainerFields:
         assert ctor is not None
         assert _ctor_tail(ctor) == " : items(std::move(items)) {}\n"
 
-    def test_nested_empty_list_elem_stays_ast(self):
-        # An un-threaded nested EMPTY list renders bare `{}` on the AST (no
-        # elem target below a list slot); THIR's spelled empty emit would
-        # diverge, so the gate rejects and the whole ctor stays AST.
+    def test_nested_empty_list_elem_routes(self):
+        # A nested EMPTY list element renders bare (the outer brace supplies
+        # its type), so the MIL cell takes the plain nested literal.
         src = (
             _PRELUDE
             + "class A:\n    grid: list[list[Int32]]\n"
             + "    def __init__(self):\n        self.grid = [[], [1]]\n"
             + "def main():\n    a = A()\n    print(len(a.grid))\nmain()\n")
         ctor = _lower_ctor(src, "A")
-        assert ctor is None
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : grid({{}, {1}}) {}\n"
 
     def test_list_repeat_routes_and_renders(self):
         # `[0] * n` materializes its own container off the threaded FIELD

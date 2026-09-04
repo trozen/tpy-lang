@@ -115,9 +115,10 @@ class TestWrapperUnionNarrow:
         _assert_rejects_at(_reject_tally(src),
                            "body:stmt.var_decl:decl.branch_slot_type")
 
-    def test_compound_cond_stays_ast(self):
-        # The inline THIRNarrowedRead render has no wrapper `.value`
-        # spelling -- compound conditions on wrapper subjects stay AST.
+    def test_compound_cond_rejects(self):
+        # The branch-entry extraction spells the wrapper `.value` fine, but
+        # the isinstance CONDITION over a wrapper subject has no truthy
+        # render inside an `and` chain, so the body rejects there.
         src = (
             "import json\n"
             "def f(s: str, flag: bool) -> None:\n"
@@ -125,8 +126,9 @@ class TestWrapperUnionNarrow:
             "    if isinstance(d, dict) and flag:\n"
             "        print(json.dumps(d))\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.if:if.cond_facts_unmirrored")
+        _assert_rejects_at(
+            _reject_tally(src), "body:stmt.if",
+            "if.cond_binop.&&.scalar_scalar:truthy.call_nonbool")
 
     def test_foreach_over_narrowed_alias_routes(self):
         # gen_expr's for-dispatch keys the DECLARED union, so a narrowed-alias

@@ -25,6 +25,7 @@ from ...typesys import (
     NominalType,
     OptionalType,
     OwnType,
+    ReadonlyType,
     TpyType,
     TupleType,
     resolve_int_literals,
@@ -68,6 +69,7 @@ from .predicates import (
     _field_receiver_ok,
     _for_each_elem_binding_ok,
     _foreach_storage_opt_elem,
+    _foreach_value_opt_elem,
     _is_range_call,
     _nonvalue_container_ret,
     _optional_ptr_borrow,
@@ -84,6 +86,7 @@ from .context import (
     _LowerCtx,
 )
 from .expressions import (
+    _is_move_source,
     _lower_checked_container_elem,
     _lower_container_elem,
     _lower_expr,
@@ -114,6 +117,7 @@ class _CompRoute:
     unpack_types: 'tuple | None'
     owns_elements: bool = False      # source yields Own[T]: sinks move
     gen_factory: bool = False        # value-yielding generator-call source
+    native_combinator: bool = False  # zip/map/filter/... rvalue source
 
 
 def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
@@ -135,6 +139,135 @@ def _comp_synth_begin_end(it_type: TpyType, analyzer) -> bool:
     if iter_ovl and not is_span_iter(iter_ovl[0].return_type):
         return False
     return True
+
+def _native_iter_combinator(it, analyzer) -> bool:
+    """A builtin iterator COMBINATOR call (`zip`/`map`/`filter`/`reversed`/
+    `enumerate`/`iter`): a @native or @cpp_template callee whose result is the
+    structural `typing.Iterator` protocol over a C++ object that has
+    begin()/end(), which is what the comp loop calls unconditionally. The
+    complement of `_genfac_like_call`, which excludes exactly these callees so
+    the frame rows stay theirs; both verdicts key on the same fi flags so the
+    two arms cannot claim one call."""
+    if not isinstance(it, (TpyCall, TpyMethodCall)):
+        return False
+    fi = it.resolved_function_info
+    if fi is None or fi.is_generator:
+        return False
+    if not (fi.native_name or fi.native_function or fi.cpp_template):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(it))))
+    return (isinstance(rt, NominalType) and rt.is_protocol
+            and rt.qualified_name() == "typing.Iterator")
+
+def _reference_typed_elem(t: 'TpyType | None') -> bool:
+    """The yielded element is a reference type (a tuple counts if ANY member
+    is), so a combinator that hands back a COPY is observably wrong -- a
+    mutation through the loop var never reaches the source."""
+    if t is None:
+        return False
+    b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(b, TupleType):
+        return any(_reference_typed_elem(m) for m in b.element_types)
+    return not b.is_value_type()
+
+# Only `zip` lacks an owning DIRECT flavor: `builtin_zip`'s rvalue overload
+# gives `owning_zip_iter`, whose tuple members are spelled `T` where
+# `zip_direct_iter` spells `val_or_ref_t<T>`, so one rvalue argument costs
+# every argument its reference. `enumerate` has
+# `owning_enumerate_direct_iter`, so an owned container lends through it
+# (BUGS.md#nested-combinator-yields-element-copies).
+_NAMED_ARG_COMBINATORS = frozenset({"tpy._builtins._funcs.zip"})
+
+# These lend for a begin()/end() container of either value category:
+# `enumerate` / `filter` through their direct flavors, `map` because codegen
+# spells its element `val_or_ref<T>`.
+_CONTAINER_ARG_COMBINATORS = frozenset({
+    "tpy._builtins._funcs.enumerate",
+    "tpy._builtins._funcs.map",
+    "tpy._builtins._funcs.filter",
+    "tpy._builtins._funcs.iter",
+})
+
+def _begin_end_container(at, analyzer) -> bool:
+    """The argument types the runtime's `detail::has_begin_end` accepts: the
+    container families plus `Span` and the records the record emitter gives
+    synthesized begin()/end(). Every `next_iter_mixin` iterator is excluded,
+    which is why a combinator argument never qualifies."""
+    at = unwrap_ref_type(unwrap_send_sync(at))
+    at = resolve_pending_container(at, analyzer) or at
+    return (_comp_sized_iterable(at) or _lending_span(unwrap_readonly(at))
+            or _comp_synth_begin_end(at, analyzer))
+
+
+def _lending_span(t) -> bool:
+    """A `Span[T]` argument lends, but not `Span[readonly[T]]`: the combinator
+    then spells its element as `val_or_ref<const T>` and the loop var binds
+    the raw proxy (double-wrapped), which no member access can use -- an
+    ill-formed render on both paths, so the readonly-element span stays a
+    located reject until the element spelling peels the readonly layer."""
+    if not is_span(t):
+        return False
+    args = getattr(t, "type_args", None)
+    return not (args and isinstance(args[0], ReadonlyType))
+
+def _source_arg_copies(a, analyzer, *, named_only: bool) -> bool:
+    """Whether one combinator ARGUMENT costs the source its references.
+
+    An argument that is not a source at all -- `map`/`filter`'s callable,
+    `enumerate`'s start -- never does. Every other argument must be a
+    begin()/end() container, and under `named_only` (`zip`, whose rvalue
+    overload has no direct flavor) a plain NAME as well. A combinator argument
+    is neither: `next_iter_mixin` types have no begin()/end(), so
+    `filter(pred, filter(pred, xs))` reaches the by-value
+    `owning_filter_iter` -- which is why the rule mirrors factory selection
+    per node instead of recursing into the argument's own verdict.
+
+    `named_only` is narrower than the C++ rule, which takes any lvalue: a
+    FIELD source is an lvalue and does select `zip_direct_iter`, but inside a
+    method whose `self` is inferred readonly the container arrives `const` and
+    `val_or_ref_t<T>` cannot bind, which is a build failure on the pre-THIR
+    emitter too. Distinguishing the two needs the receiver's const-ness, which
+    is not a fact this lowering has."""
+    at = analyzer.get_expr_type(a)
+    if at is None:
+        return True
+    if get_iterable_element_type(at, registry=analyzer.registry) is None:
+        return False
+    if not _begin_end_container(at, analyzer):
+        return True
+    return named_only and not isinstance(a, TpyName)
+
+def _combinator_copies(it, analyzer) -> bool:
+    """Whether the combinator source `it` hands its elements back by value.
+
+    Mirrors the runtime's factory selection one node at a time. An unverified
+    callee copies, `reversed_iter` above all
+    (BUGS.md#reversed-yields-element-copies). `zip` needs every source
+    argument to be a NAMED begin()/end() container; the others need a
+    begin()/end() container of either value category. No recursion: a
+    combinator argument fails the container test at this level, whatever its
+    own verdict would have been."""
+    fi = getattr(it, "resolved_function_info", None)
+    qn = fi.qualified_name if fi is not None else ""
+    if qn in _CONTAINER_ARG_COMBINATORS:
+        return any(_source_arg_copies(a, analyzer, named_only=False)
+                   for a in it.args)
+    if qn in _NAMED_ARG_COMBINATORS:
+        return any(_source_arg_copies(a, analyzer, named_only=True)
+                   for a in it.args)
+    return True
+
+def _iter_rvalue_source(it, analyzer) -> bool:
+    """`iter(<rvalue>)`: `::tpy::__iter__` has no owning overload, so the
+    `auto __obj_N = ::tpy::__iter__(mk());` capture iterates a destroyed
+    temporary. The other combinators own their rvalue argument through a
+    dedicated overload."""
+    fi = getattr(it, "resolved_function_info", None)
+    if fi is None or fi.native_name != "tpy::__iter__" or len(it.args) != 1:
+        return False
+    return not is_lvalue_iterable(it.args[0], analyzer.registry.get_record,
+                                  analyzer.get_expr_type)
 
 def _comp_sized_iterable(t: TpyType) -> bool:
     # The admitted iterable families whose size is known up front, so the
@@ -180,7 +313,23 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         return _CompRoute(kind=kind, loop="range", counter_type=counter,
                           it_type=None, et=counter, iterable_lvalue=True,
                           sized_reserve=False, unpack_types=None)
-    if isinstance(it, TpyMethodCall):
+    combinator = False
+    combinator_copies = False
+    if not owns and _native_iter_combinator(it, analyzer):
+        # The combinator rvalue is captured owning (`auto __obj_N =
+        # ::tpy::builtin_zip<...>(xs, ys);`) and iterated begin/end; its own
+        # lowering re-validates callee and args. Never sized -- an Iterator
+        # has no len().
+        if _iter_rvalue_source(it, analyzer):
+            return None
+        it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            analyzer.get_expr_type(it))))
+        if it_type is None:
+            return None
+        combinator = True
+        combinator_copies = _combinator_copies(it, analyzer)
+        lvalue = False
+    elif isinstance(it, TpyMethodCall):
         methods = (("items",) if gen.unpack_vars is not None
                    else ("values", "keys"))
         # field_recv_ok: the FIELD-receiver flavor (`dict_items(h.m)`)
@@ -340,7 +489,7 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     # early-returns on non-native-iterable sources), so elements that would
     # need one -- and unpack heads -- keep rejecting.
     synth_src = False
-    if not owns and not genfac \
+    if not owns and not genfac and not combinator \
             and not is_native_iterable(it_type, analyzer.registry):
         if (gen.unpack_vars is not None
                 or not _comp_synth_begin_end(it_type, analyzer)):
@@ -348,6 +497,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         synth_src = True
     et = get_iterable_element_type(it_type, registry=analyzer.registry)
     if et is None:
+        return None
+    if combinator_copies and _reference_typed_elem(et):
         return None
     if synth_src:
         et_b = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
@@ -392,7 +543,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                           it_type=it_type, et=et, iterable_lvalue=lvalue,
                           sized_reserve=sized, unpack_types=tuple(types),
-                          owns_elements=owns)
+                          owns_elements=owns,
+                          native_combinator=combinator)
     str_et = _resolved_str_value(et, analyzer)
     if str_et is not None:
         et = str_et
@@ -410,7 +562,8 @@ def _comp_route(init, declared: dict[str, TpyType], narrowed: 'set[str]',
     return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
                       sized_reserve=sized, unpack_types=None,
-                      owns_elements=owns, gen_factory=genfac)
+                      owns_elements=owns, gen_factory=genfac,
+                      native_combinator=combinator)
 
 def _comp_slot_ok(slot: 'TpyType | None', analyzer) -> bool:
     # The NARROW slot predicate, kept for dict KEYS (the hashable-key axis:
@@ -456,6 +609,29 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
         return True
     return (_eligible_enum(slot, analyzer) is not None
             or _f1_record(slot, analyzer))
+
+def _comp_container_name_elem(e, vt: 'TpyType | None', lc: '_LowerCtx',
+                              body_declared: dict[str, TpyType]) -> bool:
+    """A plain declared NAME whose type IS the container slot, so the slot
+    init copies it with no shape-dependent wrap. A pointer or narrowed name is
+    out -- both need an unwrap the bare read does not spell.
+
+    The copy is a CPython divergence (CPython aliases one container into every
+    slot), so the name is admitted only where sema's "copies ... into owned
+    storage" warning reaches the user. That warning is suppressed at a move
+    source -- a last-use read of an owned local, which sema believes moves --
+    but the element renders once per iteration, so this arm reads it bare and
+    copies N times instead. Unwarned, that is silent; reject it."""
+    if not isinstance(e, TpyName):
+        return False
+    if (e.name not in body_declared or e.name in lc.pointers
+            or e.name in lc.narrow.narrowed):
+        return False
+    if _is_move_source(e, lc):
+        return False
+    peel = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        body_declared[e.name])))
+    return peel == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
 
 def _container_family_slot(slot: 'TpyType | None') -> bool:
     if slot is None:
@@ -811,6 +987,11 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
         value = _lower_checked_container_elem(
             e, vt, lc, body_declared, threaded=True, forced=True,
             allow_nested=True, field_str_ok=True)
+    elif _comp_container_name_elem(e, vt, lc, body_declared):
+        # A bare NAME at a container slot (`[xs for i in range(3)]` at
+        # `list[list[Int32]]`): the slot init copies the container by value,
+        # so the read lands bare -- sema already warned about the copy.
+        value = _lower_expr(e, lc, body_declared)
     else:
         raise ThirUnsupported("comp.container_value", detail=True)
     _witness("comp.container_value")
@@ -955,6 +1136,7 @@ def _lower_comprehension(
     # storage optional, `T*` slots lift via optional_to_ptr), and pops
     # with it exactly like the loop-var storage-form registration above.
     comp_opt_vars: list[str] = []
+    comp_const_opt_vars: list[str] = []
     if route.unpack_types is not None:
         for uname, utt in zip(gen.unpack_vars, route.unpack_types):
             if (uname is not None
@@ -967,16 +1149,20 @@ def _lower_comprehension(
         # The storage-opt LOOP VAR (`[v.x if v is not None else -1 for v in
         # items]` over `list[P | None]`): binds the STORAGE-form
         # `std::optional<P>` and registers like the for-STATEMENT container
-        # leg. Same const fence: a const-bound source's consumers spell
-        # `const P*`, a twin with no lowered render.
+        # leg, including the const twin (a const-bound source's consumers
+        # spell `const P*`). A dict-VIEW iterable tracks its RECEIVER's
+        # const-ness -- `_iteration_yields_const` has no method-call arm, so
+        # probe the receiver.
         _cs_src = (gen.iterable.obj
                    if isinstance(gen.iterable, TpyMethodCall)
                    else gen.iterable)
-        if _statements._iteration_yields_const(_cs_src, lc, analyzer):
-            raise ThirUnsupported("comp.storage_opt_const", detail=True)
         _witness("comp.storage_opt_elem")
         comp_opt_vars.append(gen.var)
         lc.storage_opt_locals.add(gen.var)
+        if _statements._iteration_yields_const(_cs_src, lc, analyzer):
+            _witness("comp.storage_opt_const_elem")
+            comp_const_opt_vars.append(gen.var)
+            lc.const_storage_opt_locals.add(gen.var)
     try:
         return _build_comprehension_body(
             init, result_type, route, lc, declared, body_declared, gen,
@@ -986,6 +1172,8 @@ def _lower_comprehension(
             lc.storage_tuple_locals.discard(comp_storage_var)
         for uname in comp_opt_vars:
             lc.storage_opt_locals.discard(uname)
+        for uname in comp_const_opt_vars:
+            lc.const_storage_opt_locals.discard(uname)
 
 
 def _build_comprehension_body(init, result_type, route, lc, declared,
@@ -1094,6 +1282,8 @@ def _build_comprehension_body(init, result_type, route, lc, declared,
     else:
         if route.gen_factory:
             _witness("comp.genfac_source")
+        if route.native_combinator:
+            _witness("comp.combinator_source")
         # allow_temps: the source-call's own arg temps (`int32_t __tmp_N =
         # 8;` a generic factory's ref-slot literal) flush BEFORE the comp's
         # enclosing statement.
@@ -1191,10 +1381,12 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     else:
         raise ThirUnsupported("genexpr.iterable_shape")
     it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(it_type)))
-    # dict deferred: its `*__beg` yields a key/value pair, so the scalar
-    # loop-var binding would need a key-extraction shape that is not
-    # lowered yet.
-    if not (is_list(it_type) or is_set(it_type)
+    # A dict joins them: `ordered_map::begin()` is the KEY iterator, so
+    # `*__beg` binds the loop var exactly as a list element does. The dict
+    # VIEWS stay out -- they have no nested `iterator` typedef for the
+    # lambda's init-capture to name, so the render is ill-formed C++
+    # (BUGS.md#genexpr-dict-view-iterator-typedef).
+    if not (is_list(it_type) or is_set(it_type) or is_dict(it_type)
             or is_array(it_type) or is_span(it_type)):
         raise ThirUnsupported("genexpr.iterable_shape")
     if not is_native_iterable(it_type, analyzer.registry):
@@ -1210,13 +1402,16 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     body_declared = dict(declared)
     if gen.unpack_vars is not None:
         # Tuple-unpack head (`n for p, n in items`): per-target binds off
-        # `auto& __tup_N = *__beg++;`, mirroring the comp unpack. Witnessed
-        # element families only: scalar targets and the storage-optional
-        # binding (registered for the body walk below); a moved
-        # container-literal source of tuples is unwitnessed and stays out.
+        # `auto& __tup_N = *__beg++;`, mirroring the comp unpack. A MOVED
+        # container-literal source rides the same rungs -- the tuple is
+        # destructured off the lambda's own `__src` capture, so the source's
+        # lifetime is the same either way -- but only for an all-VALUE element
+        # tuple: a pointer-repr element would run the literal through the
+        # storage lift, and the capture spelling for that has no witness.
         elem_tup = unwrap_readonly(sema_elem)
-        if (moved or not isinstance(elem_tup, TupleType)
-                or len(elem_tup.element_types) != len(gen.unpack_vars)):
+        if (not isinstance(elem_tup, TupleType)
+                or len(elem_tup.element_types) != len(gen.unpack_vars)
+                or (moved and elem_tup.has_pointer_repr_element())):
             raise ThirUnsupported("genexpr.unpack")
         types: list = []
         for uname, ett in zip(gen.unpack_vars, elem_tup.element_types):
@@ -1227,8 +1422,14 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
             # A str target COPIES the stored element (`std::string k =
             # std::get<i>(tup);` -- the value-type branch over the
             # tuple's OWNED element spelling), so its reads stay
-            # STORAGE-form; the comp unpack head carries the same disjunct.
+            # STORAGE-form. An F1-record target BORROWS off the tuple
+            # (`auto& p = std::get<0>(t);`) -- the ref binding
+            # `_unpack_target_cpps` already spells, so a body mutation through
+            # it reaches the source element. The comp unpack head carries both
+            # disjuncts.
             if not (_eligible_scalar(tt) or _owned_str_slot(tt, analyzer)
+                    or _f1_record(unwrap_readonly(unwrap_send_sync(tt)),
+                                  analyzer)
                     or _optional_ptr_borrow(tt, analyzer) is not None):
                 raise ThirUnsupported("genexpr.unpack")
             types.append(tt)
@@ -1257,7 +1458,12 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                 # `val_or_ref<T>` slot -- reference-preserving, so a body
                 # mutation through the loop var reaches the source.
                 or _f1_record(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(sema_elem))), analyzer)):
+                    unwrap_send_sync(sema_elem))), analyzer)
+                # A value-repr Optional[cheap scalar] element binds the typed
+                # copy (`std::optional<int32_t> x = *__beg++;`) and its body
+                # reads route off the declared type, exactly as the
+                # comprehension loop var over the same container does.
+                or _foreach_value_opt_elem(sema_elem) is not None):
             raise ThirUnsupported("genexpr.binding_shape")
         binding_cpp = loop_var_binding(sema_elem, escape_cpp_name(gen.var),
                                        "*__beg++", gen.const_loop_var)
@@ -1307,6 +1513,9 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
             moved_source=True,
             cpp_iterable=lc.render_type(it_type),
             iterable_elements=elements,
+            unpack_targets=unpack_targets,
+            unpack_target_cpps=unpack_cpps,
+            const_loop_var=gen.const_loop_var,
             loc=loc,
         )
     iife_captures = _genexpr_captures(expr.element_expr, gen.conditions,

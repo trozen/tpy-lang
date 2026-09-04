@@ -617,6 +617,11 @@ _BRANCH_SCOPED_SETS = (
     "optional_borrow_tuple_locals",
     "const_storage_tuple_locals",
     "frame_slots", "forbidden_reads", "forbidden_writes",
+    # A `static __global_slot_N` allocated inside a branch is scoped to that
+    # branch, so the "this global already has a reusable slot" fact must pop
+    # with it: a later write outside the branch (or in a sibling branch)
+    # allocates its own, while a second write WITHIN the branch reuses.
+    "global_slot_assigned",
 )
 # DELIBERATELY NOT branch-scoped. Registration that must survive a scope
 # (with-targets, match full-binds, a nested def's name) is done by ORDERING:
@@ -651,11 +656,8 @@ _FUNCTION_SCOPED_STATE = (
     "overload_literal_facts",
     # Module-init facts: seeded once from the module's globals / import list
     # and never branch-scoped -- a global's slot identity and an import's
-    # chain do not change inside a branch. `global_slot_assigned` is the one
-    # that GROWS during the walk, and deliberately does not restore: a slot
-    # emitted inside a branch is still emitted after it (the second write
-    # rejects either way).
-    "global_ptr_slots", "global_slot_assigned", "import_calls",
+    # chain do not change inside a branch.
+    "global_ptr_slots", "import_calls",
     "pre_decl_import_cpp",
     # The borrow-tuple const fixpoint (ensure_borrow_tuple_const): computed
     # once over the whole body on first demand, immutable after -- the

@@ -169,9 +169,9 @@ class TestCompDictElement:
         assert 'push_back(::tpy::ordered_map<std::string, int32_t>({{"x", '\
                'm.x}}));' in cpp
 
-    def test_dict_name_elem_stays_ast(self):
-        # Only literal/comp elements route at a dict element slot: a bare
-        # dict-typed NAME element keeps raising comp.container_value.
+    def test_dict_name_elem_routes(self):
+        # A bare dict-typed NAME element at a container slot lands bare: the
+        # slot init copies the named container (sema warns about the copy).
         src = (
             "from tpy import Int32\n"
             "def pack(ms: list[Int32], d0: dict[str, Int32]) -> None:\n"
@@ -180,8 +180,11 @@ class TestCompDictElement:
             "def main() -> None:\n"
             "    pack([1], {\"k\": 2})\n"
             "main()\n")
-        fallback = _reject_tally(src)
-        assert fallback
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pack") is not None
+        assert w.get("comp.container_value", 0) >= 1
+        _hpp, cpp = _assert_routes_byte_identical(src)
+        assert "push_back(d0);" in cpp
 
 
 class TestOptTupleYield:

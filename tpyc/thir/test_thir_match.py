@@ -1782,6 +1782,35 @@ class TestMatchOptionalValueDispatch:
                 in cpp)
         assert cpp == _cpp(src)
 
+    def test_str_inner_chain_guard_folds_into_cond(self):
+        # The chain has no per-arm block a failed guard can fall out of, so a
+        # guarded arm's guard becomes part of its condition -- and an or-group
+        # takes parens there even though the tier joins them bare, since `&&`
+        # binds tighter than `||`.
+        src = (
+            "def pick(s: str | None, flag: bool) -> str:\n"
+            "    match s:\n"
+            "        case None:\n"
+            "            return \"none\"\n"
+            "        case \"a\" | \"b\" if flag:\n"
+            "            return \"ab-flag\"\n"
+            "        case \"a\" | \"b\":\n"
+            "            return \"ab\"\n"
+            "        case _:\n"
+            "            return \"other\"\n"
+            "def main() -> None:\n"
+            "    print(pick(\"a\", True))\n"
+            "main()\n"
+        )
+        thir = _lower_ctx(src)
+        m = _fn(thir, "pick").body[0]
+        assert m.inner_strategy == "if_elif"
+        cpp = _cpp(src)
+        assert ('if ((__match_inner_1 == "a" || __match_inner_1 == "b") '
+                '&& flag) {' in cpp)
+        assert ('} else if (__match_inner_1 == "a" '
+                '|| __match_inner_1 == "b") {' in cpp)
+
     def test_enum_inner_routes(self):
         # An Optional[enum] name is inside the value-optional binding slice
         # (`_value_opt_scalar` admits registered-enum inners), so the O2

@@ -234,9 +234,14 @@ tiers; `case x as y` still rejects on the record / union / optional-record
 tiers, `BUGS.md#match-as-capture-composite-tiers`), `(a if c else b)[0]`, `a or b` on
 bytes / `Span` / `bytearray`, both Optional-element setitem rows, the bare
 `n + 1` statement, nested `def` with container params, `del a.x, b.y` and
-the non-literal `__setattr__` value. The queue is flat: 260 distinct live
-tags over the 388 rows, so batches are chosen by user-facing frequency,
-not by count; re-run the script before choosing one.
+the non-literal `__setattr__` value. The second batch (2026-09-04) worked the whole
+remaining queue top-down, one implementer per lowering-file group, and
+closed 57 more rows (comprehensions over combinators and dict sources,
+walrus and ternary source shapes, `with` in branches and loops, module-scope
+global slots, hook-mode `match` tiers, generator param yields). The queue is
+flat -- 260 distinct live tags over the 388 rows at the first re-probe -- so
+batches are chosen by user-facing frequency, not by count; re-run the
+script before choosing one.
 
 Sites whose comments call them unreachable but are live: `match.py:1873`,
 `2429`, `1994`; `statements.py:4146`; the "defensive" rvalue-plus-hoist

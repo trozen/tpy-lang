@@ -16,6 +16,7 @@ say so rather than drop the alias.
 from .testutil import (
     _assert_byte_identical, _assert_rejects_at,
     _assert_routes_byte_identical, _lower_ctx_witnessed, _thir_ctx,
+    _thir_ctx_witnessed,
 )
 
 _AB = (
@@ -184,21 +185,18 @@ class TestPostIfNonEmitters:
 
 
 class TestUnmirroredFactsReject:
-    """A fact the AST extracts and no arm here mirrors must REJECT.
+    """A fact no CONDITION arm claims is carried by the BRANCH instead.
 
-    Emitting nothing is the failure mode being fenced out. The AST's extraction
-    emitter has no use-check, so a drop is a MISSING LINE the byte-diff can see
-    -- but the ratchet counts fallbacks, and a body that drops silently is a
-    routed body to it, which is the gate this class stands in for.
-
-    A fixture that READS the narrowed subject after the guard rejects first on
-    the read's own receiver shape, which masks the fence under test; the pins
-    that must discriminate leave the subject unread.
+    Emitting nothing is the failure mode being fenced out: a dropped alias is
+    a missing line, and the body still counts as routed. A single-var concrete
+    fact now takes the branch-entry extraction; anything wider (a second
+    subject, an already-narrowed one) must still reject rather than drop.
     """
 
-    def test_else_body_branch_entry_facts_reject(self):
-        # The same chain with a genuine `else`: the AST extracts at the ELSE
-        # branch entry, and no narrowing arm claims this condition.
+    def test_else_body_branch_entry_facts_route(self):
+        # The same chain with a genuine `else`: the fact lands on the ELSE
+        # branch, which carries its extraction at branch entry even though no
+        # narrowing arm claims the condition.
         src = _AB + (
             "def take(u: A | B, flag: bool) -> Int32:\n"
             "    if not isinstance(u, A) or flag:\n"
@@ -209,13 +207,14 @@ class TestUnmirroredFactsReject:
             "    print(take(A(3), False))\n"
             "use()\n"
         )
-        _ctx, fb = _thir_ctx(src)
-        _assert_rejects_at(fb, "body:stmt.if", "if.cond_facts_unmirrored")
+        thir, w = _lower_ctx_witnessed(src)
+        assert thir is not None
+        assert w.get("if.cond_facts_alias", 0) >= 1
 
-    def test_unread_subject_else_body_facts_reject(self):
-        # The same shape with the subject never read again. Nothing else in
-        # the body rejects, so this fence is the only thing between the AST's
-        # alias and a body that emits none and still counts as routed.
+    def test_unread_subject_else_body_facts_route(self):
+        # The same shape with the subject never read again: the extraction is
+        # still emitted (an unused alias the build tolerates), so the branch
+        # does not silently lose it.
         src = _AB + (
             "def take(u: A | B, flag: bool) -> Int32:\n"
             "    if not isinstance(u, A) or flag:\n"
@@ -226,8 +225,9 @@ class TestUnmirroredFactsReject:
             "    print(take(A(3), False))\n"
             "use()\n"
         )
-        _ctx, fb = _thir_ctx(src)
-        _assert_rejects_at(fb, "body:stmt.if", "if.cond_facts_unmirrored")
+        thir, w = _lower_ctx_witnessed(src)
+        assert thir is not None
+        assert w.get("if.cond_facts_alias", 0) >= 1
 
     def test_recursive_union_second_guard_rejects(self):
         # The already-narrowed skip in the AST-facts filter rides the plain
@@ -250,24 +250,24 @@ class TestUnmirroredFactsReject:
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "body:stmt.if", "if.post_narrow_unmirrored")
 
-    def test_while_head_facts_reject(self):
+    def test_while_head_facts_route_with_the_alias(self):
         # No narrowing arm reads an `and` chain, but sema still stamps the
-        # complement of its negated isinstance leaf, and `_gen_while` extracts
-        # that at loop entry.
+        # complement of its negated isinstance leaf: the body carries that
+        # extraction at loop entry, so reads of the subject see the member.
         src = _AB + (
             "def take(u: A | B, flag: bool) -> Int32:\n"
             "    t = Int32(0)\n"
             "    while not isinstance(u, B) and flag:\n"
-            "        t += Int32(1)\n"
+            "        t += u.n\n"
             "        flag = False\n"
             "    return t\n"
             "def use() -> None:\n"
             "    print(take(A(3), True))\n"
             "use()\n"
         )
-        _ctx, fb = _thir_ctx(src)
-        _assert_rejects_at(fb, "body:stmt.while",
-                           "while.cond_facts_unmirrored")
+        thir, w = _lower_ctx_witnessed(src)
+        assert w.get("while.cond_facts_alias", 0) >= 1
+        assert thir is not None
 
     def test_generator_frame_guard_rejects(self):
         # A resumable leaf takes the alias only in a block whose control
@@ -285,14 +285,15 @@ class TestUnmirroredFactsReject:
         )
         # The landmark is shared by every narrow reject in the resumable walk,
         # so it cannot name WHICH fence held; the alias assertion pins the
-        # obligation itself -- the AST declares it here, unread or not.
+        # obligation itself -- the lowering owes it here, unread or not.
         _ctx, fb = _thir_ctx(src)
         _assert_rejects_at(fb, "resumable:res.narrowed_resume")
 
-    def test_finally_helper_guard_rejects(self):
-        # The helper walk lowers per statement with no post-if arm at all, so
-        # its detector must ask the facts, not the condition's shape. Shared
-        # landmark again: the alias assertion carries the discriminating half.
+    def test_finally_helper_post_if_routes(self):
+        # The helper walk drives the post-if arm off the FACTS, not the
+        # condition's shape -- this subject is unreachable from the condition,
+        # so a shape reader would drop the extraction owed here.
+        # The alias is unread (`print` does not touch `u`) and still owed.
         src = _AB + (
             "from typing import Iterator\n"
             "def g(u: A | B, flag: bool) -> Iterator[Int32]:\n"
@@ -307,5 +308,8 @@ class TestUnmirroredFactsReject:
             "        print(v)\n"
             "use()\n"
         )
-        _ctx, fb = _thir_ctx(src)
-        _assert_rejects_at(fb, "resumable:res.narrowed_resume")
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert "const auto& __u = std::get<A>(u);" in hpp + cpp
+        _ctx, faces, fb = _thir_ctx_witnessed(src)
+        assert not fb
+        assert faces["res.postif_narrow"] >= 1

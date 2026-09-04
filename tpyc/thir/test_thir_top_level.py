@@ -77,19 +77,14 @@ class TestGlobalSlot:
 
 
 class TestGlobalSlotBoundaries:
-    """The renders `_gen_pointer_local_rebind` reaches through OTHER branches
-    must keep the whole module init on the AST path."""
+    """The two module-scope pointer-slot writes whose render is neither the
+    plain first allocation nor its reuse: a field lvalue source and a write
+    inside a branch."""
 
-    def _rejects(self, src: str) -> None:
-        top, _w, fallback = _top_level(src)
-        assert top is None
-        assert [k for k in fallback if k.startswith("top_level:")], fallback
-
-    def test_deep_lvalue_source_rejects(self):
-        # Only a NAME lvalue source is mirrored: `g = other.field` would have
-        # to re-derive the AST's own `gen_expr` render under `&(...)` at a
-        # position with no committed witness.
-        self._rejects(PRELUDE + (
+    def test_field_lvalue_source_routes(self):
+        # A FIELD lvalue source takes the address-of catch-all: the owner
+        # keeps the storage, so the slot points AT the member.
+        src = PRELUDE + (
             "class Holder:\n"
             "    xs: list[Int32]\n"
             "    def __init__(self) -> None:\n"
@@ -98,19 +93,27 @@ class TestGlobalSlotBoundaries:
             "h: Holder = Holder()\n"
             "ys: list[Int32] = h.xs\n"
             "print(len(ys))\n"
-        ))
+        )
+        top, w, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert w.get("top_level.global_addr_field", 0) >= 1
 
-    def test_branch_write_rejects(self):
-        # An IF-scoped slot write keeps `static` on the AST (no namespace
-        # push outside for-each bodies) -- an unmirrored flavor, fenced.
-        # Only FOR-body writes route (TestGlobalSlotBranchWrites).
-        self._rejects(PRELUDE + (
+    def test_branch_write_routes_static_slot(self):
+        # An IF-scoped slot write keeps `static`: the slot initializes on the
+        # branch's only pass, and it is scoped to that branch, so nothing
+        # after the branch may reuse it.
+        src = PRELUDE + (
             "flag = True\n"
             "xs: list[Int32] = [0]\n"
             "if flag:\n"
             "    xs = [1, 2]\n"
             "print(len(xs))\n"
-        ))
+        )
+        top, w, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert w.get("top_level.global_slot", 0) >= 2
 
 
 class TestStructuralProtocolGlobal:
@@ -993,10 +996,11 @@ class TestGlobalSlotBranchWrites:
 
 
 class TestGlobalSlotBranchBoundaries:
-    """The for-body-only key: if/while-scoped first rvalue writes keep
-    `static` on the AST (no namespace push there) and stay fenced; an
-    IMPORTED pointer-global source stays out of the bare-copy row (the
-    AST qualifies its spelling)."""
+    """Branch-scoped slot writes: an if-scoped write reuses an
+    enclosing-scope slot, a WHILE-scoped one keeps rejecting (its `static`
+    slot would freeze the first iteration's value), and an IMPORTED
+    pointer-global source stays out of the bare-copy row (its spelling is
+    qualified)."""
 
     _P = (
         "from tpy import Int32\n"
@@ -1005,13 +1009,30 @@ class TestGlobalSlotBranchBoundaries:
         "    def __init__(self, n: Int32) -> None:\n"
         "        self.n = n\n")
 
-    def test_if_scoped_rvalue_write_defers(self):
+    def test_if_scoped_rvalue_write_reuses_outer_slot(self):
+        # The slot was allocated at top level, so the in-branch write REUSES
+        # it (`g = &(__global_slot_N = P(7));`) -- an enclosing-scope slot is
+        # in scope for every later write.
         src = self._P + (
             "flag = True\n"
             "g: P = P(0)\n"
             "if flag:\n"
             "    g = P(7)\n"
             "print(g.n)\n")
+        top, w, fallback = _top_level(src)
+        assert top is not None
+        assert not [k for k in fallback if k.startswith("top_level:")]
+        assert w.get("top_level.global_slot_reuse", 0) >= 1
+
+    def test_while_scoped_rvalue_write_rejects(self):
+        # BOUNDARY: the slot would keep `static` inside the loop body, so it
+        # would initialize once and freeze the first iteration's value.
+        src = self._P + (
+            "g: P | None = None\n"
+            "i = 0\n"
+            "while i < 3:\n"
+            "    g = P(i)\n"
+            "    i += 1\n")
         _assert_rejects_at(_reject_tally(src),
                            "top_level:stmt.var_decl:top_level.global_slot_branch")
 

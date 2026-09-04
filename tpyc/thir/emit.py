@@ -542,6 +542,14 @@ class _EmitState:
     # so a plain THIRAssign on them (a same-union name copy) must NOT take the
     # `&*(__slot_N = ...)` optional-slot reseat arm.
     union_slot_locals: set[str] = field(default_factory=set)
+    # Names whose `rebind_slots` entry numbers a MODULE-scope
+    # `__global_slot_N` -- a slot the GLOBAL_* rebinds spell through
+    # `slot_prefix` rather than as a local `__slot_N`, optional
+    # (GLOBAL_HOIST_RVALUE) or not: a plain THIRAssign on such a name -- the
+    # pointer-Optional global's pass-through / field-lift writes -- must NOT
+    # take the `&*(__slot_N = ...)` reseat arm, which would both name an
+    # undeclared local slot and deref a `T*`.
+    global_slot_locals: set[str] = field(default_factory=set)
     # Names whose rebind slot backs a reassigned borrow-tuple WALRUS: their
     # later storage-alias reseats are plain assigns
     # (`t = tuple_to_pointer<..>(h.pair);`), never the optional-slot arm.
@@ -884,11 +892,13 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         return expand_cpp_template(e.cpp_template, recv, *args)
     if e.native_function_name is not None:
         return f"{qualify_native_name(e.native_function_name)}({', '.join([recv, *args])})"
+    mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
+              if e.method_targs_cpp else "")
     if e.deref_check:
         # Unproven pointer-repr Optional receiver: null-check the (already
-        # `T*`) receiver before the `.` member call (type args are
-        # gate-excluded, so no {method_targs}).
-        return f"::tpy::deref_check({recv}).{e.method_cpp}({', '.join(args)})"
+        # `T*`) receiver before the `.` member call.
+        return (f"::tpy::deref_check({recv}).{e.method_cpp}{mtargs}"
+                f"({', '.join(args)})")
     if e.deref_chain:
         # User Deref-wrapper method call: N `.__deref__()` calls between the
         # bare receiver and the member call (`r.__deref__().sum()`); a
@@ -898,8 +908,6 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         chain = (f"{first}__deref__()"
                  + ".__deref__()" * (e.deref_chain - 1))
         return f"{recv}{chain}.{e.method_cpp}({', '.join(args)})"
-    mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
-              if e.method_targs_cpp else "")
     if e.callable_value_unwrap:
         # Optional[Callable] field invoke: the `.value()` unwrap between
         # the member and the call.
@@ -1287,9 +1295,11 @@ def _emit_container_literal(e: THIRContainerLiteral, state: _EmitState) -> str:
             return f"::tpy::make_ordered_set<{cpp_elem}>({elems})"
         return f"::tpy::ordered_set<{cpp_elem}>({{{elems}}})"
     # An empty list literal spells its type (a bare `{}` would be ambiguous
-    # against a T* assignment); an empty Array is gated out at eligibility.
+    # against a T* assignment) unless the lowering marked the position one
+    # where the enclosing brace deduces it; an empty Array is gated out at
+    # eligibility.
     if not e.elements and is_list(t):
-        return f"{t.to_cpp()}{{}}"
+        return "{}" if e.bare_empty else f"{t.to_cpp()}{{}}"
     elems = ", ".join(_emit_expr(x, state) for x in e.elements)
     if e.make_container:
         return f"::tpy::make_vector<{e.elem_cpp}>({elems})"
@@ -2588,14 +2598,18 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
             # slot aliases `__enter__()`'s result past the block, so the
             # manager lives in a function-scope optional and `__ctx_N` binds
             # through it. Slot allocated AFTER the manager expr renders, so
-            # the expression's own counter draws come first.
+            # the expression's own counter draws come first. At module-init
+            # scope the slot spells `static std::optional<T>
+            # __global_slot_N;` (slot_static / slot_prefix), so no
+            # assert_local_slot -- the hoist line carries the scope's own
+            # lifetime, like the pointer-slot global arms.
             assert state.hoist_drainable, (
                 "a with manager-hoist slot in a leaf emitter with no "
                 "function-top drain (lowering should have rejected this body)")
-            state.assert_local_slot()
-            slot = f"__slot_{state.next_slot()}"
+            slot = f"{state.slot_prefix}_{state.next_slot()}"
             state.hoist_lines.append(
-                f"std::optional<{item.manager_hoist_cpp}> {slot};")
+                f"{state.slot_static}std::optional<{item.manager_hoist_cpp}> "
+                f"{slot};")
             out.write(f"{indent}{slot}.emplace({ctx_cpp});\n")
             out.write(f"{indent}auto& __ctx_{n} = (*{slot});\n")
         else:
@@ -3411,11 +3425,11 @@ def _emit_match_goto_tail(out: TextIO, entry, indent_level: int,
     inner = INDENT * (indent_level + 1)
     if entry.guard is not None:
         out.write(f"{inner}if ({_emit_expr(entry.guard, state)}) {{\n")
-        _emit_stmts(out, entry.body, indent_level + 2, state)
+        _emit_match_arm_body(out, entry, indent_level + 2, state)
         out.write(f"{INDENT * (indent_level + 2)}goto {end_label};\n")
         out.write(f"{inner}}}\n")
     else:
-        _emit_stmts(out, entry.body, indent_level + 1, state)
+        _emit_match_arm_body(out, entry, indent_level + 1, state)
         out.write(f"{inner}goto {end_label};\n")
     out.write(f"{indent}}}\n")
 
@@ -3489,7 +3503,7 @@ def _emit_match_switch_str(out: TextIO, stmt: THIRMatch, indent_level: int,
             cond = _opt_chain_cond(entry.opt_conds, subject)
             out.write(f"{sw_inner}if ({cond}) {{\n")
             _emit_match_whole_bindings(out, entry, subject, sw_deep)
-            _emit_stmts(out, entry.body, sw_level + 2, state)
+            _emit_match_arm_body(out, entry, sw_level + 2, state)
             out.write(f"{sw_deep}goto {end_label};\n")
             out.write(f"{sw_inner}}}\n")
         out.write(f"{sw_inner}break;\n")
@@ -3531,6 +3545,15 @@ def _emit_match_if_elif(out: TextIO, stmt: THIRMatch, indent_level: int,
             joined = " || ".join(conds)
             cond = (conds[0] if len(conds) == 1
                     else joined if not paren_or else f"({joined})")
+            if entry.guard is not None:
+                # A guard on a chain arm folds into its condition: there is no
+                # per-arm block to fall out of, so the guard has to gate the
+                # arm's own test. Lowering admits this only for a labelled,
+                # binding-free arm. An or-group must be parenthesized here
+                # even where the bare join is the tier's spelling -- `&&`
+                # binds tighter than `||`.
+                gated = f"({joined})" if len(conds) > 1 else cond
+                cond = f"{gated} && {_emit_expr(entry.guard, state)}"
             keyword = "if" if i == 0 else "} else if"
             out.write(f"{indent}{keyword} ({cond}) {{\n")
         _emit_match_whole_bindings(out, entry, subject, inner)
@@ -3811,6 +3834,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # `rebind_slots` here; the slot is plain, not an
             # optional, so the reseat takes `&(slot = ...)`.
             state.rebind_slots[stmt.name] = state.slot_counter
+            state.global_slot_locals.add(stmt.name)
             _witness("top_level.global_slot")
         elif stmt.kind is PtrSlotKind.RECORD_HOISTED:
             # Hoisted record pointer-local: the `std::optional<T>` slot
@@ -3981,20 +4005,26 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{name} = "
                       f"&({_emit_expr(stmt.value, state)});\n")
         elif stmt.kind is PtrSlotKind.GLOBAL_HOIST_RVALUE:
-            # Initializing write of a HOISTED pointer-slot global: the slot
-            # is re-assignable, so it rides the hoist lines as a
+            # Write of a HOISTED pointer-slot global: the slot is
+            # re-assignable, so it rides the hoist lines as a
             # `static std::optional<T> __global_slot_N;` and the write lifts
             # through it. No assert_local_slot -- the hoist line spells the
-            # scope's own prefix + static, like RECORD_HOISTED.
+            # scope's own prefix + static, like RECORD_HOISTED. The FIRST
+            # write allocates the slot and registers it by name; every later
+            # write to the same global lifts through that same slot.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            slot = state.next_slot()
-            assert state.hoist_drainable, (
-                "GLOBAL_HOIST_RVALUE hoist reached a non-draining leaf "
-                "emitter")
-            state.hoist_lines.append(
-                f"{state.slot_static}std::optional<{stmt.val_cpp}> "
-                f"{state.slot_prefix}_{slot};")
+            slot = _use_rebind_slot(state, stmt.name)
+            if slot is None:
+                slot = state.next_slot()
+                state.rebind_slots[stmt.name] = slot
+                state.global_slot_locals.add(stmt.name)
+                assert state.hoist_drainable, (
+                    "GLOBAL_HOIST_RVALUE hoist reached a non-draining leaf "
+                    "emitter")
+                state.hoist_lines.append(
+                    f"{state.slot_static}std::optional<{stmt.val_cpp}> "
+                    f"{state.slot_prefix}_{slot};")
             out.write(f"{indent}{name} = "
                       f"&*({state.slot_prefix}_{slot} = {val_cpp});\n")
             _witness("top_level.global_hoist_slot")
@@ -4094,6 +4124,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif (isinstance(stmt.target, THIRName)
                 and stmt.target.name not in state.union_slot_locals
                 and stmt.target.name not in state.btuple_slot_locals
+                and stmt.target.name not in state.global_slot_locals
                 # A borrow-tuple target never takes the ptr-Optional
                 # `&*(__slot = ...)` reseat, whatever the branch order put
                 # in btuple_slot_locals so far -- its plain reseats are
@@ -4390,6 +4421,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 # A later rvalue write reuses this slot, so it registers in
                 # `rebind_slots` here.
                 state.rebind_slots[name] = state.slot_counter
+                state.global_slot_locals.add(name)
             elif bind == "unwrap_ref":
                 # Wrapper-reference element: the capture's slot is a live
                 # `X&`; unwrap_ref hands back that reference to alias.
