@@ -1,1 +1,1 @@
-main.py:14: error: in function 'first': this construct is not yet supported by C++ code generation (stmt.return:return.container_borrow_source)
+main.py:14: error: in function 'first': this construct is not yet supported by C++ code generation (stmt.return:return.record_source.subscript.borrow)

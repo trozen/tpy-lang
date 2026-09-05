@@ -1,0 +1,1 @@
+main.py:14: error: in function 'reassigned': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.container_call_reassigned)

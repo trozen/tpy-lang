@@ -106,27 +106,6 @@ class TestNarrowedOptContainerFieldForEach:
 
 
 class TestNarrowedOptContainerFieldForEachBoundaries:
-    def test_array_field_keeps_rejecting_at_the_read(self):
-        # BOUNDARY: `Array` is outside the iterable row's family test (the
-        # bare-container sibling excludes it too), so the for-head keeps
-        # falling back -- while the MIL row below DOES claim its literal.
-        src = ("from tpy import Int32, Array\n"
-               "class H:\n"
-               "    f: Array[Int32, 3] | None\n"
-               "    def __init__(self) -> None:\n"
-               "        self.f = [Int32(1), Int32(2), Int32(3)]\n"
-               "    def total(self) -> Int32:\n"
-               "        n = 0\n"
-               "        if self.f is not None:\n"
-               "            for x in self.f:\n"
-               "                n += x\n"
-               "        return n\n"
-               "def main() -> None:\n"
-               "    print(H().total())\n"
-               "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.for_each:field.result_type")
-
     def test_chain_receiver_keeps_rejecting(self):
         # BOUNDARY: the for-head route admits a plain record/self receiver
         # only. `_narrowed_opt_field_read` is receiver-shape-blind (a chain

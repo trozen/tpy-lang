@@ -38,8 +38,7 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...type_def_registry import (is_bool_type, is_dict, is_fixed_int_type,
-                                  is_list, is_set)
+from ...type_def_registry import is_bool_type, is_fixed_int_type
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ...codegen_cpp.types import resolve_pending_container
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
@@ -85,6 +84,7 @@ from .predicates import (
     _eligible_scalar,
     _enum_member_cpp,
     _f1_record,
+    _f1_ref,
     _optional_ptr_borrow_name,
     _poly_subject_const,
     _resolved_bytes_value,
@@ -335,8 +335,8 @@ def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
     """A field capture joins the arm walk as a plain declared local, so its
     type must be one the slice's name-read classification already covers:
     value scalars, Char, registered enums, resolved str, value tuples, the
-    non-value families whose binding is the plain `auto&` alias into the
-    subject's field (an F1 record, a list/dict/set), and the VALUE-repr
+    reference-axis families whose binding is the plain `auto&` alias into the
+    subject's field (F1 records and the builtin containers), and the VALUE-repr
     Optional families (`Optional[scalar]` / owned-inner `Optional[str]`,
     the `auto&` alias over the `std::optional` field -- registered as a
     value-opt binding at the capture arm so the body's None-test/deref
@@ -347,8 +347,7 @@ def _match_capture_field_ok(ft: TpyType, analyzer) -> bool:
             or _eligible_enum(t, analyzer) is not None
             or _resolved_str_value(t, analyzer) is not None
             or _value_tuple(t, analyzer) is not None
-            or _f1_record(t, analyzer)
-            or is_list(t) or is_dict(t) or is_set(t)
+            or _f1_ref(t, analyzer)
             or _value_opt_scalar(t, analyzer) is not None
             or _value_opt_owned_view(t, analyzer) is not None)
 

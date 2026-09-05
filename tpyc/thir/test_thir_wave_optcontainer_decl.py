@@ -54,26 +54,6 @@ class TestOptionalPtrContainerDecl:
         assert faces["decl.opt_ptr_container"] >= 1
         _assert_byte_identical(src)
 
-    def test_array_payload_stays_ast(self):
-        # `std::array` has no oracle witness at this slot and is excluded
-        # deliberately -- the row lists list/dict/set, never a blanket
-        # container test.
-        src = ("from tpy import Int32, Array\n"
-               "class H:\n"
-               "    items: Array[Int32, 2] | None\n"
-               "    def __init__(self) -> None:\n"
-               "        self.items = [Int32(1), Int32(2)]\n"
-               "def f(h: H) -> Int32:\n"
-               "    xs = h.items\n"
-               "    if xs is None:\n"
-               "        return Int32(0)\n"
-               "    return Int32(len(xs))\n"
-               "def main() -> None:\n"
-               "    print(f(H()))\n"
-               "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.var_decl:decl.slot_type")
-
     def test_own_container_optional_stays_off_the_row(self):
         # `Own[list[T]] | None` is VALUE-repr (`std::optional<std::vector<>>`),
         # so it never reaches the OPTIONAL_TO_PTR binding -- which is why the

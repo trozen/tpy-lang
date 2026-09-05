@@ -70,7 +70,7 @@ from ...type_def_registry import is_dict, is_list, is_set
 from ...typesys import is_protocol_type
 from ...modules.type_resolution import is_native_iterable
 from .predicates import (
-    _f1_record,
+    _f1_ref,
     _field_receiver_ok,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -85,8 +85,9 @@ def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
     position-blind (the skeleton owns the slot type, `__val` binding and
     move-out): value scalars/Char/enums (`_res_value_ok`), str/bytes (the
     bare source render into the owned `std::optional<std::string>` slot),
-    F1 records (the `val_or_ref<T>` borrow slot -- a bare name/field
-    render), `Own[F1 record]` (the bare value slot; the skeleton's
+    the reference axis (the `val_or_ref<T>` borrow slot -- a bare name/field
+    render -- for F1 records and the builtin containers alike), `Own[<axis>]`
+    (the bare value slot; the skeleton's
     `std::move(__val)`), and TUPLE slots (deferred to the per-yield tuple
     arm in `_lower_loop_body`, mirroring the resumable Yield tuple arm's
     literal/borrow-local sources). Excluded, each its own rung: readonly
@@ -118,16 +119,16 @@ def _sgen_yield_ok(yt: 'TpyType | None', analyzer) -> bool:
             # skeleton's `std::move(__val)` move-out, shared with the
             # Own[F1-record] family below.
             return bool(_witness("sgen.yield_own_tparam"))
-    return _f1_record(u, analyzer)
+    return _f1_ref(u, analyzer)
 
 
 def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
     """For-branch loop-var families: value scalars (the skeleton's typed
-    copy) and F1 records (the skeleton's `auto&&` borrow; the leaf reads
-    the var through the same borrow-classified forms as a sync for-each
-    body). Pointer-repr tuple elements (which flip
-    `storage_form_tuple_locals`) and the remaining families stay their own
-    rungs."""
+    copy) and the reference axis -- F1 records and builtin containers (the
+    skeleton's `auto&&` borrow; the leaf reads the var through the same
+    borrow-classified forms as a sync for-each body). Pointer-repr tuple
+    elements (which flip `storage_form_tuple_locals`) and the remaining
+    families stay their own rungs."""
     if _res_value_ok(iter_elem, analyzer):
         return True
     if iter_elem is None:
@@ -142,11 +143,6 @@ def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
     if (_resolved_str_value(u, analyzer) is not None
             or _resolved_bytes_value(u, analyzer) is not None):
         return True
-    # A CONTAINER element binds the same skeleton `auto&& v = *__beg++;`
-    # as an F1 record, and the leaf reads it through the container-name
-    # arms (`v.push_back(9)` / `len(v)`) exactly like a sync for-each var.
-    if is_list(u) or is_dict(u) or is_set(u):
-        return True
     # A POINTER-REPR tuple element (dict items / list[tuple[.., Ref]]):
     # the skeleton advances via the tuple_to_pointer proxy-ref holder and
     # the body reads ride the borrow-tuple/unpack arms like a sync
@@ -160,7 +156,11 @@ def _sgen_loop_var_ok(iter_elem: 'TpyType | None', analyzer) -> bool:
         # A T-typed element binds the same type-neutral
         # `auto&& x = *__beg++;`; the body reads gate at their own arms.
         return True
-    return _f1_record(u, analyzer)
+    # A CONTAINER element binds the same skeleton `auto&& v = *__beg++;`
+    # as an F1 record, and the leaf reads it through the container-name
+    # arms (`v.push_back(9)` / `len(v)`) exactly like a sync for-each var --
+    # one reference axis, one admission.
+    return _f1_ref(u, analyzer)
 
 
 def lower_simple_generator(func: TpyFunction, analyzer, render_type,

@@ -889,7 +889,8 @@ class TestContainerCopyFieldWrite:
 
     def test_routes_and_witnesses(self):
         thir, faces = _lower_ctx_witnessed(self.SRC)
-        assert faces.get("field_write.container_copy", 0) >= 1
+        # One copy() row for the whole reference axis now.
+        assert faces.get("field_write.record_copy", 0) >= 1
 
     def test_byte_identical_copy_constructs(self):
         # `_gen_copy_expr`'s tail spells `{type}({arg})` for a container just

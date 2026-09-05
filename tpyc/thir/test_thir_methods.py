@@ -11,10 +11,10 @@ from ..codegen_cpp.forms import LocalBinding
 from ..typesys import NominalType, PtrType
 from ..compilation_context import activate_compiler
 from .lower.checks import (
-    _bytearray_method_call_supported, _container_method_arg_ok,
-    _container_method_call_supported, _method_recv_family,
-    _protocol_method_arg_ok, _protocol_method_call_supported,
-    _view_method_arg_ok, _view_method_call_supported,
+    _container_method_call_supported,
+    _method_recv_family, _protocol_method_arg_ok,
+    _protocol_method_call_supported, _stub_method_arg_ok,
+    _view_method_call_supported,
 )
 from .lower.predicates import _eligible_ptr_value
 from .nodes import (
@@ -2659,19 +2659,20 @@ class TestMethodRecvFamilyTable:
             fam = {name: _method_recv_family(t, analyzer, None)
                    for name, t in types.items()}
         assert fam["xs"].shape_ok is _container_method_call_supported
-        assert fam["xs"].arg_ok is _container_method_arg_ok
+        assert fam["xs"].arg_ok is _stub_method_arg_ok
         assert fam["xs"].stub_recv
         assert fam["p"].shape_ok is _protocol_method_call_supported
         assert fam["p"].arg_ok is _protocol_method_arg_ok
         assert not fam["p"].stub_recv
-        assert fam["ba"].shape_ok is _bytearray_method_call_supported
-        assert fam["ba"].arg_ok is _view_method_arg_ok
-        assert fam["ba"].stub_recv
+        # A bytearray receiver is the container family: it is the bytes
+        # family's reference-typed member, and its stub methods render the
+        # container way (member renames / free natives over a bare receiver).
+        assert fam["ba"] is fam["xs"]
         # str and bytes receivers share the one view row: bytes args take the
-        # str twin's view rows, not the record fallback.
+        # str twin's stub rows, not the record fallback.
         assert fam["s"] is fam["bs"]
         assert fam["s"].shape_ok is _view_method_call_supported
-        assert fam["s"].arg_ok is _view_method_arg_ok
+        assert fam["s"].arg_ok is _stub_method_arg_ok
         assert fam["s"].stub_recv
         # A user record is the residual (non-table) dispatch.
         assert fam["r"] is None
@@ -3787,17 +3788,21 @@ class TestBytesLiteralValueOptMethodArg:
         hpp, cpp = _assert_routes_byte_identical(src)
         assert '::tpy::bytes_literal_owned("abc", 3)' in hpp + cpp
 
-    def test_bytes_literal_own_method_slot_stays_ast(self):
-        # BOUNDARY: an `Own[bytes]` slot is not an Optional at all -- the
-        # row keys on a value-repr Optional inner, so this must keep
-        # rejecting.
+    def test_bytes_literal_own_method_slot_takes_the_owned_literal(self):
+        # An `Own[bytes]` slot is not an Optional at all, so this row does
+        # not answer it -- `bytes_owned_literal` does, since the united
+        # method-arg sink reaches a record signature with it too. The owned
+        # literal is a prvalue, which is what a by-value `Own` param takes.
+        # Cased as a leg of `calls/method_arg_shared_rows`.
         src = ("from tpy import Int32, Own\n" + self._HOLDER
                + "    def take(self, b: Own[bytes]) -> None:\n"
                + "        self.n += len(b)\n"
                + "def main() -> None:\n    h = Holder()\n"
                + "    h.take(b\"fghi\")\n    print(h.n)\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.method_call:method.arg_shape")
+        thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("arg.bytes_owned_literal", 0) == 1
+        hpp, cpp = _assert_routes_byte_identical(src)
+        assert '::tpy::bytes_literal_owned("fghi", 4)' in hpp + cpp
 
     def test_bytes_literal_view_inner_opt_slot_stays_ast(self):
         # BOUNDARY: a VIEW inner (`optional<span<const uint8_t>>`) takes the

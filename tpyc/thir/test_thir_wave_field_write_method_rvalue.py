@@ -99,7 +99,10 @@ class TestMethodRvalueFieldWriteBoundary:
     def test_borrow_returning_method_keeps_rejecting(self):
         # BOUNDARY: a `T&`-returning method result is the REF_ALIAS frontier
         # -- admitting it here would let the same result reach the decl
-        # sinks' binding shape through a flag meant for the copy.
+        # sinks' binding shape through a flag meant for the copy. The field
+        # gate's borrow-call row now takes both call kinds (the container
+        # half's `self.mirror = h.peek()` row), so the refusal comes from
+        # the method call's own return gate rather than from the family.
         src = (_SRC
                + "def put(t: Task, e: Exec) -> None:\n"
                + "    t.b = e.borrow_big()\n"
@@ -109,7 +112,7 @@ class TestMethodRvalueFieldWriteBoundary:
                + "    print(t.b.n)\n"
                + "main()\n")
         _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.assign:assign.field_write_shape")
+                           "body:expr.method_call:method.ret_type")
 
     def test_user_deref_receiver_keeps_rejecting(self):
         # BOUNDARY: the user-Deref chain arm is a separate render row and

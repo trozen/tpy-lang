@@ -149,23 +149,29 @@ class TestContainerBaseCtor:
         )
         _assert_rejects_at(_reject_tally(src), "ctor:ctor.non_f1_base")
 
-
-class TestAdjacentBasesStayOut:
-    """Bases the row does NOT cover. Each routes correctly today; the pins
-    exist so a future widening cannot admit one silently."""
-
-    def test_bytearray_base_not_classified_container(self):
+    def test_bytearray_base_ctor_routes(self):
+        """`bytearray` is the bytes family's reference-typed member, so it is
+        a container base like `list`: the inherited stub method takes the
+        container receiver rows and the ctor takes the container-base row."""
         src = _PRELUDE + (
             "class MyBA(bytearray):\n"
             "    def __init__(self) -> None:\n"
             "        pass\n"
             "def main() -> None:\n"
             "    b = MyBA()\n"
+            "    b.append(65)\n"
             "    print(len(b))\n"
             "main()\n"
         )
-        base, _ = _classify(src, "MyBA", "append")
-        _assert_rejects_at(_reject_tally(src), "ctor:ctor.non_f1_base")
+        base, fam = _classify(src, "MyBA", "append")
+        assert base is not None
+        assert fam is not None and fam.stub_recv
+        assert _lower_ctor(src, "MyBA") is not None
+
+
+class TestAdjacentBasesStayOut:
+    """Bases the row does NOT cover. Each routes correctly today; the pins
+    exist so a future widening cannot admit one silently."""
 
     def test_generic_record_over_generic_container_routes(self):
         src = _PRELUDE + (

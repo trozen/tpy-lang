@@ -53,17 +53,6 @@ class TestOwnContainerLoopVar:
 
 class TestOwnContainerBindingBoundaries:
 
-    def test_own_bytearray_param_read_stays_ast(self):
-        # BOUNDARY: bytearray is movable-seeded (non-value) but outside the
-        # list/dict/set families the row names -- its bare read keeps the
-        # reject, so the row is keyed on the container family, not on
-        # "movable Own".
-        src = ("from tpy import Own, Int32\n"
-               "def take(b: Own[bytearray]) -> Int32:\n"
-               "    return Int32(len(b))\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:name.own_read")
-
     def test_own_strview_param_read_stays_ast(self):
         # BOUNDARY: a VALUE payload is never movable-seeded, so the
         # movable_local key never opens for it.

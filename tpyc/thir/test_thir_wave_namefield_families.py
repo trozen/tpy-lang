@@ -22,7 +22,10 @@ class TestNameFieldWriteFamilies:
                "    def set(self, v: Own[list[Int32]]) -> None:\n"
                "        self._items = v\n")
         thir, w = _lower_ctx_witnessed(src)
-        assert w.get("field_write.container_name", 0) >= 1
+        # The plain container FIELD slot is the merged reference name
+        # row (`field_write.container_name` now covers the Optional
+        # slot only).
+        assert w.get("field_write.record_name", 0) >= 1
         _assert_byte_identical(src)
 
     def test_array_param_copies_bare(self):

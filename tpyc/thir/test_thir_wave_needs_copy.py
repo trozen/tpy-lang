@@ -61,16 +61,21 @@ class TestIdentityCoerceChainCopy:
         assert faces["argtemp.own_copy"] >= 1
         _assert_byte_identical(src)
 
-    def test_wrapping_coerce_over_name_stays_ast(self):
+    def test_wrapping_coerce_over_name_binds_the_conversion_rvalue(self):
         # bigint_to_fixed_int renders `(b).to_fixed_check<int32_t>()` -- a
-        # real conversion, so the AST binds the rvalue bare (needs_copy=
-        # False). Unwitnessed as a routed face: the body must fall back.
+        # real conversion, so no copy temp hoists (needs_copy=False) and the
+        # PRVALUE binds the by-value `Own[Int32]` slot directly. Decided by
+        # `scalar_at_template_slot`, which the united method-arg sink reaches
+        # at a record signature too; cased in `calls/method_arg_shared_rows`.
         src = _SINK + (
             "def f(s: Sink, b: int) -> None:\n"
             "    s.push(b)\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.method_call:method.arg_shape")
+        thir, faces = _lower_ctx_witnessed(src)
+        body = _body(thir, "f")
+        assert "s.push((b).to_fixed_check<int32_t>());" in body
+        assert "__tmp_" not in body
+        _assert_byte_identical(src)
 
 
 class TestOwnStrTemp:

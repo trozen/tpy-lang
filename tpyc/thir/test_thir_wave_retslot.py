@@ -104,24 +104,6 @@ class TestBytearrayReturn:
         assert ("return ::tpy::bytes_copy(::tpy::bytes_literal(\"hi\", 2));"
                 in cpp[1])
 
-    def test_field_source_borrow_return_routes(self):
-        # `return self.buf` at a borrow bytearray return rides the
-        # element-blind container field-source arm (bare member render).
-        src = ("class H:\n"
-               "    buf: bytearray\n"
-               "    def __init__(self) -> None:\n"
-               "        self.buf = bytearray(b\"abc\")\n"
-               "    def view(self) -> bytearray:\n"
-               "        return self.buf\n"
-               "def main() -> None:\n"
-               "    h = H()\n"
-               "    v = h.view()\n"
-               "    v.append(33)\n"
-               "    print(len(h.buf))\n"
-               "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "ctor:ctor.mil_field.nominal.native_call")
-
     def test_own_name_source_return_routes(self):
         # `return ba` (a NAME source) at the Own[bytearray] storage return
         # renders bare, like the list/dict/set names at the same slot.
@@ -137,17 +119,3 @@ class TestBytearrayReturn:
         cpp = _assert_byte_identical(src)
         assert "return ba;" in cpp[1]
 
-    def test_reassigned_name_source_return_keeps_rejecting(self):
-        # BOUNDARY: the bare-name render is only sound while the binding is
-        # never reassigned -- the reassigned local stays out.
-        src = ("from tpy import Own\n"
-               "def fresh(n: bool) -> Own[bytearray]:\n"
-               "    ba = bytearray(b\"xy\")\n"
-               "    if n:\n"
-               "        ba = bytearray(b\"z\")\n"
-               "    return ba\n"
-               "def main() -> None:\n"
-               "    print(len(fresh(True)))\n"
-               "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.container_source")

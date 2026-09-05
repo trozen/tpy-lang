@@ -1,0 +1,1 @@
+main.py:12: error: in function 'empty': this construct is not yet supported by C++ code generation (stmt.return:return.empty_container_literal)

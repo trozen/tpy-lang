@@ -875,24 +875,20 @@ class TestGlobalContainerPrint:
         _hpp, cpp = _assert_routes_byte_identical(self.SRC, comments=False)
         assert "::tpy::ListPrinter((*nums))" in cpp
 
-    def test_optional_container_global_stays_ast(self):
+    def test_optional_container_global_takes_the_null_safe_print(self):
         # BOUNDARY: an Optional[container] global's whole-name print is a
         # DIFFERENT render (the null-safe optional print, not the
         # kind-keyed wrap over a bare deref -- a broken exclusion here
-        # would deref a null slot). The OptionalType exclusion must keep
-        # it out of the wrap row.
+        # would deref a null slot). The OptionalType exclusion keeps it out
+        # of the wrap row above.
+        from .testutil import _assert_routes_byte_identical
         src = (
-            "from typing import Optional\n"
-            "from tpy import Own\n"
-            "def maybe(flag: bool) -> Own[list[int] | None]:\n"
-            "    if flag:\n"
-            "        return [1, 2]\n"
-            "    return None\n"
-            "xs = maybe(True)\n"
+            "from tpy import Int32\n"
+            "xs: list[Int32] | None = None\n"
             "print(xs)\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.slot_type")
+        _hpp, cpp = _assert_routes_byte_identical(src, comments=False)
+        assert "::tpy::print_optional<::tpy::ListPrinter<" in cpp
 
 
 class TestGlobalAddrLocal:

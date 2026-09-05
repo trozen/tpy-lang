@@ -1,0 +1,1 @@
+main.py:8: error: in function 'maybe': this construct is not yet supported by C++ code generation (sgen.yield_type)

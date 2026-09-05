@@ -129,61 +129,6 @@ class TestStrFieldWriteCall:
                            "body:stmt.assign:assign.field_write_shape")
 
 
-class TestDefaultCtorFieldWrite:
-    """`recv.field = T()` at a field of that same T -- the construction
-    prvalue assigned bare. The slots that reach it are the ones with no
-    source rows of their own (`Array[T, N]`, `bytearray`); the families with
-    rows claim their statements earlier."""
-
-    # The ctor writes both fields from its TAIL (the leading guard keeps them
-    # out of the member-init list), so the same row decides them there and in
-    # `reset`; the free `main` is what makes the face visible to the lens.
-    _HEAD = ("from tpy import Int32, Array\nclass R:\n    n: Int32\n"
-             "    a: Array[Int32, 4]\n    ba: bytearray\n"
-             "    def __init__(self, k: Int32) -> None:\n        self.n = k\n"
-             "        if k < 0:\n            raise ValueError(\"neg\")\n"
-             "        self.a = Array[Int32, 4]()\n"
-             "        self.ba = bytearray()\n")
-
-    ARRAY = (_HEAD + "    def reset(self) -> None:\n"
-             "        self.a = Array[Int32, 4]()\n"
-             "def main() -> None:\n    r = R(1)\n    r.reset()\n"
-             "    print(r.a[0])\nmain()\n")
-
-    BYTEARRAY = (_HEAD + "    def reset(self) -> None:\n"
-                 "        self.ba = bytearray()\n"
-                 "def main() -> None:\n    h = R(1)\n    h.reset()\n"
-                 "    print(len(h.ba))\nmain()\n")
-
-    def test_array_slot_routes(self):
-        _thir, faces = _lower_ctx_witnessed(self.ARRAY)
-        assert faces.get("field_write.default_ctor", 0) >= 1
-        hpp, cpp = _assert_routes_byte_identical(self.ARRAY)
-        assert "this->a = std::array<int32_t, 4>();" in hpp + cpp
-
-    def test_bytearray_slot_routes(self):
-        _thir, faces = _lower_ctx_witnessed(self.BYTEARRAY)
-        assert faces.get("field_write.default_ctor", 0) >= 1
-        hpp, cpp = _assert_routes_byte_identical(self.BYTEARRAY)
-        assert "this->ba = std::vector<uint8_t>();" in hpp + cpp
-
-    def test_different_type_construction_is_not_this_row(self):
-        # BOUNDARY: the row is SAME-TYPE. A construction of a different type
-        # carries a conversion whose render this row does not answer for, so
-        # it must reach whichever family owns that conversion instead -- here
-        # none does, and the statement keeps rejecting.
-        src = ("from tpy import Int32\nclass H:\n    n: Int32\n"
-               "    ba: bytearray\n"
-               "    def __init__(self) -> None:\n"
-               "        self.n = 0\n        self.ba = bytearray()\n"
-               "    def go(self, x: bytes) -> None:\n"
-               "        self.ba = bytearray(x)\n"
-               "def main() -> None:\n    h = H()\n    h.go(b\"ab\")\n"
-               "    print(len(h.ba))\nmain()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.assign:assign.field_write_shape")
-
-
 class TestContainerFieldWritePrvalue:
     """A container field written from a value that materializes its own owned
     container -- `[e] * n` and a container-returning method-call RVALUE. Both

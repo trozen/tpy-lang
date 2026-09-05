@@ -49,7 +49,10 @@ class TestContainerFieldCallSources:
         thir, faces = _lower_ctx_witnessed(_SRC)
         assert _fn(thir, "make_list") is not None
         assert faces["field_write.container_free_call"] >= 1
-        assert faces["field_write.container_borrow_call"] >= 1
+        # The BORROW-returning call source shares the reference rvalue
+        # row with the record half (`h.p = identity(pt);`), so it is
+        # witnessed there.
+        assert faces["field_write.record_rvalue"] >= 1
 
     def test_renders_both_bare(self):
         hpp = _assert_routes_byte_identical(_SRC)[0]
@@ -74,4 +77,4 @@ class TestContainerFieldCallSources:
             "    s.fill_own(3)\n", "    s.fill_own(Holder())\n")
         _thir, faces = _lower_ctx_witnessed(src)
         assert faces.get("field_write.container_free_call", 0) == 0
-        assert faces["field_write.container_borrow_call"] >= 1
+        assert faces["field_write.record_rvalue"] >= 1

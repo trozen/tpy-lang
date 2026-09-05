@@ -393,27 +393,6 @@ class TestContainerComparePair:
             options=CodeGenOptions(emit_source_comments=False))
         assert compiler._thir_face_witnesses.get("binop.container_eq")
 
-    def test_array_field_pair_stays_ast(self):
-        # BOUNDARY: the Array flavor is admitted at the PAIR gate but the
-        # Array field operand has no read row (`_plain_container_read`
-        # excludes it at the field gate) -- the body falls back
-        # byte-identically. Wire the operand row before claiming Array.
-        src = (
-            "from tpy import Int32\n"
-            "from tpy import Array\n"
-            "class Grid:\n"
-            "    cells: Array[Int32, 2]\n"
-            "    def __init__(self) -> None:\n"
-            "        self.cells = [0, 0]\n"
-            "    def same(self, other: Grid) -> bool:\n"
-            "        return self.cells == other.cells\n"
-            "def main() -> None:\n"
-            "    print(Grid().same(Grid()))\n"
-            "main()\n"
-        )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:field.result_type")
-
     def test_ordering_op_stays_ast(self):
         # BOUNDARY: container ORDERING (`<`) has no witnessed shape --
         # the pair row is equality-only.

@@ -11,7 +11,7 @@ class Holder:
         self.pair = (a, b)
 
     def first(self) -> list[Int32]:
-        return self.pair[0]  # tpyc: error(/return\.container_borrow_source/)
+        return self.pair[0]  # tpyc: error(/return\.record_source\.subscript\.borrow/)
 
 
 def main() -> None:

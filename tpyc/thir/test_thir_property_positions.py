@@ -8,7 +8,7 @@ BUGS.md), so the broken oracle is fenced, not mirrored."""
 
 from __future__ import annotations
 
-from .nodes import THIRAssign, THIRMove, THIRVarDecl
+from .nodes import THIRAssign, THIRFormConvert, THIRVarDecl
 from .testutil import (
     _assert_routes_byte_identical, _fn, _lower_ctx, _lower_ctx_witnessed,
 )
@@ -131,8 +131,15 @@ class TestPropertySetterBody:
                    if f.name == "items" and f.body
                    and isinstance(f.body[0], THIRAssign)]
         assert len(assigns) == 1
-        assert w.get("field_write.container_name", 0) >= 1
-        assert isinstance(assigns[0].value, THIRMove)
+        # The plain container FIELD slot is the merged reference name
+        # row (`field_write.container_name` now covers the Optional
+        # slot only).
+        assert w.get("field_write.record_name", 0) >= 1
+        # The merged name row spells the move as the plain-non-value STORAGE
+        # convert (`std::move(v)` -- the documented field-write arm), where
+        # the container-only tail used to spell a bare THIRMove. Same render.
+        assert isinstance(assigns[0].value, THIRFormConvert)
+        assert assigns[0].value.move
         _assert_routes_byte_identical(_CONTAINER + "c = Container()\n"
                                       "c.items = [4]\n"
                                       "print(c.items[0])\n")

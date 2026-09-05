@@ -264,8 +264,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.comprehension_operand",  # ... and a COMPREHENSION operand of the
                                     # same helper: the inline stmt-expr,
                                     # target-typed by its own container
-    "ifexpr.container",             # container ternary: the bare
-                                    # form-blind arm render
+    "ifexpr.container",             # container ternary the reference arm
+                                    # does not claim: the bare form-blind
+                                    # arm render off the generic tail
     "ifexpr.isin_narrow",           # isinstance-condition ternary: holds
                                     # test + per-arm inline get (else =
                                     # the 2-member complement)
@@ -577,9 +578,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # over a bare `this->buf` THIRFieldAccess receiver, same emit as a bare-name
     # container receiver).
     "method.recv.container_field",
-    # Bytearray-field method receiver (`self.buffer.append(b)` -- the bytearray
-    # family over the bare member read, same emit as a bare-name receiver).
-    "method.recv.bytearray_field",
     # Container-element-record subscript method receiver (`xs[i].m()` -> the
     # user-record arm over a `::tpy::__getitem__(xs, i)` borrow lvalue, `.`
     # access -- never `->`, mirroring the field-access-off-subscript receiver).
@@ -663,6 +661,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A move-source same-type container NAME at a nested-container
     # element store moves in whole (`__setitem__(g, "a", std::move(a))`).
     "setitem.container_move",
+    # A by-value CALL rvalue at a nested-container element store forwards
+    # bare (`__setitem__(d, "k", make())`), like the record element arm.
+    "setitem.container_rvalue",
     # A ptr-repr Optional[F1-record] name at a native protocol slot:
     # bare T* un-narrowed, the (*name) deref when proven.
     "arg.native_protocol_optptr",
@@ -794,10 +795,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # ... and its FREE-call sibling (`self.data = make_list(n)`), an
     # `Own[container]` return assigned through the identical bare row.
     "field_write.container_free_call",
-    # A BORROW-returning call at a container field: the `C&` copy-assigns
-    # bare (sema warns the copy), the container sibling of
-    # `field_write.borrow_call_copy`.
-    "field_write.container_borrow_call",
     # The same literal into a STORAGE-form `Optional[container]` field
     # (`this->items = std::vector<T>{10, 20};`) -- lowered against the
     # Optional's INNER, the list brace self-describing for the optional ctor.
@@ -820,8 +817,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # call rvalue (classifier row)
     "field_write.opt_lift_tparam",  # pointer-repr `Optional[T]` field (T a
                                     # type param) <- borrow `T*` local
-    "field_write.default_ctor",     # `self.f = T()` at a T field -- the
-                                    # zero-arg construction prvalue
     "field_write.str",
     # Owned bytes FIELD write from a name/literal: a view source copies via
     # `::tpy::bytes_copy(...)`; an owned source lands bare.
@@ -893,8 +888,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.record_rvalue",
     # F1-record element/value slot from `copy(name)`: the copy-construct
     # rvalue (`::tpy::__setitem__(items, 0, Point(p));`).
-    "field_write.container_copy",   # `self.items = copy(data)` ->
-                                    # `std::vector<T>(data)`
     "setitem.record_copy",
     # F1-record element/value slot from a plain record NAME: the bare copy
     # (`::tpy::__setitem__(items, 0, p);`) or `std::move(p)` at a movable
@@ -918,9 +911,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "delitem.user_record",          # `del recv[k]` on a user record with
                                     # __delitem__ -> ::tpy::__delitem__(recv, k)
     "field_write.container_narrowed_optptr",  # narrowed ptr-opt param at a
-                                    # plain container field: the deref copy
-    "field_write.container_name",   # container FIELD write from a same-family
-                                    # NAME: bare copy or std::move at last use
+                                    # plain reference field: the deref copy
+    "field_write.container_name",   # `Optional[container]` FIELD write from a
+                                    # same-family NAME: the shared tail render
     "method.dyn_setattr",           # `obj.x = v` -> the synthesized
                                     # `obj.__setattr__("x", make_any(...))`
     "method.any_ret",               # an Any-returning method call lands
@@ -1010,9 +1003,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "mil.unclaimed_family_move",    # own-param move into a field family no
                                     # per-family arm claims (classifier row:
                                     # the render is the shared M3b-move emit)
-    "mil.bytearray_copy",           # `data(data)` -- a bytearray field
-                                    # bare-copied from a same-typed param
-                                    # (classifier row; shared bare emit)
     "mil.any_coerce",               # `payload(::tpy::make_any(...))` -- an Any
                                     # field from an into_any coerce (classifier
                                     # row; shared bare emit)
@@ -1337,17 +1327,11 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the make_adapter wrapper lambda
     "ret.str_field",                # `return recv.field` (owned-str member,
                                     # STORAGE) at a str-family return slot
-    # Storage container return slot (`-> Own[list/dict/set]`; the renders --
-    # bare owned name / the decl-init literal emits -- are shared, so
-    # admission is the distinguishing site).
-    "ret.container_name",
-    "ret.container_borrow",         # borrow-slot name/field returns bare
-    "ret.container_borrow_elem",    # `return self.rows[i];` -- the element
-                                    # lvalue at the borrow slot
+    # The container-only SOURCE shapes of the storage reference return slot
+    # (`-> Own[list/dict/set]`). Every source shape the record half also
+    # carries witnesses a `ret.record_*` face: one return ladder, so the
+    # container rows left here are the ones with no record counterpart.
     "ret.container_literal",
-    "ret.container_call",           # `return make_list(n);` -- bare call source
-    "ret.container_method_call",    # `return path.split('/');` -- the rvalue
-                                    # method-call twin of the bare call source
     "ret.container_repeat",         # `return [label] * 3;` -- the repeat
                                     # build target-typed by the slot
     "binop.contains_view_key",      # membership over a VIEW-keyed set/dict:
@@ -1372,8 +1356,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # ... and the same read at a COMPOSITE open slot (`Ptr[R]` resolved
     # `Ptr[W]`), which the bare-T row above cannot reach
     "call.generic_open_slot_field_composite",
-    "ret.container_call_borrow",    # borrow-returning call passthrough at
-                                    # the T& container return slot
     "ret.value_opt_view_ctor",      # StrView instantiation at the
                                     # Optional[view] return: the folded src
     "btuple.elem_field",            # F1-record FIELD element in a borrow
@@ -2103,12 +2085,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # witness it: only the capture makes an arbitrary expression sound here
     # (Python evaluates the step once; the C++ head would re-read it).
     "range.step_variable_expr",
-    # An owning-container return off a REASSIGNED (rebind-slot pointer)
-    # local, through the shared deref+move indirect-name arm.
+    # An owning return off a REASSIGNED (rebind-slot pointer) container
+    # local, through the shared deref+move indirect-name arm (the record
+    # half of the axis witnesses ret.record_ptr_local there).
     "ret.container_ptr_local",
-    # A container OPERATOR rvalue at the owning-container return
-    # (`return a + b` / `a | b`): the operator's own render, bare.
-    "ret.container_binop",
     # Bool-field truthiness condition (lowering admission; `if self.closed:` --
     # a bool value's truthiness render IS its value render, so the admitted
     # field-read emit carries the condition unchanged).
@@ -2173,8 +2153,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.ptr_union",             # WIDE ptr-union result: per-arm
                                     # normalization (bare binding name /
                                     # to_ptr_variant field lift), BORROW
-    "ifexpr.record",                # F1-record lvalue ternary: bare name
-                                    # arms, a BORROW lvalue
+    "ifexpr.record",                # reference-axis lvalue ternary (record
+                                    # or container): bare name / borrow-call
+                                    # / element arms, a BORROW lvalue
     "ifexpr.record_prvalue",        # F1-record PRVALUE ternary (copy /
                                     # by-value call arms) at the MIL slot
     "decl.opt_ternary",             # OPTIONAL_TO_PTR local off a ternary:
@@ -2197,8 +2178,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # to_val_or_ptr element wraps
     "ret.generic_tuple_call",       # ... and the call rvalue of the SAME
                                     # generic tuple, returned bare (no wrap)
-    "ret.container_borrow_global",  # pointer-slot container global derefs
-                                    # into the borrow return
+    "ret.container_borrow_global",  # pointer-slot global derefs into the
+                                    # borrow return (no record counterpart:
+                                    # a record global takes the ptr-local arm)
     "ret.ptr_opt_subscript",        # container-element subscript at the
                                     # ptr-opt return: `&(__getitem__(..))`
     "method.container_opt_ptr_ret", # dict.get's bare `T*` result (wide
@@ -2630,9 +2612,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "own.container_call_rvalue",    # `table.append(make_row(1.0))` -- a
                                     # container-returning FREE call bound
                                     # bare by an Own[container] slot
-    "arg.comprehension_method",     # `pgm.saverow([f(i) for i in r])` -- the
-                                    # stmt-expr rendered inline into a
-                                    # record method's const container slot
     "arg.record_borrow_call",       # T&-returning call bound inline at a
                                     # record ref slot (bump(find_first(..)))
     "arg.recursive_union_borrow_call",  # the wrapper-slot twin
@@ -2975,8 +2954,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.btuple_yield_elem_lift",   # container-element source at the btuple
                                     # yield slot: tuple_to_pointer over the
                                     # checked element read (sgen twin)
-    "ifexpr.container",             # container ternary of NAME arms -- a
-                                    # BORROW lvalue ternary, arms bare
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_union_elem",        # value-tuple call source with a value-
                                     # union element at the frame unpack
@@ -3191,8 +3168,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.native_own_record_value",  # Own-returning native record call at
                                     # the plain VALUE position
     "decl.none_unit_slot",          # None-annotated decl: monostate copy
-    "decl.bytearray_owned_rvalue",  # bytearray slot from an owned dunder
-                                    # rvalue (`bb = ba + b"cd"`)
     "decl.bytearray_view_copy",     # bytearray slot from a coerced view:
                                     # the materialize bytes_copy
     "field.none_unit_write",        # NoneType field write: bare assign

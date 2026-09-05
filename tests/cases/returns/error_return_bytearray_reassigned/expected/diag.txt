@@ -1,1 +1,0 @@
-main.py:11: error: in function 'make': this construct is not yet supported by C++ code generation (stmt.return:return.container_source)

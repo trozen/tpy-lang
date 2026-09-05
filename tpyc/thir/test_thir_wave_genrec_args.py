@@ -501,7 +501,7 @@ class TestGenericForwardTypeParam:
                                _lower_ctx_witnessed)
         _hpp, cpp = _assert_routes_byte_identical(self._SRC)
         _thir, wit = _lower_ctx_witnessed(self._SRC)
-        assert wit.get("ret.container_call_borrow", 0) >= 1
+        assert wit.get("ret.record_call_borrow", 0) >= 1
         assert wit.get("call.generic_open_slot_field", 0) >= 1
         joined = _hpp + cpp
         assert "return identity<std::vector<T>>(items);" in joined

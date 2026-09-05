@@ -1,0 +1,1 @@
+main.py:39: warning: copies bytearray into field; use copy() to make this explicit

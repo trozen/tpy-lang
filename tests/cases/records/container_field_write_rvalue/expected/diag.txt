@@ -1,0 +1,1 @@
+main.py:48: warning: copies Array[Int32, 4] into field; use copy() to make this explicit

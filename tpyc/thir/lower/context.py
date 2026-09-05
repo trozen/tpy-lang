@@ -28,8 +28,6 @@ from ...codegen_cpp.forms import is_ptr_variant_union
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
 from .predicates import (
     _borrow_tuple_return_type,
-    _container_borrow_return,
-    _container_storage_return,
     _res_container_return,
     _eligible_char,
     _eligible_enum,
@@ -229,7 +227,6 @@ class _Prescan:
                  "alias_sources", "alias_born", "owned_viewfam_params",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_record_borrow", "ret_record_storage",
-                 "ret_container_storage", "ret_container_borrow",
                  "ret_res_container",
                  "ret_value_tuple", "ret_generic_tuple",
                  "ret_own_storage_tuple", "ret_wrapper_ref_tuple",
@@ -381,25 +378,20 @@ class _Prescan:
         # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
         # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
         self.ret_borrow_tuple = _borrow_tuple_return_type(rt, analyzer)
-        # The borrow-form F1-record return slot (`-> Box` -> `Box&`): a bare
-        # record borrow name (`return name;`), `self` (`return (*this);`), a
-        # plain field read (`return recv.field;`), or -- value-type records
-        # only, where the slot actually returns by value -- a record rvalue;
-        # the return-stmt arm rejects every other source shape.
+        # The borrow-form REFERENCE return slot (`-> Box` -> `Box&`,
+        # `-> list[T]` -> `std::vector<T>&`): a bare borrow name
+        # (`return name;`), `self` (`return (*this);`), a plain field read
+        # (`return recv.field;`), an element lvalue, a pointer-slot global,
+        # or -- value-type records only, where the slot actually returns by
+        # value -- a record rvalue; the return-stmt arm rejects every other
+        # source shape.
         self.ret_record_borrow = _record_borrow_return(rt, analyzer)
-        # The storage-form F1-record return slot (`-> Own[Box]` -> `Box` by
-        # value): bare names and record-rvalue ctor / by-value calls return
-        # bare; every other source shape rejects.
+        # The storage-form REFERENCE return slot (`-> Own[Box]` -> `Box` by
+        # value, `-> Own[list[T]]` -> a by-value vector/map/set): bare names,
+        # rvalue ctor / by-value calls, and the container-only literal /
+        # repeat / comprehension sources return bare; every other source
+        # shape rejects.
         self.ret_record_storage = _record_storage_return(rt, analyzer)
-        # The storage-form container return slot (`-> Own[list[T]]` -> a
-        # by-value vector/map/set): bare owned container names and container
-        # literals return bare (the decl-init renders, position-independent);
-        # every other source shape rejects.
-        self.ret_container_storage = _container_storage_return(rt, analyzer)
-        # The BORROW-form container return slot (`-> list[T]` -> C++
-        # `std::vector<T>&`): a bare container name / plain field read
-        # returns bare; every other source shape rejects.
-        self.ret_container_borrow = _container_borrow_return(rt)
         # The RESUMABLE container return slot -- wider at the `Own` axis
         # (a coro's slot holds T by value either way); read only by the
         # resumable return arm's empty-literal guard.
@@ -532,8 +524,6 @@ class _Prescan:
             or self.ret_record_borrow is not None
             or self.ret_union_borrow is not None
             or self.ret_record_storage is not None
-            or self.ret_container_storage is not None
-            or self.ret_container_borrow is not None
             or self.ret_value_tuple is not None
             or self.ret_generic_tuple is not None
             or self.ret_own_storage_tuple is not None

@@ -1,18 +1,12 @@
 """A method call filling a by-value container return slot.
 
-The storage-container return already forwarded a free call bare
+The storage return already forwarded a free call bare
 (`return make_list(n);`). Its method-call twin (`return p.split('/');`)
-is the same bare render, admitted for RVALUE results only: a
-borrow-returning method aliases its receiver, and filling a by-value
-slot from that alias is a copy the bare passthrough does not spell.
+is the same bare render, and rides the same reference-slot ladder arm the
+record half does (`ret.record_methodcall`).
 """
 
-from .testutil import (
-    _assert_rejects_at,
-    _assert_routes_byte_identical,
-    _lower_ctx_witnessed,
-    _thir_ctx,
-)
+from .testutil import _assert_routes_byte_identical, _lower_ctx_witnessed
 
 _HOLDER = (
     "from tpy import Int32, Own\n"
@@ -43,7 +37,7 @@ class TestStrSplitAtStorageSlotRoutes:
 
     def test_routes_with_face(self):
         _thir, w = _lower_ctx_witnessed(self.SRC)
-        assert w.get("ret.container_method_call", 0) >= 1
+        assert w.get("ret.record_methodcall", 0) >= 1
 
     def test_routes_byte_identical(self):
         _hpp, cpp = _assert_routes_byte_identical(self.SRC)
@@ -80,23 +74,3 @@ class TestUserMethodAndDictSetSlotsRoute:
         _hpp, cpp = _assert_routes_byte_identical(self.SRC)
         assert "return Holder().make();" in cpp
         assert "return m.d();" in cpp
-
-
-class TestBorrowReturningMethodAtStorageSlotDefers:
-    # BOUNDARY: `h.borrow()` hands back `std::vector<int32_t>&` -- an alias
-    # of the receiver's field, which the by-value slot must COPY. The bare
-    # passthrough would not spell that, so the shape keeps its reject.
-    SRC = (
-        _HOLDER +
-        "def take(h: Holder) -> Own[list[Int32]]:\n"
-        "    return h.borrow()\n"
-        "def main() -> None:\n"
-        "    h = Holder()\n"
-        "    print(len(take(h)))\n"
-        "main()\n"
-    )
-
-    def test_defers_at_named_shape(self):
-        _ctx, fb = _thir_ctx(self.SRC)
-        _assert_rejects_at(fb, "body:stmt.return",
-                           shape="return.container_source")

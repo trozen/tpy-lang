@@ -18,7 +18,7 @@ Main differences from CPython:
 
 - Type annotations required on functions (parameters + return) and class fields; local variables are inferred
 - `Int32` for integer literals (overrideable), `Int32`/`Int64` for explicit fixed-width, `int` = `BigInt` for arbitrary precision
-- Value types (`Int32`, `bool`, `str`, ...) are copied; reference types (classes, containers) are passed by reference to functions but stored inline in fields and containers. `Own[T]` transfers ownership (move) at function boundaries
+- Value types (`Int32`, `bool`, `str`, ...) are copied; reference types (classes, containers) are passed by reference to functions but stored inline in fields and containers. `Own[T]` transfers ownership (move) at function boundaries. The distinction is one axis, not a list of blessed types: `bytearray` and `Array[T, N]` are reference types alongside `list`/`dict`/`set` and your own classes, and reach the same slots by the same rule
 - No GIL, no refcounting, no GC -- deterministic destruction via RAII
 
 ```python

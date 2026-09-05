@@ -1221,8 +1221,11 @@ def test_assign_lowering_reject_falls_back_at_sync_boundary():
         if fn is None:
             _record_reject("body")
     assert fn is None
+    # The reference field-write gate admits a FIELD source at a container
+    # slot exactly as it does at a record one; the container field READ is
+    # what still has no value-position row, so the reject moved one level in.
     assert _tally(compiler) == {
-        "body:stmt.assign:assign.field_write_shape": 1,
+        "body:stmt.assign:field.result_type": 1,
     }
 
 

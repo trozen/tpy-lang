@@ -154,16 +154,19 @@ class TestOwnBtupleAppend:
                "    print(\"x\")\n")
         assert _fn(_lower_ctx(src), "f") is None
 
-    def test_plain_ref_tuple_element_stays_ast(self):
-        # The boundary: a plain-record (non-Optional) element tuple keeps
-        # rejecting -- its element rows are a different render.
+    def test_plain_ref_tuple_element_takes_the_storage_move(self):
+        # A plain-record (non-Optional) element tuple: the united method-arg
+        # sink reaches a stub slot with the record listing's `tuple_literal`
+        # cell, and the same storage-move lift renders it. The borrow
+        # checker owns whether the element may move -- a NON-last-use `a`
+        # is refused there, not here.
         src = (_P
                + "def f() -> None:\n"
                + "    pairs: list[tuple[P, Int32]] = []\n"
                + "    a = P(1)\n"
                + "    pairs.append((a, 2))\n"
                + "    print(len(pairs))\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        assert _fn(_lower_ctx(src), "f") is not None
 
     def test_setitem_literal_value_routes_nonmove(self):
         # A tuple LITERAL setitem value takes the NON-move lift with plain
@@ -250,9 +253,12 @@ class TestPlainRecordBtupleLiteral:
         # The owning sink must not reach for the borrow form at all.
         assert "tuple_value_to_borrow" not in cpp
 
-    def test_lastuse_element_stays_ast(self):
-        # BOUNDARY (dualgen-probed): a last-use movable local is not an
-        # rvalue source -- the gate keeps it out.
+    def test_lastuse_element_takes_the_storage_move(self):
+        # A last-use movable local is not an rvalue source, so THIS row's
+        # all-rvalue gate keeps it out -- but the united method-arg sink
+        # reaches the same stub slot with the record listing's
+        # `tuple_literal` cell, whose lift moves the last use
+        # (`std::tuple<P*, P>{std::move(&(x)), P(2)}`), built and run.
         src = (_P
                + "def f() -> None:\n"
                + "    pairs: list[tuple[P, P]] = []\n"
@@ -260,8 +266,8 @@ class TestPlainRecordBtupleLiteral:
                + "    pairs.append((x, P(2)))\n"
                + "    for a, b in pairs:\n"
                + "        print(a.x + b.x)\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.method_call:method.arg_shape")
+        _, cpp = _assert_routes_byte_identical(src)
+        assert "std::tuple<P*, P>{std::move(&(x)), P(2)}" in cpp
 
 
 class TestOpenTOwningSinkLiteral:

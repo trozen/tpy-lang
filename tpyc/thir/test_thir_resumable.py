@@ -4045,14 +4045,21 @@ class TestSuspendMethodOperands:
 
     def test_rejecting_arg_still_falls_back(self):
         # suspend_ok blanks only the RESULT-type check; an off-slice ARG
-        # (an f-string) still rejects the operand, falling back whole.
+        # (a comprehension at a MUTATED container slot, which no cell may
+        # admit -- the statement-expression is a prvalue) still rejects the
+        # operand, falling back whole.
         src = ("import asyncio\n"
                + "from tpy import Int32, Own\n"
                + "from tpy.channel import channel, Sender, Receiver, "
                + "ChannelClosed\n\n"
-               + "async def producer(tx: Own[Sender[str]], n: Int32)"
+               + "class Sink:\n"
+               + "    def soak(self, row: list[float]) -> Int32:\n"
+               + "        row.append(1.0)\n"
+               + "        return len(row)\n\n"
+               + "async def producer(tx: Own[Sender[Int32]], s: Sink)"
                + " -> None:\n"
-               + "    await tx.send(f\"v{n}\")\n"
+               + "    await tx.send(s.soak("
+               + "[2.0 * float(i) for i in range(3)]))\n"
                + "    tx.close()\n\n"
                + "def main() -> None:\n    pass\nmain()\n")
         _assert_rejects_at(_reject_tally(src),

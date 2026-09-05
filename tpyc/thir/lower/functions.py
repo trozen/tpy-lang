@@ -99,7 +99,6 @@ from ...codegen_cpp.gen_generators import GeneratorCodegen
 from ...type_def_registry import (
     is_array,
     view_to_owned_conv,
-    is_bytearray_type,
     is_bytes_type,
     is_bytes_view_type,
     is_dict,
@@ -154,6 +153,7 @@ from .predicates import (
     _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
+    _f1_container_ref,
     _f1_record,
     _method_rvalue_f1_record,
     _f1_tuple,
@@ -1460,7 +1460,8 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         if (isinstance(source, TpyCall) and len(source.args) <= 1
                 and not source.kwargs
                 and isinstance(source.func, TpyName)
-                and source.func.name in ("list", "dict", "set", "Array")):
+                and source.func.name in ("list", "dict", "set", "Array",
+                                         "bytearray")):
             # The container ctor call (`self.items = list()` ->
             # `items(std::vector<T>())`, `self.items = list(src)` ->
             # `items(::tpy::construct<std::vector<T>>(src))`): the
@@ -1739,16 +1740,6 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
             # lowers the source bare.
             _witness("mil.any_coerce")
             return True
-        if is_bytearray_type(ftype) and isinstance(tail_src, TpyName):
-            # A `bytearray` field copies bare from a same-typed param
-            # (`data(data)`) -- a reference type, but the MIL slot is storage
-            # and no conversion is threaded. Exact-shape pin like the
-            # container-param row: a differing spelling could carry one.
-            dt = declared.get(tail_src.name)
-            return (dt is not None
-                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-                    == ftype
-                    and _witness("mil.bytearray_copy"))
         return False
     source = _unwrap_copy(stmt.value, analyzer)
     # M3b-move: an own-param at its last use moves into the field.
@@ -2307,7 +2298,7 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     #   * an open type param inside a generic record (`: Base<T>(val)`),
     #   * an owned `String` (`: ::tpy::OSError(message)`) -- excluded from
     #     `_resolved_str_value`, which is the view-family predicate.
-    if (is_list(vt) or is_dict(vt) or is_set(vt) or is_array(vt)
+    if (_f1_container_ref(vt)
             or _is_type_param_slot(vt) or _is_string_owned(vt)):
         return True
     # A value-repr Optional param (`note: str | None` ->

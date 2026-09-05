@@ -854,21 +854,6 @@ class TestBytearrayValueSlotDecl:
                 "::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}));"
                 in cpp)
 
-    def test_owned_dunder_rvalue_takes_the_slot(self):
-        # `bb = ba + b"cd"` -- the fresh concat vector lands in the value
-        # slot; the coerce row is NOT the one that fires.
-        src = ("def f() -> None:\n"
-               "    ba = bytearray(b\"ab\")\n"
-               "    bb = ba + b\"cd\"\n"
-               "    print(len(bb))\n"
-               "f()\n")
-        hpp, cpp = _assert_routes_byte_identical(src)
-        assert ('std::vector<uint8_t> bb = (::tpy::bytes_concat(ba, '
-                '::tpy::bytes_literal_owned("cd", 2)));') in hpp + cpp
-        _thir, w = _lower_ctx_witnessed(src)
-        assert w.get("decl.bytearray_owned_rvalue", 0) == 1
-        assert not w.get("decl.bytearray_view_copy")
-
     def test_bytes_param_identity_coercion_keeps_rejecting(self):
         # BOUNDARY: `ba: bytearray = p` off a bytes PARAM -- the identity
         # bytes_to_bytearray coercion whose AST oracle is ill-formed C++

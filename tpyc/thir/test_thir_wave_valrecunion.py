@@ -311,7 +311,10 @@ class TestBorrowContainerReturns:
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "xs") is not None
         assert _fn(thir, "keep") is not None
-        assert faces.get("ret.container_borrow", 0) >= 2
+        # One return ladder: the field read and the bare name witness the
+        # reference slot's own faces.
+        assert faces.get("ret.record_field", 0) >= 1
+        assert faces.get("ret.record_borrow", 0) >= 1
         _assert_byte_identical(src)
 
     def test_call_source_routes(self):

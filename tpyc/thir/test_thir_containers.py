@@ -2762,7 +2762,7 @@ class TestContainerCallSlots:
         assert isinstance(decl, THIRVarDecl) and isinstance(decl.init, THIRCall)
         assert _fn(thir, "fwd") is not None
         assert faces.get("decl.storage_call", 0) >= 3   # list + dict + set decls
-        assert faces.get("ret.container_call", 0) == 1  # fwd's return
+        assert faces.get("ret.record_storage", 0) == 1  # fwd's return
 
     def test_emits_bare_call_decl(self):
         cpp = self._cpp(self.SRC)
@@ -4214,7 +4214,7 @@ class TestGenericRecordSetItem:
 
 class TestProtocolUnionCtorArg:
     """A NAME into an all-protocols union ctor slot: F1-record names bind
-    bare, Span names take the address-of lift; containers stay deferred."""
+    bare, Span and container names take the address-of lift."""
 
     _HDR = ("from tpy import Int32, Span, Array\n"
             "from tplib import ArrayList\n")
@@ -4238,15 +4238,6 @@ class TestProtocolUnionCtorArg:
                + "    print(d[0])\n")
         assert _fn(_lower_ctx(src), "f") is not None
         _assert_byte_identical(src)
-
-    def test_container_name_deferred(self):
-        src = (self._HDR
-               + "def f() -> None:\n"
-               + "    xs = [1, 2, 3]\n"
-               + "    d = ArrayList[Int32, 8](xs)\n"
-               + "    print(d[0])\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.call:call.ctor_arg.union")
 
 
 class TestRecordElementSetItem:

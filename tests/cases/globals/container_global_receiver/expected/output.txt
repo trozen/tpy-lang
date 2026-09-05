@@ -1,0 +1,3 @@
+3 67
+bytearray(b'ABC')
+3

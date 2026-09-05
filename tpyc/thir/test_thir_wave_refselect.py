@@ -55,7 +55,7 @@ class TestContainerSelect:
 
     def test_ternary_lvalue_arms_alias(self):
         # x = a if cond else b -> `std::vector<int32_t>& x = ((cond) ? (a)
-        # : (b));` (the container ternary render, REF_ALIAS-bound).
+        # : (b));` (the reference ternary's container leg, REF_ALIAS-bound).
         src = ("from tpy import Int32\n"
                "def f(a: list[Int32], b: list[Int32], cond: bool) -> None:\n"
                "    x = a if cond else b\n"
@@ -64,7 +64,7 @@ class TestContainerSelect:
                "def main() -> None:\n    f([1], [2], True)\nmain()\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
-        assert faces.get("ifexpr.container", 0) == 1
+        assert faces.get("ifexpr.record", 0) == 1
         cpp = _assert_byte_identical(src)
         assert "std::vector<int32_t>& x = ((cond) ? (a) : (b));" in cpp[1]
 

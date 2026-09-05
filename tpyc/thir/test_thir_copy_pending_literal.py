@@ -1,9 +1,9 @@
 """`copy()` of a literal-seeded container: the argument's container type is
 still PENDING (list vs Array, decided by sema's resolution pass) when the
 call is analyzed, so both emit paths must read it through the shared
-resolver. The list/dict/set literal sources route byte-identically; an
-Array-resolved source still rejects at the container row (a separate gap,
-pinned so its status is visible)."""
+resolver. The list/dict/set literal sources route byte-identically; the
+Array-resolved source routes too now that the copy row reads the reference
+axis, and is pinned as a case (`tests/cases/list/copy_literal_array`)."""
 
 from __future__ import annotations
 
@@ -69,18 +69,3 @@ class TestNarrowedOptionalCopyKeepsCopying:
         # claim here is the AST render, byte-identical through the fallback.
         _, fallback = _thir_ctx(src)
         _assert_rejects_at(fallback, "body:expr.call", "call.builtin_special")
-
-
-class TestArrayCopyStillRejects:
-    def test_unmutated_literal_resolves_to_array_and_rejects(self):
-        # Neither side is mutated, so the literal resolves to Array; the
-        # container row has no Array arm. The AST emits it.
-        src = ("from tpy import copy\n"
-               "def main() -> None:\n"
-               "    xs = [1, 2]\n"
-               "    ys = copy(xs)\n"
-               "    print(len(xs), len(ys))\n"
-               "main()\n")
-        _, fallback = _thir_ctx(src)
-        _assert_rejects_at(fallback, "body:expr.call",
-                           "call.copy_source.container")

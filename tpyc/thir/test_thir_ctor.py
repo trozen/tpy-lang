@@ -2201,15 +2201,18 @@ class TestMilTailFamilies:
                "        self.data = data\n")
         _assert_routes_byte_identical(src)
 
-    def test_bytearray_field_ctor_call_stays_ast(self):
-        # BOUNDARY: the bytearray copy row is NAME-shaped. A `bytearray(b)`
-        # rvalue is a native ctor call with its own render and stays AST.
-        src = ("class Holder:\n"
+    def test_bytearray_field_free_call_rejects(self):
+        # BOUNDARY: only the TYPE constructor is target-threaded. An ordinary
+        # function call has no member-init render and stays rejected.
+        src = ("from tpy import Own\n"
+               "def mk(b: bytes) -> Own[bytearray]:\n"
+               "    return bytearray(b)\n"
+               "class Holder:\n"
                "    data: bytearray\n"
                "    def __init__(self, b: bytes) -> None:\n"
-               "        self.data = bytearray(b)\n")
+               "        self.data = mk(b)\n")
         _assert_rejects_at(_reject_tally(src),
-                           "ctor:ctor.mil_field.nominal.native_call")
+                           "ctor:ctor.mil_field.nominal.call")
 
     def test_any_field_into_any_coerce_routes(self):
         # An `Any` field from sema's into_any coerce: the coercion node

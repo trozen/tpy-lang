@@ -94,10 +94,10 @@ class TestCopyAtOptionalRecordField:
 class TestCopyFieldBoundaries:
     def test_container_copy_routes_on_its_own_row(self):
         # `copy(container)` is the copy-CONSTRUCT arm too
-        # (`std::vector<int32_t>(data)`). It now has its OWN field-write row
-        # -- `copy_plain_container_source` / `_lower_copy_container` -- rather
-        # than riding the record admission, which this pin was written to
-        # keep from leaking into it.
+        # (`std::vector<int32_t>(data)`), admitted by
+        # `copy_plain_container_source` and rendered by the shared
+        # `_lower_copy_record` -- one row for both halves of the reference
+        # axis, so the two legs cannot drift apart.
         src = ("from tpy import Int32, copy\n"
                "class C:\n"
                "    items: list[Int32]\n"

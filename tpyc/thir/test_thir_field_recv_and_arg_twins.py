@@ -81,7 +81,8 @@ class TestContainerFieldArg:
 class TestBytearrayFieldMethodReceiver:
     """A `bytearray` FIELD method receiver: every bytearray stub method is an
     @native rename over the bare receiver, so the member read composes exactly
-    as a bytearray NAME receiver does."""
+    as a bytearray NAME receiver does -- through the CONTAINER field row,
+    which claims the bytearray receiver like any other reference container."""
 
     SRC = ("from tpy import Int32\n"
            "class H:\n    n: Int32\n    buffer: bytearray\n"
@@ -96,15 +97,14 @@ class TestBytearrayFieldMethodReceiver:
 
     def test_routes(self):
         _thir, faces = _lower_ctx_witnessed(self.SRC)
-        assert faces.get("method.recv.bytearray_field", 0) >= 1
+        assert faces.get("method.recv.container_field", 0) >= 1
         hpp, cpp = _assert_routes_byte_identical(self.SRC)
         assert "this->buffer.push_back(" in hpp + cpp
 
-    def test_bytearray_property_receiver_stays_ast(self):
-        # BOUNDARY: the arm reads a stored MEMBER. The property leg above it
-        # admits view- and container-valued getters only, so a bytearray-
-        # valued property -- whose receiver is the getter CALL, not a member
-        # read -- must keep rejecting.
+    def test_bytearray_property_receiver_routes(self):
+        # The property leg admits container-valued getters, and a bytearray
+        # IS one, so the getter CALL is the receiver lvalue
+        # (`h.buf().push_back(65)`).
         src = ("from tpy import Int32\n"
                "class H:\n    _b: bytearray\n"
                "    def __init__(self, k: Int32) -> None:\n"
@@ -115,8 +115,8 @@ class TestBytearrayFieldMethodReceiver:
                "    def go(self) -> None:\n        self.buf.append(65)\n"
                "def main() -> None:\n    h = H(1)\n    h.go()\n"
                "    print(len(h._b))\nmain()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.method_call:method.recv.field_parent")
+        _thir, faces = _lower_ctx_witnessed(src)
+        assert faces.get("method.recv.container_property", 0) >= 1
 
 
 class TestPtrFieldMethodReceiver:

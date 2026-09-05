@@ -103,7 +103,7 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...type_def_registry import is_dict, is_list, is_set
+from ...type_def_registry import is_list
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_generators import owned_view_frame_params
@@ -145,7 +145,9 @@ from .predicates import (
     _eligible_char,
     _eligible_enum,
     _eligible_scalar,
+    _f1_container_ref,
     _f1_record,
+    _f1_ref,
     _f1_tuple,
     _generic_value_tuple_return,
     _narrowed_opt_field_read,
@@ -249,22 +251,24 @@ def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
 
 
 def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
-    """Frame-PARAM families (R5c-param). Value scalars plus F1-record params:
-    a record param captures as a `Record&` reference frame field and reads
-    bare with `.` member access -- exactly like a sync record param, so the
-    leaf needs no coro-specific form. str/bytes params capture OWNED
+    """Frame-PARAM families (R5c-param). Value scalars plus the reference
+    axis: a record or container param captures as a `Record&` /
+    `std::vector<T>&` reference frame field and reads bare -- exactly like
+    its sync param, so the leaf needs no coro-specific form. str/bytes
+    params capture OWNED
     (`std::string` / `std::vector<uint8_t>` frame fields, ctor-copied from
     the sync view param), but every leaf READ renders through the same
     form-agnostic helpers as the owned str/bytes locals R1a already routes
     (`__len__` / `bytes_getitem` / bare name), so they share that slice.
 
-    Own[T] params (`_f1_record` unwraps the Own inner, so an `Own[F1-record]`
-    payload already reads through the record branch below; the capture
-    `b(std::move(b_))` is skeleton) and pointer-repr `Optional[F1-record]`
-    params (`p: P | None` -> a `P*` frame field: `p != nullptr` predicates
-    and `p->n` arrow reads route through `lc.pointers`, seeded from the
-    params) are also admitted. Borrow-form and value tuple params ride too:
-    a `std::tuple<..., T*>` / `std::tuple<...>` frame field reads bare with
+    Own[T] params (`_f1_ref` peels the Own, so an `Own[F1-record]` or
+    `Own[container]` payload already reads through the axis branch below; the
+    capture `b(std::move(b_))` is skeleton) and pointer-repr
+    `Optional[F1-record]` params (`p: P | None` -> a `P*` frame field:
+    `p != nullptr` predicates and `p->n` arrow reads route through
+    `lc.pointers`, seeded from the params) are also admitted. Borrow-form and
+    value tuple params ride too: a `std::tuple<..., T*>` / `std::tuple<...>`
+    frame field reads bare with
     `std::get<N>(t)` (pointer-repr elements arrow, value elements bare),
     matching the sync tuple-subscript rows. A bare `T` param rides via
     `_res_capture_ok`. Union (non-pointer-repr) and static-protocol params
@@ -302,17 +306,15 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
         return True
     unwrapped = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                  if isinstance(t, TpyType) else None)
-    if unwrapped is not None and _f1_record(unwrapped, analyzer):
-        return True
-    # A container param captures as a reference frame field (`std::vector<T>&`,
-    # like the record `Record&`) and every leaf read/write/pass takes the sync
-    # container rows unchanged; element-shape gating stays at the use sites.
-    # An Own[container] param differs only in capture (the skeleton's
+    # The reference axis in one admission: a record param captures as a
+    # `Record&` reference frame field, a container param as the same
+    # `std::vector<T>&`, and every leaf read/write/pass takes the sync rows
+    # unchanged; element-shape gating stays at the use sites. An
+    # Own[container] param differs only in capture (the skeleton's
     # OWNED_VALUE move -> a `std::vector<T>` value field); reads are the
-    # same bare container rows, so it rides the same admission.
-    cont = _unwrap_own(unwrapped) if unwrapped is not None else None
-    if cont is not None and (is_list(cont) or is_dict(cont)
-                             or is_set(cont)):
+    # same bare container rows, so it rides the same admission -- `_f1_ref`
+    # peels the Own for both halves.
+    if unwrapped is not None and _f1_ref(unwrapped, analyzer):
         return True
     # An `Own[value]` / `Own[T]` param is the bare-value capture with
     # ownership transfer: the frame field is the payload spelling itself
@@ -1179,13 +1181,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # builder / borrow-name pass-through); the slot family alone
                 # admits.
                 or isinstance(yt_tuple, TupleType)
-                # Container slots also gate per-yield (the frame-slot
-                # borrow-name arm; other value shapes reject there).
-                or is_list(yt_tuple) or is_dict(yt_tuple)
-                or is_set(yt_tuple)
-                # Record slots gate per-yield too (routed loop-var /
-                # frame_slot NAME borrow deref only).
-                or _f1_record(yt_tuple, analyzer)):
+                # Reference-axis slots gate per-yield: a container at the
+                # frame-slot borrow-name arm, a record at the routed
+                # loop-var / frame_slot NAME borrow deref. Other value
+                # shapes reject there.
+                or _f1_ref(yt_tuple, analyzer)):
             return _reject("res.yield_type")
     else:
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
@@ -1438,8 +1438,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if _opt_b is None:
                 _ow = _optional_ptr_borrow_wide(ltype, analyzer)
                 if _ow is not None:
-                    _oi = unwrap_readonly(_ow.inner)
-                    if is_list(_oi) or is_dict(_oi) or is_set(_oi):
+                    if _f1_container_ref(unwrap_readonly(_ow.inner)):
                         _opt_b = _ow
             if _opt_b is not None:
                 opt_ptr_locals.add(lname)
@@ -2280,7 +2279,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     raise ThirUnsupported("res.btuple_yield_source")
                 _witness("res.btuple_yield")
                 return
-            if is_list(yt_bare) or is_dict(yt_bare) or is_set(yt_bare):
+            if _f1_container_ref(yt_bare):
                 # Container yield slot (val_or_ref<C> in the skeleton's
                 # signature): a yielded frame_slot LOCAL hands out the
                 # deref borrow -- `return (*buf);` -- the existing

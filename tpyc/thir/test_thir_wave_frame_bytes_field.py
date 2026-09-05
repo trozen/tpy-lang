@@ -194,7 +194,10 @@ main()
 
 def test_bytearray_field_into_frame_field_stays_ast():
     fallback = _reject_tally(BYTEARRAY_FIELD)
-    _assert_rejects_at(fallback, "ctor:ctor.mil_field.nominal.native_call")
+    # The ctor's `bytearray(n)` member-init routes (the type constructor is
+    # target-threaded); the GENERATOR body is the boundary this pins -- the
+    # bare member read binds a reference the frame cannot hold.
+    assert fallback == {"resumable:res.alias_bind": 1}
 
 
 # Boundary at the gate itself: the slot family opens the row, but the FIELD

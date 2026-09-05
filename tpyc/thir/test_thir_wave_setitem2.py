@@ -105,19 +105,6 @@ class TestSetitemBoundaries:
         assert _fn(thir, "main") is not None
         _assert_byte_identical(src)
 
-    def test_bytearray_value_slot_stays_ast(self):
-        # A bytearray value slot is outside `_resolved_bytes_value`'s
-        # owned-bytes domain -- the family gate keeps rejecting.
-        src = ("def main() -> None:\n"
-               "    src = bytearray(b\"abc\")\n"
-               "    out: dict[str, bytearray] = {}\n"
-               "    out[\"k\"] = src\n"
-               "    print(len(out))\n"
-               "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.assign:setitem.family")
-
-
 class TestRecordTupleValue:
     _BOX = (
         "from tpy import Int32\n"

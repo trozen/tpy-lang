@@ -750,6 +750,35 @@ storage form, `is_ref_param()` rvalue-temp binding is a BORROW param slot, lambd
 system is a LATER gate (rung F5/F-final), after the generic-slot (`val_or_ref_t`)
 and lambda-return cases are proven -- not blessed up front.
 
+#### Admission gates key on the value form (2026-09-05)
+
+The same axis governs which types a lowering arm ADMITS, not only how a value is
+represented: the direction is that a gate asks whether the type's value form is
+`ValueForm.BORROW_REF` rather than whether it is one of the builtin container
+names. `_f1_ref` (the reference
+axis: the spelling-equal record slice plus its container half `_f1_container_ref`,
+which is the reference form carrying a `cpp_formatter`) is the admission predicate
+where the site's whole decision is reference-ness; per-TypeDef facts carry the
+residue a family list used to stand in for (`cpp_formatter`,
+`param_cpp_formatter` / `param_mut_cpp_formatter`, `subscript_borrows`), and a
+resolved stub method's `FunctionInfo` carries the rest. The element family is the
+worked example: membership is "the receiver's `__getitem__` resolves to the builtin
+`::tpy::__getitem__`" (`_native_getitem_index_param`), which admits the value-form
+`Span` and `varargs` and excludes `set`, the bytes family and a user `__getitem__`
+for stated render reasons rather than by omission. Two decisions stay
+container-specific because they have no type to key on: literal construction
+(`[..]`, `{..}`, comprehensions -- there is no callee) and pending-literal
+resolution. Gates still keyed on a container NAME outside those two remain:
+`scripts/thir_migration/review/container_gates.py` counts about 90 family
+enumerations. The ordered ladders that carried a container arm below the record
+one (return, field write, if-expr, the method-argument sinks, and the method
+gate's return half) were merged to one arm on 2026-09-05, once each recorded
+failure had been classified as an admission problem with zero render diffs. The
+residue classes identified so far -- the receiver membership list, the method
+gate's receiver/overload half, and the ordinary admission gates that were not
+reached -- are filed as their own TODO entries; the rest of that count has not
+been audited.
+
 ### Form rollout ladder (F1 -> F-final)
 
 The form work is a sub-stream of the THIR migration, sequenced one family/

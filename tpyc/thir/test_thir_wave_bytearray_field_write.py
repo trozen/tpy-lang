@@ -58,20 +58,6 @@ class TestBytearrayFieldWrite:
         assert "this->buf = nb;" in code              # still live below
         assert "this->buf = v;" in code               # borrowed param
 
-    def test_optional_bytearray_field_stays_ast(self):
-        # BOUNDARY (dualgen-probed): an `Optional[bytearray]` field is
-        # pointer-repr, whose write is the `ptr_to_optional_move` lift -- a
-        # different render, so the plain-field rule must not reach it.
-        src = ("from tpy import Own\n"
-               "class Opt:\n"
-               "    opt: bytearray | None\n"
-               "    def __init__(self) -> None:\n"
-               "        self.opt = None\n"
-               "    def fill(self, v: Own[bytearray]) -> None:\n"
-               "        nb: bytearray = bytearray()\n"
-               "        self.opt = nb\n")
-        _assert_rejects_at(_reject_tally(src), 'body:stmt.assign', 'assign.field_write_shape')
-
     def test_bytes_field_keeps_the_view_materialize(self):
         # BOUNDARY: the `bytes` sibling is a VIEW source at an owning slot,
         # so its convert is the materialize copy, not the object move this
