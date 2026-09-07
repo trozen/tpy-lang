@@ -1,0 +1,1 @@
+main.py:26: error: in the constructor of 'Holder': this construct is not yet supported by C++ code generation (ctor.mil_field.union.name)

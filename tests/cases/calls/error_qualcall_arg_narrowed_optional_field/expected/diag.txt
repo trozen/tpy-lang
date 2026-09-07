@@ -1,0 +1,1 @@
+main.py:18: error: in function 'fix': this construct is not yet supported by C++ code generation (expr.method_call:method.qualcall.arg.other.expr.field_access)

@@ -1,0 +1,1 @@
+main.py:40: error: in function 'show': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.ptr_union_source)

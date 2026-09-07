@@ -1,0 +1,1 @@
+main.py:11: error: in function 'pick': this construct is not yet supported by C++ code generation (expr.list_comp)

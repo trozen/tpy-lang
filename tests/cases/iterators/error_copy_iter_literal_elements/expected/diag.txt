@@ -1,0 +1,1 @@
+main.py:8: error: in function 'over_literal': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.copy_iter_literal_elem)

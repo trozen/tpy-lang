@@ -1,0 +1,1 @@
+main.py:37: error: in function 'run': this construct is not yet supported by C++ code generation (expr.call:call.native_arg.record_f1_slot)

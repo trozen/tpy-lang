@@ -1,0 +1,1 @@
+main.py:24: error: in function 'peek': this construct is not yet supported by C++ code generation (expr.method_call:method.recv.field_optional)

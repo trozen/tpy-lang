@@ -1,0 +1,1 @@
+main.py:16: error: in function 'read': this construct is not yet supported by C++ code generation (stmt.return:field.receiver_shape)

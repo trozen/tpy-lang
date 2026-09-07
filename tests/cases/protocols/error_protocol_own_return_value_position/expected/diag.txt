@@ -1,0 +1,1 @@
+main.py:26: error: in function 'value_pos': this construct is not yet supported by C++ code generation (expr.method_call:method.protocol.ret_type)

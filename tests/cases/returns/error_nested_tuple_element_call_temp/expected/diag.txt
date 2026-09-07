@@ -1,0 +1,1 @@
+main.py:12: error: in function 'ret': this construct is not yet supported by C++ code generation (stmt.return:return.tuple_source:expr.call:call.arg_shape.union)

@@ -16,6 +16,7 @@ world
 99
 7
 5
+False True
 mixed condition ok
 both truthy
 at least one truthy

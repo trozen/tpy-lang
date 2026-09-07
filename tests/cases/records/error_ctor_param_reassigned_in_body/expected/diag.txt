@@ -1,0 +1,1 @@
+main.py:6: error: in the constructor of 'Named': this construct is not yet supported by C++ code generation (ctor.param_reassign_copy)

@@ -7,10 +7,12 @@
 
 namespace tpyapp::main {
 
+extern ::tpy::BigInt g;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t return_owned_int32();
 int32_t take_owned_int32(int32_t x);
+int32_t global_source();
 void main();
 
 void __tpy_init();

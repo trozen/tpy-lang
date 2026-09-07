@@ -1,0 +1,1 @@
+main.py:9: error: in the constructor of 'C': this construct is not yet supported by C++ code generation (ctor.param_mutated_string)

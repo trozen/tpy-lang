@@ -1,0 +1,1 @@
+main.py:16: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.return:return.record_source.self.borrow)

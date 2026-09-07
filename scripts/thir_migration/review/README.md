@@ -15,13 +15,6 @@ Scripts (run from the repo root with `uv run python`):
 
 - `inventory_sites.py OUT.json` -- every `ThirUnsupported(...)` construction
   site: file, line, enclosing function, reason literal.
-- `classify_tests.py [OUT.json]` -- static claim classification of every
-  THIR unit test (routes / lowers / identity / reject / render / node /
-  fallback / other) plus duplicated embedded programs. Approximate: per
-  test, and a reject pin written through the witnessed helpers reads as a
-  routing claim.
-- `shapes_unit.py` -- body-shape coverage of the routing unit programs
-  (`tpyc/thir/shape.py` survives the deletion, so this still runs).
 - `reprobe.py OUT_DIR` -- **the queue's re-measurement.** Runs every
   BREAKS probe through the front end on the current tree and classifies it
   (REJECTS with the live tag / COMPILES / FRONTEND_ERROR / CRASH), joined
@@ -292,7 +285,8 @@ Data:
   Int64/BigInt for one front-end-refused case; valid at Int32).
 - `shapes_unit.json`, `shapes_corpus.json` -- body-shape coverage of the
   routing unit programs against a whole-corpus shape dump taken before the
-  cutover.
+  cutover; the tally tool and `tpyc/thir/shape.py` went with the unit tests
+  they measured, so these are records only.
 - `p2_*.json` -- the seven phase 2 layer reviews' findings.
 - `test_claims.json`, `program_verdicts.json` -- the phase 3 instruments'
   outputs.

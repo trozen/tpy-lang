@@ -1,0 +1,1 @@
+main.py:31: error: in function 'take': this construct is not yet supported by C++ code generation (stmt.var_decl:reseat.opt_storage_source)

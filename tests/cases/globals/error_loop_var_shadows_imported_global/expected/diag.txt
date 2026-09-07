@@ -1,0 +1,1 @@
+main.py:9: error: at module level: this construct is not yet supported by C++ code generation (stmt.for_each:foreach.var_shadow)

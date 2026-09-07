@@ -1,0 +1,1 @@
+main.py:30: error: in function 'use_record': this construct is not yet supported by C++ code generation (expr.method_call:method.recv.field_parent)

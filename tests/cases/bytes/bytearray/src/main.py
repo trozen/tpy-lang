@@ -21,4 +21,8 @@ def main() -> None:
     print(ba)
     print(len(ba))
 
+    grown = bytearray()
+    grown += b"xy"  # tpyc: ok -- a LOCAL bytearray target admits the concat
+    print(bytes(grown).decode())
+
 main()

@@ -1,0 +1,1 @@
+main.py:25: error: in function 'has_sep': this construct is not yet supported by C++ code generation (stmt.return:binop.shape.in)

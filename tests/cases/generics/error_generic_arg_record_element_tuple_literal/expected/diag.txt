@@ -1,0 +1,1 @@
+main.py:21: error: in function 'use': this construct is not yet supported by C++ code generation (expr.call:call.generic_arg_slot)

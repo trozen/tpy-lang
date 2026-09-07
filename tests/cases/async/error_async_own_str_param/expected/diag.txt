@@ -1,0 +1,1 @@
+main.py:8: error: in function 'sink': this construct is not yet supported by C++ code generation (res.param_type:own_str)

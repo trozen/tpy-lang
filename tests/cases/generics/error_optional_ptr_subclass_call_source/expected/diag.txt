@@ -1,0 +1,1 @@
+main.py:35: error: in function 'subclass_call_source': this construct is not yet supported by C++ code generation (stmt.expr_stmt:method.arg_shape)

@@ -1,0 +1,1 @@
+main.py:18: error: in the constructor of 'M': this construct is not yet supported by C++ code generation (ctor.mil_field.tuple.tupleliteral)

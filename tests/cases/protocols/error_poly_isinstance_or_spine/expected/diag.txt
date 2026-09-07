@@ -1,0 +1,1 @@
+main.py:30: error: in function 'check_or': this construct is not yet supported by C++ code generation (expr.call:call.special_form.isinstance)

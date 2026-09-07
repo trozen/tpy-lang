@@ -22,6 +22,20 @@ def dget(d: dict[Int32, Int32], k: Int32) -> Int32:
     return d[k]
 
 
+class Box:
+    xs: list[Int32]
+
+    def __init__(self) -> None:
+        self.xs = [1, 2, 3]
+
+    def get(self) -> list[Int32]:
+        return self.xs
+
+
+def read_through_call(b: Box) -> Int32:
+    return b.get()[0]  # tpyc: ok -- the receiver is a CALL, not a name
+
+
 def main() -> None:
     xs = [10, 20, 30]
     print(first(xs))
@@ -29,6 +43,7 @@ def main() -> None:
     print(sum_two(xs, 0, 1))
     scores = {1: 100, 2: 200}
     print(dget(scores, 2))
+    print(read_through_call(Box()))
 
 
 main()

@@ -1,0 +1,1 @@
+main.py:9: error: in function 'wrap_b': this construct is not yet supported by C++ code generation (expr.method_call:method.qualcall.arg.own)

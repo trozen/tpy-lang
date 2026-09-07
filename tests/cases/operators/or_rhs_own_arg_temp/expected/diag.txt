@@ -1,0 +1,2 @@
+main.py:9: warning: Own[list[Int32]] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:14: warning: copies list[Int32] into owned storage; use copy() to make this explicit

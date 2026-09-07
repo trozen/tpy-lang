@@ -3,6 +3,8 @@
 
 namespace tpyapp::main {
 
+// g: int = 55
+::tpy::BigInt g;
 
 // def return_owned_int32() -> Own[Int32]:
 int32_t return_owned_int32() {
@@ -16,6 +18,12 @@ int32_t return_owned_int32() {
 int32_t take_owned_int32(int32_t x) {
     // return x
     return x;
+}
+
+// def global_source() -> Int32:
+int32_t global_source() {
+    // return take_owned_int32(g)  # tpyc: ok -- a bare module-global read at the Own slot
+    return take_owned_int32((g).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
@@ -32,6 +40,8 @@ void main() {
     int32_t result2 = take_owned_int32((big).to_fixed_check<int32_t>());
     // print(result2)  # 100
     std::cout << result2 << "\n";
+    // print(global_source())  # 55
+    std::cout << global_source() << "\n";
 }
 
 void __tpy_init() {
@@ -39,6 +49,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // g: int = 55
+    g = ::tpy::BigInt(55);
     // main()
     main();
 }

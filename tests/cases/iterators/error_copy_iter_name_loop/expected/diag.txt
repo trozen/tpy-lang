@@ -1,0 +1,1 @@
+main.py:11: error: in function 'run': this construct is not yet supported by C++ code generation (stmt.for_each:iter.name_family.record_nonf1)

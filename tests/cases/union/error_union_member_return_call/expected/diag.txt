@@ -1,0 +1,1 @@
+main.py:18: error: in function 'show': this construct is not yet supported by C++ code generation (expr.call:call.ret_type.union_value)

@@ -1,0 +1,3 @@
+main.py:19: warning: copies Payload into field; use copy() to make this explicit
+main.py:20: warning: copies Payload | None into field; use copy() to make this explicit
+main.py:29: warning: Own[Payload] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

@@ -1,0 +1,1 @@
+main.py:27: error: in function 'g': this construct is not yet supported by C++ code generation (res.cond:expr.walrus)

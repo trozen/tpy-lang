@@ -1,0 +1,1 @@
+main.py:29: error: in function 'get_value': this construct is not yet supported by C++ code generation (stmt.if:if.cond_binop.is not.optional_other_nonetype:binop.shape.is not)

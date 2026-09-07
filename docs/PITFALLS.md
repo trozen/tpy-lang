@@ -170,7 +170,12 @@ the changed `diag.txt` files for `Tpy[A-Z]\w+`.
 
 **Rule.** TPy rejects a program CPython runs only as a documented divergence: either a filed
 gap (`BUGS.md#<slug>`) or a stricter-by-design rule recorded in `docs/LANGUAGE_FEATURES.md`.
-A rejection with neither is a defect, however the diagnostic is worded.
+A rejection with neither is a defect, however the diagnostic is worded. This scopes to
+rejections TPy CHOOSES -- a rule of the language; a THIR "this construct is not yet supported
+by C++ code generation" reject is a different class (a shape not lowered yet), disclosed by
+its own diagnostic text, pinned by the `error_` case that carries it (the case is the
+tripwire: it fails the day the shape lowers), and queued for a lowering arm in
+`scripts/thir_migration/review/`; it needs no slug.
 
 **Example.** Three `match` rejections landed in one branch as if they were rules: nested `as`
 over an or-group, `case A() | None:` on a union, a recursive-alias leaf pattern. CPython runs

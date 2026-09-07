@@ -1,0 +1,1 @@
+main.py:19: error: in function 'merged': this construct is not yet supported by C++ code generation (stmt.var_decl:binop.shape.|)

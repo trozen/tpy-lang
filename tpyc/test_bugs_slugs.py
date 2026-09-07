@@ -22,6 +22,13 @@ PRUNED_DIRS = {".git", ".venv", "__pycache__", "__tpyc__", ".pytest_cache",
                ".cache", "node_modules", "third_party", "build", "dist"}
 
 
+def _is_other_checkout(directory: str) -> bool:
+    """A directory holding its own `.git` (a linked worktree keeps a `.git`
+    FILE) is another checkout of some branch, parked inside this one by a
+    tool; its files answer to that branch's BUGS.md, not to ours."""
+    return os.path.lexists(os.path.join(directory, ".git"))
+
+
 def _bugs_md() -> str:
     return (REPO_ROOT / "BUGS.md").read_text(encoding="utf-8")
 
@@ -45,7 +52,8 @@ def _scanned_files() -> list[Path]:
                          if (REPO_ROOT / n).is_file()]
     for top in SCANNED_ROOTS:
         for root, dirs, names in os.walk(REPO_ROOT / top):
-            dirs[:] = [d for d in dirs if d not in PRUNED_DIRS]
+            dirs[:] = [d for d in dirs if d not in PRUNED_DIRS
+                       and not _is_other_checkout(os.path.join(root, d))]
             for name in names:
                 if Path(name).suffix in SCANNED_SUFFIXES:
                     found.append(Path(root) / name)

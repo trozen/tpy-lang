@@ -1069,9 +1069,10 @@ def _lower_any_field(stmt: TpyAssign, plan: _AnyFieldPlan, lc: _LowerCtx,
     _witness("field_write.any")
     value = _lower_expr(stmt.value, lc, declared)
     if _is_move_source(stmt.value, lc):
-        # The move peels the coerce: a movable inner name's
-        # last use moves the whole make_any value (`h.payload =
-        # std::move(::tpy::make_any(n));` -- not inert, Any owns storage).
+        # The move peels the coerce and hands make_any's result to the
+        # field as an rvalue. The SOURCE name is still copy-constructed into
+        # make_any's by-value parameter, so a last-use write copies the
+        # payload once (BUGS.md#any-field-write-copies-source).
         value = THIRMove(result_type=plan.ftype, value=value,
                          form=Form.STORAGE, loc=loc)
     return THIRAssign(

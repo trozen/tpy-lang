@@ -3362,9 +3362,9 @@ def _user_record_setitem_ok(
     # as it does on a read (`p[k] = 9` ->
     # `::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9)`), and this call
     # is REDUNDANT today: the read gate rejects every index this one would.
-    # It is kept because both gates must answer one index question, and pinned
-    # by test_thir_record_subscript_gate_parity (nothing else can observe the
-    # two parting -- a divergence here emits byte-identical C++). Like the read
+    # It is kept because both gates must answer one index question; no case
+    # can observe the two parting, since a divergence here emits byte-identical
+    # C++, so the gate itself is the pin. Like the read
     # side, it runs UNCONDITIONALLY: the disposition keys the BigInt half on
     # the DECLARED type, so a per-occurrence pre-test would short-circuit past
     # it for a composite over a retro-widened local.

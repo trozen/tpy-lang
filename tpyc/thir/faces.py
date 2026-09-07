@@ -29,16 +29,12 @@ covers nothing. Without that, an arm witnessing before it
 can raise reads as covered when it never lowered -- which is how a dead arm
 passed this very check.
 
-RESIDUE, measured and real: `lower_module` -- the whole-module entry only the
-lowering UNIT TESTS drive (`testutil._lower_ctx*`) -- opens no attempt window,
-so witnesses recorded under it are never journalled and never rolled back
-(~694 escape per suite run). The whole-corpus census is unaffected: it folds
-only the compiler-driven path, which IS bracketed at every attempt seam. What
-this weakens is the unit-level emit pin: a face read out of
-`_lower_ctx_witnessed` counts even when the body that reached it then raised,
-so witness-count assertions there are not by themselves proof the body
-emitted -- pair them with `_assert_byte_identical`. Give `lower_module` a
-seam and the gap closes.
+RESIDUE, measured and real: `lower_module` -- the whole-module entry only
+test helpers drive (`testutil._lower` and two unit files) -- opens no attempt window, so
+witnesses recorded under it are never journalled and never rolled back. The
+whole-corpus census is unaffected: it folds only the compiler-driven path,
+which IS bracketed at every attempt seam. Give `lower_module` a seam (or
+delete it with its last driver) and the gap closes.
 
 The registry is immutable metadata (module-level by design); the mutable
 counts live on the active Compiler (`_thir_face_witnesses`), so the helper
@@ -375,8 +371,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "er.discard",                   # expr-stmt `__try_tmp_N` block
     "er.unwrap",                    # `({ ... unwrap_ref_move(*__er_N); })`
     # No corpus witness (every reaching shape needs a borrow-returning
-    # fallible callee no committed case has); pinned byte-identically by
-    # test_thir_error_return.py's pointer-form unit.
+    # fallible callee no committed case has), so the whole-corpus zero-witness
+    # census lists it until such a case lands.
     "er.unwrap_ptr",                # `(*({ ... &unwrap_ref(*__er_N); }))`
     # The METHOD-call flavor of the unwrap admission (lowering; the free-call
     # arm's `_er_wrap` mirror -- same THIRErrorReturnUnwrap render).

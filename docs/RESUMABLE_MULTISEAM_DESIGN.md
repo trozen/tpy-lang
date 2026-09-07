@@ -448,7 +448,7 @@ switch/case scaffolding.
 
 ## 4. Recommendation: Design A, in these cells (dependency order)
 
-Each cell ends with: focused units in `tpyc/thir/test_thir_resumable.py`,
+Each cell ends with: focused cases under `tests/cases/`,
 a full default run (whole-corpus byte-diff; `rpytest`), and a local
 residual re-measure. Expected zero snapshot churn in every cell.
 

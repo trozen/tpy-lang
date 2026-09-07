@@ -7,13 +7,43 @@
 
 namespace tpyapp::main {
 
+struct Box;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t first(const std::vector<int32_t>& items);
 int32_t at(const std::vector<int32_t>& items, int32_t i);
 int32_t sum_two(const std::vector<int32_t>& items, int32_t i, int32_t j);
 int32_t dget(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k);
+int32_t read_through_call(Box& b);
 void main();
 
+// class Box:
+struct Box {
+    // xs: list[Int32]
+    std::vector<int32_t> xs;
+
+    // def __init__(self) -> None:
+    Box();
+
+    // def get(self) -> list[Int32]:
+    std::vector<int32_t>& get();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
+    ::tpy::print_object_default(os, "Box", obj);
+    return os;
+}
+
+
+// def __init__(self) -> None:
+inline Box::Box() : xs({1, 2, 3}) {}
+
+// def get(self) -> list[Int32]:
+inline std::vector<int32_t>& Box::get() {
+    // return self.xs
+    return this->xs;
+}
 void __tpy_init();
 } // namespace tpyapp::main

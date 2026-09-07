@@ -1,0 +1,1 @@
+main.py:9: error: in function 'pick': this construct is not yet supported by C++ code generation (stmt.expr_stmt:method.fi_kind)

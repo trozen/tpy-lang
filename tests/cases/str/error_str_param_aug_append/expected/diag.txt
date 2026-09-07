@@ -1,0 +1,1 @@
+main.py:8: error: in function 'shout': this construct is not yet supported by C++ code generation (stmt.aug_assign)

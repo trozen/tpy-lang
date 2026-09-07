@@ -1,0 +1,1 @@
+main.py:5: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.for_each:foreach.subscript_elem_family)

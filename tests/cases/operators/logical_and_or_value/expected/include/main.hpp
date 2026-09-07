@@ -24,6 +24,7 @@ void test_or_with_literal();
 void accepts_int(int32_t v);
 int32_t returns_int(int32_t a, int32_t b);
 void test_as_arg_and_return();
+bool test_bool_operands(bool flag, bool other);
 void test_mixed_returns_bool();
 void test_condition_context();
 void test_record_with_bool();

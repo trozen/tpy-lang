@@ -9,21 +9,45 @@ these bodies carry still reject their adjacent form."""
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
-from ..typesys import INT32
+from ..compilation_context import activate_compiler
+from ..typesys import INT32, VoidType
 from .nodes import (
-    Form, THIRArgTemp, THIRCoerce, THIRExprStmt, THIRFormConvert, THIRLiteral,
-    THIRRaise, THIRResumableBody, THIRSimpleGenBody, THIRUnionArgLift,
+    Form, THIRArgTemp, THIRCall, THIRCoerce, THIRExprStmt, THIRFieldAccess,
+    THIRFormConvert, THIRFunction, THIRFunctionLayout, THIRLiteral,
+    THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
+    THIRSimpleGenBody, THIRUnionArgLift,
 )
 from . import validate as _validate
+from .lower import (
+    iter_module_constructors, lower_constructor, lower_module,
+)
 from .lower import resumable as _lower_resumable_mod
 from .lower import simple_gen as _lower_simple_gen_mod
-from .testutil import _compile, _entry
+from .testutil import _compile, _entry, _fn, _lower
 from .validate import (
-    THIRValidationError, validate_resumable_body, validate_simple_gen_body,
+    THIRValidationError, validate_constructor, validate_function,
+    validate_resumable_body, validate_simple_gen_body,
 )
+
+# The whole-function / constructor validator rules: no compiling program can
+# reach a _fail arm (reaching one would mean lowering emitted malformed THIR),
+# so the rules have no case-shaped pin and live here over hand-built THIR.
+_PTR_RECORDS = (
+    "from tpy import Int32, Own, readonly\n"
+    "class A:\n    x: Int32\n    def __init__(self, x: Int32):\n        self.x = x\n"
+    "class B:\n    y: Int32\n    def __init__(self, y: Int32):\n        self.y = y\n"
+    "class H:\n"
+    "    u: A | B\n"
+    "    n: Int32\n"
+    "    def __init__(self, v: Own[A | B]):\n"
+    "        self.u = v\n        self.n = 0\n"
+)
+
 
 _PRE = "from tpy import Int32\nfrom typing import Iterator\n\n"
 
@@ -248,3 +272,127 @@ class TestArgListFlushRight:
             leaves={}, conds={}, return_values={},
             await_args={1: (self._lift(),)})
         validate_resumable_body("f", body)
+
+
+class TestValidator:
+    def _valid_fn(self, body) -> THIRFunction:
+        return THIRFunction(name="t", params=(), return_type=VoidType(),
+                            body=tuple(body), layout=THIRFunctionLayout())
+
+    def test_noop_form_convert_raises(self):
+        inner = THIRLiteral(result_type=INT32, value=1, form=Form.STORAGE)
+        bad = THIRFormConvert(result_type=INT32, value=inner, form=Form.STORAGE)
+        fn = self._valid_fn([THIRReturn(value=bad)])
+        with pytest.raises(THIRValidationError, match="no-op form convert"):
+            validate_function(fn)
+
+    def test_form_changing_convert_passes(self):
+        inner = THIRLiteral(result_type=INT32, value=1, form=Form.BORROW)
+        ok = THIRFormConvert(result_type=INT32, value=inner, form=Form.STORAGE)
+        validate_function(self._valid_fn([THIRReturn(value=ok)]))
+
+    def test_coerce_form_lie_raises(self):
+        # A non-view-target coerce must carry its inner form.
+        inner = THIRLiteral(result_type=INT32, value=1, form=Form.STORAGE)
+        bad = THIRCoerce(result_type=INT32, expr=inner,
+                         coercion_name="int_literal", form=Form.VALUE)
+        fn = self._valid_fn([THIRReturn(value=bad)])
+        with pytest.raises(THIRValidationError, match="coerce form"):
+            validate_function(fn)
+
+    def test_corpus_units_still_validate(self):
+        # The validator runs inside lower_function; any unit in this file
+        # lowering successfully already exercises it. Sanity-check one shape
+        # with a genuine THIRFormConvert (str view->owned).
+        thir = _lower('def s(v: str) -> str:\n    t: str = v\n    return t\n')
+        assert _fn(thir, "s") is not None
+
+    # --- sink-position raise paths (U2): strip the convert off a GOOD
+    # --- lowering and assert the validator screams. Built inside a compiler
+    # --- context so the pointer-repr predicates resolve.
+
+    def _lowered_in_ctx(self, src: str):
+        compiler, modules = _compile(_PTR_RECORDS + src)
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            return lower_module(entry.ast, entry.analyzer)
+
+    def test_borrow_at_pointer_lifted_field_write_raises(self):
+        thir = self._lowered_in_ctx(
+            "def wf(h: H, v: A | B) -> None:\n    h.u = v\n")
+        fn = _fn(thir, "wf")
+        good = fn.body[0]
+        bad = dataclasses.replace(good, value=good.value.value)
+        with pytest.raises(THIRValidationError,
+                           match="pointer-lifted field-write"):
+            validate_function(dataclasses.replace(fn, body=(bad,)))
+
+    def test_borrow_at_mil_cell_raises(self):
+        compiler, modules = _compile(_PTR_RECORDS)
+        entry = _entry(modules)
+        with activate_compiler(compiler):
+            for rec, init, self_type in iter_module_constructors(
+                    entry.ast, entry.analyzer):
+                if rec.name != "H":
+                    continue
+                ctor = lower_constructor(rec, init, entry.analyzer,
+                                         self_type=self_type)
+                mil = ctor.mil_inits[0]
+                bad = dataclasses.replace(
+                    mil, value=dataclasses.replace(mil.value,
+                                                   form=Form.BORROW))
+                with pytest.raises(THIRValidationError, match="MIL cell"):
+                    validate_constructor(
+                        dataclasses.replace(ctor, mil_inits=(bad,)))
+                return
+        raise AssertionError("H ctor not lowered")
+
+    def test_borrow_return_of_value_type_raises(self):
+        bad = THIRReturn(value=THIRLiteral(result_type=INT32, value=1,
+                                           form=Form.BORROW))
+        fn = THIRFunction(name="t", params=(), return_type=INT32,
+                          body=(bad,), layout=THIRFunctionLayout())
+        with pytest.raises(THIRValidationError, match="BORROW return"):
+            validate_function(fn)
+
+
+class TestNodeStructuralRules:
+    """Per-node invariants the validator holds over hand-built THIR: no
+    lowering builds these shapes, so a case cannot reach them."""
+
+    def _fn(self, node) -> THIRFunction:
+        return THIRFunction(
+            name="w", params=(), return_type=VoidType(),
+            body=(THIRReturn(value=node),), layout=THIRFunctionLayout())
+
+    def _self(self, deref: bool) -> THIRSelf:
+        return THIRSelf(result_type=INT32, form=Form.BORROW, deref=deref)
+
+    def test_arrow_field_over_bare_receiver_passes(self):
+        validate_function(self._fn(THIRFieldAccess(
+            result_type=INT32, receiver=self._self(False),
+            field_cpp="n", is_arrow=True)))
+
+    def test_arrow_field_over_dereferenced_receiver_fails(self):
+        # `(*this)->x` is not valid C++: the member reached through the
+        # pointer must take the raw receiver.
+        with pytest.raises(THIRValidationError, match="arrow member access"):
+            validate_function(self._fn(THIRFieldAccess(
+                result_type=INT32, receiver=self._self(True),
+                field_cpp="n", is_arrow=True)))
+
+    def test_arrow_method_over_dereferenced_receiver_fails(self):
+        with pytest.raises(THIRValidationError, match="arrow member access"):
+            validate_function(self._fn(THIRMethodCall(
+                result_type=INT32, receiver=self._self(True),
+                method_cpp="m", args=(), is_arrow=True)))
+
+    def test_template_args_with_native_callee_fails(self):
+        # A native or cpp_template callee spells its own template arguments.
+        bad = THIRCall(result_type=VoidType(), callee="f", args=(),
+                       native_name="tpy::f", template_args_cpp=("int32_t",))
+        fn = THIRFunction(name="f", params=(), return_type=VoidType(),
+                          body=(THIRExprStmt(expr=bad),),
+                          layout=THIRFunctionLayout())
+        with pytest.raises(THIRValidationError, match="template_args_cpp"):
+            validate_function(fn)

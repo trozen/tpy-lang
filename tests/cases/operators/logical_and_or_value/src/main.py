@@ -101,6 +101,10 @@ def test_as_arg_and_return() -> None:
     accepts_int(a or b)
     print(returns_int(0, 5))
 
+def test_bool_operands(flag: bool, other: bool) -> bool:
+    # Both operands are already bool, so the value-select result IS bool.
+    return flag and other  # tpyc: ok
+
 def test_mixed_returns_bool() -> None:
     """Mixed types fall back to bool (condition context unaffected)."""
     a: Int32 = 1
@@ -210,6 +214,7 @@ def main() -> None:
     test_chained()
     test_or_with_literal()
     test_as_arg_and_return()
+    print(test_bool_operands(True, False), test_bool_operands(True, True))
     test_mixed_returns_bool()
     test_condition_context()
     test_record_with_bool()

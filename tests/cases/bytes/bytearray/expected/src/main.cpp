@@ -37,6 +37,12 @@ void main() {
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     // print(len(ba))
     std::cout << ::tpy::__len__(ba) << "\n";
+    // grown = bytearray()
+    std::vector<uint8_t> grown = std::vector<uint8_t>();
+    // grown += b"xy"  # tpyc: ok -- a LOCAL bytearray target admits the concat
+    grown = ::tpy::bytes_concat(grown, ::tpy::bytes_literal_owned("xy", 2));
+    // print(bytes(grown).decode())
+    std::cout << ::tpy::bytes_decode(::tpy::bytes_copy(grown)) << "\n";
 }
 
 void __tpy_init() {

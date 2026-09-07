@@ -11,6 +11,11 @@ def return_owned_int32() -> Own[Int32]:
 def take_owned_int32(x: Own[Int32]) -> Int32:
     return x
 
+g: int = 55
+
+def global_source() -> Int32:
+    return take_owned_int32(g)  # tpyc: ok -- a bare module-global read at the Own slot
+
 def main() -> None:
     # Test return coercion
     result1: Int32 = return_owned_int32()
@@ -20,5 +25,7 @@ def main() -> None:
     big: int = 100
     result2: Int32 = take_owned_int32(big)
     print(result2)  # 100
+
+    print(global_source())  # 55
 
 main()

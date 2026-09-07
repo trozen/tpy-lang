@@ -7,3 +7,4 @@ bytearray(b'\n\x02\x03')
 bytearray(b'\n\x14\x02\x03')
 bytearray(b'')
 0
+xy

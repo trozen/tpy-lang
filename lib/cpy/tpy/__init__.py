@@ -485,6 +485,11 @@ def hotpath(func):
     return func
 
 
+def inline(func):
+    """No-op in CPython. The compiler expands the method in place."""
+    return func
+
+
 def nocopy(cls):
     """No-op in CPython. The compiler enforces no-copy semantics at compile time."""
     return cls

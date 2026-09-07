@@ -1,0 +1,1 @@
+main.py:17: error: in function 'put': this construct is not yet supported by C++ code generation (stmt.assign:subscript.elem.optional)

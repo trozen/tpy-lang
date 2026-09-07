@@ -1,0 +1,2 @@
+main.py:24: warning: copies Elem | None into field (tuple element 0); use copy() to make this explicit
+main.py:24: warning: copies Elem | None into field (tuple element 1); use copy() to make this explicit

@@ -1,0 +1,1 @@
+main.py:18: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.expr_stmt:method.ptr_template.arg_shape)

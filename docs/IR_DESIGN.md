@@ -31,9 +31,9 @@ lessons), `THIR_EMIT_INVENTORY.md` (the finite emit surface it ported) and
 `THIR_CUTOVER_REVIEW.md` (the 2026-09-02 decision -- flip, delete, fix as we go
 -- and the post-cutover health review of the IR). This doc remains the design,
 plus the distilled migration findings under the Rollout Plan. What is still
-open is MIR. The shape meter (`tpyc/thir/shape.py`) survives as a
-distinct-shape coverage instrument; its percentage is asymptotic by
-construction and steers nothing.
+open is MIR. The shape meter (`tpyc/thir/shape.py`) went with the unit
+tests it measured; its percentage was asymptotic by construction and steered
+nothing.
 
 ## Motivation
 
@@ -944,7 +944,7 @@ win.
 `--thir-check-flip` can select work any more -- they now only guard against
 regression. The stdlib is still AST-scoped for real emission, but it is measured
 and byte-diffed through THIR by two always-on gates (the per-case wide oracle and
-`tests/test_thir_stdlib_gate.py`), and its fallback reached ZERO on 2026-08-30,
+`tests/test_stdlib_render_coverage.py`), and its fallback reached ZERO on 2026-08-30,
 so no routing distance to the AST deletion remains -- what is left is the
 cutover itself. The tail that closed it was recorded as decision-bound rather
 than admission-bound (filed defects, design forks, chained sites); every one of
@@ -1506,9 +1506,9 @@ both union match tiers), which motivated a full sweep of the remaining sets.
   unmirrored registrations are unreachable only *emergently* -- the fence belongs to
   a gate that exists for another reason (an Optional binding the None-test arm cannot
   classify, an owned-tuple source the call/subscript arms reject, a union element
-  the unpack target classifier never admits). Those are now pinned in
-  `tpyc/thir/test_thir_binding_facts.py`, and each partial mirror names its
-  unmirrored producers where it is declared.
+  the unpack target classifier never admits). Those were pinned by unit tests
+  since converted to cases, and each partial mirror names its unmirrored
+  producers where it is declared.
 - Not swept to the same depth, and the place to look first if this class resurfaces:
   `const_borrow_form_tuple_locals`, whose const verdict comes from a whole-body
   fixpoint pre-pass (`_compute_borrow_tuple_const`) that THIR has no analog for --

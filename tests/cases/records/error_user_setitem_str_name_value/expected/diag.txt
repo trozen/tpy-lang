@@ -1,0 +1,1 @@
+main.py:22: error: in function 'use': this construct is not yet supported by C++ code generation (stmt.assign:setitem.family)

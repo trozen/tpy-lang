@@ -28,6 +28,12 @@ int32_t dget(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k) {
     return ::tpy::__getitem__(d, k);
 }
 
+// def read_through_call(b: Box) -> Int32:
+int32_t read_through_call(Box& b) {
+    // return b.get()[0]  # tpyc: ok -- the receiver is a CALL, not a name
+    return ::tpy::__getitem__(b.get(), 0);
+}
+
 // def main() -> None:
 void main() {
     // xs = [10, 20, 30]
@@ -42,6 +48,9 @@ void main() {
     ::tpy::ordered_map<int32_t, int32_t> scores = ::tpy::ordered_map<int32_t, int32_t>({{1, 100}, {2, 200}});
     // print(dget(scores, 2))
     std::cout << dget(scores, 2) << "\n";
+    // print(read_through_call(Box()))
+    Box __tmp_1 = Box();
+    std::cout << read_through_call(__tmp_1) << "\n";
 }
 
 void __tpy_init() {

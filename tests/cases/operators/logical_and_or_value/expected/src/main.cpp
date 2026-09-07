@@ -192,6 +192,13 @@ void test_as_arg_and_return() {
     std::cout << returns_int(0, 5) << "\n";
 }
 
+// def test_bool_operands(flag: bool, other: bool) -> bool:
+bool test_bool_operands(bool flag, bool other) {
+    // # Both operands are already bool, so the value-select result IS bool.
+    // return flag and other  # tpyc: ok
+    return (flag && other);
+}
+
 // def test_mixed_returns_bool() -> None:
 void test_mixed_returns_bool() {
     // a: Int32 = 1
@@ -376,6 +383,8 @@ void main() {
     test_or_with_literal();
     // test_as_arg_and_return()
     test_as_arg_and_return();
+    // print(test_bool_operands(True, False), test_bool_operands(True, True))
+    std::cout << ::tpy::print_bool(test_bool_operands(true, false)) << " " << ::tpy::print_bool(test_bool_operands(true, true)) << "\n";
     // test_mixed_returns_bool()
     test_mixed_returns_bool();
     // test_condition_context()

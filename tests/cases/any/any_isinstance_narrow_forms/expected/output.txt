@@ -1,0 +1,7 @@
+int 1
+str s
+other
+True
+False
+True
+False

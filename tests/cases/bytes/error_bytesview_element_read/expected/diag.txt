@@ -1,0 +1,1 @@
+main.py:7: error: in function 'first_len': this construct is not yet supported by C++ code generation (stmt.var_decl:subscript.elem.bytes)

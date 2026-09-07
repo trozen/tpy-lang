@@ -1,0 +1,5 @@
+CPython makes `gate` a function-local for the whole body once it is assigned
+anywhere in it, so `y = gate.x` raises UnboundLocalError; TPy resolves the
+read to the module global. Tracked as
+BUGS.md#read-before-local-shadow-resolves-global -- this case pins the
+compiler's current arm, not the parity.

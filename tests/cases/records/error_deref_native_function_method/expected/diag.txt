@@ -1,0 +1,1 @@
+main.py:19: error: in function 'last': this construct is not yet supported by C++ code generation (expr.method_call:method.marker.deref.builtin)

@@ -1,0 +1,1 @@
+main.py:29: error: in function 'probe': this construct is not yet supported by C++ code generation (stmt.expr_stmt:binop.shape.in.record)

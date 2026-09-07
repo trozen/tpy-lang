@@ -1,0 +1,2 @@
+main.py:13: warning: rebinding 'c' drops the previous coroutine without running it
+main.py:15: warning: rebinding 'c' drops the previous coroutine without running it

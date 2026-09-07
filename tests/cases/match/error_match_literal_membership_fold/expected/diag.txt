@@ -1,0 +1,1 @@
+main.py:11: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.if:if.cond_binop.in.other_literaltype_tuple:match.literal_fold)
