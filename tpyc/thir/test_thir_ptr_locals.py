@@ -1383,12 +1383,11 @@ class TestCopyPointerLocalRecord:
         out = "".join(_assert_routes_byte_identical(self._HOISTED))
         assert "Point dup = Point((*saved));" in out
 
-    def test_plain_record_name_copy_at_the_qualified_tail_defers(self):
-        # BOUNDARY (dualgen-probed): a NON-pointer record NAME reaches the
-        # same qualified tail with no deref, and the row is deliberately
-        # keyed on the pointer-local flavor -- `_lower_copy_record`'s
-        # `T(x)` row owns that shape at the sinks that intercept it, and
-        # this decl sink is not one of them.
+    def test_plain_record_name_copy_at_the_qualified_tail_has_no_deref(self):
+        # The pointer-local row's inverse at the same qualified tail: a
+        # NON-pointer record NAME takes the twin arm beside it and spells no
+        # indirection (`_lower_copy_record`'s `T(x)` row owns the shape at
+        # the sinks that intercept it, and this decl sink is not one).
         src = (self._P
                + "def plain_copy(src: Point) -> Int32:\n"
                + "    dup = tpy.copy(src)\n"
@@ -1396,8 +1395,12 @@ class TestCopyPointerLocalRecord:
                + "def main() -> None:\n"
                + "    print(plain_copy(Point(5)))\n"
                + "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.call:call.copy_source.record_f1")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "plain_copy") is not None
+        assert faces.get("call.copy_record")
+        assert not faces.get("call.copy_record_ptr", 0)
+        assert "Point dup = Point(src);" in "".join(
+            _assert_routes_byte_identical(src))
 
 
 class TestPtrValueHoistAndTernary:

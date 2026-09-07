@@ -207,11 +207,12 @@ committed `error_` cases changed reject TAG (not verdict) because the arm that
 rejects them is now the reference one. **The second flip was withdrawn by the
 tail review**: the record arm's copy-initialization from a borrow return is a
 silent CPython divergence (TPy 2, CPython 3), so extending it to containers
-extended the divergence. The container half now takes a located reject
+extended the divergence. The container half took a located reject
 (`return.container_borrow_call_needs_copy`,
-`returns/error_return_container_borrow_method_own`) and the sema root -- the
-copy warning that skips `is_return` -- is filed for both halves at once
-(`BUGS.md#own-return-borrow-call-silent-copy`). Six container return faces retired into
+`returns/warn_return_container_borrow_method_own`) until the sema root was
+fixed later the same day: an `Own` slot now reads a borrow-returning call as a
+borrowed source, so both halves take the same sema error and that reject is
+gone. Six container return faces retired into
 their record counterparts; the five with no counterpart (literal, repeat, comp,
 ptr_local, borrow_global) stay.
 

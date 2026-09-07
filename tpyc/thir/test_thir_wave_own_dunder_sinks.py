@@ -102,26 +102,6 @@ class TestOwnDunderStorageReturn:
         assert "v = &*(__slot_2 = (((*v)) + (inc)));" in out
         assert "v = &*(__slot_2 = ((inc) + ((*v))));" in out
 
-    def test_borrow_returning_dunder_return_keeps_rejecting(self):
-        # BOUNDARY: the discriminator. A dunder returning the operand ALIAS
-        # is not an rvalue source, so the Own[...] slot's copy-from-reference
-        # render stays on the AST path.
-        src = (
-            "from tpy import Int32, Own\n"
-            "class Acc:\n"
-            "    n: Int32\n"
-            "    def __init__(self, n: Int32) -> None:\n"
-            "        self.n = n\n"
-            "    def __add__(self, o: Acc) -> Acc:\n"
-            "        return self if self.n >= o.n else o\n"
-            "def bigger(a: Acc, b: Acc) -> Own[Acc]:\n"
-            "    return a + b\n"
-            "def use() -> None:\n"
-            "    print(bigger(Acc(3), Acc(1)).n)\n"
-            "use()\n"
-        )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.record_source.TpyBinOp.storage")
 
 
 class TestInplaceDunderRecordValue:

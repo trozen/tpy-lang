@@ -63,9 +63,11 @@ ordered_set<T> set_copy(const ordered_set<T>& s) {
 
 // -- Methods ----------------------------------------------------------------
 
-// s.remove(value) -- throws KeyError if not present
-template<typename T>
-void set_remove(ordered_set<T>& s, const T& value) {
+// s.remove(value) -- throws KeyError if not present. The lookup key is its own
+// template parameter (see list_remove): a lookup argument arrives in the read
+// form, and `ordered_set::erase` compares it against the stored elements.
+template<typename T, typename U>
+void set_remove(ordered_set<T>& s, const U& value) {
     if (!s.erase(value)) {
         raise_key_error("KeyError");
     }

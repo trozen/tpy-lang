@@ -1,1 +1,1 @@
-main.py:21: error: in function 'borrowed': this construct is not yet supported by C++ code generation (stmt.return:return.record_source.TpyBinOp.storage)
+main.py:24: error: in function 'borrowed': this construct is not yet supported by C++ code generation (stmt.return:binop.shape.+.record)

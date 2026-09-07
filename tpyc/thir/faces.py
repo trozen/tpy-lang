@@ -413,7 +413,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "own.native_record_rvalue",     # ... its @native Own-returning residue
     "own.opt_ptr_name_rebuild",     # ptr-repr Optional name into the
                                     # same slot: null-safe move rebuild
-    "own.record_copy",              # copy(name) into Own[record]: T(x)
+    "own.copy_construct",           # copy(x) into an Own[T] slot: T(x)
     "method.protocol_discard",      # discarded protocol-method result in
                                     # statement position -- bare call
     "method.record_discard",        # discarded F1-record method result at
@@ -1298,6 +1298,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.record_deref_coerce",      # `return ptr` (Ptr[T] local/param) at the
                                     # borrow return -> `deref_check(ptr)`
     "ret.record_self",              # `return self` -> `return (*this);`
+    "ret.self_move",                # `return self` in a consuming method
+                                    # -> `return std::move((*this));`
     "ret.record_field",             # `return recv.field` at the borrow slot
     "ret.record_subscript",         # `return c[i]` -- container record element
     "ret.ptr_opt_field",            # `return self.f` (Optional[record] field)
@@ -1924,6 +1926,17 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy(acc)` of a POINTER-LOCAL record source -> `Tag((*acc))` (the
     # general tail over the indirect read).
     "call.copy_record_ptr",
+    # ... and its non-pointer twin, the container arm's record leg: a
+    # record source no sink intercepts (a field read, a borrow-returning
+    # call, an awaited borrow) -> `Point(h.brec())`.
+    "call.copy_record",
+    # The result-use GATE for both of those (admission, not render): the
+    # `copy()` callee reaching the generic call tail at a storage / value /
+    # borrow-bind sink.
+    "call.copy_construct_ret",
+    # The IMPLICIT copy an owning RETURN slot performs on a borrowed source
+    # sema warned about -- the same copy-construct node, at the ladder tail.
+    "ret.borrowed_copy",
     # `copy(s)` of a str NAME -> `std::string(s)` (the explicit owned copy).
     "call.copy_str",
     # ... the non-owned-str half of that row: a VIEW-resolved str source or

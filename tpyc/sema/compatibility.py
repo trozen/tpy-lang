@@ -24,7 +24,8 @@ from ..typesys import (
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     disambiguated_pair, ConcreteCoroType)
 from .. import qnames
-from ..value_category import async_result_aliases
+from ..value_category import (
+    async_result_aliases, peel_value_wrappers, returns_borrow)
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
@@ -35,26 +36,13 @@ from ..parse import (
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
     TpyAwait, SourceLocation
 )
-
-
-def _peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
-    """Unwrap coercions and walrus wrappers to the value expression a
-    return/yield actually hands out -- `return (t := items[0])` hands out
-    the subscript read, so provenance checks must see through the binding.
-    """
-    while True:
-        if isinstance(expr, TpyCoerce):
-            expr = expr.expr
-        elif isinstance(expr, TpyNamedExpr):
-            expr = expr.value
-        else:
-            return expr
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
 from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
-from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
+from ..diagnostics import (
+    SemanticError, NOCOPY_REMEDIATION_HINT)
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
@@ -1065,8 +1053,17 @@ class TypeCompatibility:
             ptr_repr_tuple = (isinstance(ew, TupleType)
                               and ew.has_nested_pointer_repr_element())
             ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
+            # A call that hands back a borrow is copied into the owning slot
+            # exactly as a name or a field is, so it belongs to the same
+            # family -- but not when the payload is still a type parameter:
+            # there the copy is the generic callee's decision, and `copy()`
+            # cannot even be spelled at such a slot because the payload may
+            # be `readonly[T]` (BUGS.md#generic-own-slot-borrow-call-unwarned).
             arrives_borrowed = (self.is_lvalue(source_expr)
-                                or self._tuple_call_carries_borrow(source_expr))
+                                or self._tuple_call_carries_borrow(source_expr)
+                                or (returns_borrow(self.ctx, source_expr)
+                                    and not isinstance(ew, TypeParamRef)))
+            warned_ptr_repr_tuple = False
             if (not is_return and source_expr is not None
                     and (ref_scalar or ptr_repr_tuple)
                     and arrives_borrowed
@@ -1085,39 +1082,42 @@ class TypeCompatibility:
                         for diag_idx in range(before, len(self.ctx.diagnostics)):
                             self.ctx.func.deferred_loop_copy_warnings.setdefault(
                                 source_expr.name, []).append(diag_idx)
-                    return self._check_compat(actual, ew, context, loc,
-                                              source_expr, is_return,
-                                              coercion_ctx, target_is_storage_form)
-                value_type = self._copy_diag_type(self.ctx.get_expr_type(source_expr))
-                if self.ctx.is_type_non_copyable(expected.wrapped):
-                    verb = "may copy" if isinstance(expected.wrapped, TypeParamRef) else "cannot copy"
-                    if value_type == expected.wrapped:
-                        msg = (f"{verb} non-copyable type '{expected.wrapped}' "
-                               f"into owned storage{NOCOPY_REMEDIATION_HINT}")
-                    else:
-                        msg = (f"{verb} {value_type} into owned storage of type "
-                               f"'{expected.wrapped}'; target is non-copyable{NOCOPY_REMEDIATION_HINT}")
-                    raise self.ctx.error(msg, source_expr)
-                if isinstance(expected.wrapped, TypeParamRef):
-                    self.ctx.warning(
-                        f"may copy {value_type} into owned storage if not a value type; use copy() to make this explicit",
-                        source_expr
-                    )
+                    warned_ptr_repr_tuple = True
                 else:
-                    self.ctx.warning(
-                        f"copies {value_type} into owned storage; use copy() to make this explicit",
-                        source_expr
-                    )
-                # For loop variables at last use, the consuming decision is
-                # made post-body. Record the diagnostic index so it can be
-                # suppressed if the loop activates consuming iteration
-                # (elements at last use will be moved, not copied).
-                if (isinstance(source_expr, TpyName)
-                        and source_expr.name in self.ctx.func.loop_vars
-                        and id(source_expr) in self.ctx.all_last_uses):
-                    diag_idx = len(self.ctx.diagnostics) - 1
-                    self.ctx.func.deferred_loop_copy_warnings.setdefault(
-                        source_expr.name, []).append(diag_idx)
+                    value_type = self._copy_diag_type(self.ctx.get_expr_type(source_expr))
+                    if self.ctx.is_type_non_copyable(expected.wrapped):
+                        verb = "may copy" if isinstance(expected.wrapped, TypeParamRef) else "cannot copy"
+                        if value_type == expected.wrapped:
+                            msg = (f"{verb} non-copyable type '{expected.wrapped}' "
+                                   f"into owned storage{NOCOPY_REMEDIATION_HINT}")
+                        else:
+                            msg = (f"{verb} {value_type} into owned storage of type "
+                                   f"'{expected.wrapped}'; target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                        raise self.ctx.error(msg, source_expr)
+                    if isinstance(expected.wrapped, TypeParamRef):
+                        self.ctx.warning(
+                            f"may copy {value_type} into owned storage if not a value type; use copy() to make this explicit",
+                            source_expr
+                        )
+                    else:
+                        self.ctx.warning(
+                            f"copies {value_type} into owned storage; use copy() to make this explicit",
+                            source_expr
+                        )
+                    # For loop variables at last use, the consuming decision is
+                    # made post-body. Record the diagnostic index so it can be
+                    # suppressed if the loop activates consuming iteration
+                    # (elements at last use will be moved, not copied).
+                    if (isinstance(source_expr, TpyName)
+                            and source_expr.name in self.ctx.func.loop_vars
+                            and id(source_expr) in self.ctx.all_last_uses):
+                        diag_idx = len(self.ctx.diagnostics) - 1
+                        self.ctx.func.deferred_loop_copy_warnings.setdefault(
+                            source_expr.name, []).append(diag_idx)
+            if warned_ptr_repr_tuple:
+                return self._check_compat(actual, ew, context, loc,
+                                          source_expr, is_return,
+                                          coercion_ctx, target_is_storage_form)
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
             # Only applies when record names differ (different types, not parametric covariance).
@@ -2056,17 +2056,23 @@ class TypeCompatibility:
 
     def check_own_lvalue_into_own(
         self, own_type: OwnType, expr: TpyExpr, context: str,
-        *, action: str = "return",
+        *, action: str = "return", whole_slot: bool = True,
     ) -> None:
-        """Check that an lvalue feeding an Own[T] slot is movable, an explicit
-        copy(), or otherwise safe to consume.
+        """Check that a borrowed source feeding an Own[T] slot is movable, an
+        explicit copy(), or otherwise safe to consume.
+
+        Borrowed means aliasing storage that outlives the expression -- an
+        lvalue, or a borrow-returning call; the slot's question is not
+        whether the source has an address.
 
         Used by:
         - return-statement Own[T] / per-element Own[tuple[T,...]] checks
-          (action="return"); error message says "Cannot return borrowed
-          value as ...".
+          (action="return"); a borrowed source COPIES and warns, the same
+          text the insert / `Own[T]` parameter / `yield` slots emit.
         - call-arg Own[tuple[T,...]] per-element check (action="pass");
-          error message says "Cannot pass borrowed value as ...".
+          a borrowed source is an error ("Cannot pass borrowed value as
+          ..."): the user opted into ownership by spelling
+          `Own[tuple[...]]`, so the silent copy is the bug being caught.
 
         Args:
             own_type: The Own[T] slot type.
@@ -2074,12 +2080,34 @@ class TypeCompatibility:
             context: Slot description for error messages, e.g. "return type",
                 "tuple element 1", "argument 'pname' element 0".
             action: "return" or "pass" -- selects the verb in error messages.
+            whole_slot: the source fills the WHOLE `Own[T]` slot. False for
+                one element of a returned `Own[tuple[...]]`, where the copy
+                is per element and has no render, so it stays an error.
         """
         if self.is_copy_call(expr):
             self.check_own_consumption(expr)
             return
-        if not self.is_lvalue(expr):
+        borrowed = returns_borrow(self.ctx, expr)
+        is_lvalue = self.is_lvalue(expr)
+        if not (is_lvalue or borrowed):
             return
+        self._check_own_borrowed_source(
+            own_type, expr, context, action,
+            from_call=borrowed and not is_lvalue,
+            whole_slot=whole_slot)
+
+    def _check_own_borrowed_source(
+        self, own_type: OwnType, expr: TpyExpr, context: str, action: str,
+        *, from_call: bool, whole_slot: bool = True,
+    ) -> None:
+        """`check_own_lvalue_into_own`'s tail, once the source is known to be
+        borrowed: at a RETURN it warns and copies, at a `pass` it rejects --
+        unless the source is a value type, a movable Own local, or a
+        consuming method's own field. A `@nocopy` payload errors at either,
+        because there is no copy for the warning to describe. `from_call`
+        says the source is a borrow-returning CALL rather than an lvalue --
+        it takes a different remedy at the `pass` slot, and the caller is
+        the only place that knows."""
         # Value types are always safe -- copied, not aliased. OwnType.is_value_type
         # returns True (Own represents a moved value), so we have to peel Own
         # first to see whether the underlying T is genuinely a value type.
@@ -2129,7 +2157,27 @@ class TypeCompatibility:
                 f"Only the original owner can be moved at its last use.",
                 expr
             )
+        if action == "return" and whole_slot:
+            # The RETURN slot copies and says so, exactly as the insert, the
+            # `Own[T]` parameter and the `yield` do -- one owning-slot rule,
+            # one text, and `copy(...)` silences it at all four. The copy is
+            # an acknowledged CPython divergence (CPython hands back the very
+            # object), which is what the warning declares.
+            self.ctx.warning(
+                f"copies {self._copy_diag_type(self.ctx.get_expr_type(expr))} "
+                f"into owned storage; use copy() to make this explicit",
+                expr
+            )
+            return
         verb = "return" if action == "return" else "pass"
+        if from_call:
+            raise self.ctx.error(
+                f"Cannot {verb} borrowed value as {context} "
+                f"Own[{own_type.wrapped}] without explicit copy(). The call "
+                f"hands back a borrow of storage that outlives it; use "
+                f"'copy(...)' to make an owned copy.",
+                expr
+            )
         raise self.ctx.error(
             f"Cannot {verb} borrowed value as {context} Own[{own_type.wrapped}] "
             f"without explicit copy(). The source is borrowed (parameter, "
@@ -2386,6 +2434,13 @@ class TypeCompatibility:
         rvalue_vars for variables excluded from OwnType wrapping
         (reassigned vars, move-through vars).
         """
+        # A consuming method (`self: Own[Self]`) owns its receiver: `self` is
+        # this frame's value, so its last use relocates it exactly as an
+        # `Own[T]` param does. Same ownership fact the `self.field` arm in
+        # `_check_own_borrowed_source` reads, one level up -- `self` is not in
+        # `func.params`, so the loop below never sees it.
+        if name == "self" and self.ctx.in_consuming_method:
+            return True
         func = self.ctx.func.current_function
         if isinstance(func, TpyFunction):
             # Own[T] params, and owned-element tuple params (the ownership-
@@ -3103,7 +3158,7 @@ class TypeCompatibility:
         the pre-coercion `source_type` member types to tell a wrap-into-wrapper
         leaf from a reference to an existing wrapper.
         """
-        inner = _peel_value_wrappers(expr)
+        inner = peel_value_wrappers(expr)
         # A ternary returns whichever arm is taken -- check both.
         if isinstance(inner, TpyIfExpr):
             self._check_tuple_elem_dangle(tuple_type, inner.then_expr, verb,
@@ -3214,7 +3269,7 @@ class TypeCompatibility:
         the storage form), unlike a borrow-form tuple call result whose
         pointers the callee already proved durable.
         """
-        inner = _peel_value_wrappers(expr)
+        inner = peel_value_wrappers(expr)
         if not isinstance(inner, (TpyCall, TpyMethodCall)):
             return False
         fi = inner.resolved_function_info
@@ -3245,7 +3300,7 @@ class TypeCompatibility:
         Without this the copy still fired (codegen does recurse) while the
         warning did not, which is a silent copy.
         """
-        inner = _peel_value_wrappers(expr)
+        inner = peel_value_wrappers(expr)
         if isinstance(inner, TpyIfExpr):
             then_t = cls._borrow_carrying_tuple_return(inner.then_expr)
             else_t = cls._borrow_carrying_tuple_return(inner.else_expr)
@@ -3298,7 +3353,7 @@ class TypeCompatibility:
                 and tuple_type.has_nested_pointer_repr_element()):
             return False
         if source_expr is not None:
-            if isinstance(_peel_value_wrappers(source_expr), TpyTupleLiteral):
+            if isinstance(peel_value_wrappers(source_expr), TpyTupleLiteral):
                 return False
             if self.is_copy_call(source_expr):
                 return False
@@ -3397,7 +3452,7 @@ class TypeCompatibility:
         but its borrowed elements alias the caller exactly as an lvalue's do,
         and the sink copies them just the same, so it takes the per-element-type
         path too."""
-        peeled = _peel_value_wrappers(elem)
+        peeled = peel_value_wrappers(elem)
         if isinstance(peeled, TpyTupleLiteral):
             return self.warn_tuple_literal_member_copy(
                 peeled, tuple_type, dest, elem_path)
@@ -3413,7 +3468,7 @@ class TypeCompatibility:
         fact, or a ternary with an owning arm (the result aliases either,
         so it is hazardous if either is -- matching the fresh-fact merge).
         """
-        inner = _peel_value_wrappers(expr)
+        inner = peel_value_wrappers(expr)
         if isinstance(inner, TpyIfExpr):
             return (self._derive_owning_storage(inner.then_expr)
                     or self._derive_owning_storage(inner.else_expr))
@@ -3472,7 +3527,7 @@ class TypeCompatibility:
             return False
         if self.is_owned_last_use_move(elem):
             return False
-        raw = self.ctx.get_raw_expr_type(_peel_value_wrappers(elem))
+        raw = self.ctx.get_raw_expr_type(peel_value_wrappers(elem))
         if raw is None:
             return False
         unwrapped = unwrap_ref_type(raw)
@@ -3500,7 +3555,7 @@ class TypeCompatibility:
             return False
         if not self.is_lvalue(elem):
             return False
-        raw = self.ctx.get_raw_expr_type(_peel_value_wrappers(elem))
+        raw = self.ctx.get_raw_expr_type(peel_value_wrappers(elem))
         if raw is None:
             return False
         unwrapped = unwrap_ref_type(raw)
@@ -3593,7 +3648,7 @@ class TypeCompatibility:
         trips both surfaces the dangle. The two facts may flag different element
         indices; the re-check below resolves each against the boundary type.
         """
-        inner = _peel_value_wrappers(expr)
+        inner = peel_value_wrappers(expr)
         # A ternary returns whichever arm is taken -- check both.
         if isinstance(inner, TpyIfExpr):
             self._check_tuple_member_local(tuple_type, inner.then_expr, verb)
@@ -3631,7 +3686,7 @@ class TypeCompatibility:
         """
         if not tuple_type.has_pointer_repr_element():
             return
-        inner = _peel_value_wrappers(expr)
+        inner = peel_value_wrappers(expr)
         # A ternary returns whichever arm is taken -- check both.
         if isinstance(inner, TpyIfExpr):
             self._check_tuple_storage_return_root(tuple_type, inner.then_expr)

@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <cstring>
 #include <expected>
+
+#include "lookup_key.hpp"
 #include <format>
 #include <functional>
 #include <ranges>
@@ -168,17 +170,18 @@ inline char __getitem__(std::string_view x, int32_t i) {
     return x[idx];
 }
 
-// Overload: ordered_map (dict) -- key can be any compatible type
+// Overload: ordered_map (dict) -- the key is forwarded in the form it arrives
+// in; ordered_map::find decides whether it can probe the table directly.
 template<typename K, typename V, typename KeyArg>
 const V& __getitem__(const ordered_map<K, V>& m, const KeyArg& key) {
-    auto it = m.find(K(key));
+    auto it = m.find(key);
     if (it == m.items_end()) raise_key_error("KeyError");
     return (*it).second;
 }
 
 template<typename K, typename V, typename KeyArg>
 V& __getitem__(ordered_map<K, V>& m, const KeyArg& key) {
-    auto it = m.find(K(key));
+    auto it = m.find(key);
     if (it == m.items_end()) raise_key_error("KeyError");
     return (*it).second;
 }
@@ -253,7 +256,7 @@ void __delitem__(std::vector<T>& x, int32_t i) {
 // Overload: ordered_map (dict) -- throws KeyError on missing key
 template<typename K, typename V, typename KeyArg>
 void __delitem__(ordered_map<K, V>& m, const KeyArg& key) {
-    if (!m.erase(K(key))) {
+    if (!m.erase(key)) {
         raise_key_error("KeyError");
     }
 }
@@ -825,42 +828,4 @@ using with_enter_t =
 
 } // namespace tpy
 
-// std::hash specialization for bytes (needed by std::unordered_map/set)
-template<>
-struct std::hash<std::vector<uint8_t>> {
-    size_t operator()(const std::vector<uint8_t>& v) const noexcept {
-        return std::hash<std::string_view>{}(
-            std::string_view(reinterpret_cast<const char*>(v.data()), v.size()));
-    }
-};
 
-// std::hash + std::equal_to specializations for BytesView (std::span<const uint8_t>).
-// std::span has no built-in operator==, so unordered_map/set need an explicit
-// equality comparator alongside the hash.
-template<>
-struct std::hash<std::span<const uint8_t>> {
-    size_t operator()(std::span<const uint8_t> v) const noexcept {
-        // Empty span may hold (nullptr, 0); string_view's hash on a null
-        // pointer is implementation-defined. Match equal_to's empty short-circuit.
-        if (v.empty()) return 0;
-        return std::hash<std::string_view>{}(
-            std::string_view(reinterpret_cast<const char*>(v.data()), v.size()));
-    }
-};
-template<>
-struct std::equal_to<std::span<const uint8_t>> {
-    bool operator()(std::span<const uint8_t> a, std::span<const uint8_t> b) const noexcept {
-        if (a.size() != b.size()) return false;
-        // memcmp on null pointers is UB even with size 0; std::span is
-        // allowed to hold (nullptr, 0) for an empty span.
-        return a.empty() || std::memcmp(a.data(), b.data(), a.size()) == 0;
-    }
-};
-
-// std::hash specialization for tuples (needed by std::unordered_map/set)
-template<typename... Ts>
-struct std::hash<std::tuple<Ts...>> {
-    size_t operator()(const std::tuple<Ts...>& t) const noexcept {
-        return static_cast<size_t>(tpy::__hash__(t));
-    }
-};

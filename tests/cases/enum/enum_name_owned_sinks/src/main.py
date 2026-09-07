@@ -33,6 +33,8 @@ def view_positions(c: Color) -> None:
 
 def owned_slot(c: Color) -> None:
     xs: list[str] = []
+    # The element slot's view->owned convert renders inline -- the source is
+    # a view read, so there is nothing to move out of and no temp to hoist.
     xs.append(c.name)  # tpyc: ok
     print(xs)
 

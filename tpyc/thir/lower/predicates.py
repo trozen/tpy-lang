@@ -7630,7 +7630,7 @@ def _btuple_literal_elems_rvalue(a: 'TpyTupleLiteral', slot: 'TupleType',
 def copy_call_arg(e: TpyExpr, analyzer) -> 'TpyExpr | None':
     """The single argument of a `copy(x)` builtin call, or None.
 
-    The three copy-render predicates (`copy_plain_record_source`,
+    The three copy-render predicates (`copy_construct_source`,
     `copy_ctor_rvalue_source`, `copy_ptr_optional_peel`) each discriminate a
     DIFFERENT branch of that render, but they share this entry test -- keeping
     it in one place stops the guard itself from drifting between them."""

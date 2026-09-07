@@ -433,7 +433,8 @@ from .checks import (
     _borrow_form_tuple_call,
     _storage_field_ternary,
     _builtin_value_record,
-    copy_plain_record_source,
+    copy_construct_source,
+    copy_construct_form,
     _print_tuple_record_elem,
     _borrow_tuple_local_type,
     _container_lit_elem_ok,
@@ -518,6 +519,7 @@ from .expressions import (
     _lower_dyn_own_conformer,
     _lower_class_const_write_target,
     _lower_copy_record,
+    lower_copy_construct,
     _lower_ctor_call_args,
     _lower_container_elem,
     _lower_elem_into_any,
@@ -2764,7 +2766,7 @@ def _rebind_rvalue_source_ok(init: TpyExpr, target_t: TpyType,
     # render intercepts the row itself (the special-builtin call gate
     # rejects copy() in the generic tail); a source outside the row's
     # slice raises there, keeping the fail-closed contract.
-    if copy_plain_record_source(init, analyzer, frozenset()) is not None:
+    if copy_construct_source(init, analyzer, frozenset()) is not None:
         return True
     # An rvalue F1-record METHOD call (`cur = nxt.clone()` ->
     # `cur = &*(__slot_N = nxt->clone());`): the reseat twin of the decl's
@@ -7148,6 +7150,22 @@ def _finally_deferred_recipe(
     ret_u = unwrap_ref_type(ret) if ret is not None else None
     if ret_u is None:
         return None
+    # A CONSUMING method's receiver is an owned source like any Own[T] local,
+    # so sema stamps `return self` under a finally the same way -- but there
+    # is no C++ local called `self`, and the deferral is what the shape needs:
+    # a finally that mutates the receiver must be seen by the returned object
+    # (CPython hands back the very object). So the receiver keeps the
+    # deferred capture and only its BASE render changes, to the receiver read
+    # every other `self` site emits. The move that follows is the recipe's own
+    # `std::move(*p)`, so `return self` has one move path either way.
+    if name == lc.self_receiver:
+        if isinstance(ret_u, (OptionalType, TupleType, UnionType)):
+            return None
+        return THIRFinallyDeferredReturn(
+            capture=THIRSelf(result_type=declared[name], form=Form.BORROW,
+                             cpp=lc.self_cpp, deref=lc.self_is_pointer,
+                             loc=getattr(value, "loc", None)),
+            indirect=False, optional_move=False, loc=loc)
     indirect = name in lc.pointers
     # A resumable frame slot reads `(*name)`, which is the local's own
     # spelling rather than a pointer wrap -- so it rides the capture
@@ -8651,7 +8669,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                                analyzer)
                         # `copy(x)` of the slot's own record: the same
                         # copy-construct rvalue (`&*(__slot_N = Point(p))`).
-                        or copy_plain_record_source(
+                        or copy_construct_source(
                             stmt.init, analyzer, frozenset())
                         == unwrap_readonly(decl_u.inner)):
                     note_detail("decl.opt_reseat_source")
@@ -12324,20 +12342,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # STORAGE slot: the callee's borrow return renders bare and
                 # the return slot copies from the reference (no move -- a
                 # borrowed source is never stolen from). Same lowering use
-                # as the borrow-slot passthrough arm below.
-                if _f1_container_ref(_binding_peel(
-                        lc.prescan.ret_record_storage)):
-                    # A CONTAINER storage slot takes the same silent copy,
-                    # and there the copy is observable: CPython aliases the
-                    # borrowed container, so the caller's mutations are
-                    # invisible at the source. Method AND free-function
-                    # spellings reject here (the free one used to compile
-                    # into the same silent copy). The copy has to be spelled
-                    # (`copy()`) until the sema warning that demands it
-                    # covers the return position:
-                    # BUGS.md#own-return-borrow-call-silent-copy.
-                    note_detail("return.container_borrow_call_needs_copy")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                # as the borrow-slot passthrough arm below. Sema warned about
+                # the copy this renders -- a borrow-returning call at an
+                # owning slot is a borrowed source whatever its receiver is
+                # -- record and container alike, at every Own spelling
+                # including `readonly[Own[T]]`.
                 _witness("ret.record_ref_call_storage")
                 return THIRReturn(
                     value=_lower_expr(
@@ -12420,6 +12429,45 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     pointers)
                 _witness("ret.container_comp")
                 return THIRReturn(value=comp, loc=loc)
+            if (not record_ok
+                    and lc.prescan.ret_record_storage is not None
+                    and isinstance(stmt.value, TpyName)
+                    and stmt.value.name == lc.self_receiver
+                    and _is_move_source(stmt.value, lc)):
+                # `return self` in a CONSUMING method: the receiver is this
+                # frame's own value, so the owning return relocates it
+                # (`return std::move((*this));`) rather than copying. Ahead of
+                # the borrowed-copy arm below because the receiver reads as an
+                # lvalue there; the move fact is sema's (`_is_owned_var`), and
+                # the deref rides the receiver's own read.
+                _witness("ret.self_move")
+                _sv = _lower_expr(stmt.value, lc, declared)
+                return THIRReturn(
+                    value=THIRMove(result_type=_sv.result_type, value=_sv,
+                                   form=_sv.form, loc=loc),
+                    loc=loc)
+            if (not record_ok
+                    and lc.prescan.ret_record_storage is not None
+                    and not is_rvalue_source(analyzer, stmt.value)
+                    and copy_construct_form(stmt.value, pointers, analyzer)):
+                # The IMPLICIT copy the owning return slot performs on a
+                # BORROWED source (a field read, a ternary of borrow calls):
+                # sema warned that this copies where CPython aliases, so the
+                # render is the copy it warned about -- the same
+                # copy-construct node `copy()` spells, keyed on the source's
+                # value form, one arm for either payload family. LAST in the
+                # ladder, so every source an arm above renders keeps its own
+                # spelling (a by-value return slot copy-constructs from a
+                # bare borrow read on its own).
+                _ret_cc = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    analyzer.get_expr_type(stmt.value))))
+                if (_f1_record(_ret_cc, analyzer)
+                        or _f1_container_ref(_ret_cc)):
+                    _witness("ret.borrowed_copy")
+                    return THIRReturn(
+                        value=lower_copy_construct(
+                            stmt.value, _ret_cc, lc, declared, loc=loc),
+                        loc=loc)
             if not record_ok:
                 note_detail(_record_source_reject_detail(
                     stmt.value, pointers, narrowed,

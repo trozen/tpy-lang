@@ -10,9 +10,8 @@ from __future__ import annotations
 
 from ..codegen_cpp.context import CodeGenOptions
 from .testutil import (
-    _reject_tally, _assert_byte_identical, _assert_rejects_at,
-                       _assert_routes_byte_identical, _compile, _entry,
-                       _lower_ctx_witnessed)
+    _assert_byte_identical, _assert_routes_byte_identical, _compile, _entry,
+    _lower_ctx_witnessed)
 
 
 class TestOwnedBytesCallRvalueAtOwnSlot:
@@ -37,21 +36,3 @@ class TestOwnedBytesCallRvalueAtOwnSlot:
         _thir, faces = _lower_ctx_witnessed(self._SRC)
         assert faces.get("arg.bytes_owned_call", 0) == 1
 
-    def test_view_returning_call_stays_ast(self):
-        # BOUNDARY: a view result still owes the view->owned materialize at
-        # this slot, which is the convert row's render, not a bare bind.
-        src = ("from tpy import BytesView\n"
-               "def view_of(b: bytes) -> BytesView:\n"
-               "    return b\n"
-               "class Sink:\n"
-               "    chunks: list[bytes]\n"
-               "    def __init__(self) -> None:\n"
-               "        self.chunks = []\n"
-               "    def add(self, b: bytes) -> None:\n"
-               "        self.chunks.append(view_of(b))\n"
-               "def main() -> None:\n"
-               "    s = Sink()\n"
-               "    s.add(b\"ab\")\n"
-               "    print(len(s.chunks))\n"
-               "main()\n")
-        _assert_rejects_at(_reject_tally(src), 'body:expr.method_call', 'method.arg_shape')

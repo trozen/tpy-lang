@@ -1226,41 +1226,17 @@ class TestErrorReturnAliasRebindSlotTarget:
 
 
 class TestRefCallAtStorageReturn:
-    """A ref-returning call at the Own[record] STORAGE return slot renders
-    bare and the slot copies from the reference (`return p.updated();`,
-    `return positive(x, y).updated()` -- the er-receiver flavor)."""
-
-    _POINT = (
-        "from tpy import Int32, Own, Self\n"
-        "class Point:\n"
-        "    x: Int32\n"
-        "    def __init__(self, x: Int32) -> None:\n"
-        "        self.x = x\n"
-        "    def updated(self) -> Self:\n"
-        "        self.x += 1\n"
-        "        return self\n")
-
-    def test_method_ref_call_storage_return_routes(self):
-        from .testutil import (_assert_routes_byte_identical,
-                               _lower_ctx_witnessed)
-        src = (
-            self._POINT
-            + "def bump(p: Point) -> Own[Point]:\n"
-            + "    return p.updated()\n"
-            + "def main() -> None:\n"
-            + "    p = Point(1)\n"
-            + "    q = bump(p)\n"
-            + "    q.x = 10\n"
-            + "    print(p.x, q.x)\n"
-            + "main()\n")
-        _hpp, cpp = _assert_routes_byte_identical(src)
-        _thir, wit = _lower_ctx_witnessed(src)
-        assert wit.get("ret.record_ref_call_storage", 0) >= 1
-        assert "return p.updated();" in cpp
+    """A ref-returning call on a TEMPORARY receiver at the Own[record]
+    STORAGE return slot renders bare and the slot copies from the reference
+    (`return positive(x, y).updated()` -- the er-receiver flavor). A receiver
+    rooted in durable storage (`return p.updated()` for a param `p`, or the
+    free `return first(xs)`) is a borrowed source sema now rejects, so only
+    the temporary flavor reaches this arm."""
 
     def test_er_receiver_ref_call_storage_return_routes(self):
         # The er-unwrap receiver composes under the same arm:
         # `return ({ ...unwrap_ref_move(*__er_N); }).updated();`.
+        from .testutil import _lower_ctx_witnessed
         src = (
             "from tpy import Int32, Own, Self, error_return, "
             "ReturnException\n"
@@ -1289,25 +1265,9 @@ class TestRefCallAtStorageReturn:
             "        print(\"err\")\n"
             "main()\n")
         _hpp, cpp = _assert_routes_byte_identical(src)
+        _thir, wit = _lower_ctx_witnessed(src)
+        assert wit.get("ret.record_ref_call_storage", 0) >= 1
         assert ").updated();" in cpp
-
-    def test_free_ref_call_storage_return_routes(self):
-        # The free-call twin (`return first(xs);` at Own[Point]) rides the
-        # same arm via the borrow_ret_passthrough call admission.
-        src = (
-            self._POINT
-            + "def first(xs: list[Point]) -> Point:\n"
-            + "    return xs[0]\n"
-            + "def grab(xs: list[Point]) -> Own[Point]:\n"
-            + "    return first(xs)\n"
-            + "def main() -> None:\n"
-            + "    xs = [Point(5)]\n"
-            + "    g = grab(xs)\n"
-            + "    g.x = 7\n"
-            + "    print(xs[0].x, g.x)\n"
-            + "main()\n")
-        _hpp, cpp = _assert_routes_byte_identical(src)
-        assert "return first(xs);" in cpp
 
 
 class TestErFieldTargetBind:
@@ -1408,26 +1368,6 @@ class TestErFieldTargetBind:
             "            self.p = make(inner(n))\n")
         thir = _lower_ctx(src)
         assert _fn(thir, "fill") is None
-
-
-class TestRefCallStorageReturnBoundary:
-    def test_ternary_source_at_storage_return_still_defers(self):
-        # The ladder admits CALL sources only: a ternary over two
-        # ref-returning method calls at the same Own[record] storage slot
-        # keeps the AST path.
-        src = (
-            "from tpy import Int32, Own, Self\n"
-            "class Point:\n"
-            "    x: Int32\n"
-            "    def __init__(self, x: Int32) -> None:\n"
-            "        self.x = x\n"
-            "    def updated(self) -> Self:\n"
-            "        self.x += 1\n"
-            "        return self\n"
-            "def pick(a: Point, b: Point, c: bool) -> Own[Point]:\n"
-            "    return a.updated() if c else b.updated()\n")
-        thir = _lower_ctx(src)
-        assert _fn(thir, "pick") is None
 
 
 class TestErrorReturnMethodExprUnwrap:

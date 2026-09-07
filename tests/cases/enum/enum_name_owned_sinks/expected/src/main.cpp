@@ -80,9 +80,10 @@ void view_positions(Color c) {
 void owned_slot(Color c) {
     // xs: list[str] = []
     std::vector<std::string> xs = std::vector<std::string>{};
+    // # The element slot's view->owned convert renders inline -- the source is
+    // # a view read, so there is nothing to move out of and no temp to hoist.
     // xs.append(c.name)  # tpyc: ok
-    std::string __tmp_1{std::string(::tpy::EnumUtil<Color>::name(c))};
-    xs.push_back(std::move(__tmp_1));
+    xs.push_back(std::string(::tpy::EnumUtil<Color>::name(c)));
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }

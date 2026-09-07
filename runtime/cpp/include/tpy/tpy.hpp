@@ -53,7 +53,10 @@
 // Slice type for user-defined __getitem__ overloads (no dependencies)
 #include "slice.hpp"
 
-// Container operations (depends on core, type_traits)
+// Key comparison/hashing for container lookups (no runtime dependencies)
+#include "lookup_key.hpp"
+
+// Container operations (depends on core, type_traits, lookup_key)
 #include "container_ops.hpp"
 
 // Protocols and concepts (depends on ranges)

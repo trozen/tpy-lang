@@ -1718,6 +1718,12 @@ class CallAnalyzer:
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        # A borrow-returning source reads as `Ref[T]`, and the copy of it is
+        # an owned `T` -- keeping the marker would describe the result as a
+        # borrow, so an inferred slot off it (a list literal element) would
+        # spell an array of references. Same rule copy_iter applies per
+        # element.
+        arg_type = unwrap_ref_type(arg_type)
         # copy() yields owned storage: `copy(t)` on `tuple[Own[A], B]` is an
         # owned `tuple[A, B]`. Leaving either marker on an element would keep
         # describing a borrow, so the sink would lift the value a SECOND time.

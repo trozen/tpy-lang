@@ -65,7 +65,5 @@ class TestNarrowedOptionalCopyKeepsCopying:
                "def main() -> None:\n"
                "    print(f(R(1)))\n"
                "main()\n")
-        # THIR still rejects a copy of a narrowed name (its own row), so the
-        # claim here is the AST render, byte-identical through the fallback.
-        _, fallback = _thir_ctx(src)
-        _assert_rejects_at(fallback, "body:expr.call", "call.builtin_special")
+        cpp = _assert_routes_byte_identical(src)
+        assert "R y = R((*x));" in cpp[1]

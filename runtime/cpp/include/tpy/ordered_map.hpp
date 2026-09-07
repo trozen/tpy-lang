@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "core.hpp"
+#include "lookup_key.hpp"
 
 namespace tpy {
 
@@ -219,7 +220,7 @@ public:
     // Inserts V{} on missing key (std::map semantics, NOT Python semantics).
     // Not used by generated code; provided for standalone C++ use.
     V& operator[](const K& key) {
-        auto it = table_.find(key);
+        auto it = table_find(key);
         if (it != table_.end()) {
             return it->second->value;
         }
@@ -238,7 +239,7 @@ public:
 
     template<typename KK, typename VV>
     void insert_or_assign(KK&& key, VV&& value) {
-        auto it = table_.find(key);
+        auto it = table_find(key);
         if (it != table_.end()) {
             it->second->value = std::forward<VV>(value);
             return;
@@ -249,13 +250,15 @@ public:
     }
 
     bool erase(const K& key) {
-        auto it = table_.find(key);
-        if (it == table_.end()) return false;
-        Node* node = it->second;
-        table_.erase(it);
-        unlink(node);
-        delete node;
-        return true;
+        return erase_found(table_find(key));
+    }
+
+    // `del d[k]` / `d.pop(k)` with the key in its read form: the entry is
+    // found by comparison, never by constructing the key it removes.
+    template<typename KeyArg>
+        requires (lookup_key_for<K, KeyArg> || requires(const KeyArg& k) { K(k); })
+    bool erase(const KeyArg& key) {
+        return erase_found(table_find(key));
     }
 
     void erase(items_iterator pos) {
@@ -280,22 +283,21 @@ public:
     // -- Lookup -------------------------------------------------------------
 
     bool contains(const K& key) const {
-        return table_.find(key) != table_.end();
+        return table_find(key) != table_.end();
     }
 
-    // Heterogeneous key (e.g. a std::string_view needle for a std::string
-    // key): convert to K, mirroring find() / __getitem__'s K(key). The const
-    // K& overload above wins for an exact K, so this fires only for a
-    // convertible other type (a view key the non-template overload can't take
-    // -- string_view -> string is explicit, so no implicit conversion).
+    // Heterogeneous key (a std::string_view or a bare literal against a
+    // std::string-keyed dict). The const K& overload above wins for an exact
+    // K, so this fires only for another type -- string_view -> string is
+    // explicit, so the non-template overload cannot take a view key.
     template<typename KeyArg>
-        requires requires(const KeyArg& k) { K(k); }
+        requires (lookup_key_for<K, KeyArg> || requires(const KeyArg& k) { K(k); })
     bool contains(const KeyArg& key) const {
-        return contains(K(key));
+        return table_find(key) != table_.end();
     }
 
-    // A wider-than-K integer needle (a BigInt key in `k in d` against a
-    // fixed-int-keyed map): membership is a value question, so a needle
+    // A wider-than-K integer key (a BigInt key in `k in d` against a
+    // fixed-int-keyed map): membership is a value question, so a key
     // outside K's range is simply absent (False), never a range panic --
     // matching CPython's `2**70 in d`.
     template<typename KeyArg>
@@ -310,13 +312,32 @@ public:
     }
 
     items_iterator find(const K& key) {
-        auto it = table_.find(key);
+        auto it = table_find(key);
         if (it == table_.end()) return items_end();
         return items_iterator(it->second);
     }
 
     const_items_iterator find(const K& key) const {
-        auto it = table_.find(key);
+        auto it = table_find(key);
+        if (it == table_.end()) return items_end();
+        return const_items_iterator(it->second);
+    }
+
+    // The key form of find(). Every dict read (`d[k]`, `.get`, `.pop`,
+    // `.setdefault`'s probe) routes here, so this is where "a lookup on a
+    // dict does not build a key" is decided.
+    template<typename KeyArg>
+        requires (lookup_key_for<K, KeyArg> || requires(const KeyArg& k) { K(k); })
+    items_iterator find(const KeyArg& key) {
+        auto it = table_find(key);
+        if (it == table_.end()) return items_end();
+        return items_iterator(it->second);
+    }
+
+    template<typename KeyArg>
+        requires (lookup_key_for<K, KeyArg> || requires(const KeyArg& k) { K(k); })
+    const_items_iterator find(const KeyArg& key) const {
+        auto it = table_find(key);
         if (it == table_.end()) return items_end();
         return const_items_iterator(it->second);
     }
@@ -369,6 +390,30 @@ public:
     }
 
 private:
+    // The one probe point for every lookup: a key in the read form goes to
+    // the transparent table directly; a key that is only CONVERTIBLE has
+    // to become the K it compares against. Nothing above this line builds a
+    // key to find one.
+    template<typename KeyArg>
+    auto table_find(const KeyArg& key) const {
+        if constexpr (std::same_as<std::remove_cvref_t<KeyArg>, K>
+                      || lookup_key_for<K, KeyArg>) {
+            return table_.find(key);
+        } else {
+            return table_.find(K(key));
+        }
+    }
+
+    template<typename It>
+    bool erase_found(It it) {
+        if (it == table_.end()) return false;
+        Node* node = it->second;
+        table_.erase(it);
+        unlink(node);
+        delete node;
+        return true;
+    }
+
     void link_back(Node* node) {
         node->prev = tail_;
         node->next = nullptr;
@@ -396,7 +441,11 @@ private:
     template<typename, typename> friend struct OwnIterDict;
     template<typename, typename> friend struct OwnIterDictItems;
 
-    std::unordered_map<K, Node*> table_;
+    // Transparent hash + equality, as in ordered_set: a lookup answers a
+    // key in the read form (a `std::string_view` against stored
+    // `std::string` keys, a `std::span<const uint8_t>` against stored
+    // `std::vector<uint8_t>` ones) without building a K.
+    std::unordered_map<K, Node*, key_hash, key_equal> table_;
     Node* head_ = nullptr;
     Node* tail_ = nullptr;
 };

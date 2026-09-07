@@ -26,6 +26,7 @@ from .parse import (
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
+    TpyNamedExpr,
 )
 from .type_def_registry import is_bool_type
 
@@ -241,3 +242,71 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
             return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
         return True  # Default: treat unknown calls as rvalue
     return True  # Default: rvalue
+
+
+def peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
+    """Unwrap coercions and walrus wrappers to the value expression a
+    return/yield actually hands out -- `return (t := items[0])` hands out
+    the subscript read, so provenance checks must see through the binding.
+    """
+    while True:
+        if isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        elif isinstance(expr, TpyNamedExpr):
+            expr = expr.value
+        else:
+            return expr
+
+
+def _borrow_link(expr: TpyExpr) -> 'tuple[FunctionInfo | None, TpyExpr | None] | None':
+    """The (callee, receiver) of `expr` as a call link, or None if it is not
+    a call. Operator dispatch is a method call in disguise, so a dunder is a
+    link with its operand as receiver -- the same reading the borrow
+    registration in sema/statements.py does.
+    """
+    if isinstance(expr, TpyMethodCall):
+        return (expr.resolved_function_info, expr.obj)
+    if isinstance(expr, TpyCall):
+        return (expr.resolved_function_info, None)
+    if isinstance(expr, TpySubscript) and expr.getitem_function_info is not None:
+        return (expr.getitem_function_info, expr.obj)
+    if isinstance(expr, TpyFieldAccess) and expr.property_getter_call is not None:
+        getter = expr.property_getter_call
+        return (getter.resolved_function_info, getter.obj)
+    if isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
+        rb = expr.resolved_binop
+        return (rb.method, expr.right if rb.is_reverse else expr.left)
+    if isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
+        return (expr.resolved_unaryop.method, expr.operand)
+    return None
+
+
+def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
+    """Whether `expr` hands back a borrow of storage that outlives it.
+
+    The borrowed sources `is_lvalue` says no to: a call is an rvalue by the
+    address-of test, yet the reference it returns can alias the callee's
+    storage, so filling an owning slot from it copies exactly as a name or a
+    field does. `is_rvalue_source` is the right reader of the call and
+    `call_returns_cpp_ref` is not: a builtin factory (`list(xs)`,
+    `bytearray(b)`) declares `-> list[T]` too, and only the
+    constructor/factory layers on top of that predicate tell the fresh value
+    apart from the borrow.
+
+    One rule at every owning slot, with no lifetime reasoning: a
+    borrow-returning call IS a borrowed source. A receiver rooted in a
+    temporary does not exempt it -- what the callee hands back can reach
+    past its receiver, so the temporary bounds nothing. `Wrapper(take_ptr(
+    h.o)).get()` returns `h.o` through a pointer field, and the copy the
+    owning slot makes is the divergence the diagnostic names.
+    """
+    inner = peel_value_wrappers(expr)
+    # An if-expr emits its arms inline, so the slot is filled from whichever
+    # arm runs: borrowed if either can be.
+    if isinstance(inner, TpyIfExpr):
+        return (returns_borrow(analyzer, inner.then_expr)
+                or returns_borrow(analyzer, inner.else_expr))
+    if isinstance(inner, TpyAwait):
+        return inner.await_result_is_borrow
+    return (_borrow_link(inner) is not None
+            and not is_rvalue_source(analyzer, inner))

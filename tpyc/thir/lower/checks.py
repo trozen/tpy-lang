@@ -1196,12 +1196,12 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             if (bt is not None and _f1_record(bt, analyzer)):
                 return True
             return note_detail("container_lit.elem.record") if note else False
-        # `copy(name)` -- the copy-construct rvalue (`P(p)`): the elem
+        # `copy(<source>)` -- the copy-construct rvalue (`P(p)`): the elem
         # lowering's `_lower_copy_record` row (exact slot match) renders it;
         # a shape that slips past this admission (pointer-local source not in
         # `pointers`) returns None there and the generic call tail rejects --
         # a compile error, never a divergent render.
-        if copy_plain_record_source(e, analyzer, pointers) is not None:
+        if copy_construct_source(e, analyzer, pointers) is not None:
             return True
         return (_record_source_call(e, analyzer)
                 or (note_detail("container_lit.elem.record") if note else False))
@@ -2375,16 +2375,13 @@ def _ref_field_write_ok(
     if ctor_peel is not None:
         return (_record_rvalue_source_shape(ctor_peel, analyzer)
                 and analyzer.get_expr_type(ctor_peel) == ftype)
-    crec = copy_plain_record_source(stmt.value, analyzer, pointers)
+    # One classifier, both families: the RECORD half still checks slot
+    # equality (a subclass source would spell the wrong ctor), the container
+    # half does not -- the copy render follows the SOURCE type, and no
+    # builtin container has a subclass to slice.
+    crec = copy_construct_source(stmt.value, analyzer, pointers)
     if crec is not None:
-        return crec == ftype
-    # The container leg of the same `copy()` row (`self.items = copy(data)`
-    # -> `std::vector<int32_t>(data)`), which `_lower_copy_record` spells off
-    # the SOURCE type for either half. No slot equality: the copy render
-    # follows the source, and no builtin container has a subclass to slice.
-    if copy_plain_container_source(stmt.value, analyzer,
-                                   pointers) is not None:
-        return True
+        return crec == ftype if _f1_record(crec, analyzer) else True
     # The container LITERAL / repeat and the owned-rvalue call whose result
     # materializes its own container -- tried BEFORE the exact-typed rvalue
     # row below, whose type check would otherwise turn an `Own[C]`-returning
@@ -2520,7 +2517,7 @@ def _optional_record_field_write_ok(
     if ctor_peel is not None:
         return (_record_rvalue_source_shape(ctor_peel, analyzer)
                 and analyzer.get_expr_type(ctor_peel) == inner)
-    crec = copy_plain_record_source(v, analyzer, pointers)
+    crec = copy_construct_source(v, analyzer, pointers)
     if crec is not None:
         return crec == inner
     if _record_rvalue_source_shape(v, analyzer):
@@ -3681,39 +3678,68 @@ _SPECIAL_BUILTIN_QNAMES = frozenset({qnames.COPY, qnames.COPY_ITER,
                                      qnames.OWN_ITER, qnames.TRY_PARSE})
 
 
-def copy_plain_record_source(init: TpyExpr, analyzer,
-                             pointers: 'AbstractSet[str]') -> 'TpyType | None':
-    """The `copy(x)` builtin over a bare plain F1-record NAME source -- the
-    copy-construct rvalue arm of `copy()` (`T(x)`). Returns the source
-    record's TpyType, or None. Excludes a pointer-local source (it would render
-    `(*p)`), an Optional-ptr / pointer-variant / tuple source (the other
-    `copy()` branches), and a record-ctor arg (its prvalue arm)."""
-    arg = copy_call_arg(init, analyzer)
-    if arg is None:
+def _record_ctor_arg(arg: 'TpyExpr | None', analyzer) -> 'TpyCall | None':
+    """A record-CONSTRUCTOR call, keyed on the registry lookup of the callee
+    NAME rather than on the resolved fi. Shared by the two `copy()` readers
+    that must agree on it: the prvalue arm claims the shape, the
+    copy-construct classifier declines it."""
+    if not isinstance(arg, TpyCall) or not isinstance(arg.func, TpyName):
         return None
-    if not isinstance(arg, TpyName) or arg.name in pointers:
-        return None
-    at = analyzer.get_expr_type(arg)
-    return at if _f1_record(at, analyzer) else None
+    return (arg if analyzer.registry.get_record(arg.func_name) is not None
+            else None)
 
 
-def copy_plain_container_source(init: TpyExpr, analyzer,
-                                pointers: 'AbstractSet[str]') -> 'TpyType | None':
-    """The CONTAINER sibling of `copy_plain_record_source`: `copy(xs)` over a
-    bare reference-typed container NAME -> the copy-construct rvalue
-    (`std::vector<int32_t>(data)`). The copy render is
-    `{arg_type.to_cpp()}({arg})`, generic over the source type, so the
-    container spells its own C++ form exactly as a record spells `T(x)`.
-    Same exclusions: a pointer-local source would render `(*p)`.
-    """
+def copy_construct_form(arg: TpyExpr, pointers: 'AbstractSet[str]',
+                        analyzer) -> bool:
+    """Whether a `copy()` argument's SOURCE FORM admits the copy-construct
+    tail. Every value category does -- an lvalue binds the `const T&` the
+    copy ctor takes, a prvalue move-constructs -- except the two that own
+    arms whose render is NOT that tail: a pointer-local reads through a
+    deref (`call.copy_record_ptr` and the container leg beside it), and a
+    record CTOR argument is already the prvalue a copy would build, so it is
+    handed back unchanged (`copy_ctor_rvalue_source`)."""
+    if isinstance(arg, TpyName) and arg.name in pointers:
+        return False
+    return _record_ctor_arg(arg, analyzer) is None
+
+
+def copy_construct_source(init: TpyExpr, analyzer,
+                          pointers: 'AbstractSet[str]') -> 'TpyType | None':
+    """The `copy(x)` builtin over a source the copy-CONSTRUCT tail renders --
+    `{payload.to_cpp()}({source read})`, a record spelling `Point(p)` and a
+    container `std::vector<int32_t>(data)`, one tail either way. Returns the
+    copied payload's TpyType, or None.
+
+    Admission is the source's VALUE FORM, not its syntax class: an lvalue
+    (name, field, subscript, borrow-returning call, lvalue ternary, awaited
+    borrow) binds the `const T&` the copy ctor takes, and a prvalue
+    move-constructs into the same slot -- the source render carries the
+    indirection either way, which is why the tail is type-blind. Family is a
+    payload-type fact (`_f1_record` vs `_f1_container_ref`), so the four
+    representation-special families whose copy is NOT this tail stay out by
+    their own value form: a pointer-repr `Optional` is handed back unwrapped
+    (`copy_ptr_optional_peel`), a pointer-repr-element tuple builds per
+    element (`call.copy_tuple_storage`), and every view spells its own
+    conversion (`call.copy_span` / `call.copy_str`). Only the ptr-variant
+    union needs saying out loud, and it says it where the binding is known:
+    an assign-narrowed ptr-variant local READS as its member record, so
+    `_lower_copy_record` fences it off `ptr_variant_locals` before this
+    classifier's record answer can claim it.
+
+    Two source forms are excluded here because they own arms whose render is
+    not this tail: a pointer-local reads through a deref
+    (`call.copy_record_ptr` and the container leg beside it), and a record
+    CTOR argument is already the prvalue a copy would build, so it is handed
+    back unchanged (`copy_ctor_rvalue_source`)."""
     arg = copy_call_arg(init, analyzer)
-    if arg is None:
+    if arg is None or not copy_construct_form(arg, pointers, analyzer):
         return None
-    if not isinstance(arg, TpyName) or arg.name in pointers:
-        return None
-    at = analyzer.get_expr_type(arg)
-    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-    return au if _f1_container_ref(au) else None
+    # The PAYLOAD, not the read: a borrow-returning source reads as `T&`,
+    # and the copy constructs a `T` -- an element slot spelled off the read
+    # would be an array of references.
+    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        analyzer.get_expr_type(arg))))
+    return au if (_f1_record(au, analyzer) or _f1_container_ref(au)) else None
 
 
 def copy_ctor_rvalue_source(e: TpyExpr, analyzer) -> 'TpyExpr | None':
@@ -3724,18 +3750,9 @@ def copy_ctor_rvalue_source(e: TpyExpr, analyzer) -> 'TpyExpr | None':
     would the bare `T(...)` source; None when this is not that shape.
 
     The peel is sound only because the render is literally identical -- the
-    copy-CONSTRUCT arm (`copy_plain_record_source`) spells `T(x)` and must
-    never come through here."""
-    arg = copy_call_arg(e, analyzer)
-    if arg is None:
-        return None
-    if not isinstance(arg, TpyCall) or not isinstance(arg.func, TpyName):
-        return None
-    # The prvalue arm keys on the registry lookup of the
-    # callee NAME, not on the resolved fi.
-    if analyzer.registry.get_record(arg.func_name) is None:
-        return None
-    return arg
+    copy-CONSTRUCT arm (`copy_construct_source`) spells `T(x)` and declines
+    this shape through the same reader, so the two cannot both claim it."""
+    return _record_ctor_arg(copy_call_arg(e, analyzer), analyzer)
 
 
 def _free_callee_kind(e: TpyCall, analyzer, *,
@@ -6621,24 +6638,27 @@ def _own_opt_ptr_name_arg(a: TpyExpr, ptype: TpyType | None,
     return w if unwrap_readonly(atu.inner) == unwrap_readonly(w.inner) else None
 
 
-def _copy_record_own_arg(a: TpyExpr, ptype: TpyType | None,
-                         analyzer) -> bool:
-    """`copy(name)` of a plain F1-record into a SAME-nominal plain
-    `Own[record]` slot (`items.append(copy(p))` -> `push_back(Point(p))`)
-    or its Own-OPTIONAL sibling (`Own[Box] | None` -- the by-value
+def _copy_own_arg(a: TpyExpr, ptype: TpyType | None,
+                  analyzer) -> bool:
+    """`copy(<source>)` into a SAME-nominal plain `Own[T]` slot
+    (`items.append(copy(p))` -> `push_back(Point(p))`,
+    `sink(copy(h.items()))` -> `std::vector<int32_t>(h.items())`) or its
+    Own-OPTIONAL sibling (`Own[Box] | None` -- the by-value
     `std::optional<Box>` slot, whose converting ctor absorbs the same
     copy-construct rvalue: `consume_optional(Box(b))`): the rvalue binds
-    like any record rvalue (`_own_record_rvalue_arg`'s row). The
-    pointer-source split (`copy_plain_record_source` excludes
-    pointer-locals, whose render derefs) re-runs at lowering with the
-    live pointer set; a gate-admitted pointer source rejects there."""
+    like any rvalue at that slot (`_own_record_rvalue_arg`'s row). Both
+    families, because the copy tail is one render and the slot peel is
+    already family-blind. The pointer-source split
+    (`copy_construct_source` excludes pointer-locals, whose render derefs)
+    re-runs at lowering with the live pointer set; a gate-admitted pointer
+    source rejects there."""
     w = _plain_or_opt_own_slot(ptype)
-    if w is None or not _f1_record(w, analyzer):
+    if w is None or not (_f1_record(w, analyzer) or _f1_container_ref(w)):
         return False
     # frozenset(): the gate is deliberately pointer-blind; lowering re-runs
     # with the live set and rejects pointer sources (gate-vs-lowering split).
-    src = copy_plain_record_source(a, analyzer, frozenset())
-    return src is not None and src == w and _witness("own.record_copy")
+    src = copy_construct_source(a, analyzer, frozenset())
+    return src is not None and src == w and _witness("own.copy_construct")
 
 def _copy_open_elem_arg(a: TpyExpr, ptype: TpyType | None,
                         analyzer) -> 'TpyType | None':
@@ -7512,6 +7532,52 @@ def _own_peeled_container_str_elem(t: 'TpyType | None', analyzer) -> bool:
     return _container_str_elem(tu, analyzer)
 
 
+def _str_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
+                          param_names: 'set[str] | frozenset[str]',
+                          analyzer) -> bool:
+    """A str source whose C++ read is a BORROW (`std::string_view`), not the
+    owned `std::string` an owning or element slot stores.
+
+    Two view forms: a `StrView`-resolved binding, and a plain `str` PARAM
+    (resolved `str`, but the signature spells the view). An `Own[str]` param
+    and a `String` binding are STORAGE and carved out. The sema
+    `strview_to_str` coerce IS the copy such a slot wants, so it peels
+    first -- on ANY source shape, not only a NAME: `s[1:]` and `s.strip()`
+    arrive under it exactly as a declared-StrView name does.
+    """
+    src = a
+    if isinstance(src, TpyCoerce) and src.coercion.name == "strview_to_str":
+        src = src.expr
+    at = _resolved_str_value(analyzer.get_expr_type(src), analyzer)
+    if at is None:
+        return False
+    if is_str_view_type(at):
+        return True
+    return (isinstance(src, TpyName) and src.name in param_names
+            and _own_viewfam_param(locals_.get(src.name)) is None
+            and not is_string_type(at))
+
+
+def _bytes_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
+                            param_names: 'set[str] | frozenset[str]',
+                            analyzer) -> bool:
+    """The bytes twin of `_str_view_form_source`: a span-form read (a
+    `bytes` PARAM -- including a narrowed `bytes | None` deref -- or a
+    `BytesView`-resolved binding) rather than the owned
+    `std::vector<uint8_t>`. The `bytesview_to_bytes` coerce is that slot's
+    copy and peels first; an `Own[bytes]` param is STORAGE."""
+    src = a
+    if isinstance(src, TpyCoerce) and src.coercion.name == "bytesview_to_bytes":
+        src = src.expr
+    at = _resolved_bytes_value(analyzer.get_expr_type(src), analyzer)
+    if at is None:
+        return False
+    if is_bytes_view_type(at):
+        return True
+    return (isinstance(src, TpyName) and src.name in param_names
+            and _own_viewfam_param(locals_.get(src.name)) is None)
+
+
 def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
                         locals_: dict[str, TpyType],
                         param_names: 'set[str] | frozenset[str]',
@@ -7535,28 +7601,23 @@ def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
         return False
     if isinstance(a, TpyStrLiteral):
         return True
-    if (_svn := _strview_coerce_name(a)) is not None:
-        # The coerce IS the S1 copy -- the render arm peels the same shape
-        # and wraps the view name; this gate's semantic layer admits a
-        # view-resolved binding or a str param. Other coerce shapes keep
-        # the rvalue-tail behavior below.
-        it = _resolved_str_value(analyzer.get_expr_type(_svn), analyzer)
-        return it is not None and (is_str_view_type(it)
-                                   or _svn.name in param_names)
+    # The view forms are one shared rule (the coerce IS the S1 copy; the
+    # render arm peels it and wraps the view read).
+    if _str_view_form_source(a, locals_, param_names, analyzer):
+        return True
+    # A coerce over a NAME the view rule turned down is an owned source
+    # wearing the copy: it rides the cascade, and must not reach the
+    # rvalue tail below, which would judge the coerce rather than the name.
+    if _strview_coerce_name(a) is not None:
+        return False
     at = _resolved_str_value(analyzer.get_expr_type(a), analyzer)
     if at is None:
         return False
-    if is_str_view_type(at):
-        return True
-    # An owned-`str`-typed source is STORAGE unless it is a plain-str PARAM
-    # (BORROW -- `std::string_view` in the signature). A reassigned str param
-    # is already whole-body-rejected, so the view form is stable at every use
-    # here. An `Own[str]` param is carved out: its signature spells the OWNED
-    # `std::string` by value, so it is STORAGE like any owned local and rides
-    # the copy+move temp cascade, not this inline convert.
+    # A NAME the view rule turned down is STORAGE (an owned local, an
+    # `Own[str]` param whose signature spells the owned `std::string` by
+    # value): it rides the copy+move temp cascade, not this inline convert.
     if isinstance(a, TpyName):
-        return (a.name in param_names
-                and _own_viewfam_param(locals_.get(a.name)) is None)
+        return False
     # A container-ELEMENT owned-str read (`tag.append(argv[i])`): the element
     # lvalue lands bare in the element slot (`push_back(__getitem__(argv, i))`
     # -- the vector copies on insert), no cascade. The
@@ -7605,15 +7666,9 @@ def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
         if src.coercion.name != "bytesview_to_bytes":
             return False
         src = src.expr
-    if isinstance(src, TpyName):
-        at = _resolved_bytes_value(analyzer.get_expr_type(a), analyzer)
-        if at is None:
-            return False
-        # The `Own[bytes]`-param carve-out mirrors the str twin: owned
-        # `std::vector<uint8_t>` by value, STORAGE -- not this view convert.
-        return is_bytes_view_type(at) or (
-            src.name in param_names
-            and _own_viewfam_param(locals_.get(src.name)) is None)
+    # The view forms are one shared rule with the str twin.
+    if _bytes_view_form_source(a, locals_, param_names, analyzer):
+        return True
     if isinstance(src, TpySubscript) and isinstance(src.index, TpySlice):
         return _resolved_bytes_value(analyzer.get_expr_type(src),
                                      analyzer) is not None
@@ -10686,8 +10741,8 @@ def _r_own_record_rvalue(req: _ArgReq) -> bool:
     return _own_record_rvalue_arg(req.a, req.ptype, req.locals_, req.analyzer)
 
 
-def _r_copy_record_own(req: _ArgReq) -> bool:
-    return _copy_record_own_arg(req.a, req.ptype, req.analyzer)
+def _r_copy_own(req: _ArgReq) -> bool:
+    return _copy_own_arg(req.a, req.ptype, req.analyzer)
 
 
 def _r_own_lvalue(req: _ArgReq) -> bool:
@@ -11917,7 +11972,7 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("container_slot_call_rvalue", _r_container_slot_call_rvalue,
                 face="arg.container_call_rvalue"),
         _ArgRow("own_record_rvalue", _r_own_record_rvalue),
-        _ArgRow("copy_record_own", _r_copy_record_own),
+        _ArgRow("copy_own", _r_copy_own),
         _ArgRow("own_move", _r_own_move),
         # The flush guard is the ONE thing the two halves spelled
         # differently at this cell, because their Own slots are different
@@ -12291,7 +12346,7 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     _ArgRow("own_tparam_call_rvalue", _r_own_tparam_call_rvalue),
     # `Factory.consume(copy(p))` -- the static-method face of the
     # copy-construct rvalue row.
-    _ArgRow("copy_record_own", _r_copy_record_own),
+    _ArgRow("copy_own", _r_copy_own),
     # The S1 view->owned convert at an `Own[str]` slot
     # (`Rc.new(inner)` on a `str` param -> `std::string(inner)`), the
     # free ladder's row. AHEAD of the Own cascade below for the same
@@ -12393,7 +12448,7 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
 # render there. Exactly the rows the ladder prefixed with
 # `own_ok and`.
 _MARKER_OWN_ROWS = frozenset({
-    "own_record_rvalue", "own_tparam_call_rvalue", "copy_record_own",
+    "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
     "str_owned_slot", "own_move", "own_lvalue", "own_union_ctor",
     "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
     "own_container_literal",

@@ -791,11 +791,13 @@ class THIRArgTemp(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRCopy(THIRExpr):
-    """An explicit `copy(x)` of a plain F1-record source -- the copy-construct
-    rvalue for a bare-record arg (`T(x)`), an owned
-    duplicate for an `Own[T]` sink. `cpp_type` is the record's C++ spelling.
-    Only the plain-record arm: the Optional-ptr / pointer-variant / tuple
-    copy sources are not lowered yet."""
+    """A copy-construct of a reference-typed source -- the rvalue `T(x)` an
+    `Own[T]` sink takes, spelled by the explicit `copy(x)` builtin and by the
+    IMPLICIT copy an owning slot performs on a borrowed source alike.
+    `cpp_type` is the payload's C++ spelling, a record's or a container's.
+    The representation-special sources are NOT this node: a pointer-repr
+    Optional peels, a ptr-variant union converts, a pointer-repr-element
+    tuple builds per element."""
     value: THIRExpr = None  # type: ignore[assignment]
     cpp_type: str = ""
 

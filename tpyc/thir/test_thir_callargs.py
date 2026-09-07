@@ -2824,15 +2824,15 @@ class TestCopyOwnArgFreeCall:
                + "main()\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
-        assert faces.get("own.record_copy", 0) >= 1
+        assert faces.get("own.copy_construct", 0) >= 1
         cpp = _cpp(src)
         assert cpp == _cpp(src)
         assert "consume(Box(b))" in cpp
 
-    def test_pointer_source_copy_arg_defers(self):
-        # BOUNDARY: a pointer-local source's copy would deref (`Box((*p))`)
-        # -- the render intercept re-runs the source check with the live
-        # pointer set and the body falls back byte-identically.
+    def test_pointer_source_copy_arg_derefs(self):
+        # A pointer-local source is NOT this row's: the arg intercept
+        # re-runs the source check with the live pointer set, declines, and
+        # the generic tail's deref arm spells the indirection.
         src = (self._B
                + "def pick(items: list[Box]) -> Int32:\n"
                + "    best = items[0]\n"
@@ -2844,7 +2844,9 @@ class TestCopyOwnArgFreeCall:
                + "    xs = [Box()]\n"
                + "    print(pick(xs))\n"
                + "main()\n")
-        assert _fn(_lower_ctx(src), "pick") is None
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "pick") is not None
+        assert "consume(Box((*best)))" in _cpp(src)
 
 
 class TestNativeArgWidenings:

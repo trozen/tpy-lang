@@ -90,7 +90,10 @@ class TestDerefCoerceReturn:
 
     def test_ptr_deref_at_own_storage_return_keeps_rejecting(self):
         # BOUNDARY: `Own[Point]` is the by-value direction, so the slot is a
-        # STORAGE return -- the borrow arm must not reach it.
+        # STORAGE return -- the borrow arm must not reach it. The owning
+        # slot's copy row does claim the source (sema warns the copy), but
+        # the deref COERCE has no read at the copy-construct's borrow bind,
+        # so the reject lands one level in.
         src = _POINT + (
             "def own_from_ptr(p: Ptr[Point]) -> Own[Point]:\n"
             "    return p\n"
@@ -100,8 +103,7 @@ class TestDerefCoerceReturn:
             "    print(own_from_ptr(ptr).x)\n"
             "main()\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.return:return.record_source.TpyCoerce.storage")
+        _assert_rejects_at(_reject_tally(src), "body:expr.coerce")
 
     def test_readonly_ptr_at_mutable_return_keeps_rejecting(self):
         # BOUNDARY (the const fence): `Point& f(const Point* p)` is what the

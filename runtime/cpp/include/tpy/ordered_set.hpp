@@ -18,6 +18,7 @@
 #include <utility>
 
 #include "core.hpp"
+#include "lookup_key.hpp"
 
 namespace tpy {
 
@@ -140,13 +141,15 @@ public:
     }
 
     bool erase(const T& value) {
-        auto it = table_.find(value);
-        if (it == table_.end()) return false;
-        Node* node = it->second;
-        table_.erase(it);
-        unlink(node);
-        delete node;
-        return true;
+        return erase_found(table_.find(value));
+    }
+
+    // `s.discard(k)` / `s.remove(k)` with the key in its read form: the
+    // element is found by comparison, never by construction.
+    template<typename U>
+        requires lookup_key_for<T, U>
+    bool erase(const U& value) {
+        return erase_found(table_.find(value));
     }
 
     void clear() {
@@ -167,18 +170,25 @@ public:
         return table_.find(value) != table_.end();
     }
 
-    // Heterogeneous needle (e.g. a std::string_view against a std::string
-    // set): convert to T. The const T& overload above wins for an exact T, so
-    // this fires only for a convertible other type (string_view -> string is
-    // explicit, so the non-template overload can't take a view needle).
+    // Heterogeneous key (e.g. a std::string_view against a std::string
+    // set). The const T& overload above wins for an exact T, so this fires
+    // only for another type (string_view -> string is explicit, so the
+    // non-template overload can't take a view key). A key whose hash
+    // domain is the stored type's is answered directly; anything else is
+    // only CONVERTIBLE, and building the T is the only way to compare it.
     template<typename ValArg>
-        requires requires(const ValArg& v) { T(v); }
+        requires (lookup_key_for<T, ValArg>
+                  || requires(const ValArg& v) { T(v); })
     bool contains(const ValArg& value) const {
-        return contains(T(value));
+        if constexpr (lookup_key_for<T, ValArg>) {
+            return table_.find(value) != table_.end();
+        } else {
+            return contains(T(value));
+        }
     }
 
-    // A wider-than-T integer needle (a BigInt against a fixed-int set):
-    // membership is a value question, so a needle outside T's range is
+    // A wider-than-T integer key (a BigInt against a fixed-int set):
+    // membership is a value question, so a key outside T's range is
     // simply absent (False), never a range panic -- matching CPython.
     template<typename ValArg>
         requires (std::is_integral_v<T>
@@ -250,6 +260,16 @@ public:
     }
 
 private:
+    template<typename It>
+    bool erase_found(It it) {
+        if (it == table_.end()) return false;
+        Node* node = it->second;
+        table_.erase(it);
+        unlink(node);
+        delete node;
+        return true;
+    }
+
     void link_back(Node* node) {
         node->prev = tail_;
         node->next = nullptr;
@@ -276,7 +296,11 @@ private:
 
     template<typename> friend struct OwnIterSet;
 
-    std::unordered_map<T, Node*, std::hash<T>> table_;
+    // Transparent hash + equality: a lookup answers a key in the read
+    // form (a `std::string_view` against stored `std::string`s) without
+    // building a T. `key_hash_value` puts every spelling of one value in
+    // one hash domain, which is what makes that lookup find anything.
+    std::unordered_map<T, Node*, key_hash, key_equal> table_;
     Node* head_ = nullptr;
     Node* tail_ = nullptr;
 };

@@ -21,7 +21,9 @@ from .testutil import (
     _assert_routes_byte_identical,
     _compile,
     _entry,
+    _fn,
     _lower_ctor,
+    _lower_ctx_witnessed,
 )
 
 
@@ -128,9 +130,10 @@ class TestMilRecordTernaryBoundaries:
         )
         _assert_rejects_at(_reject_tally(src), "body:expr.ifexpr")
 
-    def test_copy_of_pointer_local_at_decl_still_defers(self):
-        # The `copy(<pointer-local>)` copy-construct is admitted as a ternary
-        # ARM only -- the plain decl row still excludes a pointer source.
+    def test_copy_of_pointer_local_at_decl_derefs(self):
+        # The plain decl row excludes a pointer source (its read derefs),
+        # so the generic tail's deref arm renders it -- the ternary ARM's
+        # copy-construct is a different row over the same source.
         src = _TYPES + (
             "def use(ctx: Ctx | None) -> Int32:\n"
             "    if ctx is None:\n"
@@ -140,5 +143,8 @@ class TestMilRecordTernaryBoundaries:
             "def main() -> None:\n"
             "    print(use(None))\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.call:call.builtin_special")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "use") is not None
+        assert faces.get("call.copy_record_ptr")
+        assert "Ctx picked = Ctx((*ctx));" in "".join(
+            _assert_byte_identical(src))

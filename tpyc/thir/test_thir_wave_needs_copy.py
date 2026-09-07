@@ -97,28 +97,6 @@ class TestOwnStrTemp:
         assert faces["argtemp.own_str"] >= 1
         _assert_byte_identical(src)
 
-    def test_coerced_enum_name_hoists_temp_with_the_wrapped_init(self):
-        # strview_to_str at the Own[str] ARG slot materializes (the
-        # coercions.py lambda's OwnType branch); the FIELD inner never takes
-        # the rendered-string test, so the temp still hoists -- with the
-        # conversion inside its init.
-        src = (
-            "from enum import Enum\n"
-            "class Color(Enum):\n"
-            "    RED = 1\n"
-            "def f(c: Color) -> None:\n"
-            "    xs: list[str] = []\n"
-            "    xs.append(c.name)\n"
-            "    print(xs)\n"
-        )
-        thir, faces = _lower_ctx_witnessed(src)
-        body = _body(thir, "f")
-        assert ("std::string __tmp_1{std::string("
-                "::tpy::EnumUtil<Color>::name(c))};") in body
-        assert "xs.push_back(std::move(__tmp_1))" in body
-        assert faces["argtemp.own_str"] >= 1
-        _assert_byte_identical(src)
-
     def test_own_str_arg_in_while_condition_hoists_into_the_loop_head(self):
         # The restructured loop head is a flush position too: the typed temp
         # lands inside `while (true) { ... }` ahead of the break test, same

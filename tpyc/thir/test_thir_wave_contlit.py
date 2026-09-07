@@ -72,9 +72,10 @@ class TestCopyRecordElement:
         assert w.get("containerlit.copy_record", 0) >= 1
         _assert_byte_identical(src)
 
-    def test_copy_field_element_stays_ast(self):
-        # The boundary: copy_plain_record_source admits bare NAMES only; a
-        # field-access source (`copy(h.p)`) keeps rejecting.
+    def test_copy_field_element_routes(self):
+        # A field-access source takes the same element row: the copy-
+        # construct classifier keys on the source's value form, so an lvalue
+        # field read is the bare name's equal here.
         src = (_P
                + "class H:\n"
                + "    p: P\n"
@@ -84,7 +85,9 @@ class TestCopyRecordElement:
                + "    h = H()\n"
                + "    xs = [copy(h.p)]\n"
                + "    print(len(xs))\n")
-        assert _fn(_lower_ctx(src), "f") is None
+        thir, w = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert w.get("containerlit.copy_record", 0) >= 1
 
 
 class TestJaggedTupleMember:

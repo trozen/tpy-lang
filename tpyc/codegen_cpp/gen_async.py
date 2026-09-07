@@ -5083,7 +5083,21 @@ class AsyncCoroCodegen:
             else:
                 out.write(f"{indent}{target} = {moved};\n")
         elif payload.kind is rcfg.AwaitKind.RETURN:
-            out.write(f"{indent}auto __ret{suspension_index} = {moved};\n")
+            # `return await h.borrow()` at an OWNING return: the sub's
+            # payload is a `T*` into the awaitee's storage and the slot is a
+            # `T` by value, so the forward copy-constructs through the deref
+            # -- the same copy `copy(await ...)` spells, which sema warned
+            # about at this return. Every other payload forwards as-is.
+            if (payload.await_node.await_result_is_borrow
+                    and async_return_form(func.return_type)
+                    is AsyncReturnForm.STORAGE
+                    and not self._is_void_return(func)):
+                _fwd_cpp = self._ret_cpp(func)
+                out.write(f"{indent}{_fwd_cpp} __ret{suspension_index} = "
+                          f"{_fwd_cpp}(*({moved}));\n")
+            else:
+                out.write(f"{indent}auto __ret{suspension_index} = "
+                          f"{moved};\n")
             self._emit_sub_reset(out, indent, payload, suspension_index)
             # When a CFG-based finally is active, route the
             # `return await X` through the pending-return slot + flag

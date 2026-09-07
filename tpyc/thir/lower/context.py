@@ -1154,6 +1154,13 @@ class _LowerCtx:
         # working set, so any remaining seeding gap is masked only by the
         # return-shape gate -- widening that gate to force-seeded shapes
         # must extend this seeding in lockstep.
+        # A consuming method (`self: Own[Self]`) owns its receiver: it is this
+        # frame's value, so its last use relocates it exactly as an `Own[T]`
+        # param does. The receiver is not in `self.params`, so it is seeded
+        # here; sema reads the same fact (`_is_owned_var`) to stay silent
+        # about a copy that no longer happens.
+        if self_receiver is not None and func.is_consuming:
+            self.movable_locals.add(self_receiver)
         for pname, ptype in self.params:
             own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
             if own is not None and not own.wrapped.is_value_type():

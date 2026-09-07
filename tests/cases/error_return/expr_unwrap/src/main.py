@@ -61,7 +61,9 @@ def positive(x: int, y: int) -> Own[Point]:
 
 @error_return(E)
 def modify(x: int, y: int) -> Own[Point]:
-    return positive(x, y).updated()
+    # A borrow-returning builder on the unwrapped value: the owning return
+    # slot copies it, like any other borrow-returning call.
+    return positive(x, y).updated()  # tpyc: warning(/copies Point into owned storage/)
 
 def main() -> None:
     # Binary operator sub-expressions

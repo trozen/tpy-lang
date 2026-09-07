@@ -1,0 +1,1 @@
+main.py:19: error: @nocopy type 'Ticket' is used after this point and cannot be moved into 't: Own[Ticket]'. Remove later uses or restructure the code.

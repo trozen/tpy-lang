@@ -1,4 +1,5 @@
-# Test d.setdefault(key, default)
+# `d.setdefault(key, default)`: the key is a lookup form, so a literal or a
+# param passes as a view and the runtime builds the stored key only on a miss.
 from tpy import Int32
 
 def main() -> None:

@@ -4315,7 +4315,7 @@ class TestRecordElementSetItem:
                + "    items.append(copy(p))\n")
         thir, faces = _lower_ctx_witnessed(src)
         assert _fn(thir, "f") is not None
-        assert faces.get("own.record_copy")
+        assert faces.get("own.copy_construct")
         _assert_byte_identical(src)
 
     def test_field_access_value_defers(self):

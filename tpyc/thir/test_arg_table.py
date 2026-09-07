@@ -206,7 +206,7 @@ class TestMethodArgSinkShape:
             "container_pass_through",
             "container_slot_call_rvalue",
             "own_record_rvalue",
-            "copy_record_own",
+            "copy_own",
             "own_move",
             "own_lvalue",
             "native_iterable_literal",
@@ -633,7 +633,7 @@ class TestMarkerSinkSplit:
             "value_union_temp",
             "own_record_rvalue",
             "own_tparam_call_rvalue",
-            "copy_record_own",
+            "copy_own",
             "str_owned_slot",
             "own_move",
             "own_lvalue",
@@ -694,7 +694,7 @@ class TestMarkerSinkSplit:
 
     def test_own_cells_are_the_ones_the_ladder_prefixed(self):
         assert _MARKER_OWN_ROWS == frozenset({
-            "own_record_rvalue", "own_tparam_call_rvalue", "copy_record_own",
+            "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
             "own_move", "own_lvalue", "own_union_ctor", "str_owned_slot",
             "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
             "own_container_literal"})
@@ -913,7 +913,7 @@ class TestPlainSinkShape:
         # the generic family settles that slot in its prologue.
         rows = {r.row for r in _PLAIN_ARG_SINK.rows}
         assert (_MARKER_OWN_ROWS - rows
-                == {"own_record_rvalue", "copy_record_own",
+                == {"own_record_rvalue", "copy_own",
                     "own_tparam_call_rvalue"})
         assert "record_rvalue_temp" in rows
         assert _PLAIN_ARG_SINK.mutated_slots is False
@@ -1555,7 +1555,7 @@ class TestRecordCtorSinkShape:
             "opt_own_ptr_opt_name_move",
             "opt_own_record_name",
             "opt_own_container_name",
-            "copy_record_own",
+            "copy_own",
             "copy_open_elem",
             "generic_open_slot_elem",
             "func_ref",

@@ -71,7 +71,9 @@ std::expected<Point, E> positive(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
 // @error_return(E)
 // def modify(x: int, y: int) -> Own[Point]:
 std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y) {
-    // return positive(x, y).updated()
+    // # A borrow-returning builder on the unwrapped value: the owning return
+    // # slot copies it, like any other borrow-returning call.
+    // return positive(x, y).updated()  # tpyc: warning(/copies Point into owned storage/)
     return ({ auto __er_8 = positive(x, y); if (!__er_8.has_value()) return ::tpy::make_unexpected(__er_8.error()); ::tpy::unwrap_ref_move(*__er_8); }).updated();
 }
 

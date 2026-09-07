@@ -146,7 +146,7 @@ Larger, mutable, passed by reference to functions but stored inline in fields an
 - `list`, `dict`, `set`, `Array[T, N]`
 - `bytearray` (mutable byte buffer; `bytes` stays value-like since it is immutable)
 
-A user container (a class holding a buffer, e.g. `tplib.ArrayList`) is an ordinary reference type. Since 2026-09-05 the compiler admits on that axis rather than on a list of builtin container names wherever it can: the arms it folded test "is this a reference type", so records and every builtin container reach them together instead of `list`/`dict`/`set` reaching them alone. At the four slots where the lowering used to run a record arm above a container arm -- the return slot, a field write, an lvalue ternary, and a method argument -- there is now ONE arm, so a source shape admitted for a record is admitted for a container by the same code rather than by a parallel copy that can drift. Three exceptions are deliberate and measured: at the return slot a BORROW-returning call filling an `Own[container]` slot rejects where the record twin copy-initializes silently, because that copy is observable (CPython aliases) and the copy has to be spelled until sema demands it for both halves at once (`BUGS.md#own-return-borrow-call-silent-copy`); the method gate shares only its RETURN half (routing a user record through the builtin-stub receiver loop rejects loudly at `method.arg_shape`, because the stub argument table has no record pass-through row), and the field write from a container prvalue (`self.lines = data.splitlines()`, `self.buf = [e] * n`) keeps its own row, because the reference row pins the source type to the slot to stop a subclass rvalue slicing into a base-typed field and a container has no subclass. (That same subclass admission is why the merged RETURN arms cannot carry the container ladder's slot-type pins: `dt == slot` at the bare name, the field read and the operator each reject an upcast source the record half routes -- measured, so the arms keep `_f1_ref` alone.) The fold is not uniform beyond that -- rows that still enumerate their families remain (they are the residue filed in `TODO.md`), so a `bytearray` or `Array[T, N]` can still reject at a row its `list` twin passes. A user container is a record to the compiler, so its own METHODS take the record path rather than a builtin stub's -- and a few slots still key on a name (the element-of-a-user-container-at-a-native-slot row is filed in TODO, as is the receiver membership list). Two decisions stay builtin-specific because they have no receiver type to resolve against: literal construction (`[1, 2]`, `{"a": 1}`, comprehensions -- there is no callee) and pending-literal resolution (which container type an un-annotated literal settles on).
+A user container (a class holding a buffer, e.g. `tplib.ArrayList`) is an ordinary reference type. Since 2026-09-05 the compiler admits on that axis rather than on a list of builtin container names wherever it can: the arms it folded test "is this a reference type", so records and every builtin container reach them together instead of `list`/`dict`/`set` reaching them alone. At the four slots where the lowering used to run a record arm above a container arm -- the return slot, a field write, an lvalue ternary, and a method argument -- there is now ONE arm, so a source shape admitted for a record is admitted for a container by the same code rather than by a parallel copy that can drift. Two exceptions are deliberate and measured: the method gate shares only its RETURN half (routing a user record through the builtin-stub receiver loop rejects loudly at `method.arg_shape`, because the stub argument table has no record pass-through row), and the field write from a container prvalue (`self.lines = data.splitlines()`, `self.buf = [e] * n`) keeps its own row, because the reference row pins the source type to the slot to stop a subclass rvalue slicing into a base-typed field and a container has no subclass. (That same subclass admission is why the merged RETURN arms cannot carry the container ladder's slot-type pins: `dt == slot` at the bare name, the field read and the operator each reject an upcast source the record half routes -- measured, so the arms keep `_f1_ref` alone.) The fold is not uniform beyond that -- rows that still enumerate their families remain (they are the residue filed in `TODO.md`), so a `bytearray` or `Array[T, N]` can still reject at a row its `list` twin passes. A user container is a record to the compiler, so its own METHODS take the record path rather than a builtin stub's -- and a few slots still key on a name (the element-of-a-user-container-at-a-native-slot row is filed in TODO, as is the receiver membership list). Two decisions stay builtin-specific because they have no receiver type to resolve against: literal construction (`[1, 2]`, `{"a": 1}`, comprehensions -- there is no callee) and pending-literal resolution (which container type an un-annotated literal settles on).
 
 ### Parameter Passing Convention
 For reference types, `T` in a parameter implicitly means reference:
@@ -219,6 +219,10 @@ between the two forms. The common helpers:
 | `tuple` element-wise (`T \| None` slot -> `std::optional<T>`, plain non-value slot -> `T`) | `std::tuple<std::optional<A>, B, ...>` | `std::tuple<A*, B*, ...>` | `tpy::tuple_to_storage[_move]` / `tpy::tuple_to_pointer` (per-element dest-shape dispatch; mixing both slot kinds is fine) |
 | `str` | `std::string` | `std::string_view` | implicit C++ conversion |
 | `bytes` | `std::vector<uint8_t>` | `std::span<const uint8_t>` | explicit `::tpy::bytes_copy` (span -> vector is not an implicit conversion) |
+
+A container method's ELEMENT-typed parameter splits by what the method does with it. At a LOOKUP slot (`list.remove` / `index` / `count`, `set.remove` / `discard`, the membership read, a `dict` key) the argument is READ-ONLY, so a `str` / `bytes` key passes as a view like any other `str` / `bytes` argument and the RUNTIME compares it against what it stores -- `std::string` against `std::string_view` directly, and `std::vector<uint8_t>` against `std::span<const uint8_t>` through `tpy::key_eq`, the one pair with no `operator==` (`runtime/cpp/include/tpy/lookup_key.hpp`). `ordered_set` and `ordered_map` both give their hash table that transparent hash/equality pair, so a set or dict lookup probes with the key as it arrives and builds none -- and a bare string LITERAL (`d["a"]`, `s.discard("b")`) is a lookup form of `std::string` for the same reason, so it does not allocate either. Neither container needs a `std::hash` specialization on a standard type, which [namespace.std] forbids. At a STORING slot (`append` / `insert` / `add`, `d[k] = v` -- the `Own[T]` spellings), where the runtime does not build the element itself, the borrowed argument materializes the owned form: `std::string(x)` / `::tpy::bytes_copy(x)`. Nothing in the compiler names a method here; the slot's `Own[T]` spelling is the whole rule.
+
+One gap is open on the generic side: a generic instantiated over `str` / `bytes` renders its `T` parameter `param_val_or_ref_t<T>` (`const std::string&` / `std::vector<uint8_t>&`) rather than the type's view parameter form, so `ArrayList[str, N].remove(k)` and a generic free function's `T` slot do not compile with a view argument (BUGS.md#generic-slot-str-bytes-param-form).
 
 In either variant form the union's members must render DISTINCT C++ types:
 `bytes | bytearray`, `list[UInt8] | bytes` and `list[UInt8] | bytearray` all
@@ -741,7 +745,7 @@ A `bytearray` receiver is the same method-call family a `list`/`dict`/`set` rece
 
 Five shapes still reject for `bytearray` where `list` routes, all measured rather than inferred: binding a local from a container **element** (`b = bas[0]`) and calling through one (`len(bas[0])`), appending a freshly built `bytearray` to a container (`bas.append(bytearray(b"ab"))`), iterating `d.values()` over a `dict[str, bytearray]`, and a comprehension **producing** `bytearray` elements. Four more reject for `bytearray` and `list` alike -- a container LITERAL returned at an `Own[T] | None` slot (an owning CALL source routes there), an `Own[T | Record]` return, that union's constructor-argument twin, and a walrus binding a fresh container (`use(x := [1, 2])`).
 
-Only two facts about `bytearray` are genuinely its own, and both live on the type registry rather than in the lowering: its parameter slot is `const std::vector<uint8_t>&` by default with a separate mutable spelling (the pair that also lets an rvalue bind such a slot), and its storage owns a buffer. Everything else it gets by being a reference type -- the field write, the `Own` parameter and return, the coroutine and generator slots, the container element store, the ternary and select arms all admit it through the same reference-axis test a `list` or a record passes, with no `bytearray` leg. The places the compiler still spells the bytes family are OPERATIONS, not admissions: the concat / repeat / slice / `in` renders, `bytes_getitem` and `bytearray_setitem`, and the print-formatter ladder each name a runtime symbol per family, and they close together when the resolved dunder is read off the node (the stage-5 entry in `TODO.md`). The one admission that still names it is the method RECEIVER, and the reason is a bug rather than a family difference: putting the receiver on the pure axis also admits `set[bytes]`, whose element arguments render as views into owned element slots (`BUGS.md#view-source-at-container-elem-slot`).
+Only two facts about `bytearray` are genuinely its own, and both live on the type registry rather than in the lowering: its parameter slot is `const std::vector<uint8_t>&` by default with a separate mutable spelling (the pair that also lets an rvalue bind such a slot), and its storage owns a buffer. Everything else it gets by being a reference type -- the field write, the `Own` parameter and return, the coroutine and generator slots, the container element store, the ternary and select arms all admit it through the same reference-axis test a `list` or a record passes, with no `bytearray` leg. The places the compiler still spells the bytes family are OPERATIONS, not admissions: the concat / repeat / slice / `in` renders, `bytes_getitem` and `bytearray_setitem`, and the print-formatter ladder each name a runtime symbol per family, and they close together when the resolved dunder is read off the node (the stage-5 entry in `TODO.md`). The one admission that still names it is the method RECEIVER. What made `set[bytes]` unsafe there was `discard`'s lookup key arriving as a view at an `erase(const std::vector<uint8_t>&)`; the runtime now takes the view for both the parameter and the literal spelling, so what remains is re-running the fold's own gates for the other families the pure axis would admit.
 
 `BytesView` (`std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Bytes literals use C++ string literal static storage (via `bytes_literal()`), so `BytesView` references to literals never dangle. Local variables inferred from bytes literals or `list[bytes]` subscripts use `BytesView` when safe, and fall back to owned `bytes` when mutated:
 
@@ -1306,6 +1310,69 @@ def make_point(x: Int32, y: Int32) -> Own[Point]:
     return Point(x, y)  # OK: constructor call is an rvalue
 ```
 
+A call is not automatically an rvalue, though: a method or function declared
+`-> T` for a reference type `T` hands back `T&`, an alias of storage the
+caller can still reach. Filling the by-value slot from it is a copy, and the
+copy is observable -- CPython would hand back the very object -- so it needs
+`copy()` like any other borrowed source:
+
+```python
+class Holder:
+    p: Payload
+    def borrow(self) -> Payload:      # returns Payload&
+        return self.p
+
+def take(h: Holder) -> Own[Payload]:
+    return h.borrow()                 # warning: copies Payload into owned
+                                      # storage; use copy() to make this
+                                      # explicit
+```
+
+`readonly[Own[T]]` is the same owning return slot with a const view on top,
+so it takes the same check -- the spelling is not a way past it.
+
+The escape hatch is one step for either payload family and over any borrowed
+source shape -- a method or free call, a field read, a ternary of two calls,
+an awaited borrow: `return copy(h.bctr())`, `return copy(h.brec())`,
+`return copy(await h.borrow())`.
+
+Every slot that coerces to `Own[T]` treats this the same way -- the return,
+a list `append` / `insert` / `__setitem__`, a `set` `add`, an `Own[T]`
+parameter of a free function, method or constructor, and a `yield` at
+`Iterator[Own[T]]`. Each takes a borrow-returning call as a borrowed source,
+copies it, and reports the copy as the same warning the lvalue spelling
+(`xs.append(h.p)`) already gets:
+
+```python
+xs.append(h.borrow())   # warning: copies Payload into owned storage;
+                        # use copy() to make this explicit
+```
+
+A `@nocopy` payload upgrades that warning to a located error at every slot:
+there is no copy for the warning to describe. Writing
+`xs.append(copy(h.borrow()))` silences it and copies. The warning is not
+always the last word: the
+`Own[T]` parameter, `yield` and list-literal-element slots warn and then
+reject the same statement in code generation, so those spellings do not
+compile at all today.
+
+One slot keeps the error: a per-element `Own[...]` inside a returned
+`Own[tuple[...]]`. The whole-slot copy has a render; the per-element one does
+not, so a borrowed element source is rejected rather than warned.
+
+One rule, no lifetime reasoning: a borrow-returning call at an owning slot is
+a borrowed source, whatever its receiver is. A temporary receiver does not
+exempt it -- what the callee hands back can reach past its receiver
+(`Wrapper(take_ptr(h.o)).get()` returns `h.o` through a pointer field), so
+`Point(n).updated()` at an `Own[Point]` return copies and warns like any
+other borrowed source. Declaration order cannot change the verdict, because
+no callee-body fact enters it.
+
+One boundary remains: a slot whose `Own` payload is still an unresolved type
+parameter is left alone, because the copy is then the generic callee's
+decision and cannot be spelled with `copy()` at all
+(BUGS.md#generic-own-slot-borrow-call-unwarned).
+
 Generated C++:
 ```cpp
 Point create_point() {  // Returns by value, no &
@@ -1320,8 +1387,8 @@ Key points:
 - `Own[T]` parameters use `T&&` in C++ for non-value types (zero-cost ownership transfer), or `T` by value for value types (int, bool, float, etc. where copy = move)
 - Generic `Own[T]` where T is a type parameter uses `std::type_identity_t<T>&&` to prevent forwarding-reference deduction
 - Relies on C++ move semantics and RVO/NRVO for efficiency
-- Returning an lvalue (variable, field access) requires `copy()` to make the intent explicit
-- Returning an rvalue (constructor, function call) is OK without `copy()`
+- Returning a borrowed source copies, with a warning; `copy()` makes the intent explicit and silences it. Borrowed means the source aliases storage that outlives the return: an lvalue (variable, field access, subscript) **or** a call whose declared return is a bare reference type (`def borrow(self) -> Payload`), which hands back `Payload&`
+- Returning an rvalue is OK without `copy()`: a constructor call, an owning call (`-> Own[T]`), or a container factory (`list(xs)`, `bytearray(b)`). A borrow-returning call is NOT one, even on a temporary receiver (`make(x).updated()` warns and copies)
 - `Own[T]` coerces to `T` when receiving the value
 
 #### Copy Warnings for Inline Storage (Working)
@@ -1393,7 +1460,10 @@ def build_dict[K, V](pairs: list[tuple[K, V]]) -> None:
 No warning is emitted for:
 - **Value types** (Int32, bool, str, etc.) -- copy-vs-share is unobservable
 - **`T: ValueType` bounded type params** -- the bound guarantees value semantics
-- **Rvalues** (constructor calls, function results) -- no existing owner
+- **Rvalues that own their result** (constructor calls, `Own[T]`-returning
+  functions, factories) -- no existing owner. A call that returns a BORROW
+  (`-> T` on a reference type) does warn: the reference it hands back
+  aliases the callee's storage, so the owning slot copies
 - **`copy()` wrapped** -- intent already explicit
 - **`copy_iter()` wrapped** -- intent already explicit (element-by-element copy)
 - **Last use** -- source is dead after this point, no observable aliasing divergence
@@ -2475,6 +2545,7 @@ result = w.take()   # w is consumed, moves self
 - Reassignment revives a consumed variable
 - Branch-aware: consuming in one `if` branch makes the variable consumed after the `if`
 - Field accesses on `self` inside the method body are automatically moved on return
+- `self` itself is owned too, so `return self` at an `Own[Self]` return MOVES the receiver (`return std::move((*this));`) -- the builder-step idiom `def updated(self: Own[Self]) -> Own[Self]: ...; return self` needs no `copy()` and compiles for a `@nocopy` class. Reading `self` again on the same path after it has been moved into an owning slot is the ordinary use-after-move error
 - For classes with `__del__`, the compiler auto-inserts destructor suppression (`__tpy_owned_ = false`) at the top of the consuming method body, preventing double-free of moved-from objects
 
 **Real-world example**: `Box[T].take()` uses consuming methods to safely extract the contained value:
@@ -2517,7 +2588,9 @@ selects consuming when the receiver is at its last use.
 
 In consuming method bodies, field access on `self` yields `Own[FieldType]`
 (ownership propagation through fields), allowing fields to be returned as
-owned values without explicit `copy()`.
+owned values without explicit `copy()`. `self` carries the same ownership:
+it is the frame's own value, so its last use relocates it and `return self`
+renders the move.
 
 #### Working: Auto-Consuming Iteration at Last Use
 

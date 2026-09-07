@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "core.hpp"
+#include "lookup_key.hpp"
 #include "slice.hpp"
 #include "type_traits.hpp"
 
@@ -329,10 +330,17 @@ void list_insert(std::vector<T>& v, int32_t index, V&& value) {
  * list_remove - Python list.remove() for std::vector.
  *
  * Removes first occurrence of value. Panics if not found.
+ *
+ * The lookup key is its own template parameter: a lookup argument is
+ * read-only, so a `str`/`bytes` key arrives as a view over the element's
+ * owned form and `key_eq` compares the two directly. A second parameter is
+ * also what keeps `T` deducible -- deducing one `T` from the vector AND the
+ * key fails for every spelling but the element type itself.
  */
-template<typename T>
-void list_remove(std::vector<T>& v, const T& value) {
-    auto it = std::find(v.begin(), v.end(), value);
+template<typename T, typename U>
+void list_remove(std::vector<T>& v, const U& value) {
+    auto it = std::find_if(v.begin(), v.end(),
+                           [&](const T& e) { return key_eq(e, value); });
     if (it == v.end()) {
         raise_value_error("list.remove(x): x not in list");
     }
@@ -388,10 +396,12 @@ T list_pop_at(std::vector<T>& v, int32_t index) {
  * list_index - Python list.index(value) for std::vector.
  *
  * Returns index of first occurrence of value. Panics if not found.
+ * Templated on the lookup key like list_remove.
  */
-template<typename T>
-int32_t list_index(const std::vector<T>& v, const T& value) {
-    auto it = std::find(v.begin(), v.end(), value);
+template<typename T, typename U>
+int32_t list_index(const std::vector<T>& v, const U& value) {
+    auto it = std::find_if(v.begin(), v.end(),
+                           [&](const T& e) { return key_eq(e, value); });
     if (it == v.end()) {
         raise_value_error("list.index(x): x not in list");
     }
@@ -401,11 +411,14 @@ int32_t list_index(const std::vector<T>& v, const T& value) {
 /**
  * list_count - Python list.count(value) for std::vector.
  *
- * Returns number of occurrences of value.
+ * Returns number of occurrences of value. Templated on the lookup key like
+ * list_remove.
  */
-template<typename T>
-int32_t list_count(const std::vector<T>& v, const T& value) {
-    return static_cast<int32_t>(std::count(v.begin(), v.end(), value));
+template<typename T, typename U>
+int32_t list_count(const std::vector<T>& v, const U& value) {
+    return static_cast<int32_t>(
+        std::count_if(v.begin(), v.end(),
+                      [&](const T& e) { return key_eq(e, value); }));
 }
 
 /**

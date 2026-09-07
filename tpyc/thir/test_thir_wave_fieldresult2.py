@@ -77,9 +77,9 @@ class TestWholeOptFieldWriteSource:
 
 
 class TestCopyContainerField:
-    """`copy(c.items)` -- a container FIELD source through the copy()
-    general tail (`std::vector<T>(c.items)`); the bare member read is the
-    BORROW_BIND copy-source use. A pointer-local receiver rides the same
+    """`copy(c.items)` -- a container FIELD source at the return sink's
+    copy-construct row (`std::vector<T>(c.items)`); the bare member read is
+    the BORROW_BIND copy-source use. A pointer-local receiver rides the same
     row: the field arm renders its deref, probed byte-identical."""
     _SRC = (
         "from tpy import Int32, Own, copy\n"
@@ -97,13 +97,13 @@ class TestCopyContainerField:
     def test_field_source_routes(self):
         thir, w = _lower_ctx_witnessed(self._SRC)
         assert _fn(thir, "snap") is not None
-        assert w.get("call.copy_container", 0) >= 1
+        assert w.get("ret.copy_record", 0) >= 1
         _hpp, cpp = _assert_routes_byte_identical(self._SRC)
         assert "return std::vector<int32_t>(h.items);" in cpp
 
     def test_pointer_receiver_routes(self):
         # A narrowed `Holder | None` receiver is a pointer local; the
-        # field read's own deref arm renders `(*h).items` inside the
+        # field read's own arrow arm renders `h->items` inside the
         # same copy tail.
         src = (
             "from tpy import Int32, Own, copy\n"
@@ -118,7 +118,7 @@ class TestCopyContainerField:
             "    print(len(snap(h)))\n"
             "main()\n")
         w = _assert_identical(src)
-        assert w.get("call.copy_container", 0) >= 1
+        assert w.get("ret.copy_record", 0) >= 1
 
 
 class TestSuspendFieldOperand:

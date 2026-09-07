@@ -5,7 +5,9 @@
  * get (returns optional), pop (with and without default), and DictPrinter.
  *
  * Key arguments use a separate KeyArg template parameter (deduced from the
- * argument) to accept e.g. string_view or const char* where K=std::string.
+ * argument) and are forwarded to `ordered_map::find` in the form they arrive
+ * in: a read-form key probes the table directly, so a dict lookup does not
+ * build a key (see lookup_key.hpp). Only `setdefault`'s miss path stores.
  */
 
 #pragma once
@@ -69,7 +71,7 @@ ordered_map<K, V> dict_construct(Arg&& arg) {
 // d.get(key) -> V* (nullptr if missing, pointer into the map)
 template<typename K, typename V, typename KeyArg>
 V* dict_get(ordered_map<K, V>& m, const KeyArg& key) {
-    auto it = m.find(K(key));
+    auto it = m.find(key);
     if (it == m.items_end()) return nullptr;
     return &((*it).second);
 }
@@ -77,7 +79,7 @@ V* dict_get(ordered_map<K, V>& m, const KeyArg& key) {
 // const overload for readonly dict access
 template<typename K, typename V, typename KeyArg>
 const V* dict_get(const ordered_map<K, V>& m, const KeyArg& key) {
-    auto it = m.find(K(key));
+    auto it = m.find(key);
     if (it == m.items_end()) return nullptr;
     return &((*it).second);
 }
@@ -85,7 +87,7 @@ const V* dict_get(const ordered_map<K, V>& m, const KeyArg& key) {
 // d.pop(key) -> V (throws KeyError on missing)
 template<typename K, typename V, typename KeyArg>
 V dict_pop(ordered_map<K, V>& m, const KeyArg& key) {
-    auto it = m.find(K(key));
+    auto it = m.find(key);
     if (it == m.items_end()) {
         raise_key_error("KeyError");
     }
@@ -97,7 +99,7 @@ V dict_pop(ordered_map<K, V>& m, const KeyArg& key) {
 // d.pop(key, default) -> V
 template<typename K, typename V, typename KeyArg>
 V dict_pop_default(ordered_map<K, V>& m, const KeyArg& key, V def) {
-    auto it = m.find(K(key));
+    auto it = m.find(key);
     if (it == m.items_end()) return def;
     V result = std::move((*it).second);
     m.erase(it);
@@ -107,7 +109,7 @@ V dict_pop_default(ordered_map<K, V>& m, const KeyArg& key, V def) {
 // d.get(key, default) -> V
 template<typename K, typename V, typename KeyArg>
 V dict_get_default(const ordered_map<K, V>& m, const KeyArg& key, V def) {
-    auto it = m.find(K(key));
+    auto it = m.find(key);
     if (it == m.items_end()) return def;
     return (*it).second;
 }
@@ -125,9 +127,10 @@ void dict_update(ordered_map<K, V>& m, const ordered_map<K, V>& other) {
 // object; the borrow makes `d.setdefault(k, []).append(x)` reach the dict).
 template<typename K, typename V, typename KeyArg>
 V& dict_setdefault(ordered_map<K, V>& m, const KeyArg& key, V def) {
-    K k(key);
-    auto it = m.find(k);
+    auto it = m.find(key);
     if (it != m.items_end()) return (*it).second;
+    // Only the MISS path stores, so only it builds the key.
+    K k(key);
     m.insert_or_assign(k, std::move(def));
     return (*m.find(k)).second;
 }
@@ -140,8 +143,8 @@ struct dict_keys_view {
     auto begin() const { return map_->begin(); }
     auto end() const { return map_->end(); }
     int32_t size() const { return map_->size(); }
-    // Forward the needle generically so the map's contains overload set
-    // applies (incl. the wider-integer needle arm: out-of-range -> False).
+    // Forward the key generically so the map's contains overload set
+    // applies (incl. the wider-integer key arm: out-of-range -> False).
     template<typename KeyArg>
     bool contains(const KeyArg& key) const { return map_->contains(key); }
 
@@ -161,7 +164,7 @@ struct dict_values_view {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
-    // Generic needle: heterogeneous == (a BigInt needle against fixed-int
+    // Generic key: heterogeneous == (a BigInt key against fixed-int
     // values compares by value; out-of-range is simply absent).
     template<typename ValArg>
         requires requires(const V& v, const ValArg& a) {
@@ -169,7 +172,7 @@ struct dict_values_view {
         }
     bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
 
-    // A wider-integer needle whose == with V is not usable (unsigned V:
+    // A wider-integer key whose == with V is not usable (unsigned V:
     // `uint32_t == BigInt` is ambiguous between the int64/uint64 ctors):
     // narrow-then-find, out-of-range -> absent (False), like the map's key
     // overload.
@@ -198,7 +201,7 @@ struct dict_values_view<K, const V> {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
-    // Generic needle: heterogeneous == (a BigInt needle against fixed-int
+    // Generic key: heterogeneous == (a BigInt key against fixed-int
     // values compares by value; out-of-range is simply absent).
     template<typename ValArg>
         requires requires(const V& v, const ValArg& a) {
@@ -206,7 +209,7 @@ struct dict_values_view<K, const V> {
         }
     bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
 
-    // A wider-integer needle whose == with V is not usable (unsigned V:
+    // A wider-integer key whose == with V is not usable (unsigned V:
     // `uint32_t == BigInt` is ambiguous between the int64/uint64 ctors):
     // narrow-then-find, out-of-range -> absent (False), like the map's key
     // overload.

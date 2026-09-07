@@ -687,9 +687,16 @@ class StatementAnalyzer:
             value,
         )
 
-    def _check_own_lvalue_return(self, own_type: OwnType, expr: TpyExpr, context: str) -> None:
-        """Check that an lvalue returned as Own[T] has explicit copy() or is auto-moved."""
-        self.compat.check_own_lvalue_into_own(own_type, expr, context, action="return")
+    def _check_own_lvalue_return(self, own_type: OwnType, expr: TpyExpr,
+                                 context: str,
+                                 whole_slot: bool = True) -> None:
+        """Check that an lvalue returned as Own[T] has explicit copy() or is
+        auto-moved. The WHOLE return slot copies and warns; one ELEMENT of a
+        returned `Own[tuple[...]]` still rejects (the per-element copy has no
+        render)."""
+        self.compat.check_own_lvalue_into_own(own_type, expr, context,
+                                              action="return",
+                                              whole_slot=whole_slot)
 
     def _mark_finally_deferred_return(self, stmt: TpyReturn, ret_type: TpyType,
                                       expected: TpyType) -> None:
@@ -1316,12 +1323,16 @@ class StatementAnalyzer:
                         "outlive the receiver (receiver lifetime is not "
                         "tracked across this escape)",
                         stmt)
-                # Check for lvalue returned as Own[T] without explicit copy()
-                if isinstance(expected, OwnType):
+                # Check for a borrowed source returned as Own[T] without an
+                # explicit copy(). `readonly` peels first: `readonly[Own[T]]`
+                # is the same owning slot with a const view on top, so the
+                # spelling must not be a way past the check.
+                own_expected = unwrap_readonly(expected)
+                if isinstance(own_expected, OwnType):
                     if self.compat.is_copy_call(stmt.value):
                         self._warn_unnecessary_return_copy(stmt.value)
                     else:
-                        self._check_own_lvalue_return(expected, stmt.value, "return type")
+                        self._check_own_lvalue_return(own_expected, stmt.value, "return type")
                 # Check Own[T] elements in tuple literals.
                 if isinstance(stmt.value, TpyTupleLiteral):
                     tuple_target = own_tuple_target(expected)
@@ -1329,7 +1340,8 @@ class StatementAnalyzer:
                         for i, et in enumerate(tuple_target.element_types):
                             if isinstance(et, OwnType) and i < len(stmt.value.elements):
                                 self._check_own_lvalue_return(et, stmt.value.elements[i],
-                                                              f"tuple element {i}")
+                                                              f"tuple element {i}",
+                                                              whole_slot=False)
                         # Annotate per-element capture mode (ref/value/const_ref)
                         self._annotate_tuple_elem_capture(
                             stmt.value, tuple_target, is_return=True)

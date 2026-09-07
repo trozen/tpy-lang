@@ -78,12 +78,14 @@ results.append(copy(x)) # list owns a copy, no warning
 
 **Move optimization:** When the compiler can prove that the source variable is not used after the copy, the copy is silently optimized to a move (no data duplication). This is an invisible optimization — the programmer doesn't need to think about it. Additionally, C++ copy elision (RVO/NRVO) may eliminate copies entirely when returning values.
 
-**Rvalues don't need `copy()`:** Constructor calls and function results are rvalues — they don't have an existing owner, so they can be moved directly into persistent storage without copying:
+**Rvalues that OWN their result don't need `copy()`:** constructor calls, factories and `Own[T]`-returning functions have no existing owner, so they move directly into persistent storage:
 
 ```python
 results.append(Point(i, i))        # rvalue — moved directly, no copy() needed
 self.field = create_point(1, 2)    # rvalue — moved directly, no copy() needed
 ```
+
+A call that returns a BORROW (`-> T` on a reference type) is an rvalue by the address-of test but is not a fresh value: the reference aliases the callee's storage, so an owning slot copies from it and the compiler says so (a warning at every owning slot, the `Own[T]` return included; `copy(...)` silences it). One rule, no lifetime reasoning: a temporary receiver does not exempt the call (`Point(n).updated()` warns too), because what the callee hands back can reach past its receiver.
 
 ### 5. `Own[T]` for return by value
 

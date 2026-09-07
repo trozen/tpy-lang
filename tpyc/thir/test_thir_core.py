@@ -4870,16 +4870,20 @@ class TestWave12MoveCopyNodes:
         assert isinstance(ret.value, THIRCopy)
         _assert_byte_identical(src)
 
-    def test_return_copy_field_source_stays_ast(self):
-        # BOUNDARY: `return copy(b.p)` (a field, not a bare name) is excluded by
-        # copy_plain_record_source, so the return falls back (a later rung).
+    def test_return_copy_field_source_routes(self):
+        # A FIELD source takes the same copy-construct row as a bare name:
+        # admission is the source's value form, not its syntax class.
         src = self._PT + (
             "from tpy import Own\n"
             "class Box:\n    p: Pt\n"
             "    def __init__(self, p: Own[Pt]):\n        self.p = p\n"
             "def f(b: Box) -> Own[Pt]:\n    return copy(b.p)\n")
         thir = _lower_ctx(src)
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[-1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRCopy)
 
     def test_consuming_for_loop_routes(self):
         # A native auto-consuming for-loop (loop var appended, source at last

@@ -1,0 +1,1 @@
+main.py:24: warning: copies Point into owned storage; use copy() to make this explicit

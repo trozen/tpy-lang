@@ -531,7 +531,7 @@ from .checks import (
     _x_temps_ok,
     _r_callable_value_pass,
     _r_container_literal,
-    _r_copy_record_own,
+    _r_copy_own,
     _r_dyn_own_conformer,
     _r_func_ref,
     _r_lambda,
@@ -578,8 +578,8 @@ from .checks import (
     _opt_own_ptr_opt_name_arg,
     _readonly_container_rvalue_arg,
     _record_rvalue_source_shape,
-    copy_plain_container_source,
-    copy_plain_record_source,
+    copy_construct_source,
+    copy_construct_form,
     copy_call_arg,
     _optional_ptr_container_slot,
     _owned_str_slot,
@@ -635,7 +635,7 @@ from .checks import (
     _field_over_walrus_ok,
     _field_over_container_subscript_ok,
     _func_ref_routable,
-    _copy_record_own_arg,
+    _copy_own_arg,
     _copy_open_elem_arg,
     _lambda_routable,
     _subscript_over_container_subscript_ok,
@@ -723,10 +723,9 @@ def _lower_copy_record(e: TpyExpr, lc: '_LowerCtx',
                        slot_type: 'TpyType | None' = None,
                        exact: bool = False,
                        pointers: 'set[str] | None' = None,
-                       use: _ExprUse = _COPY_SRC_USE,
                        loc: 'SourceLocation | None' = None
                        ) -> 'THIRCopy | None':
-    """`copy(name)` of a plain reference-typed NAME as the copy-construct
+    """`copy(x)` of a plain reference-typed source as the copy-construct
     rvalue (`T(x)`) -- a record spells `Point(p)`, a container spells
     `std::vector<int32_t>(data)`, one node shape either way. Every sink that
     takes this row has to intercept it itself -- the special-builtin call gate
@@ -747,27 +746,42 @@ def _lower_copy_record(e: TpyExpr, lc: '_LowerCtx',
     `Optional[record]` at that sink drops the deref). Delete the parameter
     when that is fixed rather than adding a second user."""
     pts = lc.pointers if pointers is None else pointers
-    crec = copy_plain_record_source(e, lc.analyzer, pts)
+    crec = copy_construct_source(e, lc.analyzer, pts)
     if crec is not None and (isinstance(e.args[0], TpyName)
                              and e.args[0].name in lc.ptr_variant_locals):
         # An assign-narrowed ptr-variant binding reads as its member
         # record, but its copy is the variant deep copy (to_value_variant,
         # the copy-special ptr-variant arm) -- not the record
-        # copy-construct this row spells.
+        # copy-construct this row spells. The container leg needs no twin:
+        # sema types `copy(u)` of a narrowed union NAME as the whole union,
+        # so a ptr-variant binding never reaches here with a container read
+        # type.
         return None
-    if crec is None:
-        # No `ptr_variant_locals` twin on the container leg: sema types
-        # `copy(u)` of a narrowed union NAME as the whole union ("No matching
-        # overload for len(P | list[Int32])"), so a ptr-variant binding never
-        # reaches here with a container read type, and a local bound off the
-        # narrowed member (`p = u; copy(p)`) is a plain container binding
-        # whose `std::vector<int32_t>(p)` is the copy that shape wants.
-        crec = copy_plain_container_source(e, lc.analyzer, pts)
     if crec is None or (exact and crec != slot_type):
         return None
-    return THIRCopy(result_type=crec if slot_type is None else slot_type,
-                    value=_lower_expr(e.args[0], lc, declared, use=use),
-                    cpp_type=lc.render_type(crec), form=Form.STORAGE, loc=loc)
+    return lower_copy_construct(e.args[0], crec, lc, declared,
+                                slot_type=slot_type, loc=loc)
+
+
+def lower_copy_construct(src: TpyExpr, payload: TpyType, lc: '_LowerCtx',
+                         declared: dict[str, TpyType], *,
+                         slot_type: 'TpyType | None' = None,
+                         loc: 'SourceLocation | None' = None) -> THIRCopy:
+    """The copy-construct node itself (`T(<source read>)`), shared by the
+    explicit `copy()` row and the IMPLICIT copy an owning slot performs on a
+    borrowed source. One node either way: the two spellings must not be able
+    to render the same copy differently.
+
+    The source's VALUE FORM picks the read, never the sink's convention: the
+    sink consumes the `T(...)` construct, and what goes INSIDE it is a borrow
+    of the copied object (BORROW_BIND) unless the source is a prvalue, which
+    materializes at the STORAGE sink the construct is."""
+    src_use = (_ExprUse(result=_ExprResultUse.STORAGE)
+               if is_rvalue_source(lc.analyzer, src) else _COPY_SRC_USE)
+    return THIRCopy(result_type=payload if slot_type is None else slot_type,
+                    value=_lower_expr(src, lc, declared, use=src_use),
+                    cpp_type=lc.render_type(payload), form=Form.STORAGE,
+                    loc=loc)
 
 
 def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
@@ -1244,7 +1258,19 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                   and fi is not None
                   and call_returns_cpp_ref(analyzer, fi)
                   and _f1_record(ret, analyzer)
-                  and _witness("call.recv_borrow_ret")))
+                  and _witness("call.recv_borrow_ret"))
+              # The `copy()` builtin at a value-consuming sink. Every
+              # callee-shape classifier above rejects a special builtin, so
+              # admission is the SOURCE's -- the same classifier the
+              # intercepting sinks use, and pointer-blind like the arg
+              # table's row (lowering re-runs with the live set and picks
+              # the deref arm). LAST in the chain, so no spelling an
+              # existing arm renders is re-claimed.
+              or (result in (_ExprResultUse.STORAGE, _ExprResultUse.VALUE,
+                             _ExprResultUse.BORROW_BIND)
+                  and copy_construct_source(e, analyzer, frozenset())
+                  is not None
+                  and _witness("call.copy_construct_ret")))
         if not ok:
             note_detail(_call_ret_reject(e, ret, analyzer))
     if result is _ExprResultUse.CONDITION:
@@ -1879,7 +1905,7 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # ctor slot (`Holder(copy(b))` -> `Holder(Box(b))`): the
         # copy-construct rvalue binds the T&& slot -- the free/method
         # gates' row.
-        _ArgRow("copy_record_own", _r_copy_record_own),
+        _ArgRow("copy_own", _r_copy_own),
         # `copy(src[i])` of an open-T element into an `Own[T]` slot
         # (`Owned(copy(src[0]))` -> `Owned<T>(T(__getitem__(src, 0)))`):
         # the generic copy tail around the element read.
@@ -12596,11 +12622,11 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             # resumable return alike); the COPY half stays temps_ok-gated
             # inside the kind branches (it hoists a temp).
             ok = True  # witnessed at the arm (move.own_last_use)
-        if not ok and _copy_record_own_arg(a, ptype, analyzer):
+        if not ok and _copy_own_arg(a, ptype, analyzer):
             # `copy(name)` into a same-nominal Own slot: the copy-construct
             # rvalue (`consume(Box(b))`), rendered by _lower_call_arg's
             # copy intercept -- no temp, no move.
-            ok = True  # witnessed at the row (own.record_copy)
+            ok = True  # witnessed at the row (own.copy_construct)
         if not ok and _own_tuple_move_arg(a, ptype, lc, declared):
             # An OWN-element tuple name moves whole at its last use
             # (`consume(std::move(t))`), rendered by _lower_call_arg's
@@ -14415,7 +14441,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     own_slot = _plain_or_opt_own_slot(ptype)
     if own_slot is not None:
         crow = _lower_copy_record(a, lc, declared, slot_type=own_slot,
-                                  exact=True, use=_NESTED_ARG_USE,
+                                  exact=True,
                                   loc=getattr(a, "loc", None))
         if crow is not None:
             return crow
@@ -15432,42 +15458,57 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         # slot (declared plain container, the argparse accumulator).
         _copy_ptr_ok = _f1_container_ref(_cp_du)
         _copy_rec_ptr_ok = _f1_record(_cp_du, analyzer)
-    # The NON-RECORD half of the axis only: the record source has its own
-    # rows below (and `_lower_copy_record`'s `T(x)` row above every
-    # supporting sink), so a shared gate here would preempt them.
-    if (_f1_container_ref(stu)
-            and (not (isinstance(src, TpyName)
-                      and (src.name in lc.pointers
-                           or src.name in lc.narrow.narrowed))
-                 or _copy_ptr_ok)):
+    # The copy-CONSTRUCT tail over either reference family: the source's
+    # value form carries the indirection, so one render serves an lvalue
+    # (name / field / subscript / borrow-returning call / awaited borrow)
+    # and a prvalue alike. A NARROWED name reads as its member and is not
+    # this source; a pointer-local takes the deref rows beside this one.
+    _cc_form = (copy_construct_form(src, lc.pointers, analyzer)
+                and not (isinstance(src, TpyName)
+                         and src.name in lc.narrow.narrowed))
+    if _f1_container_ref(stu) and (_cc_form or _copy_ptr_ok):
         _witness("call.copy_container")
-        # STORAGE use: the container-returning source is copied into the
-        # `T(...)` rvalue, so a container-returning method/free call is
-        # admitted at the storage sink (its `_storage_call_ret` gate). A
-        # container FIELD source (`copy(c.items)`) is a bare member read --
-        # the BORROW_BIND copy-source use, like the other lvalue arms.
+        # An RVALUE source materializes at the STORAGE sink the `T(...)`
+        # construct is (its `_storage_call_ret` gate); every lvalue read --
+        # a field, a borrow-returning call -- binds the copy ctor's
+        # `const T&` under the BORROW_BIND copy-source use. A POINTER-LOCAL
+        # is an lvalue whose read must still deref, and STORAGE is what
+        # makes the container name arm spell `(*acc)`.
         return THIRCall(
             result_type=rtype, callee=callee,
             args=(_lower_expr(
                 src, lc, declared,
-                use=(_COPY_SRC_USE if isinstance(src, TpyFieldAccess)
-                     else _ExprUse(result=_ExprResultUse.STORAGE))),),
+                use=(_ExprUse(result=_ExprResultUse.STORAGE)
+                     if _copy_ptr_ok or is_rvalue_source(analyzer, src)
+                     else _COPY_SRC_USE)),),
             cpp_template=f"{stu.to_cpp()}({{0}})",
             loc=loc)
-    if _copy_rec_ptr_ok and _f1_record(stu, analyzer):
-        # `copy(acc)` of a POINTER-LOCAL record source (the argparse
-        # rebind-slot accumulator): the name read derefs, so the general
-        # tail spells `Tag((*acc))`. Only this flavor lands here -- a bare
-        # record NAME is `_lower_copy_record`'s `T(x)` row, which every
-        # supporting sink intercepts before the generic call tail.
-        # A record binding is bare at every other use (the `->` rides the
-        # member arms), so only an explicit deref position spells the
-        # indirection.
-        _witness("call.copy_record_ptr")
+    if _f1_record(stu, analyzer) and (_cc_form or _copy_rec_ptr_ok):
+        if _copy_rec_ptr_ok:
+            # `copy(acc)` of a POINTER-LOCAL record source (the argparse
+            # rebind-slot accumulator): the name read derefs, so the tail
+            # spells `Tag((*acc))`. A record binding is bare at every other
+            # use (the `->` rides the member arms), so only an explicit
+            # deref position spells the indirection.
+            _witness("call.copy_record_ptr")
+            return THIRCall(
+                result_type=rtype, callee=callee,
+                args=(_lower_expr(src, lc, declared,
+                                  use=_ExprUse(indirect_read=True)),),
+                cpp_template=f"{stu.to_cpp()}({{0}})",
+                loc=loc)
+        # The container arm's record twin, same tail: a bare record NAME is
+        # `_lower_copy_record`'s `T(x)` row (every supporting sink
+        # intercepts it first), so what lands here is the source shapes no
+        # sink intercepts -- a field read, a borrow-returning call, an
+        # awaited borrow.
+        _witness("call.copy_record")
         return THIRCall(
             result_type=rtype, callee=callee,
-            args=(_lower_expr(src, lc, declared,
-                              use=_ExprUse(indirect_read=True)),),
+            args=(_lower_expr(
+                src, lc, declared,
+                use=(_ExprUse(result=_ExprResultUse.STORAGE)
+                     if is_rvalue_source(analyzer, src) else _COPY_SRC_USE)),),
             cpp_template=f"{stu.to_cpp()}({{0}})",
             loc=loc)
     _cp_str = _resolved_str_value(stu, analyzer)

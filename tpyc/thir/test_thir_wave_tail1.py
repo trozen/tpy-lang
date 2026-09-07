@@ -163,7 +163,7 @@ class TestValueOptArgRows:
                + "main()\n")
         thir, w = _lower_ctx_witnessed(src)
         assert _fn(thir, "main") is not None
-        assert w.get("own.record_copy", 0) >= 1
+        assert w.get("own.copy_construct", 0) >= 1
         compiler, out = _cpp(src)
         _, ast_out = _cpp(src)
         assert out == ast_out
@@ -347,33 +347,3 @@ class TestOwnRecordMethodRvalueConformer:
         assert out == ast_out
         assert "::tpy::make_adapter<P>(fac.make(7))" in out
 
-    def test_borrow_method_source_stays_ast(self):
-        # BOUNDARY: a method returning a BORROW (field return, not an
-        # rvalue source) at the Own[@dynamic P] slot must keep rejecting
-        # -- only record prvalues take the conformer wrap.
-        src = (_PRELUDE
-               + "from tpy import Own\n"
-               + "from tpy import dynamic\n"
-               + "from typing import Protocol\n"
-               + "@dynamic\n"
-               + "class P(Protocol):\n"
-               + "    def ping(self) -> Int32: ...\n"
-               + "class Impl:\n"
-               + "    n: Int32\n"
-               + "    def __init__(self, n: Int32) -> None:\n"
-               + "        self.n = n\n"
-               + "    def ping(self) -> Int32:\n        return self.n\n"
-               + "class Factory:\n"
-               + "    cached: Impl\n"
-               + "    def __init__(self) -> None:\n"
-               + "        self.cached = Impl(3)\n"
-               + "    def get(self) -> Impl:\n"
-               + "        return self.cached\n"
-               + "def use(p: Own[P]) -> Int32:\n"
-               + "    return p.ping()\n"
-               + "def main() -> None:\n"
-               + "    fac = Factory()\n"
-               + "    print(use(fac.get()))\n"
-               + "main()\n")
-        _assert_rejects_at(_reject_tally(src),
-                           "body:stmt.expr_stmt:call.arg_shape.own_protocol.dyn")

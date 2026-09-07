@@ -123,7 +123,7 @@ class TestCtorArgRows:
         thir, faces = _lower_ctx_witnessed(src)
         body = _body(thir, "f")
         assert "Holder(Box(b))" in body
-        assert faces["own.record_copy"] >= 1
+        assert faces["own.copy_construct"] >= 1
         _assert_byte_identical(src)
 
     def test_func_ref_into_callable_ctor_slot(self):
@@ -163,9 +163,10 @@ class TestCtorArgRows:
         assert faces["ctor.copy_open_elem"] >= 1
         _assert_byte_identical(src)
 
-    def test_concrete_elem_copy_subscript_stays_ast(self):
-        # The open-T row requires BOTH sides TypeParamRef; a concrete
-        # record element copy over a subscript is unwitnessed -> AST.
+    def test_concrete_elem_copy_subscript_routes(self):
+        # The open-T row requires BOTH sides TypeParamRef; a CONCRETE record
+        # element copy over the same subscript takes the shared
+        # copy-construct row beside it (`Box(__getitem__(xs, 0))`).
         src = (
             "from tpy import Int32, Own, copy\n"
             "class Box:\n"
@@ -180,8 +181,11 @@ class TestCtorArgRows:
             "    h = Holder(copy(xs[0]))\n"
             "    return h.item.value\n"
         )
-        _assert_rejects_at(_reject_tally(src),
-                           "body:expr.call:call.ctor_arg.own_record_f1")
+        thir, faces = _lower_ctx_witnessed(src)
+        assert _fn(thir, "f") is not None
+        assert faces["own.copy_construct"] >= 1
+        assert ("Holder h = Holder(Box(::tpy::__getitem__(xs, 0)));"
+                in _body(thir, "f"))
 
     def test_default_factory_instantiation(self):
         src = (
