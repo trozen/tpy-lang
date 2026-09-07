@@ -160,6 +160,18 @@ well-formed invariants:
 If you can't state the invariant in one sentence, finish Phase 3
 before continuing.
 
+**Pitfalls walk and scope matrix -- ALL classifications above trivial.**
+Walk `docs/PITFALLS.md` once and, for each entry that can apply to the
+feature, say in one line how the design respects it (or why it cannot
+apply). Then fill the scope matrix for the construct: positions (free
+function, method, constructor, module-level statement, generator body,
+async body, comprehension, closure, context-manager body, `try`/`finally`,
+`@error_return` body, `match` arm) by shapes (scalar, tuple, `Optional`,
+union, `str`/`bytes`, `Own[T]`, `readonly[T]`, `Ptr`/`Span`, `Box`/`Rc`)
+and slot kinds (local, param, return, field, container element, global). Every applicable cell is marked covered-by-section,
+not-applicable-because, or gap-filed-as; an empty cell is a finding the
+reviewer will probe.
+
 ## Phase 4: Plan tests and docs
 
 **Tests:**
@@ -170,6 +182,12 @@ before continuing.
 - Panic cases (`panic_<name>/`) for runtime failures, if applicable
 - Edge cases: empty / zero / boundary / None / generic-parameter shapes
 - Adjacent-feature interactions surfaced in Phase 2
+- One condensed case per feature, not one per shape: a section per
+  covered matrix cell under a one-line comment naming the position, the
+  `# tpyc:` annotation on the subject line, output lines prefixed with
+  the section name. `error_` variants take the one most representative
+  position (the compiler stops at the first error). The corpus is over
+  5000 cases; each new case is a cost.
 - CPython compatibility: does the feature have a `lib/cpy/tpy/`
   equivalent? Default to yes; only skip with `no_cpython.txt` if the
   feature truly depends on C++-only behavior (e.g. `@native` interop)

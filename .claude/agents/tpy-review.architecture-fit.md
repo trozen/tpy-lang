@@ -34,7 +34,7 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 - Parser (`tpyc/parse/`) does not resolve types across modules -- only collects refs
 - Sema (`tpyc/sema/`) does not generate C++ or mutate parse nodes for codegen convenience
 - Codegen (`tpyc/codegen_cpp/`) does not run type-analysis; it consumes sema's output
-- New sema -> codegen facts should be materialized on AST nodes, not codegen side tables
+- New sema -> codegen facts live on a THIR node or the lowering context, not on parse nodes and not in codegen side tables
 
 **Phase-1 / Phase-2 split (sema)**
 - Phase-1: per-module body analysis (signatures + bodies, intra-module)
@@ -53,6 +53,9 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 - Search for similar logic elsewhere before approving new code
 - Copy-pasted patterns should be extracted to a shared helper
 - Especially watch: new coercion paths, new emit helpers, new narrowing rules
+
+**Decide once, consume everywhere** (`docs/PITFALLS.md#same-construct-every-position`)
+- A construct must behave the same at every position (the `docs/PITFALLS.md` list, from free function through `match` arm). A fix that touches several consuming sites instead of the site that decides the fact is the defect in a different form: flag it as a Warning, and as a Critical when the diff is a second round on the same family.
 
 **Generalize, don't parallelize** (one altitude above duplication)
 - A new mechanism that solves a problem an existing abstraction already solves should *extend / generalize* that abstraction, not sit beside it as a second system -- flag the parallel mechanism even when no line is literally duplicated

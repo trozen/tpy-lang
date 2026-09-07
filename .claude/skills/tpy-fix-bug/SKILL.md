@@ -169,6 +169,18 @@ single-instance fix requires (a) a stated reason the general fix is
 disproportionate now, and (b) BUGS.md entries for every sibling left
 unfixed.
 
+**Pitfalls walk and scope matrix -- ALL classifications above trivial.**
+Walk `docs/PITFALLS.md` once and, for each entry that can apply to the
+change, say in one line how the fix respects it (or why it cannot
+apply). Then fill the scope matrix for the construct: positions (free
+function, method, constructor, module-level statement, generator body,
+async body, comprehension, closure, context-manager body, `try`/`finally`,
+`@error_return` body, `match` arm) by shapes (scalar, tuple, `Optional`,
+union, `str`/`bytes`, `Own[T]`, `readonly[T]`, `Ptr`/`Span`, `Box`/`Rc`)
+and slot kinds (local, param, return, field, container element, global). Every applicable cell is marked covered-by-section,
+not-applicable-because, or gap-filed-as; an empty cell is a finding the
+reviewer will probe. The matrix is what makes "fix the class" checkable.
+
 The change that fixes the root cause. Note:
 
 - **Blast radius:** which files, which phases.
@@ -243,9 +255,12 @@ Sketch the test plan with the fix, not after approval:
   compiling cleanly / keep its facts / keep its old output. Soundness
   fixes are judged as much by what they leave alone as by what they
   catch.
-- **Sibling tests** for every class member the fix covers (one per
-  construct family is enough; the fix-the-class rule above decides the
-  set).
+- **Sibling coverage as sections, not cases.** One condensed case per
+  fix: a section per covered matrix cell under a one-line comment naming
+  the position, the `# tpyc:` annotation on the subject line, output
+  lines prefixed with the section name. `error_` variants take the one
+  most representative position (the compiler stops at the first error).
+  The corpus is over 5000 cases; each new case is a cost.
 - Reference-type cases follow CLAUDE.md's mutate-after-the-boundary
   rule -- a read-only test is parity-blind and can hide a silent copy.
 

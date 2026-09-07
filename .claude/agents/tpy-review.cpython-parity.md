@@ -23,7 +23,7 @@ When unsure whether a divergence is reachable in practice, keep the finding and 
 
 In scope -- behavioral semantics anywhere in the diff:
 - Generated C++ snapshots (`tests/cases/*/expected/{src,include}/main.{cpp,hpp}`) -- read alongside the case's `src/main.py`
-- Codegen logic (`tpyc/codegen_cpp/**`) and sema (`tpyc/sema/**`, `tpyc/typesys.py`) that decides a behavior, even if current tests don't trigger an output diff
+- Codegen logic (`tpyc/thir/**`, `tpyc/codegen_cpp/**`) and sema (`tpyc/sema/**`, `tpyc/typesys.py`) that decides a behavior, even if current tests don't trigger an output diff
 - Runtime headers (`runtime/cpp/include/**`) when they implement a Python-observable operation
 - Test cases -- especially new/changed `no_cpython.txt`, and cases that exercise a construct only under read-only conditions
 
@@ -39,7 +39,7 @@ The orchestrator passes you a base ref and the changed-file list.
 
 1. `git diff <BASE>` over your files; `git show <BASE>:<file>` for before-state.
 2. For each behavior the diff introduces or changes, ask: what does CPython do here, and does TPy match?
-3. **Probe when output-affecting and reachable**: write a snippet under `/tmp/agents/`, run it both ways and compare:
+3. **Probe -- required for every finding about runtime behavior, and for every new `error_` case.** Write a snippet under `/tmp/agents/` (your own, not the implementer's case), run it both ways and compare; quote both outputs in the finding:
    - `uv run tpy /tmp/agents/<probe>.py`
    - `PYTHONPATH=lib/cpy python3 /tmp/agents/<probe>.py`
    A mismatch with no acknowledgment is a Critical.
@@ -83,6 +83,14 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Probing individu
 
 **Strings**
 - `str` indexing yields a length-1 `str` in CPython; TPy `Char` vs `str` distinctions.
+
+## Pitfalls you own
+
+`docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches (author probes with `printf '...' > /tmp/agents/<name>.py`; no Write tool, no heredocs):
+
+- `silent-copy-vs-alias` -- the headline above; the check is the mutate-after-the-boundary probe under both interpreters.
+- `reject-valid-python-only-as-documented-divergence` -- run every new or changed `error_` case's `src/main.py` under CPython (`PYTHONPATH=lib/cpy uv run python`). If CPython runs it clean, the case header must cite `BUGS.md#<slug>` or the `docs/LANGUAGE_FEATURES.md` rule; neither is a Critical (a rejection of valid Python recorded as a rule).
+- `no-warning-on-valid-code` -- for every warning in a changed `diag.txt` of a non-`error_` case, decide from the language definition whether the named property holds; the case comment is not evidence. A warning on valid code is a Critical, and a comment narrating it as expected is the same finding.
 
 ## False-positive discipline
 

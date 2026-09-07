@@ -40,6 +40,8 @@ Scan the *added* lines of the diff for merge-blockers:
 - Leftover WIP: `TODO` / `FIXME` / `XXX` / `HACK` introduced in this diff, `breakpoint()`, stray debug prints, commented-out code.
 - Stubs / half-finished work introduced here: `pass`-only bodies, `raise NotImplementedError`, `...` placeholders.
 - Behavior changes without a test: cross-check against `tests/cases/` additions. Depth is `/tpy-review`'s test-coverage job -- here just confirm *something* covers each behavior change.
+- Pre-existing test sources edited: `git diff <BASE> -- 'tests/cases/*/src/main.py'` restricted to cases that existed at `<BASE>`. List every hunk on a subject line; each is restore-or-justify. "Simplified to keep a gate green" is a blocker, not a justification.
+- Snapshot churn labelled: when `expected/` files changed for pre-existing cases, the branch summary bins the hunks by shape (improvement / neutral / regression in generated-code terms) with one example each; a change presented as "the approved class" whose hunks are mostly collateral is a blocker until the bins are honest.
 - Tests green: do **not** run `pytest` yourself by default. Ask whether the suite was run and is green; if unknown, list it as an open item. Run `uv run pytest` only if the user asks.
 
 ### 3. Docs current?

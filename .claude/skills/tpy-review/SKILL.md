@@ -64,6 +64,8 @@ Skip a specialist when its scope is empty:
 | `convention-compliance` | always (cheap; checks the diff against CLAUDE.md's written rules across all changed files) |
 | `docs-sync` | always (cheap) |
 
+**Re-derive the buckets from the CURRENT diff on every round.** A review's fix commit routinely moves code into a bucket that was empty at the previous classification (a runtime helper added to `runtime/cpp/`, a harness change to `tests/conftest.py`); the specialist for that bucket must run. Never drop a specialist because it came back clean last round.
+
 ### 4. Fan out specialists IN PARALLEL
 
 Send **one message with multiple Agent tool calls** -- one per dispatched specialist. Do NOT serialize.

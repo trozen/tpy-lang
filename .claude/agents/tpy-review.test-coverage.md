@@ -46,6 +46,17 @@ You may NOT run `uv run pytest`. Surface coverage concerns as findings.
 - `# tpyc: non_null(var)` / `nullable(var)` annotations on deref sites where applicable
 - Test literal style: plain literals (`1`, `"hello"`, `{1, 2}`) over explicit constructors (`Int32(1)`) when the type is inferable
 
+**Condensed cases (corpus size is a cost)**
+- One case per fix or feature, with one section per covered position (the `docs/PITFALLS.md` list: free function, method, constructor, module-level statement, generator body, async body, comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match` arm) under a one-line comment naming the position and the `# tpyc:` annotation on the subject line; output lines prefixed with the section name. Flag a new case whose subject already has a condensed sibling, and a fix whose report's scope matrix names a position no section covers.
+- `error_` cases take the one most representative position (the compiler stops at the first error); the other positions are covered by the happy-path sections.
+- A divergence found in review becomes a section in the existing case, never a new case.
+- A section that needs `no_cpython.txt`, a `@native` companion or a runtime panic is its own case; folded in, it removes the cpy or exec phase for every sibling section.
+
+**Test integrity**
+- A pre-existing case's subject line is never simplified to keep a gate, ratchet or snapshot green (`git diff <BASE> -- 'tests/cases/*/src/main.py'` over cases that existed at `<BASE>`; every hunk on a subject line needs a reason in the change-set).
+- A line spelled unusually to dodge a known defect (`copy()` to silence a false warning, `Own[str]` to force a temporary) says so in a comment and cites the `BUGS.md#<slug>`; a case pinning a known-wrong render carries the slug.
+- A warning in a non-`error_` case's `diag.txt` sits on an annotated line with a comment saying why the warning is right, or cites a slug. A comment that explains the warning as expected is not evidence that it is (`docs/PITFALLS.md#no-warning-on-valid-code`).
+
 **CPython compatibility**
 - `no_cpython.txt` is absent unless the test truly depends on C++-only behavior (e.g. `@native` interop)
 - If a test could plausibly use `lib/cpy/tpy/` stubs to run under CPython, flag the missing alternative
@@ -59,7 +70,7 @@ You may NOT run `uv run pytest`. Surface coverage concerns as findings.
 **Per-case scaffolding**
 - Naming: `<name>/` (normal), `error_<name>/` (compile error), `panic_<name>/` (runtime panic)
 - New cases in the right group (browse `tests/cases/`)
-- `options.json` only if the test needs a non-default option (currently just `default_int`)
+- `options.json` only if the test needs a non-default option (`default_int`, `plugin`, `dsl_opts`, `snapshot_lib_modules`; layered, group-level files cover their subtree)
 
 ## False-positive discipline
 

@@ -56,6 +56,13 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 - `std::span` / `std::string_view` used where applicable (no `std::string` materialization from views)
 - RAII pivot points clean (no leaks if a constructor mid-body throws)
 
+## Pitfalls you own
+
+`docs/PITFALLS.md` holds the generated-code rules that keep passing review; the runtime is where two of them are decided. Run the check, do not skim:
+
+- `hidden-allocation` -- a runtime signature that forces the caller to materialize owned storage is the defect at the RUNTIME, not at the call site: a lookup or comparison that takes `const T&` where `T` is `std::string` or a byte vector refuses a view, so codegen builds a `std::string` per call (the `list_remove` needle, `BigInt::compare()` allocating for two small ints). Every new or changed signature that receives a `str`/`bytes` value for lookup, comparison or hashing takes the view form (`std::string_view`, `std::span<const uint8_t>`) or a transparent heterogeneous overload; the existing "no `std::string` materialization from views" line above is the same rule.
+- `view-not-copy` -- a helper that returns `std::string` where a `std::string_view` into the argument or into owned storage would do is a finding.
+
 ## False-positive discipline
 
 Before surfacing a finding, rule out these false positives -- do NOT flag:

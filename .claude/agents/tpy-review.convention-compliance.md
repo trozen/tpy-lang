@@ -52,7 +52,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`.
 
 **Per-compilation state hygiene (tpyc/)**
 - New per-compilation state belongs on the `Compiler` instance (read via `get_current_compiler()` / `require_current_compiler()`), NOT a new module-level global.
-- New sema -> codegen facts materialized on AST nodes, not `id(node)` side tables in codegen.
+- New sema -> codegen facts live on a THIR node or the lowering context, not on parse nodes and not in `id(node)` side tables.
 - Per-type C++ knowledge declared on `TypeDef` metadata, not new `if`-chains in codegen.
 
 **Imports and structure (tpyc/)**
@@ -67,6 +67,13 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`.
 
 **Front-end perf rule**
 - No proactive front-end optimization (incremental caching, self-hosting, hot-path tuning) absent a stated real-workload need -- CLAUDE.md defers this to the IR migration.
+
+## Pitfalls you own
+
+`docs/PITFALLS.md` holds the diagnostic-text rules; you own these two. Grep, do not skim:
+
+- `no-cpp-in-diagnostics` -- new diagnostic strings in `tpyc/` and changed `diag.txt` files carry no `std::`, `::tpy::`, `int32_t`, `variant`, `string_view`, pointer sigils or C++ header names. The user reads Python; a second backend is planned.
+- `no-internal-names-in-diagnostics` -- no `__name__`, `type(` or `Tpy[A-Z]\w+` inside a message string; no sema helper names, THIR tags or reject-reason codes reach the user. Name the Python construct.
 
 ## False-positive discipline
 
