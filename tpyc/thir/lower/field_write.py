@@ -59,7 +59,8 @@ from ..nodes import (
     THIRMove,
     THIRName,
 )
-from .context import _ExprResultUse, _ExprUse, _LowerCtx
+from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
+                      _ONLY_TUPLE_SOURCE, _slot_lift_forms, SinkPos)
 from .checks import (
     _borrow_tuple_local_type,
     _bytes_field_write_ok,
@@ -569,7 +570,7 @@ def _lower_container_literal_value(stmt: TpyAssign, plan: _RefFieldPlan,
         # the optional's converting ctor has no type to deduce from
         # `{10, 20}`; dict/set literals spell their container already.
         value = _lower_expr(stmt.value, lc, declared,
-                            target_type=plan.opt_inner)
+                            use=_ExprUse(slot_target=plan.opt_inner))
         if isinstance(stmt.value, TpyArrayLiteral):
             if not isinstance(value, THIRContainerLiteral):
                 # The prefix has nowhere to live; reject rather than let a
@@ -621,8 +622,9 @@ def _lower_ref_field(stmt: TpyAssign, plan: _RefFieldPlan,
             _witness("field_write.record_copy_ctor")
             return THIRAssign(
                 target=_lower_field_write_target(stmt, lc, declared),
-                value=_lower_expr(ctor_peel, lc, declared,
-                                  target_type=plan.slot_type), loc=loc)
+                value=_lower_expr(
+                    ctor_peel, lc, declared,
+                    use=_ExprUse(slot_target=plan.slot_type)), loc=loc)
         _witness("field_write.optrec_copy_ctor")
         return THIRAssign(
             target=_lower_field_write_target(stmt, lc, declared),
@@ -647,8 +649,9 @@ def _lower_ref_field(stmt: TpyAssign, plan: _RefFieldPlan,
                 # The repeat threads the FIELD type -- an untargeted resolve
                 # demotes it to the Array flavor.
                 _witness("field_write.container_repeat")
-                value = _lower_expr(stmt.value, lc, declared,
-                                    target_type=plan.decl_ftype)
+                value = _lower_expr(
+                    stmt.value, lc, declared,
+                    use=_ExprUse(slot_target=plan.decl_ftype))
             else:
                 # STORAGE: the field owns its container, so the call's
                 # owned-rvalue result lands by value -- the same sink the
@@ -704,9 +707,10 @@ def _lower_ref_field(stmt: TpyAssign, plan: _RefFieldPlan,
         _witness("field_write.record_rvalue")
         return THIRAssign(
             target=_lower_field_write_target(stmt, lc, declared),
-            value=_lower_expr(stmt.value, lc, declared,
-                              target_type=plan.slot_type,
-                              use=_ExprUse(record_copy_sink=True)),
+            value=_lower_expr(
+                stmt.value, lc, declared,
+                use=_ExprUse(pos=SinkPos.FIELD_WRITE,
+                             slot_target=plan.slot_type)),
             loc=loc)
     _witness("field_write.optrec_rvalue")
     # The assign is a statement-position flush point, so the rvalue's arg
@@ -805,8 +809,9 @@ def _lower_tail_value(stmt: TpyAssign, ftype: TpyType, lc: _LowerCtx,
         tail_src, lc, declared,
         use=(_ExprUse(result=_ExprResultUse.RECEIVER)
              if ptr_src
-             else _ExprUse(ptr_opt_lift=ptr_opt_field,
-                           union_value_lift=union_field)),
+             else _ExprUse(pos=SinkPos.FIELD_WRITE,
+                           forms=_slot_lift_forms(ptr_opt_field,
+                                                  union_field))),
         allow_unrouted_name=_ts_own_container,
         # A FIELD source of the same Optional is consumed WHOLE (the
         # `std::optional<T>` member copies bare); the read must not take the
@@ -922,7 +927,7 @@ def _lower_tuple_field(stmt: TpyAssign, plan: _TupleFieldPlan, lc: _LowerCtx,
             fvalue = _lower_expr(
                 v, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
-                             tuple_source=True))
+                             pos=SinkPos.FIELD_WRITE, forms=_ONLY_TUPLE_SOURCE))
         else:  # a storage-form tuple name (loop var / seeded global)
             fvalue = _lower_expr(v, lc, declared)
         _witness("field_write.tuple_storage_copy")

@@ -85,6 +85,7 @@ from .context import (
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
+    SinkPos,
 )
 from .expressions import (
     _is_move_source,
@@ -994,7 +995,8 @@ def _lower_comp_container_elem(e, vt: TpyType, lc: '_LowerCtx',
         # (`from_range<std::vector<double>>(..)`) and pushes bare like a nested
         # comprehension does. Without the target it would stay the LAZY
         # `repeat_range` the annotated slot cannot take.
-        value = _lower_expr(e, lc, body_declared, target_type=vt)
+        value = _lower_expr(e, lc, body_declared,
+                            use=_ExprUse(slot_target=vt))
     elif _comp_container_name_elem(e, vt, lc, body_declared):
         # A bare NAME at a container slot (`[xs for i in range(3)]` at
         # `list[list[Int32]]`): the slot init copies the container by value,
@@ -1590,8 +1592,9 @@ def _lower_genexpr_range(expr: TpyGeneratorExpression, it: 'TpyCall',
         raise ThirUnsupported("genexpr.range")
     counter_cpp = sema_elem.to_cpp()
     range_args = tuple(
-        _lower_expr(a, lc, declared, use=_ExprUse(indirect_read=True),
-                    target_type=sema_elem)
+        _lower_expr(a, lc, declared,
+                    use=_ExprUse(pos=SinkPos.CALL_ARG,
+                                 slot_target=sema_elem))
         for a in it.args)
     body_declared = dict(declared)
     body_declared[gen.var] = sema_elem

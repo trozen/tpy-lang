@@ -421,10 +421,20 @@ from .predicates import (
 from .context import (
     _btuple_const_storage,
     _ExprResultUse,
+    _NO_FORMS,
+    _ONLY_ADDR_CALL,
+    _ONLY_BORROW_RET_PASSTHROUGH,
+    _ONLY_BTUPLE_SLOT,
+    _ONLY_CORO_FACTORY,
+    _ONLY_INDIRECT_READ,
+    _ONLY_LITERAL_FOLD,
+    _ONLY_PTR_OPT_PASSTHROUGH,
+    _ONLY_RECORD_COPY,
     _ExprUse,
     _LowerCtx,
     _LowerScope,
     _Prescan,
+    SinkPos,
     ValueOptKind,
 )
 from .checks import (
@@ -2406,7 +2416,7 @@ def _tuple_unpack_source(
                # A value-tuple class constant (`Version.SEMVER`): the same
                # `auto __tup_N = <rvalue>;` capture over the bare qualified
                # static (the class-const arm spells it; tuple admission is
-               # threaded via use.tuple_source).
+               # the sink position's whole-tuple verdict).
                or (v.class_constant_owner is not None
                    and _value_tuple_global(
                        analyzer.get_expr_type(v), analyzer) is not None))):
@@ -3571,7 +3581,8 @@ def _lower_opt_btuple_decl(stmt: TpyVarDecl, opt_t: TpyType, bt: 'TupleType',
     if _btuple_owning_call_init(init, analyzer):
         v = _lower_expr(init, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     allow_temps=True, tuple_source=True))
+                                     allow_temps=True,
+                                     pos=SinkPos.LOCAL_DECL))
         _register()
         lc.rebind_slot_locals.add(stmt.name)
         _witness("decl.opt_btuple_slot")
@@ -3606,8 +3617,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             name=stmt.name, resolved_type=vtype,
             init=_lower_expr(
                 stmt.init, lc, declared,
-                use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
-                target_type=vtype),
+                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                             slot_target=vtype)),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.POINTER
@@ -3625,7 +3636,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
             name=stmt.name, resolved_type=vtype, kind=PtrSlotKind.PTR_ADDR,
             init=_lower_expr(stmt.init, lc, declared,
                              use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                          borrow_ret_passthrough=True)),
+                                          pos=SinkPos.LOCAL_DECL,
+                                          forms=_ONLY_BORROW_RET_PASSTHROUGH)),
             cpp_type=lc.render_type(vtype), needs_rebind_slot=needs_rebind,
             is_const=is_const, loc=loc)
     if (isinstance(stmt.init, (TpyCall, TpyMethodCall))
@@ -3799,7 +3811,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         # FormConvert is the no-op the validator rejects). The passthrough
         # keeps a narrowed source name from deref-rendering `(*a)`.
         src = _lower_expr(stmt.init, lc, declared,
-                          use=_ExprUse(ptr_opt_passthrough=True))
+                          use=_ExprUse(pos=SinkPos.LOCAL_DECL,
+                                       forms=_ONLY_PTR_OPT_PASSTHROUGH))
         _witness("decl.opt_name_copy")
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
@@ -4126,10 +4139,10 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
                     stmt.init, pointee, analyzer):
                 note_detail("decl.opt_slot_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            init = _lower_expr(stmt.init, lc, declared,
-                               use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                            allow_temps=True),
-                               target_type=pointee)
+            init = _lower_expr(
+                stmt.init, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                             allow_temps=True, slot_target=pointee))
             if isinstance(stmt.init, TpyArrayLiteral):
                 if not isinstance(init, THIRContainerLiteral):
                     # The prefix has nowhere to live; reject rather than let a
@@ -4169,10 +4182,10 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
         # The decl is a flush position: the ctor init's arg temps (a
         # value-union member temp) print before the slot line, the same
         # drain the union-slot arm takes.
-        init = _lower_expr(stmt.init, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                        allow_temps=True),
-                           target_type=pointee)
+        init = _lower_expr(
+            stmt.init, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                         allow_temps=True, slot_target=pointee))
         _witness("decl.opt_slot_rvalue")
     return THIRPtrLocalDecl(
         name=stmt.name, resolved_type=vtype, kind=kind, init=init,
@@ -4222,8 +4235,8 @@ def _lower_record_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         note_detail("decl.record_slot_const")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     init = _lower_expr(stmt.init, lc, declared,
-                       use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
-                       target_type=vtype)
+                       use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                    slot_target=vtype))
     if hoisted:
         # A resumable body's leaves emit through non-draining leaf emitters
         # (hoist_lines has no function-top drain there) -- reject like the
@@ -4278,8 +4291,8 @@ def _lower_container_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         note_detail("container_lit.rebound")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     init = _lower_expr(stmt.init, lc, declared,
-                       use=_ExprUse(result=_ExprResultUse.STORAGE),
-                       target_type=vtu)
+                       use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                    slot_target=vtu))
     if getattr(init, "make_container", False):
         # The make_vector / make_ordered_* element path's slot render is
         # unverified -- reject rather than risk a divergent `__slot_N` init.
@@ -4357,8 +4370,9 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                 _witness("top_level.global_dyn_rebind")
                 return THIRPtrLocalRebind(
                     name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL,
-                    value=_lower_expr(stmt.init, lc, declared,
-                                      target_type=concrete_type),
+                    value=_lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(slot_target=concrete_type)),
                     val_cpp=slot_cpp, loc=loc)
         _gsp_arg = (stmt.init.args[0]
                     if (isinstance(stmt.init, TpyCall)
@@ -4441,7 +4455,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                 value=_lower_expr(
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 ptr_opt_passthrough=True),
+                                 pos=SinkPos.GLOBAL_SLOT_WRITE),
                     allow_whole_optional=True),
                 loc=loc)
         if (isinstance(stmt.init, TpyFieldAccess)
@@ -4486,7 +4500,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                 value=_lower_expr(
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                                 addr_call=True)),
+                                 pos=SinkPos.GLOBAL_SLOT_WRITE, forms=_ONLY_ADDR_CALL)),
                 loc=loc)
         if (isinstance(stmt.init, TpyFieldAccess)
                 and init_bare is not None and init_bare == slot_t):
@@ -4562,8 +4576,8 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         _witness("top_level.global_slot_union")
         init = _lower_expr(stmt.init, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                        allow_temps=True),
-                           target_type=_u_target)
+                                        allow_temps=True,
+                                        slot_target=_u_target))
         if isinstance(init, THIRContainerLiteral):
             # A bare brace-init cannot pick the variant alternative, so the
             # literal self-describes (`std::vector<int32_t>{1, 2}`).
@@ -4578,8 +4592,8 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
             note_detail("top_level.global_slot_elem")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         init = _lower_expr(stmt.init, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.STORAGE),
-                           target_type=slot_t)
+                           use=_ExprUse(result=_ExprResultUse.STORAGE,
+                                        slot_target=slot_t))
         if getattr(init, "make_container", False):
             # Same unverified `make_vector` slot render the local sibling
             # rejects.
@@ -4599,9 +4613,10 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                 _comp_shadow_pointers(lc.pointers, declared, lc.analyzer))
             _witness("top_level.global_slot_comp")
         else:
-            init = _lower_expr(stmt.init, lc, declared,
-                               use=_ExprUse(result=_ExprResultUse.STORAGE),
-                               target_type=slot_t)
+            init = _lower_expr(
+                stmt.init, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.STORAGE,
+                             slot_target=slot_t))
     elif isinstance(slot_t, NominalType):
         if init_bare != slot_t and not (
                 init_bare is not None
@@ -4621,8 +4636,8 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         # generic ref-slot literal temps land as plain locals here.
         init = _lower_expr(stmt.init, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                        allow_temps=True),
-                           target_type=slot_t)
+                                        allow_temps=True,
+                                        slot_target=slot_t))
     else:
         note_detail("top_level.global_slot_shape")
         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -4739,7 +4754,7 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
                 and not (lc.func.is_generator or lc.func.is_async)):
             init_node = _lower_expr(
                 stmt.init, lc, declared,
-                use=_ExprUse(coro_factory=True))
+                use=_ExprUse(pos=SinkPos.LOCAL_DECL, forms=_ONLY_CORO_FACTORY))
             lc.coro_frame_locals[stmt.name] = vtype
             declared[stmt.name] = sema_var_t
             _witness("decl.coro_frame_local")
@@ -4790,7 +4805,8 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
         slot_cpp = concrete_cpp  # direct inheritance -- plain concrete slot
     else:
         slot_cpp = dynamic_adapter_type(vtype, concrete_cpp, analyzer)
-    init = _lower_expr(stmt.init, lc, declared, target_type=concrete_type)
+    init = _lower_expr(stmt.init, lc, declared,
+                       use=_ExprUse(slot_target=concrete_type))
     if reassigned:
         lc.dyn_protocol_locals.add(stmt.name)
     _witness("decl.dyn_protocol")
@@ -4808,7 +4824,8 @@ def _lower_ptr_name_src(init: TpyExpr, lc: _LowerCtx,
     source or a non-name render (those keep their own deref rules)."""
     if not isinstance(init, TpyName):
         return None
-    src = _lower_expr(init, lc, declared, use=_ExprUse(indirect_read=True))
+    src = _lower_expr(init, lc, declared,
+                      use=_ExprUse(pos=SinkPos.LOCAL_DECL, forms=_ONLY_INDIRECT_READ))
     return src if isinstance(src, THIRName) else None
 
 
@@ -6088,7 +6105,8 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
                and v_fi.is_generator
                else _ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
     value = _lower_expr(
-        stmt.value, lc, declared, target_type=target_type, use=rhs_use)
+        stmt.value, lc, declared,
+        use=replace(rhs_use, slot_target=target_type))
     if _is_move_source(stmt.value, lc):
         value = THIRMove(result_type=value.result_type, value=value,
                          form=value.form, loc=loc)
@@ -6625,7 +6643,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         value = _lower_expr(
             stmt.value, lc, declared,
             use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,
-                         tuple_source=True),
+                         pos=SinkPos.UNPACK_SOURCE),
             field_prechecked=isinstance(stmt.value, TpyFieldAccess))
     _witness("res.frame_unpack")
     return THIRTupleUnpack(
@@ -6680,7 +6698,7 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
         # the deref (`ys = &((*xs));`) -- the same live-lvalue contract as
         # the subscript arm.
         src = _lower_expr(init, lc, declared,
-                          use=_ExprUse(indirect_read=True))
+                          use=_ExprUse(pos=SinkPos.ALIAS_BIND))
     else:
         note_detail("alias.bind_source")
         raise ThirUnsupported("res.alias_bind")
@@ -6750,7 +6768,8 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         value = _lower_expr(
             stmt.init, lc, declared,
             use=_ExprUse(result=_ExprResultUse.STORAGE,
-                         allow_temps=True, tuple_source=True))
+                         allow_temps=True,
+                         pos=SinkPos.FRAME_SLOT_WRITE))
     else:
         raise ThirUnsupported("res.btuple_source")
     _witness("res.btuple_write")
@@ -6787,7 +6806,7 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     else:
         # The emplace is a statement position: arg temps (the ptr-opt ctor
         # arg's `Box __tmp_N = Box(...);`) flush before the emplace line,
-        # ahead of the write. tuple_source for a TUPLE
+        # ahead of the write. The whole-tuple verdict holds for a TUPLE
         # slot whose init is NOT an Own-declared call: the emplace
         # consumes the mixed / per-element-own call result whole
         # (`p.emplace(make_mixed(b))`); an Own[tuple]-declared callee
@@ -6800,7 +6819,9 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         value = _lower_expr(init, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.STORAGE,
                                          allow_temps=True,
-                                         tuple_source=_fsw_tuple_src))
+                                         pos=SinkPos.FRAME_SLOT_WRITE,
+                                         forms=(None if _fsw_tuple_src
+                                                else _NO_FORMS)))
     _witness("res.frame_slot_write")
     # The brace-init prefix spells the SLOT, so it reads the resolved frame
     # local type -- a branch-declared container
@@ -7115,7 +7136,8 @@ def _lower_btuple_reassigned_decl(stmt: TpyVarDecl, vtu: TupleType,
                   else vtu.to_cpp_return())
     init = _lower_expr(stmt.init, lc, declared,
                        use=_ExprUse(result=_ExprResultUse.VALUE,
-                                    btuple_slot=True, allow_temps=True))
+                                    pos=SinkPos.LOCAL_DECL, forms=_ONLY_BTUPLE_SLOT,
+                                    allow_temps=True))
     declared[stmt.name] = vtu
     _witness("decl.btuple_reassigned")
     return THIRVarDecl(name=stmt.name, resolved_type=vtu, init=init,
@@ -7838,7 +7860,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             value = _lower_expr(
                 stmt.init, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
-                             coro_factory=True, allow_temps=True))
+                             pos=SinkPos.LOCAL_DECL, forms=_ONLY_CORO_FACTORY,
+                             allow_temps=True))
             _witness("decl.coro_frame_rebind")
             return THIRFrameSlotWrite(
                 name=stmt.name, value=value, cpp_type=None, loc=loc,
@@ -7984,7 +8007,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             # The decl is a flush position; a generic
                             # callee's ref-slot arg temp hoists here like
                             # any statement's.
-                            use=_ExprUse(ptr_opt_passthrough=True,
+                            use=_ExprUse(pos=SinkPos.LOCAL_DECL,
+                                         forms=_ONLY_PTR_OPT_PASSTHROUGH,
                                          allow_temps=True))
                         _witness("decl.opt_call_passthrough")
                         lc.pointers.add(stmt.name)
@@ -8363,7 +8387,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 v = _lower_expr(
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 allow_temps=True, tuple_source=True))
+                                 allow_temps=True,
+                                 pos=SinkPos.LOCAL_DECL))
                 _witness("reseat.opt_btuple_slot")
                 return THIRAssign(
                     target=THIRName(result_type=declared[stmt.name],
@@ -8391,7 +8416,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 value = _lower_expr(
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 allow_temps=True, tuple_source=True))
+                                 allow_temps=True,
+                                 pos=SinkPos.LOCAL_DECL))
                 _witness("btuple.reseat_emplace")
                 return THIRAssign(
                     target=THIRName(result_type=bt_t, name=stmt.name,
@@ -8414,7 +8440,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value=_lower_expr(
                         stmt.init, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.VALUE,
-                                     btuple_slot=True, allow_temps=True)),
+                                     pos=SinkPos.LOCAL_DECL, forms=_ONLY_BTUPLE_SLOT,
+                                     allow_temps=True)),
                     loc=loc)
             if not _borrow_tuple_source_ok(stmt.init, lc):
                 note_detail("reseat.borrow_tuple_source")
@@ -8488,9 +8515,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             result_type=st_bare,
                             value=_lower_expr(
                                 _tg_mixed, lc, declared,
-                                use=_ExprUse(result=_ExprResultUse.VALUE,
-                                             btuple_slot=True,
-                                             allow_temps=True)),
+                                use=_ExprUse(
+                                    result=_ExprResultUse.VALUE,
+                                    pos=SinkPos.GLOBAL_SLOT_WRITE,
+                                    forms=_ONLY_BTUPLE_SLOT,
+                                    allow_temps=True)),
                             form=Form.STORAGE, move=False, loc=loc),
                         loc=loc)
                 note_detail("top_level.tuple_global_source")
@@ -8523,9 +8552,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             reseat_value = _lower_copy_record(stmt.init, lc, declared,
                                               loc=loc)
             if reseat_value is None:
-                reseat_value = _lower_expr(stmt.init, lc, declared,
-                                           target_type=target_t,
-                                           use=_rebind_rvalue_use(stmt.init))
+                reseat_value = _lower_expr(
+                    stmt.init, lc, declared,
+                    use=replace(_rebind_rvalue_use(stmt.init),
+                                slot_target=target_t))
             return THIRAssign(
                 target=THIRName(result_type=target_t, name=stmt.name,
                                 loc=loc),
@@ -8571,9 +8601,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             reseat_value = _lower_copy_record(stmt.init, lc, declared,
                                               loc=loc)
             if reseat_value is None:
-                reseat_value = _lower_expr(stmt.init, lc, declared,
-                                           target_type=target_t,
-                                           use=_rebind_rvalue_use(stmt.init))
+                reseat_value = _lower_expr(
+                    stmt.init, lc, declared,
+                    use=replace(_rebind_rvalue_use(stmt.init),
+                                slot_target=target_t))
             return THIRPtrLocalRebind(
                 name=stmt.name, kind=PtrSlotKind.BRANCH_RVALUE,
                 value=reseat_value,
@@ -8624,7 +8655,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 value=_lower_expr(
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 ptr_opt_passthrough=True,
+                                 pos=SinkPos.LOCAL_DECL,
+                                 forms=_ONLY_PTR_OPT_PASSTHROUGH,
                                  allow_temps=True),
                     allow_whole_optional=True),
                 loc=loc)
@@ -8685,8 +8717,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     reseat_value = _lower_expr(
                         stmt.init, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     allow_temps=True),
-                        target_type=decl_u.inner)
+                                     allow_temps=True,
+                                     slot_target=decl_u.inner))
                 return THIRAssign(
                     target=THIRName(result_type=vtype, name=stmt.name,
                                     loc=loc),
@@ -8716,8 +8748,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if reseat_value is None:
                     reseat_value = _lower_expr(
                         stmt.init, lc, declared,
-                        target_type=declared[stmt.name],
-                        use=_rebind_rvalue_use(stmt.init))
+                        use=replace(_rebind_rvalue_use(stmt.init),
+                                    slot_target=declared[stmt.name]))
                 return THIRAssign(
                     target=THIRName(result_type=vtype, name=stmt.name,
                                     loc=loc),
@@ -8772,8 +8804,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 _witness("reseat.dyn_protocol")
                 return THIRPtrLocalRebind(
                     name=stmt.name, kind=PtrSlotKind.DYN_PROTOCOL,
-                    value=_lower_expr(stmt.init, lc, declared,
-                                      target_type=concrete_type),
+                    value=_lower_expr(
+                        stmt.init, lc, declared,
+                        use=_ExprUse(slot_target=concrete_type)),
                     val_cpp=slot_cpp, loc=loc)
             reseat_u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 declared[stmt.name])))
@@ -8852,8 +8885,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         name=stmt.name, kind=PtrSlotKind.FRAME_RVALUE,
                         value=_lower_expr(
                             stmt.init, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
-                            target_type=pointee),
+                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                         slot_target=pointee)),
                         val_cpp=fld, loc=loc)
                 if (_opt_slot_rvalue_shape(stmt.init, pointee, analyzer)
                         and not scope.in_branch and scope.loop_depth == 0
@@ -8866,8 +8899,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         name=stmt.name, kind=PtrSlotKind.INLINE_RVALUE,
                         value=_lower_expr(
                             stmt.init, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
-                            target_type=pointee),
+                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                         slot_target=pointee)),
                         val_cpp=lc.render_type(pointee), loc=loc)
                 if (isinstance(stmt.init, TpyName)
                         and stmt.init.name in lc.storage_opt_locals
@@ -9437,7 +9470,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             _ct = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 _unwrap_own(_ct_raw)))) if _ct_raw is not None else None)
             # The call must OWN its result WHOLE -- the same predicates the
-            # expression path's STORAGE/tuple_source admission consults, so
+            # expression path's STORAGE whole-tuple admission consults, so
             # this gate can never admit a shape the init lowering rejects:
             # an Own-declared return, the flat per-element-Own family, or a
             # tuple of owned tuples. A borrow-tuple return (an F1 alias)
@@ -9463,7 +9496,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     _lower_expr(stmt.init, lc, declared,
                                 use=_ExprUse(result=_ExprResultUse.STORAGE,
                                              allow_temps=True,
-                                             tuple_source=True)))
+                                             pos=SinkPos.LOCAL_DECL)))
                 lc.storage_tuple_locals.add(stmt.name)
                 lc.promote_movable(stmt.name)
                 declared[stmt.name] = _ct
@@ -9651,9 +9684,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     if owning_init:
                         init = _lower_expr(
                             stmt.init, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                         allow_temps=True,
-                                         tuple_source=True))
+                            use=_ExprUse(
+                                result=_ExprResultUse.STORAGE,
+                                allow_temps=True,
+                                pos=SinkPos.LOCAL_DECL))
                         _witness("decl.btuple_rebind_slot")
                         return THIRVarDecl(
                             name=stmt.name, resolved_type=bt, init=init,
@@ -9791,7 +9825,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 init = _lower_expr(
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.VALUE,
-                                 btuple_slot=from_call,
+                                 pos=SinkPos.LOCAL_DECL,
+                                 forms=(_ONLY_BTUPLE_SLOT if from_call
+                                        else _NO_FORMS),
                                  allow_temps=from_call))
                 declared[stmt.name] = src_bt
                 _witness("decl.btuple_alias")
@@ -10235,8 +10271,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                     # slot bare (`Node* p = first(items);`)
                                     # -- the same collapse the param/return
                                     # sites spell, here at the decl.
-                                    ptr_opt_passthrough=_eligible_ptr_value(
-                                        vtype, analyzer)),
+                                    pos=SinkPos.LOCAL_DECL,
+                                    forms=(
+                                        _ONLY_PTR_OPT_PASSTHROUGH
+                                        if _eligible_ptr_value(
+                                            vtype, analyzer)
+                                        else _NO_FORMS)),
                                 allow_whole_optional=opt_slot,
                                 field_owned_str_ok=str_field_init,
                                 allow_union_divergent=_union_reassign_name))
@@ -10464,10 +10504,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     _flush_witness(
                         "flush.assign",
                         _lower_expr(stmt.value, lc, declared,
-                                    target_type=td_elem,
                                     use=_ExprUse(
                                         result=_ExprResultUse.STORAGE,
-                                        allow_temps=True))),
+                                        allow_temps=True,
+                                        slot_target=td_elem))),
                     td_elem, lc),
                 loc=loc)
         elif isinstance(stmt.target, TpySubscript):
@@ -10671,7 +10711,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 else:
                     value = _lower_expr(stmt.value, lc, declared,
-                                        target_type=eu)
+                                        use=_ExprUse(slot_target=eu))
                     if (not target.bounds_safe
                             and isinstance(value, THIRContainerLiteral)):
                         value = replace(value,
@@ -10837,16 +10877,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         and (_rt_vb == eu or _rt_mixed is not None)):
                     note_detail("setitem.btuple_value_shape")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
+                _rt_use = (
+                    _ExprUse(result=_ExprResultUse.VALUE,
+                             pos=SinkPos.SETITEM_VALUE, forms=_ONLY_BTUPLE_SLOT)
+                    if _rt_vb != eu
+                    else _ExprUse(result=_ExprResultUse.STORAGE,
+                                  pos=SinkPos.SETITEM_VALUE,
+                                  allow_temps=True))
                 value = THIRFormConvert(
                     result_type=eu,
-                    value=_lower_expr(
-                        v, lc, declared,
-                        use=(_ExprUse(result=_ExprResultUse.VALUE,
-                                      btuple_slot=True)
-                             if _rt_vb != eu else
-                             _ExprUse(result=_ExprResultUse.STORAGE,
-                                      tuple_source=True,
-                                      allow_temps=True))),
+                    value=_lower_expr(v, lc, declared, use=_rt_use),
                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.record_tuple_call")
             elif (isinstance(eu, TupleType) and eu.has_pointer_repr_element()
@@ -10867,14 +10907,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         result_type=eu,
                         value=_lower_borrow_tuple_literal(
                             v, eu, lc, declared, rvalue_ok=True,
-                            elem_temps=True),
+                            use=_ExprUse(allow_temps=True)),
                         form=Form.STORAGE, loc=loc)
                     _witness("setitem.btuple_literal")
                 elif isinstance(v, TpySubscript) and _bt_vb == eu:
                     value = _lower_expr(
                         v, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     tuple_source=True))
+                                     pos=SinkPos.SETITEM_VALUE))
                     _witness("setitem.btuple_elem_pass")
                 elif (isinstance(v, (TpyCall, TpyMethodCall))
                         and _bt_vb == eu):
@@ -10883,7 +10923,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                         value=_lower_expr(
                             v, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                         tuple_source=True,
+                                         pos=SinkPos.SETITEM_VALUE,
                                          allow_temps=True)),
                         form=Form.STORAGE, loc=loc)
                     _witness("setitem.btuple_call")
@@ -10918,7 +10958,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value = _lower_expr(
                         stmt.value, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                     tuple_source=True, allow_temps=True))
+                                     pos=SinkPos.SETITEM_VALUE,
+                                     allow_temps=True))
                     _witness("setitem.nested_tuple_source")
                 elif not (isinstance(stmt.value, TpyTupleLiteral)
                           and len(stmt.value.elements)
@@ -11039,8 +11080,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value = _flush_witness(
                         "flush.assign",
                         _lower_expr(v, lc, declared,
-                                    use=_ExprUse(record_copy_sink=True,
-                                                 allow_temps=True)))
+                                    use=_ExprUse(
+                                        pos=SinkPos.SETITEM_VALUE,
+                                        forms=_ONLY_RECORD_COPY,
+                                        allow_temps=True)))
                     _witness("setitem.borrow_call_copy")
                 else:
                     note_detail("setitem.record_value_shape")
@@ -11603,9 +11646,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                        if isinstance(lc.func.return_type, TpyType) else None)
             coro_proto = _dyn_own_coro_factory_arg(v, _rd_raw, analyzer)
             if coro_proto is not None:
-                inner = _lower_expr(v, lc, declared,
-                                    use=_ExprUse(coro_factory=True,
-                                                 allow_temps=True))
+                inner = _lower_expr(
+                    v, lc, declared,
+                    use=_ExprUse(pos=SinkPos.RETURN, forms=_ONLY_CORO_FACTORY,
+                                 allow_temps=True))
                 _witness("ret.dyn_own_factory")
                 return THIRReturn(
                     value=_flush_witness(
@@ -11691,7 +11735,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     "flush.return",
                     _lower_expr(stmt.value, lc, declared,
                                 use=_ExprUse(result=_ExprResultUse.VALUE,
-                                             btuple_slot=True,
+                                             pos=SinkPos.RETURN,
+                                             forms=_ONLY_BTUPLE_SLOT,
                                              allow_temps=True)))
                 _witness("ret.btuple_call")
                 return THIRReturn(value=relayed, loc=loc)
@@ -12352,7 +12397,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     value=_lower_expr(
                         stmt.value, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                                     borrow_ret_passthrough=True)),
+                                     pos=SinkPos.RETURN,
+                                     forms=_ONLY_BORROW_RET_PASSTHROUGH)),
                     loc=loc)
             elif (lc.prescan.ret_record_borrow is not None
                   and _deref_coerce_borrow_slot(
@@ -12416,7 +12462,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 return THIRReturn(
                     value=_lower_expr(
                         stmt.value, lc, declared,
-                        target_type=lc.prescan.ret_record_storage),
+                        use=_ExprUse(
+                            slot_target=lc.prescan.ret_record_storage)),
                     loc=loc)
             elif (lc.prescan.ret_record_storage is not None
                   and type(stmt.value) in _comprehensions._COMP_KINDS):
@@ -12576,13 +12623,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # bare passthrough (the ladder admitted only the
                 # call_returns_cpp_ref shape). RECEIVER use serves the
                 # METHOD flavor; the FREE-call gate keys on the dedicated
-                # borrow_ret_passthrough flag (a blanket record-at-RECEIVER
+                # BORROW_RET_PASSTHROUGH verdict (a blanket record-at-RECEIVER
                 # row was reverted for shadowing).
                 return THIRReturn(
                     value=_lower_expr(
                         stmt.value, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                                     borrow_ret_passthrough=True)),
+                                     pos=SinkPos.RETURN,
+                                     forms=_ONLY_BORROW_RET_PASSTHROUGH)),
                     loc=loc)
         if stmt.value is not None and lc.prescan.ret_callable:
             # A Callable return slot: a bare closure-local name (`return add;`
@@ -12684,7 +12732,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # call may hoist its `__tmp_N` decl ahead of the return
                     # -- the grant the generic return tail already carries.
                     value = _lower_tuple_literal(source, ret_vt, lc, declared,
-                                                 elem_temps=True)
+                                                 use=_ExprUse(allow_temps=True))
                 except ThirUnsupported as ex:
                     raise ThirUnsupported(stmt_reject_reason(
                         stmt, f"return.tuple_source:{ex.reason}")) from None
@@ -13075,7 +13123,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # (`return std::move((*y));`).
             _witness("ret.value_ptr_opt_local")
             rv_src: THIRExpr = _lower_expr(
-                stmt.value, lc, declared, use=_ExprUse(indirect_read=True))
+                stmt.value, lc, declared,
+                use=_ExprUse(pos=SinkPos.RETURN))
             if _is_move_source(stmt.value, lc):
                 rv_src = THIRMove(result_type=rv_src.result_type,
                                   value=rv_src, form=rv_src.form, loc=loc)
@@ -13096,7 +13145,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             # (`_f1_record` is False for it).
             _witness("ret.tparam_ptr_local")
             tp_src: THIRExpr = _lower_expr(
-                stmt.value, lc, declared, use=_ExprUse(indirect_read=True))
+                stmt.value, lc, declared,
+                use=_ExprUse(pos=SinkPos.RETURN))
             if _is_move_source(stmt.value, lc):
                 tp_src = THIRMove(result_type=tp_src.result_type,
                                   value=tp_src, form=tp_src.form, loc=loc)
@@ -13128,20 +13178,23 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             # A return value renders against the fn return
                             # type, so a both-literal binop never folds
                             # there (`return 2**40 + 1` renders the
-                            # operator chain).
-                            slot_threaded=isinstance(stmt.value, TpyBinOp)),
+                            # operator chain); a container literal takes
+                            # the record-storage slot the emit spells.
+                            slot_target=(
+                                _fn_return_type(lc)
+                                if isinstance(stmt.value, TpyBinOp)
+                                else lc.prescan.ret_record_storage
+                                if isinstance(
+                                    stmt.value,
+                                    (TpyArrayLiteral, TpyDictLiteral,
+                                     TpySetLiteral))
+                                else None)),
                         field_prechecked=field_prechecked,
                         # The str-family member read the return slot admits is
                         # exactly `field_prechecked`'s row, so grant the field
                         # arm the same owned-str admission the decl / f-string
                         # sinks already thread.
-                        field_owned_str_ok=field_owned_str,
-                        target_type=(lc.prescan.ret_record_storage
-                                     if isinstance(
-                                         stmt.value,
-                                         (TpyArrayLiteral, TpyDictLiteral,
-                                          TpySetLiteral))
-                                     else None)))
+                        field_owned_str_ok=field_owned_str))
                  if stmt.value else None)
         # A float literal returned from a Float32 function takes the `f`
         # suffix (the return type threads into the render).
@@ -14198,7 +14251,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                                      stmt.value, lc, declared,
                                      use=_ExprUse(
                                          result=_ExprResultUse.STORAGE,
-                                         tuple_source=True))),
+                                         pos=SinkPos.UNPACK_SOURCE))),
                     loc=loc)
         if isinstance(stmt.value, TpyName):
             # A spelled imported/native tuple global source renders its fixed
@@ -14236,7 +14289,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 use=_ExprUse(
                     result=_ExprResultUse.STORAGE,
                     allow_temps=True,
-                    tuple_source=True),
+                    pos=SinkPos.UNPACK_SOURCE),
                 field_prechecked=isinstance(stmt.value, TpyFieldAccess)),
             loc=loc)
     if isinstance(stmt, TpyForEach):
@@ -15399,11 +15452,10 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
         # lowers in receiver position (`ea.Err(9).__raise__();` -- the result
         # never reaches a value slot). Every other source is a plain value
         # read (a pointer-repr record local derefs to a reference before
-        # the `.__raise__()` member call -- `(*e).__raise__()`), so it lowers
-        # under indirect_read.
-        # The non-call operand is the RECEIVER of `.__raise__()` (with
-        # indirect_read so a pointer-repr local still derefs first --
-        # `_name_read_deref`'s indirect branch precedes the receiver
+        # the `.__raise__()` member call -- `(*e).__raise__()`).
+        # The non-call operand is the RECEIVER of `.__raise__()`, at a
+        # position that derefs so a pointer-repr local still resolves first
+        # (`_name_read_deref`'s indirect branch precedes the receiver
         # exclusion): the field gate's receiver rows admit the narrowed
         # stored-exception field (`(*r.exception).__deref__().__raise__()`).
         raised = _lower_expr(
@@ -15411,7 +15463,7 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
             use=_ExprUse(result=_ExprResultUse.RECEIVER)
             if isinstance(stmt.raise_expr, (TpyCall, TpyMethodCall))
             else _ExprUse(result=_ExprResultUse.RECEIVER,
-                          indirect_read=True))
+                          pos=SinkPos.RAISE_OPERAND))
         _witness("raise.expr")
         return THIRRaise(raise_expr=raised,
                          deref_depth=getattr(stmt, "deref_depth", 0), loc=loc)
@@ -15675,7 +15727,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
         items.append(THIRWithItem(
             ctx_expr=_strip_slot_leaf_deref(
                 _lower_expr(ctx, lc, declared,
-                            use=_ExprUse(ctx_manager=True)), lc),
+                            use=_ExprUse(pos=SinkPos.WITH_MANAGER)), lc),
             manager_borrowed=item.manager_borrowed,
             deref_manager=deref,
             target=item.target,
@@ -15802,7 +15854,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         _cf, _ci, _cfmt = _print_optptr_form(_lpc)
         return THIRPrintArg(
             _lower_expr(a, lc, declared,
-                        use=_ExprUse(ptr_opt_passthrough=True,
+                        use=_ExprUse(pos=SinkPos.PRINT_ARG,
                                      allow_temps=temps_ok)),
             _cf, _ci, opt_fmt_cpp=_cfmt)
     # A container / value-tuple / F1-record NAME: the kind-keyed printer
@@ -15895,7 +15947,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
             # the same override the for-loop grants it.
             wrap_use = _ExprUse(result=_ExprResultUse.ITERABLE)
         else:
-            wrap_use = _ExprUse(indirect_read=True)
+            wrap_use = _ExprUse(pos=SinkPos.PRINT_ARG, forms=_ONLY_INDIRECT_READ)
         # The union STR row is DECLARED-type keyed (`::tpy::__str__(a)`
         # consumes the whole variant), so an assign-narrowed divergent
         # read is safe here -- the sink never sees the member type.
@@ -15930,8 +15982,8 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # the same admission the f-string arg site grants (field_owned_str_ok).
     # An F1-record-returning call arg (print.record_call) threads BORROW_BIND
     # so the call's record result gate admits the rvalue.
-    # A print arg is target-less, so a both-literal binop
-    # folds (literal_fold_ok). The record-call branch drops the flag --
+    # A print arg is target-less, so a both-literal binop folds. The
+    # record-call branch names another position and so drops the fold --
     # fine while the two shapes stay mutually exclusive (a record-call arg
     # is never a both-literal int binop); revisit if that ever changes.
     tup_rec = _print_tuple_record_elem(a, declared, lc.storage_tuple_locals,
@@ -15946,7 +15998,8 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
                                      allow_temps=temps_ok),
                         subscript_prechecked=True),
             PrintForm.RAW, deref=tup_rec == "deref")
-    use = _ExprUse(allow_temps=temps_ok, literal_fold_ok=True)
+    use = _ExprUse(allow_temps=temps_ok, pos=SinkPos.PRINT_ARG,
+                                         forms=_ONLY_LITERAL_FOLD)
     if _record_call_rvalue_operand(a, lc.analyzer):
         use = _ExprUse(allow_temps=temps_ok,
                        result=_ExprResultUse.BORROW_BIND)

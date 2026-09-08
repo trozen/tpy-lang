@@ -99,6 +99,7 @@ from .context import (
     _ExprUse,
     _LowerCtx,
     _Prescan,
+    SinkPos,
     ValueOptKind,
 )
 from .expressions import (
@@ -1073,7 +1074,7 @@ def _match_route(
             # The union-switch analog: a Call/MethodCall rvalue returning a
             # non-wrapper ptr-variant union materializes the same way, the
             # arms `std::get` off the by-value dispatch local (the scoped
-            # `match_union_subject` result flag admits the call's union
+            # UNION_SUBJECT verdict admits the call's union
             # return at exactly this position).
             union_call_subject = (
                 kind == "switch_union"
@@ -3216,7 +3217,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
     return THIRMatch(
         strategy="switch_union",
         subject=(_lower_expr(stmt.subject, lc, declared,
-                             use=_ExprUse(match_union_subject=True))
+                             use=_ExprUse(pos=SinkPos.MATCH_SUBJECT))
                  if subject_rvalue
                  else _lower_subject_expr(stmt.subject, lc, declared)),
         subject_ref=not subject_rvalue,

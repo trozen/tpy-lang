@@ -363,7 +363,10 @@ from .predicates import (
     _var_decl_type,
 )
 from .context import (
+    _ExprResultUse,
+    _ExprUse,
     _Prescan,
+    SinkForm,
 )
 
 def _ptr_union_source_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer,
@@ -6979,7 +6982,7 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     if face == 'call_pass':
         # A borrow-returning call passed bare -- temp-free; the call's own
         # recursive lowering validates callee kind and args (the result
-        # family is admitted under ptr_opt_passthrough).
+        # family is admitted under the PTR_OPT_PASSTHROUGH verdict).
         return True
     if face == 'ctor':
         if isinstance(a, TpyMethodCall) or _non_ctor_call(a):
@@ -8800,7 +8803,6 @@ def _stub_template_param(pt: 'TpyType | None') -> bool:
 def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           locals_: dict[str, TpyType], analyzer,
                           *, stmt_position: bool = False,
-                          temps_ok: bool = False,
                           record_ret_ok: bool = False,
                           moved_ret_ok: bool = False,
                           iterable_gen_ok: bool = False,
@@ -8809,8 +8811,7 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
                           storage_ret_ok: bool = False,
                           value_opt_ret_ok: bool = False,
                           coro_factory_ok: bool = False,
-                          iterable_ret_ok: bool = False,
-                          narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
+                          iterable_ret_ok: bool = False) -> bool:
     """Result/arg checks for a `_marker_call_kind`-classified receiver-less
     call. Mirrors free-call lowering's value-position result set and its arg
     rows MINUS the free-loop-only ref-temp hoist (`_record_rvalue_temp_arg`:
@@ -12844,19 +12845,11 @@ def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
 
 
 def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
-                                 analyzer, *, stmt_position: bool,
-                                 temps_ok: bool = False,
-                                 record_ret_ok: bool = False,
-                                 storage_ret_ok: bool = False,
-                                 coro_factory_ok: bool = False,
-                                 suspend_ok: bool = False,
-                                 iterable_ret_ok: bool = False,
-                                 value_opt_ret_ok: bool = False,
-                                 ptr_opt_passthrough: bool = False,
-                                 owned_tuple_ret_ok: bool = False,
-                                 btuple_ret_ok: bool = False,
-                                 union_subject_ret_ok: bool = False,
-                                 raw_stmt_handled: bool = False,
+                                 analyzer, *, use: _ExprUse,
+                                 result_use: _ExprResultUse,
+                                 stmt_position: bool,
+                                 allow_whole_optional: bool = False,
+                                 error_return_raw: bool = False,
                                  narrowed: 'set[str] | frozenset[str]' = frozenset()) -> bool:
     """A plain user-record method call `recv.method(args)` -- the
     user-record method arm reduced to its pass-through subset. The
@@ -12895,8 +12888,8 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     slots (`a.combine(A(9))`, see `_method_ctor_rvalue_arg`), and the
     VALUE-union rows -- same-union names / coerced literals bare
     (`_method_value_union_arg`) and member-valued scalars through the
-    `__tmp_N` variant temp under `temps_ok` (the free-call arg-temp row;
-    value variants are const-blind, so the inherited-method first-pass
+    `__tmp_N` variant temp at a flushable position (the free-call arg-temp
+    row; value variants are const-blind, so the inherited-method first-pass
     loop, which omits `is_readonly_target`, renders identically). The
     mutated-ref-param rvalue shape (`a.absorb(A(4))`) is the miscompile
     tracked in BUGS.md and rejects.
@@ -12911,6 +12904,42 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     loudly rather than mis-rendering (measured -- a scalar-arg method emits
     byte-identically, a RECORD-argument one rejects at `method.arg_shape`,
     because the stub arg sink carries no record pass-through row)."""
+    # Every result gate is a projection of the sink spec, derived here and
+    # not at the call site: the caller holds the spec, so a gate it spells
+    # is a derivation this gate cannot check. The record row is the one
+    # verdict that is not a single projection, hence its length.
+    record_ret_ok = (
+        result_use in (_ExprResultUse.BORROW_BIND, _ExprResultUse.RECEIVER)
+        # A with-manager rvalue (`with m.lock() as g:`): the guard record
+        # lands in the owned `__ctx_N` slot -- the storage-sink twin of the
+        # owned-record decl.
+        or use.admits(SinkForm.CTX_MANAGER)
+        # An owned-record RVALUE at a storage sink (`a.get().next =
+        # b.clone()` -- the Own return lands bare; the position gate pinned
+        # the slot).
+        or ((result_use is _ExprResultUse.STORAGE
+             # ... and the record FIELD-WRITE copy sink, whose copy-assign
+             # absorbs the prvalue (`task._waker = handle->make_waker(..);`).
+             # A borrow-returning result keeps rejecting on both: a decl
+             # binds REF_ALIAS off it.
+             or use.admits(SinkForm.RECORD_COPY))
+            and is_rvalue_source(analyzer, e))
+        # ... and a BORROW-returning CONTAINER result at that same copy sink
+        # (`self.mirror = h.peek();`): the field's copy-assign absorbs the
+        # `C&`, and sema warns the copy. `_f1_record` is False for a
+        # container, so this reaches only the alias-ref-container leg of the
+        # ret gate.
+        or (use.admits(SinkForm.RECORD_COPY)
+            and _alias_ref_container(analyzer.get_expr_type(e))))
+    storage_ret_ok = result_use is _ExprResultUse.STORAGE
+    coro_factory_ok = use.admits(SinkForm.CORO_FACTORY)
+    suspend_ok = result_use is _ExprResultUse.SUSPEND
+    iterable_ret_ok = result_use is _ExprResultUse.ITERABLE
+    ptr_opt_passthrough = use.admits(SinkForm.PTR_OPT_PASSTHROUGH)
+    owned_tuple_ret_ok = (result_use is _ExprResultUse.STORAGE
+                          and use.admits(SinkForm.TUPLE_SOURCE))
+    btuple_ret_ok = use.admits(SinkForm.BTUPLE_SLOT)
+    union_subject_ret_ok = use.admits(SinkForm.UNION_SUBJECT)
     recv = e.obj  # a name or a one-level field access -- checked by the caller
     recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         _method_receiver_type(recv, locals_, analyzer))))
@@ -13224,14 +13253,14 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # A value-repr Optional return at a WHOLE-optional sink
             # (`a.gettimeout() is None` / `== 0.0` -- the has_value /
             # std::optional mixed-compare renders take the bare call).
-            or (value_opt_ret_ok and _value_opt_ret(ret))
+            or (allow_whole_optional and _value_opt_ret(ret))
             # A @property getter's PTR-repr Optional result at the same
             # whole-optional sink (`w.node is None`): the getter returns
             # the storage optional by cpp-ref -- the
             # optional_to_ptr lift is skipped exactly on is_property_getter -- so the
             # has_value test reads the bare call. Plain methods keep the
             # borrow-form `T*` + nullptr compare and stay rejected here.
-            or (value_opt_ret_ok and fi.is_property_getter
+            or (allow_whole_optional and fi.is_property_getter
                 and isinstance(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(ret))), OptionalType))
             # The module-init pass-through write of a pointer-slot global
@@ -13244,7 +13273,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # `std::expected` member call renders whatever the SUCCESS type
             # -- the caller's unwrap block owns consumption, so the
             # ret-family rows above say nothing about this position.
-            or (raw_stmt_handled and ret is not None)):
+            or (error_return_raw and ret is not None)):
         return note_detail("method.ret_type")
     return True
 

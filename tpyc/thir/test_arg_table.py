@@ -24,7 +24,8 @@ from .lower.arg_table import (NO_CELL, PROLOGUE_CELL, _ArgReq, _ArgRow,
                               register_sink, registered_cells,
                               registered_families)
 from .lower import expressions
-from .lower.context import _ExprUse, _RecordCtorUse
+from .lower.context import (SinkForm, SinkPos, _POS_FORMS, _ExprUse,
+                            _RecordCtorUse)
 from .lower.expressions import (_CTOR_ARG_SINK, _CTOR_NESTED_ARG_SINK,
                                 _pre_ctor_nested_slot_family)
 from .lower.checks import (_GENERIC_PLAIN_ARG_SINK,
@@ -2056,3 +2057,71 @@ class TestReachTally:
             cells = registered_cells()
             for row in sink.rows:
                 assert (sink.family, row.row) in cells
+
+
+class TestSinkVocabulary:
+    """The sink position and form vocabulary is a closed table: a member added
+    to one enum without its row or its admission is caught here, not at the
+    first body that reaches it."""
+
+    def test_pos_forms_is_total_over_sink_pos(self):
+        assert set(_POS_FORMS) == set(SinkPos)
+
+    def test_unspecified_admits_nothing(self):
+        assert _POS_FORMS[SinkPos.UNSPECIFIED] == frozenset()
+        assert not any(_ExprUse().admits(f) for f in SinkForm)
+
+    def test_every_form_is_admitted_somewhere(self):
+        # A form is alive only through a PRODUCER: a `_POS_FORMS` row, or a
+        # `forms=` argument at a lowering site (a literal, or a named set from
+        # context.py that some lowering file actually names). A consumer's
+        # `admits(SinkForm.X)` does not count -- a form nobody produces is
+        # dead vocabulary even if an arm still asks for it.
+        import io
+        import pathlib
+        import tokenize
+        from .lower import context as ctx_mod
+        lowering = pathlib.Path(__file__).resolve().parent / "lower"
+        named_sets = {name: value for name, value in vars(ctx_mod).items()
+                      if isinstance(value, frozenset) and value
+                      and all(isinstance(f, SinkForm) for f in value)}
+        produced = {f for forms in _POS_FORMS.values() for f in forms}
+        for f in lowering.glob("*.py"):
+            if f.name == "context.py":
+                continue
+            toks = [t for t in tokenize.generate_tokens(
+                io.StringIO(f.read_text()).readline)
+                    if t.type in (tokenize.NAME, tokenize.OP)]
+            i = 0
+            while i < len(toks) - 1:
+                if toks[i].string == "forms" and toks[i + 1].string == "=":
+                    depth = 0
+                    j = i + 2
+                    while j < len(toks):
+                        t = toks[j].string
+                        if t in "([{":
+                            depth += 1
+                        elif t in ")]}":
+                            if depth == 0:
+                                break
+                            depth -= 1
+                        elif t == "," and depth == 0:
+                            break
+                        if toks[j].type == tokenize.NAME:
+                            if t in named_sets:
+                                produced |= named_sets[t]
+                            elif (j >= 2 and toks[j - 1].string == "."
+                                  and toks[j - 2].string == "SinkForm"):
+                                produced.add(SinkForm[t])
+                        j += 1
+                    i = j
+                else:
+                    i += 1
+        # The two helpers in context.py hand a lowering site one of the named
+        # sets by a slot fact, so their returns are producers too.
+        for helper in (ctx_mod._slot_lift_forms, ctx_mod._method_recv_forms):
+            for a in (False, True):
+                for b in (False, True):
+                    produced |= helper(a, b) or frozenset()
+        for form in SinkForm:
+            assert form in produced, form

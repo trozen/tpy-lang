@@ -1,7 +1,7 @@
 """Per-function lowering state: _Prescan, _NarrowScope, and _LowerCtx."""
 
 from __future__ import annotations
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields
 from enum import Enum, auto
@@ -111,111 +111,312 @@ class ValueOptKind(Enum):
     RECORD = auto()
 
 
+class SinkPos(Enum):
+    """WHERE a lowered expression lands -- the POSITION half of the use
+    channel. One member per SINK, not per lowering arm: the arms that fill
+    one sink share its member and name the verdict they want through
+    `forms=`, so a consumer reading `pos` learns what the sink IS rather
+    than which arm happened to build the use."""
+    UNSPECIFIED = auto()
+    # A local binding's init or reseat, in every form the classifier gives
+    # it -- value, storage, borrow, pointer slot, borrow tuple, coro frame.
+    LOCAL_DECL = auto()
+    # One argument at its param slot, the `__tmp_N` arg-temp inits and the
+    # `copy()` sources included.
+    CALL_ARG = auto()
+    # The V parameter of a checked element write (`d[k] = v`).
+    SETITEM_VALUE = auto()
+    # The receiver of a member read, a method call or a subscript.
+    RECEIVER = auto()
+    # An element slot of an `Own[tuple]` container.
+    TUPLE_ELEM = auto()
+    # A function's return slot.
+    RETURN = auto()
+    # Either arm of a ternary.
+    IF_EXPR_ARM = auto()
+    # An element slot of a container or tuple literal.
+    CONTAINER_ELEM = auto()
+    # A record field's write slot.
+    FIELD_WRITE = auto()
+    # A field's ctor member-init slot, which direct-initializes.
+    MIL_INIT = auto()
+    # A module-init global's slot write.
+    GLOBAL_SLOT_WRITE = auto()
+    # The `auto __tup_N = <expr>;` capture a tuple unpack binds through.
+    UNPACK_SOURCE = auto()
+    # A resumable alias bind's source.
+    ALIAS_BIND = auto()
+    # An operand of a binop, a comparison or a value select.
+    OPERAND = auto()
+    # A monomorphized lambda's body at its trailing return.
+    LAMBDA_RETURN = auto()
+    # `(m = pick(nodes, i))` -- a walrus target's source.
+    WALRUS_TARGET = auto()
+    # A resumable frame's slot write.
+    FRAME_SLOT_WRITE = auto()
+    # An argument of a `print` statement, raw or under a printer wrap.
+    PRINT_ARG = auto()
+    # `f"{h.pair}"` -- one interpolation, under its to_str wrap.
+    FSTRING_INTERP = auto()
+    # `match p.choose(d):` -- the union-switch subject.
+    MATCH_SUBJECT = auto()
+    # `if xs:` -- a truthiness operand, in every mode.
+    TRUTHINESS_OPERAND = auto()
+    # `(*e).__raise__()` -- the receiver of a raise.
+    RAISE_OPERAND = auto()
+    # `&(*q)` -- the inner of a coercion that pre-derefs its source.
+    COERCE_INNER = auto()
+    # `with open(path, mode) as f` -- the manager slot, sync or emplaced
+    # into a resumable frame's `__with_ctx_N`.
+    WITH_MANAGER = auto()
+
+
+class CallArgKind(Enum):
+    """WHICH argument loop is filling a CALL_ARG sink. The callee's shape,
+    not the sink's -- a second axis beside `SinkPos`, because the same
+    param slot routes differently for a generic callee than a concrete one.
+    The remaining kinds (free / method / method-stub / ctor / marker /
+    protocol) are still spelled as booleans on the arg lowerer."""
+    UNSPECIFIED = auto()
+    # A substituted param slot of a GENERIC callee, where the concrete
+    # position's routing does not hold.
+    GENERIC = auto()
+
+
+class SinkForm(Enum):
+    """WHAT render the sink admits -- the FORM half of the use channel.
+    A form recurs across positions (the ptr-Optional pass-through lands at
+    twelve of them), which is why the channel is a pair: a flat sink-kind
+    enum would need one member per position x form."""
+    # A tuple-valued result the sink consumes WHOLE -- the
+    # `auto __tup_N = <expr>;` unpack capture, an owning slot's emplace, a
+    # matching tuple param. Includes the shapes no ordinary value sink
+    # takes: an `Own[F1-record]`-element tuple call result
+    # (`_owned_tuple_call_ret`) and a value-tuple class constant.
+    TUPLE_SOURCE = auto()
+    # An async-def FACTORY call (`asyncio.run(main_coro())`'s inner call),
+    # whose concrete coro frame is consumed whole by the heap adapter or
+    # the frame slot -- never by a typed value slot.
+    CORO_FACTORY = auto()
+    # A @native record-returning free call into the `__ctx_N` manager slot
+    # (`with open(path, mode) as f`), whatever native symbol the overload
+    # resolves to.
+    CTX_MANAGER = auto()
+    # A borrow-returning record source the sink's copy-assign absorbs
+    # (`h.p = identity(pt);`, and its container sibling
+    # `self.mirror = h.peek();`, whose copy sema warns). A decl binds
+    # REF_ALIAS off the same result, so decl sinks keep rejecting.
+    RECORD_COPY = auto()
+    # A `T&`-returning call rendered BARE (`return get_first(items);`):
+    # nothing binds off it, so the REF_ALIAS frontier does not arise.
+    BORROW_RET_PASSTHROUGH = auto()
+    # The same `T&` composing transiently under a member read
+    # (`ret_param_ref(shared).n` -- the temp lives to the end of the full
+    # expression; nothing binds).
+    FIELD_RECV_BORROW = auto()
+    # A generic call whose monomorphized val_or_ptr_t tuple IS the
+    # closure's borrow-form trailing return, so the direct `return body;`
+    # needs no element conversion.
+    LAMBDA_BTUPLE_RET = auto()
+    # The pure-literal binop FOLD, admitted where no slot target is threaded
+    # into the render. Slot-threaded positions (decl init / arg / return)
+    # render the FULL operator expression and keep rejecting it.
+    LITERAL_FOLD = auto()
+    # A BORROW-returning ptr-repr Optional result landing BARE: it already
+    # IS the `T*` the slot or binding holds (`g = find(xs, k);`,
+    # `Point* r1 = get_or_none(true, p);`). Every other consumer of such a
+    # result materializes a slot or lifts through `optional_to_ptr`.
+    PTR_OPT_PASSTHROUGH = auto()
+    # The same result lifted by the sink through `ptr_to_optional`
+    # (`h.value = find_point(pts, 1);`) instead of landing bare -- one
+    # verdict cannot stand for both renders.
+    PTR_OPT_LIFT = auto()
+    # A ptr-variant union result the sink consumes whole through the
+    # `to_value_variant` lift (`z.pet = identity(new_pet);`).
+    UNION_VALUE_LIFT = auto()
+    # A pointer-repr tuple result the sink binds WHOLE, with no form
+    # conversion -- the `auto` decl off `pair_of(b)`, and the mixed
+    # own+borrow call render (`std::tuple<Box, Box*>`) that already IS the
+    # sink's shape. Every other consumer of such a result converts form.
+    BTUPLE_SLOT = auto()
+    # A `T&`-returning record call the sink takes the address of
+    # (`p = &(get_item<Point>((*points), 0));`). A bare RECEIVER admission
+    # would also open field reads off such calls (`shared(a).x`) -- the
+    # REF_ALIAS place/loan frontier, design-stopped.
+    ADDR_CALL = auto()
+    # An ALWAYS_TRUE truthiness operand: the wrap renders it inside
+    # `static_cast<void>(...)`, so the result is discarded exactly as at
+    # statement position -- the same widened return set applies.
+    TRUTHY_DISCARD = auto()
+    # A pointer-local name read that fully derefs (`(*p)`), where the
+    # default value use derefs only the always-indirect bindings. Resolved
+    # in one place, `_name_read_deref`.
+    INDIRECT_READ = auto()
+    # A non-wrapper ptr-variant union result consumed whole by the
+    # by-value dispatch local (`auto __match_subject_N = <call>;`). Every
+    # other consumer of a union result converts or narrows.
+    UNION_SUBJECT = auto()
+    # A VALUE-tuple FIELD read consumed whole by a `tuple_to_str` wrap,
+    # where storage and borrow form coincide and the bare member read IS
+    # the render. Narrower than the BORROW_BIND result use, which also
+    # unlocks the record / container / pointer-repr-tuple field legs.
+    FIELD_VALUE_TUPLE = auto()
+    # A record ternary of PRVALUE arms rendered as a C++ prvalue `?:`, which
+    # only a direct-init sink consumes. Every other consumer of a record
+    # ternary (REF_ALIAS binds, the Own copy temp, arg slots) has a
+    # per-shape render, so it keeps the lvalue slice.
+    RECORD_PRVALUE = auto()
+
+
+_NO_FORMS: frozenset[SinkForm] = frozenset()
+# One immutable singleton per verdict: a sink's row and a site's `forms=`
+# override name the same set, so neither allocates per construction.
+_ONLY_TUPLE_SOURCE: frozenset[SinkForm] = frozenset({SinkForm.TUPLE_SOURCE})
+_ONLY_BTUPLE_SLOT: frozenset[SinkForm] = frozenset({SinkForm.BTUPLE_SLOT})
+_ONLY_INDIRECT_READ: frozenset[SinkForm] = frozenset({SinkForm.INDIRECT_READ})
+_ONLY_CORO_FACTORY: frozenset[SinkForm] = frozenset({SinkForm.CORO_FACTORY})
+_ONLY_CTX_MANAGER: frozenset[SinkForm] = frozenset({SinkForm.CTX_MANAGER})
+# The FOLD end of the 3-valued literal axis. Which sinks carry it is
+# enumerated, never derived from `slot_target is None`: a target-less sink
+# that did not vet the fold renders the full operator, so the two differ.
+_ONLY_LITERAL_FOLD: frozenset[SinkForm] = frozenset({SinkForm.LITERAL_FOLD})
+_ONLY_PTR_OPT_PASSTHROUGH: frozenset[SinkForm] = frozenset(
+    {SinkForm.PTR_OPT_PASSTHROUGH})
+_ONLY_PTR_OPT_LIFT: frozenset[SinkForm] = frozenset({SinkForm.PTR_OPT_LIFT})
+_ONLY_UNION_VALUE_LIFT: frozenset[SinkForm] = frozenset(
+    {SinkForm.UNION_VALUE_LIFT})
+_ONLY_RECORD_COPY: frozenset[SinkForm] = frozenset({SinkForm.RECORD_COPY})
+_ONLY_BORROW_RET_PASSTHROUGH: frozenset[SinkForm] = frozenset(
+    {SinkForm.BORROW_RET_PASSTHROUGH})
+_ONLY_FIELD_RECV_BORROW: frozenset[SinkForm] = frozenset(
+    {SinkForm.FIELD_RECV_BORROW})
+_ONLY_ADDR_CALL: frozenset[SinkForm] = frozenset({SinkForm.ADDR_CALL})
+_ONLY_RECORD_PRVALUE: frozenset[SinkForm] = frozenset(
+    {SinkForm.RECORD_PRVALUE})
+_ONLY_UNION_SUBJECT: frozenset[SinkForm] = frozenset({SinkForm.UNION_SUBJECT})
+_ONLY_TRUTHY_DISCARD: frozenset[SinkForm] = frozenset(
+    {SinkForm.TRUTHY_DISCARD})
+_ONLY_LAMBDA_BTUPLE_RET: frozenset[SinkForm] = frozenset(
+    {SinkForm.LAMBDA_BTUPLE_RET})
+_ONLY_FIELD_VALUE_TUPLE: frozenset[SinkForm] = frozenset(
+    {SinkForm.FIELD_VALUE_TUPLE})
+
+# What each sink takes by DEFAULT -- the verdict most of its arms want. An
+# arm that wants another passes `forms=`; where no verdict is more common
+# the row is the plain arm's, the one the sink is named for. Total over
+# SinkPos on purpose: a member added without a row is a KeyError at the
+# first admission read, not a silent reject.
+# A site that names its sink and passes no `forms=` inherits the row below.
+# Before the pair an omitted flag REJECTED (the construct was named); now
+# an omitted verdict renders whatever the row says, and several verdicts
+# render BARE (a `T*` where the slot wanted `ptr_to_optional`). So a new
+# site is checked against its slot, not against the row -- the per-sink
+# derivation TODO.md schedules removes the hazard by deciding the verdict
+# from the slot at the position.
+_POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
+    SinkPos.UNSPECIFIED: _NO_FORMS,
+    SinkPos.LOCAL_DECL: _ONLY_TUPLE_SOURCE,
+    SinkPos.CALL_ARG: _ONLY_INDIRECT_READ,
+    SinkPos.SETITEM_VALUE: _ONLY_TUPLE_SOURCE,
+    SinkPos.RECEIVER: _ONLY_INDIRECT_READ,
+    SinkPos.TUPLE_ELEM: _ONLY_TUPLE_SOURCE,
+    SinkPos.RETURN: _ONLY_INDIRECT_READ,
+    SinkPos.IF_EXPR_ARM: _ONLY_INDIRECT_READ,
+    SinkPos.CONTAINER_ELEM: _ONLY_INDIRECT_READ,
+    SinkPos.FIELD_WRITE: _ONLY_RECORD_COPY,
+    SinkPos.MIL_INIT: _ONLY_TUPLE_SOURCE,
+    SinkPos.GLOBAL_SLOT_WRITE: _ONLY_PTR_OPT_PASSTHROUGH,
+    SinkPos.UNPACK_SOURCE: _ONLY_TUPLE_SOURCE,
+    SinkPos.ALIAS_BIND: _ONLY_INDIRECT_READ,
+    SinkPos.OPERAND: _ONLY_LITERAL_FOLD,
+    SinkPos.LAMBDA_RETURN: _ONLY_LAMBDA_BTUPLE_RET,
+    SinkPos.WALRUS_TARGET: _ONLY_TUPLE_SOURCE,
+    SinkPos.FRAME_SLOT_WRITE: _ONLY_TUPLE_SOURCE,
+    SinkPos.PRINT_ARG: _ONLY_PTR_OPT_PASSTHROUGH,
+    SinkPos.FSTRING_INTERP: _ONLY_FIELD_VALUE_TUPLE,
+    SinkPos.MATCH_SUBJECT: _ONLY_UNION_SUBJECT,
+    SinkPos.TRUTHINESS_OPERAND: _ONLY_TRUTHY_DISCARD,
+    SinkPos.RAISE_OPERAND: _ONLY_INDIRECT_READ,
+    SinkPos.COERCE_INNER: _ONLY_INDIRECT_READ,
+    SinkPos.WITH_MANAGER: _ONLY_CTX_MANAGER,
+}
+
+def _slot_lift_forms(ptr_opt_slot: bool,
+                     union_slot: bool) -> 'frozenset[SinkForm] | None':
+    """Which lift a field-write slot admits, read off the SLOT's type: a
+    pointer-repr Optional field lifts a borrowed `T*` through
+    `ptr_to_optional`, a ptr-variant union field lifts through
+    `to_value_variant`, and a slot that is neither takes no lift. One sink
+    position, three verdicts -- the type picks, not the position."""
+    if ptr_opt_slot:
+        return _ONLY_PTR_OPT_LIFT
+    if union_slot:
+        return _ONLY_UNION_VALUE_LIFT
+    return _NO_FORMS
+
+
+_PTR_OPT_AND_INDIRECT = frozenset({SinkForm.PTR_OPT_PASSTHROUGH,
+                                   SinkForm.INDIRECT_READ})
+
+
+def _method_recv_forms(opt_passthrough: bool,
+                       deref: bool) -> frozenset[SinkForm]:
+    """Which forms a method receiver admits. The two verdicts are
+    independent -- whether a checked receiver's `T*` result lands bare in
+    deref_check, and whether a pointer-local NAME derefs for a template or
+    native callee that spells `(*x)` where a real member call spells `->`
+    -- so all four combinations occur and the position admits both."""
+    if opt_passthrough:
+        return _PTR_OPT_AND_INDIRECT if deref else _ONLY_PTR_OPT_PASSTHROUGH
+    return _ONLY_INDIRECT_READ if deref else _NO_FORMS
+
+
 @dataclass(frozen=True, slots=True)
 class _ExprUse:
     """How the immediate consumer will use one lowered expression result.
 
-    `allow_temps` applies only to the expression passed to `_lower_expr`;
-    recursive operands get the default value use unless their own consumer
-    explicitly supplies another use.
+    A use names its SINK -- one of the `SinkPos` members -- and the FORM
+    verdict it wants there. The sink's default verdict is its `_POS_FORMS`
+    row, so most uses name only the sink; `forms=` at a site is a verdict
+    the sink's row does not carry, and the number of sites needing one
+    measures how much of the verdict the sink cannot yet derive from its
+    own slot type. A new sink is a new member with a default row, never a
+    new boolean beside the pair.
+
+    `allow_temps` is not a sink but a RIGHT: whether this expression may
+    hoist a `__tmp_N` decl at the enclosing statement's flush point. It
+    applies only to the expression passed to `_lower_expr`; recursive
+    operands get the default value use unless their own consumer supplies
+    another.
     """
     result: _ExprResultUse = _ExprResultUse.VALUE
     allow_temps: bool = False
     record_ctor: _RecordCtorUse = _RecordCtorUse.DIRECT
-    # Standalone tuple-unpack SOURCE position only: admit tuple-valued
-    # results the `auto __tup_N = <expr>;` capture consumes whole -- an
-    # `Own[F1-record]`-element tuple call result (`_owned_tuple_call_ret`)
-    # and a value-tuple class constant. Never set at decl/return sinks
-    # (their slots gate separately).
-    tuple_source: bool = False
-    # The make_adapter arg position only: admit an async-def FACTORY call
-    # (`asyncio.run(main_coro())`'s inner call) -- the concrete coro frame
-    # is consumed whole by the heap adapter, never a typed value slot.
-    coro_factory: bool = False
-    # The sync `with` manager position only: admit a @native record-returning
-    # free call (`with open(path, mode) as f`) -- the result is stored in the
-    # `__ctx_N` manager slot, whatever native symbol the overload resolves to.
-    ctx_manager: bool = False
-    # The FIELD-WRITE copy sink only: admit a borrow-returning record call
-    # source (`h.p = identity(pt);` -- the C++ copy-assign absorbs the
-    # `T&`) and its container sibling (`self.mirror = h.peek();`, whose
-    # copy sema warns). Other STORAGE sinks (decls) bind REF_ALIAS off the
-    # same result and must keep rejecting.
-    record_copy_sink: bool = False
-    # The BORROW-record RETURN sink only: admit a T&-returning call's
-    # bare passthrough (`return get_first(items);`). A decl bind off
-    # the same result is the REF_ALIAS frontier and must keep
-    # rejecting -- this flag never leaves the return arm.
-    borrow_ret_passthrough: bool = False
-    # The FIELD-READ receiver position only: admit a T&-returning record
-    # call composing transiently under the member read
-    # (`ret_param_ref(shared).n` -- the temp lives to the end of the full
-    # expression; nothing binds). Decl binds keep rejecting (REF_ALIAS
-    # frontier) -- this flag never leaves the field-read receiver slot.
-    field_recv: bool = False
-    # The pointer-repr-tuple LAMBDA-return body only: admit a generic
-    # call whose monomorphized val_or_ptr_t tuple IS the closure's
-    # borrow-form trailing return -- the direct `return body;` needs no
-    # element conversion. This flag never leaves the lambda arm.
-    lambda_btuple_ret: bool = False
-    # TARGET-LESS positions only (print args, compare operands): the
-    # pure-literal binop fold fires only where no slot target is threaded
-    # into the render, so the fold arm is admitted here. Slot-threaded
-    # positions (decl init / arg / return) render the FULL operator expr
-    # and must keep rejecting.
-    literal_fold_ok: bool = False
-    # Positions that thread a slot target into the render while lowering
-    # itself runs target-less: resolved-binop OPERAND slots (the receiver
-    # type is the target) and fixed-int FREE-call/ctor arg slots (the param
-    # is). A both-literal sub-binop renders the full operator there, never
-    # the target-less fold -- so the nested binop lowers `slot_threaded`
-    # regardless of the outer's sink. User-record METHOD args stay
-    # unflagged: those slots carry no target, so they FOLD.
-    slot_threaded: bool = False
-    # The module-init pointer-slot-global pass-through write
-    # (`g = find(xs, k);`) and the bare ptr-opt call DECL bind
-    # (`Point* r1 = get_or_none(true, p);`): admit a BORROW-returning
-    # ptr-repr Optional result, which is already the `T*` the slot or
-    # binding holds. Every other consumer of such a result materializes a
-    # slot or lifts through `optional_to_ptr`, so they keep gating on
-    # their own rows.
-    ptr_opt_passthrough: bool = False
-    # The pointer-repr `Optional[record]` FIELD-write sink only
-    # (`h.value = find_point(pts, 1);`): admit a BORROW-returning ptr-repr
-    # Optional result, which the sink then lifts through `ptr_to_optional`.
-    # Distinct from `ptr_opt_passthrough`, whose result lands BARE -- one flag
-    # cannot stand for both renders.
-    ptr_opt_lift: bool = False
-    # The value-variant UNION field-write sink only (`z.pet =
-    # identity(new_pet);`): admit a ptr-variant union call result, which
-    # the sink consumes whole through the `to_value_variant` lift.
-    union_value_lift: bool = False
-    # The borrow-tuple local decl sink only (`auto p = pair_of(b);`): admit a
-    # pointer-repr tuple result, which the `auto` slot binds whole. Every other
-    # consumer of such a result converts form, so they keep their own rows.
-    btuple_slot: bool = False
-    # The global ptr-slot's address-of catch-all only
-    # (`p = &(get_item<Point>((*points), 0));`): admit a BORROW-returning
-    # record call, whose T& result the position takes the address of. A bare
-    # RECEIVER admission would also open field reads off such calls
-    # (`shared(a).x`) -- the REF_ALIAS place/loan frontier, design-stopped.
-    addr_call: bool = False
-    # An ALWAYS_TRUE truthiness operand only: the wrap renders it inside
-    # `static_cast<void>(...)`, so the result is discarded exactly as at
-    # statement position -- the same widened return set applies.
-    truthy_discard: bool = False
-    # A value-consuming read position (call/element slots,
-    # raise/decl name sources, indirect-coerce inners): ANY pointer-local
-    # name fully derefs there (`(*p)`), where the default value use derefs
-    # only the always-indirect bindings. Consumed by `_name_read_deref` --
-    # the single resolution point for a name read's indirection.
-    indirect_read: bool = False
-    # The union-switch CALL-subject position only (`match p.choose(d):`):
-    # admit a non-wrapper ptr-variant UNION call result, consumed whole by
-    # the by-value dispatch local (`auto __match_subject_N = <call>;`).
-    # Every other consumer of a union result converts or narrows, so they
-    # keep their own rows.
-    match_union_subject: bool = False
+    # WHERE this expression lands. UNSPECIFIED by default because `use` is
+    # not propagated into subexpressions: a real sink as the default would
+    # ride the recursive `_lower_expr` calls into deeper sinks that are
+    # not it.
+    pos: SinkPos = SinkPos.UNSPECIFIED
+    # The verdict this site wants, when it is not the sink's default row --
+    # a ptr-Optional field write lifts through `ptr_to_optional` and a
+    # union one through `to_value_variant`, and both are the same sink, so
+    # the SLOT TYPE and not the sink picks. None takes the sink's row.
+    forms: 'frozenset[SinkForm] | None' = None
+    # The SLOT this expression renders into -- the annotated decl / param /
+    # element / return type. A Char slot spells `'x'`, a Float32 one the `f`
+    # suffix, a fixed-int one the checked operator template; a both-literal
+    # sub-binop renders the FULL operator there rather than folding, which
+    # is why the resolved-binop operand and fixed-int arg slots name it even
+    # though their own render is retyped afterwards. None is TARGET-LESS
+    # (print args, compare operands, user-record method args).
+    slot_target: 'TpyType | None' = None
+
+    def admits(self, form: SinkForm) -> bool:
+        """Whether this sink admits `form`. The one spelling every
+        admission ladder reads, so no consumer has to know where a verdict
+        is stored -- nor re-derive it from the sink's shape."""
+        forms = self.forms
+        return form in (_POS_FORMS[self.pos] if forms is None else forms)
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
 

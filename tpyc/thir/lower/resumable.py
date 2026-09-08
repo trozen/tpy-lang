@@ -118,8 +118,9 @@ from .checks import (
     _record_rvalue_source_shape,
     check_polymorphic_rvalue_opt_rebind,
 )
-from .context import (_ExprResultUse, _ExprUse, _LowerCtx, _Prescan,
-                      ValueOptKind)
+from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
+                      _ONLY_CORO_FACTORY, _Prescan,
+                      SinkPos, ValueOptKind)
 from .expressions import (
     _poly_cast_checks,
     _lower_call_arg,
@@ -1888,7 +1889,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 value = _lower_expr(
                     init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 coro_factory=True, allow_temps=True))
+                                 pos=SinkPos.FRAME_SLOT_WRITE, forms=_ONLY_CORO_FACTORY,
+                                 allow_temps=True))
                 _witness("res.coro_handle_write")
                 # ConcreteCoroType has no self-contained C++ spelling; the
                 # brace-init prefix can never fire for a call render, so no
@@ -2069,10 +2071,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     _strip_slot_leaf_deref(
                         _lower_expr(stmt.item.context_expr, lc, declared,
                                     # The owned `__with_ctx_N` emplace is a
-                                    # manager sink -- the sync with lane's
-                                    # ctx_manager flag (the marker lane's
-                                    # record_ret admission).
-                                    use=_ExprUse(ctx_manager=True)),
+                                    # manager sink, like the sync with
+                                    # lane's (the marker lane's record_ret
+                                    # admission).
+                                    use=_ExprUse(
+                                        pos=SinkPos.WITH_MANAGER)),
                         lc))
                 _witness("res.with_ctx")
                 continue

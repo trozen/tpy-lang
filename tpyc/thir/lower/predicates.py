@@ -8988,12 +8988,12 @@ def _container_storage_return_call_ret(ret: TpyType | None, analyzer) -> bool:
 def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
     """A call-result tuple with at least one `Own[F1-record]` element, every
     other element a value scalar or str -- the tuple-unpack move-out family
-    (`a, b = socket.socketpair()`). Admitted ONLY at the standalone
-    tuple-unpack SOURCE (use.tuple_source), which emits the bare `auto
-    __tup_N = f(...);` capture + per-element `std::move(std::get<i>)`
-    decls. Deliberately NOT folded into `_storage_call_ret`: the
-    decl-init `storage_call` escape bypasses the decl slot gate, and an
-    Own-tuple LOCAL decl is an unrouted slot."""
+    (`a, b = socket.socketpair()`). Admitted ONLY where the sink takes the
+    tuple WHOLE (`SinkForm.TUPLE_SOURCE`) -- the standalone tuple-unpack
+    SOURCE emits the bare `auto __tup_N = f(...);` capture + per-element
+    `std::move(std::get<i>)` decls. Deliberately NOT folded into
+    `_storage_call_ret`: the decl-init `storage_call` escape bypasses the
+    decl slot gate, and an Own-tuple LOCAL decl is an unrouted slot."""
     if ret is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
@@ -9053,8 +9053,9 @@ def _own_ref_mix_call_ret(ret: TpyType | None,
     `value_form()` plus pointer-repr, exactly as the unpack spells it
     -- because that is what picks the `auto&& a = unwrap_ref(
     tuple_elem_ref(..))` arm; the target type answers a different question and
-    the two can disagree. Admitted only at the standalone tuple-unpack SOURCE
-    (use.tuple_source): a whole-tuple DECL of this shape is an unrouted slot.
+    the two can disagree. Admitted only where the sink takes the tuple WHOLE
+    (`SinkForm.TUPLE_SOURCE`): a whole-tuple DECL of this shape is an
+    unrouted slot.
     """
     if ret is None:
         return None
@@ -9086,8 +9087,8 @@ def _nested_owned_tuple_call_ret(ret: TpyType | None,
     direct Own element, so `_owned_tuple_call_ret` cannot see it, but each
     inner tuple is exactly that family (or a plain value tuple), and the
     whole result lands as one storage copy (`std::tuple<std::tuple<Handle,
-    Handle>, ...> pp = two_pairs();`). Scoped to the STORAGE decl sink
-    (use.tuple_source) alongside its flat sibling."""
+    Handle>, ...> pp = two_pairs();`). Scoped to the STORAGE sinks that take
+    the tuple whole (`SinkForm.TUPLE_SOURCE`) alongside its flat sibling."""
     if ret is None:
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))

@@ -177,6 +177,9 @@ from .predicates import (
 )
 from .context import (
     _LowerCtx,
+    _ONLY_BTUPLE_SLOT,
+    _ONLY_RECORD_PRVALUE,
+    SinkPos,
     ValueOptKind,
 )
 from .checks import (
@@ -2643,7 +2646,8 @@ def _lower_ctor_mil_init(
                 value=_lower_expr(
                     stmt.value, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 tuple_source=True, allow_temps=True)))
+                                 pos=SinkPos.MIL_INIT,
+                                 allow_temps=True)))
         if isinstance(stmt.value, TpySubscript):
             # The storage-tuple element read stores bare
             # (`pair(::tpy::__getitem__(items, 0))`).
@@ -2653,7 +2657,7 @@ def _lower_ctor_mil_init(
                 value=_lower_expr(
                     stmt.value, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                 tuple_source=True)))
+                                 pos=SinkPos.MIL_INIT)))
         _mil_mixed = _mixed_own_storage_source(
             stmt.value, _f1_tuple(ftype, analyzer), frozenset(), analyzer)
         if _mil_mixed is not None:
@@ -2668,7 +2672,7 @@ def _lower_ctor_mil_init(
                     value=_lower_expr(
                         _mil_mixed, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.VALUE,
-                                     btuple_slot=True)),
+                                     pos=SinkPos.MIL_INIT, forms=_ONLY_BTUPLE_SLOT)),
                     form=Form.STORAGE, move=False, loc=loc))
         # F3: the borrow pointer-repr tuple param stores via
         # `tuple_to_storage` (a STORAGE convert; lowering admitted only the
@@ -2720,7 +2724,8 @@ def _lower_ctor_mil_init(
             # deducible type for the optional's ctor. Dict/set literals spell
             # their own container type already.
             _witness("mil.optional_container_literal")
-            v = _lower_expr(source, lc, declared, target_type=oc_inner)
+            v = _lower_expr(source, lc, declared,
+                            use=_ExprUse(slot_target=oc_inner))
             if isinstance(source, TpyArrayLiteral):
                 v = _spell_mil_brace_literal(v, oc_inner, stmt, lc)
         elif _str_literal_value_opt_arg(_peel_coerce(source), ftype):
@@ -2777,7 +2782,8 @@ def _lower_ctor_mil_init(
         return THIRMilInit(
             field_cpp=field_cpp,
             value=_lower_expr(stmt.value, lc, declared,
-                              mil_record_prvalue=True))
+                              use=_ExprUse(
+                                  pos=SinkPos.MIL_INIT, forms=_ONLY_RECORD_PRVALUE)))
     if _method_rvalue_f1_record(source, analyzer):
         # An Own-returning method-call rvalue constructs the field directly
         # (`shared(Rc<Val>::new_<Val>(Val(0)))`): the MIL slot is a storage
@@ -2790,8 +2796,10 @@ def _lower_ctor_mil_init(
                 use=_ExprUse(result=_ExprResultUse.STORAGE)))
     value = _lower_expr(
         source, lc, declared,
-        field_prechecked=isinstance(source, TpyFieldAccess),
-        target_type=(ftype if _container_storage_field(ftype) else None))
+        use=_ExprUse(slot_target=(ftype
+                                  if _container_storage_field(ftype)
+                                  else None)),
+        field_prechecked=isinstance(source, TpyFieldAccess))
     if _container_storage_field(ftype) and isinstance(source, TpyArrayLiteral):
         value = _spell_mil_brace_literal(value, ftype, stmt, lc)
     return THIRMilInit(field_cpp=field_cpp, value=value)
