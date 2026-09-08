@@ -11,7 +11,7 @@ void main() {
     // b = Blob()
     Blob b = Blob();
     // b.n = k.take(b)  # tpyc: warning(/copies/)
-    auto __tmp_1 = b;
+    Blob __tmp_1 = b;
     b.n = k.take(std::move(__tmp_1));
     // print(b.n)
     std::cout << b.n << "\n";

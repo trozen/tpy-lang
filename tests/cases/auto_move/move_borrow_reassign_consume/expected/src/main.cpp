@@ -20,7 +20,7 @@ void call_source() {
     // b = g.itself()
     b = &(g.itself());
     // take(b)  # tpyc: warning(/copies Bag into owned storage/)
-    auto __tmp_1 = (*b);
+    Bag __tmp_1 = (*b);
     take(std::move(__tmp_1));
     // print(len(g.xs))
     std::cout << ::tpy::__len__(g.xs) << "\n";
@@ -42,7 +42,7 @@ void ternary_source(bool flag) {
     // b = g.itself() if flag else h.itself()
     b = &(((flag) ? (g.itself()) : (h.itself())));
     // take(b)  # tpyc: warning(/copies Bag into owned storage/)
-    auto __tmp_2 = (*b);
+    Bag __tmp_2 = (*b);
     take(std::move(__tmp_2));
     // # Mutate the live source so a steal (empty source) would diverge.
     // if flag:

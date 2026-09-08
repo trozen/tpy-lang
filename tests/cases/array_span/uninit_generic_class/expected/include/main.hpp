@@ -23,7 +23,7 @@ struct Holder {
     Holder() = default;
     explicit Holder(const T& value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
         // self._storage.init0(value)
-        auto __tmp_1 = value;
+        T __tmp_1 = value;
         this->_storage.init0(std::move(__tmp_1));
     }
     // non-copyable (field '_storage')
@@ -43,7 +43,7 @@ struct Holder {
         // self._storage.drop0()
         this->_storage.drop0();
         // self._storage.init0(value)
-        auto __tmp_2 = value;
+        T __tmp_2 = value;
         this->_storage.init0(std::move(__tmp_2));
     }
 

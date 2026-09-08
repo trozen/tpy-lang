@@ -15,7 +15,7 @@ void main() {
     __ctx_1.__enter__();
     try {
         // k.take(g)  # tpyc: warning(/copies/)
-        auto __tmp_1 = g;
+        Guard __tmp_1 = g;
         k.take(std::move(__tmp_1));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {

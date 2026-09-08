@@ -22,7 +22,7 @@ int32_t test() {
     // p = g  # rebind to global alias -> lvalue reassignment
     p = g;
     // return consume(p)  # tpyc: warning(/copies.*into owned storage/)
-    auto __tmp_1 = (*p);
+    Point __tmp_1 = (*p);
     return consume(std::move(__tmp_1));
 }
 

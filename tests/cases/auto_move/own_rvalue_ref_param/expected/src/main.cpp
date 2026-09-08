@@ -34,7 +34,7 @@ void main() {
     // n: Int32 = 7
     int32_t n = 7;
     // print(use_int(n))
-    auto __tmp_1 = n;
+    int32_t __tmp_1 = n;
     std::cout << use_int(std::move(__tmp_1)) << "\n";
     // # Generic Own[T] -- uses std::type_identity_t<T>&& in C++
     // c: Container[Box] = Container()

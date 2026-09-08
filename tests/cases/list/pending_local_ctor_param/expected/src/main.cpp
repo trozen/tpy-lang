@@ -31,7 +31,7 @@ void main() {
     // dd = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> dd = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     // dh = DictHolder(dd)  # tpyc: warning(/copies dict\[str, Int32\] into owned storage/)
-    auto __tmp_1 = dd;
+    ::tpy::ordered_map<std::string, int32_t> __tmp_1 = dd;
     DictHolder dh = DictHolder(std::move(__tmp_1));
     // print(dd["a"], dh.d["a"])
     std::cout << ::tpy::__getitem__(dd, "a") << " " << ::tpy::__getitem__(dh.d, "a") << "\n";
@@ -50,7 +50,7 @@ void main() {
     // ss = {1, 2}
     ::tpy::ordered_set<int32_t> ss = ::tpy::ordered_set<int32_t>({1, 2});
     // sh = SetHolder(ss)  # tpyc: warning(/copies set\[Int32\] into owned storage/)
-    auto __tmp_2 = ss;
+    ::tpy::ordered_set<int32_t> __tmp_2 = ss;
     SetHolder sh = SetHolder(std::move(__tmp_2));
     // print(len(ss), len(sh.s))
     std::cout << ::tpy::__len__(ss) << " " << ::tpy::__len__(sh.s) << "\n";

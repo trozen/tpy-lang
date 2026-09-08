@@ -43,7 +43,7 @@ inline ReadyAwaitable::ReadyAwaitable(int32_t value) : value(value) {}
 // def __poll__(self, waker: Waker) -> Own[Poll[Int32]]:
 inline ::tpystd::tpy::Poll<int32_t> ReadyAwaitable::__poll__(::tpystd::coro::Waker waker) const {
     // return poll_ready(self.value)
-    auto __tmp_1 = this->value;
+    int32_t __tmp_1 = this->value;
     return ::tpystd::coro::poll_ready<int32_t>(std::move(__tmp_1));
 }
 void __tpy_init();

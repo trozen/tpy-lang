@@ -15,7 +15,7 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
         // heappush(h, v)
-        auto __tmp_1 = v;
+        ::tpy::BigInt __tmp_1 = v;
         ::tpystd::heapq::heappush<::tpy::BigInt>(h, std::move(__tmp_1));
     }
     // out: list[int] = []

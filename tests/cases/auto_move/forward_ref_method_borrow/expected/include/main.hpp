@@ -58,7 +58,7 @@ inline int32_t Picker::run() const {
     // n = self.first(xs)
     const P& n = this->first(xs);
     // r = drop(xs)  # tpyc: warning(/copies/)
-    auto __tmp_1 = xs;
+    std::vector<P> __tmp_1 = xs;
     int32_t r = drop(std::move(__tmp_1));
     // return r + n.vals[0]
     return (::tpy::add_check<int32_t>(r, ::tpy::__getitem__(n.vals, 0)));

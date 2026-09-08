@@ -5014,17 +5014,27 @@ def _param_declared_type(name: str, lc: '_LowerCtx') -> 'TpyType | None':
     return None
 
 def _check_cond_eager_temps(node: THIRExpr) -> None:
-    """The conditional-operand exit check. An AUDITED THIRArgTemp (one
-    carrying its row's movable fact) passes whole: the emit opens a
-    `conditional_region`, so it defers or stays eager per that fact. An
-    UNAUDITED row that MIGHT defer (the conservative `would_defer` guess)
-    rejects as `argtemp.cond_defer` -- a wrong eager/deferred placement
-    changes when the temp evaluates, so unaudited rows stay fenced."""
+    """The conditional-operand exit check: a temp that materializes an
+    operand of a conditionally evaluated position lives INSIDE that
+    position's region, never at the enclosing statement.
+
+    The question is whether the emit will BANK the temp into the region
+    (`THIRArgTemp.would_bank`, which asks the same `banks_in_region`
+    predicate both temp sinks act on), not
+    whether it merely COULD -- reading "cannot defer" as "eager is
+    correct here" is what hoisted an owning copy ahead of its guard. A
+    banking row passes. A row that does NOT bank lands ahead of the guard
+    and so passes only where deferral is impossible: an AUDITED
+    non-movable payload, which `std::optional::emplace` cannot take, and
+    sema warns at the argument that it is built unconditionally. An
+    UNAUDITED row never decided the question, so it stays fenced."""
     if isinstance(node, THIRArgTemp):
-        if node.movable is None and node.would_defer():
-            raise ThirUnsupported("argtemp.cond_defer", detail=True)
-        _witness("argtemp.cond_defer_audited" if node.would_defer()
-                 else "argtemp.cond_eager")
+        if not node.would_bank():
+            if node.movable is None:
+                raise ThirUnsupported("argtemp.cond_defer", detail=True)
+            _witness("argtemp.cond_eager")
+        else:
+            _witness("argtemp.cond_defer_audited")
     if isinstance(node, THIRUnionArgLift) and node.temp_cpp is not None:
         # The union-lift temp is hoisted EAGERLY at the enclosing statement,
         # but a conditional operand is exactly where it must be banked
@@ -7974,7 +7984,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             "ctor mutated-slot rvalue temp outside a flush position")
                     _witness("argtemp.ctor_mut_rvalue")
                     args.append(THIRArgTemp(
-                        result_type=rec, cpp_type=rec.to_cpp(),
+                        result_type=rec, cpp_type=rec.to_cpp(), movable=unwrap_ref_type(rec).is_movable(),
                         # `R __tmp_N = <init>;` IS a storage decl sink, so
                         # the init takes the STORAGE result use -- the same
                         # thread the marker-protocol record hoist gives its
@@ -9774,7 +9784,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             if isinstance(a, TpyNoneLiteral)
                             else _lower_expr(a, lc, declared))
                     return THIRArgTemp(result_type=ut,
-                                       cpp_type=lc.render_type(ut),
+                                       cpp_type=lc.render_type(ut), movable=unwrap_ref_type(ut).is_movable(),
                                        init=init, form=Form.VALUE,
                                        loc=getattr(a, "loc", None))
                 # A temporary into a generic-record method's RAW T slot
@@ -9786,7 +9796,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if tt is not None:
                     _witness("argtemp.generic_ref_slot")
                     return THIRArgTemp(
-                        result_type=tt, cpp_type=tt.to_cpp(),
+                        result_type=tt, cpp_type=tt.to_cpp(), movable=unwrap_ref_type(tt).is_movable(),
                         init=_lower_expr(a, lc, declared, target_type=tt),
                         form=Form.VALUE, loc=getattr(a, "loc", None))
                 # A container LITERAL into a pointer-repr Optional[container]
@@ -9813,7 +9823,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             minit, typed_brace_cpp=lc.render_type(inner))
                     _witness("argtemp.optptr_container_literal")
                     return THIRArgTemp(
-                        result_type=inner, cpp_type=lc.render_type(inner),
+                        result_type=inner, cpp_type=lc.render_type(inner), movable=unwrap_ref_type(inner).is_movable(),
                         init=minit,
                         addr_of=True, form=Form.BORROW,
                         loc=getattr(a, "loc", None))
@@ -9978,7 +9988,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             recv_t = lc.analyzer.get_expr_type(e.obj)
             _witness("method.gen_recv_temp")
             recv_lowered = THIRArgTemp(
-                result_type=recv_t, cpp_type=lc.render_type(recv_t),
+                result_type=recv_t, cpp_type=lc.render_type(recv_t), movable=unwrap_ref_type(recv_t).is_movable(),
                 init=_lower_expr(e.obj, lc, declared,
                                  use=_RECORD_TEMP_FLUSH_USE),
                 form=Form.BORROW, loc=getattr(e.obj, "loc", None))
@@ -12380,7 +12390,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
             slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
             _witness("argtemp.generic_container_literal")
             args.append(THIRArgTemp(
-                result_type=slot, cpp_type=slot.to_cpp(),
+                result_type=slot, cpp_type=slot.to_cpp(), movable=unwrap_ref_type(slot).is_movable(),
                 init=_lower_literal_arg(
                     a, slot, lc, declared,
                     "generic container-literal arg on the make_vector path"),
@@ -12727,7 +12737,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                                          lc.analyzer)
         comp = _lower_comprehension(a, slot_c, lc, declared, pointers)
         _witness("argtemp.comprehension")
-        return THIRArgTemp(result_type=slot_c, cpp_type=slot_c.to_cpp(),
+        return THIRArgTemp(result_type=slot_c, cpp_type=slot_c.to_cpp(), movable=unwrap_ref_type(slot_c).is_movable(),
                            init=comp, form=Form.BORROW,
                            loc=getattr(a, "loc", None))
     if (plain_kind and _wrapper_ref_tuple_elem_arg(a, ptype, declared,
@@ -12993,7 +13003,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             lowered = _lower_expr(
                 a, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE))
-            return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(),
+            return THIRArgTemp(result_type=slot, cpp_type=slot.to_cpp(), movable=unwrap_ref_type(slot).is_movable(),
                                init=lowered, form=Form.BORROW,
                                loc=getattr(a, "loc", None))
     dc = _deref_coerce_arg(a, ptype, declared, lc.analyzer)
@@ -13015,7 +13025,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             raise ThirUnsupported(
                 "deref-coerce arg-temp outside a flush position")
         _witness("argtemp.deref_coerce")
-        return THIRArgTemp(result_type=dslot, cpp_type=dslot.to_cpp(),
+        return THIRArgTemp(result_type=dslot, cpp_type=dslot.to_cpp(), movable=unwrap_ref_type(dslot).is_movable(),
                            init=coerced, form=Form.BORROW,
                            loc=getattr(a, "loc", None))
     return _lower_call_arg(
@@ -13457,8 +13467,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             raise ThirUnsupported("arg.own_proto_container_live")
         lowered = _lower_expr(a, lc, declared)
         _witness("argtemp.own_proto_container")
-        return THIRArgTemp(result_type=lowered.result_type, init=lowered,
-                           move=True, form=Form.STORAGE,
+        _opc = lowered.result_type
+        return THIRArgTemp(result_type=_opc, cpp_type=lc.render_type(_opc),
+                           init=lowered, move=True, form=Form.STORAGE,
+                           movable=unwrap_ref_type(_opc).is_movable(),
                            loc=getattr(a, "loc", None))
     if (method_arg_stub
             and _wrapper_union_elem_name_arg(a, ptype, declared,
@@ -14266,7 +14278,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                  loc=getattr(a, "loc", None))
             _witness("argtemp.covariant")
             return THIRArgTemp(result_type=cov_slot,
-                               cpp_type=lc.render_type(cov_slot),
+                               cpp_type=lc.render_type(cov_slot), movable=unwrap_ref_type(cov_slot).is_movable(),
                                init=inner, form=Form.BORROW,
                                loc=getattr(a, "loc", None))
         rec_pt = _record_rvalue_temp_slot(a, ptype, lc.analyzer,
@@ -14295,7 +14307,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if rec_pt is not None:
             _witness("argtemp.record_rvalue")
             return THIRArgTemp(
-                result_type=rec_pt, cpp_type=rec_pt.to_cpp(),
+                result_type=rec_pt, cpp_type=rec_pt.to_cpp(), movable=unwrap_ref_type(rec_pt).is_movable(),
                 # A module-qualified ctor source (TpyMethodCall) lowers via
                 # the marker path, whose result gate needs the temp's
                 # STORAGE sink named; the TpyCall ctor path is result-blind.
@@ -14319,7 +14331,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     if isinstance(a, TpyNoneLiteral)
                     else _lower_expr(a, lc, declared, use=_NESTED_ARG_USE))
             return THIRArgTemp(
-                result_type=ut, cpp_type=lc.render_type(ut),
+                result_type=ut, cpp_type=lc.render_type(ut), movable=unwrap_ref_type(ut).is_movable(),
                 init=init,
                 form=Form.VALUE,
                 loc=getattr(a, "loc", None))
@@ -14330,7 +14342,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         ru = _ru_wrapper_arg_slot(ptype)
         if ru is not None and _ru_container_literal_ok(a, lc.analyzer):
             _witness("argtemp.recursive_union_literal")
-            return THIRArgTemp(result_type=ru, cpp_type=lc.render_type(ru),
+            return THIRArgTemp(result_type=ru, cpp_type=lc.render_type(ru), movable=unwrap_ref_type(ru).is_movable(),
                                init=_lower_ru_literal(_peel_coerce(a), ru,
                                                       lc, declared),
                                form=Form.VALUE,
@@ -14341,7 +14353,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if ru_l is not None:
             _witness("argtemp.ru_wrapper_literal")
             return THIRArgTemp(
-                result_type=ru_l, cpp_type=lc.render_type(ru_l),
+                result_type=ru_l, cpp_type=lc.render_type(ru_l), movable=unwrap_ref_type(ru_l).is_movable(),
                 init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
                 form=Form.VALUE, loc=getattr(a, "loc", None))
         # The member-CTOR-rvalue sibling: `eval_expr(Lit(42))` hoists
@@ -14350,7 +14362,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if ru_c is not None:
             _witness("argtemp.ru_wrapper_ctor")
             return THIRArgTemp(
-                result_type=ru_c, cpp_type=lc.render_type(ru_c),
+                result_type=ru_c, cpp_type=lc.render_type(ru_c), movable=unwrap_ref_type(ru_c).is_movable(),
                 init=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE),
                 form=Form.VALUE, loc=getattr(a, "loc", None))
         # The Own[genrec]-returning CALL sibling: `leaf_count(make_leaf())`
@@ -14360,7 +14372,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if ru_call is not None:
             _witness("argtemp.ru_wrapper_call")
             return THIRArgTemp(
-                result_type=ru_call, cpp_type=lc.render_type(ru_call),
+                result_type=ru_call, cpp_type=lc.render_type(ru_call), movable=unwrap_ref_type(ru_call).is_movable(),
                 init=_lower_expr(
                     a, lc, declared,
                     use=replace(_NESTED_ARG_USE,
@@ -14378,7 +14390,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 init = THIRMove(result_type=init.result_type, value=init,
                                 form=init.form, loc=getattr(a, "loc", None))
             return THIRArgTemp(result_type=ru_m,
-                               cpp_type=lc.render_type(ru_m),
+                               cpp_type=lc.render_type(ru_m), movable=unwrap_ref_type(ru_m).is_movable(),
                                init=init, form=Form.VALUE,
                                loc=getattr(a, "loc", None))
     # A str-slice arg into an `Own[str]` container element slot
@@ -14591,11 +14603,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 return THIRArgTemp(result_type=ow,
                                    cpp_type=lc.render_type(ow),
                                    brace_init=True, init=lowered, move=True,
+                                   movable=ow.is_movable(),
                                    form=own_form, loc=getattr(a, "loc", None))
             _witness("argtemp.own_copy")
             if isinstance(a, (TpyCall, TpyMethodCall)):
                 _witness("argtemp.own_borrow_call")
-            return THIRArgTemp(result_type=ow, init=lowered, move=True,
+            return THIRArgTemp(result_type=ow, cpp_type=lc.render_type(ow),
+                               init=lowered, move=True,
+                               movable=ow.is_movable(),
                                form=own_form, loc=getattr(a, "loc", None))
         if is_str_type(ow):
             # The str copy temp is a needed CONVERSION in every position
@@ -15102,7 +15117,7 @@ def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
                     "ctor mutated-slot rvalue temp outside a flush position")
             _witness("argtemp.ctor_mut_rvalue")
             lowered.append(THIRArgTemp(
-                result_type=rec, cpp_type=rec.to_cpp(),
+                result_type=rec, cpp_type=rec.to_cpp(), movable=unwrap_ref_type(rec).is_movable(),
                 init=_lower_expr(a, lc, declared), form=Form.BORROW,
                 loc=getattr(a, "loc", None)))
         else:

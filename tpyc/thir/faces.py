@@ -61,11 +61,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.list_repeat_proto",    # ADMISSION of a list-repeat rvalue at
                                     # a STATIC structural-protocol slot;
                                     # the shared structural temp renders it
-    "argtemp.cond_eager",           # NON-deferring temp in a conditional
-                                    # operand: the eager statement hoist
-    "argtemp.cond_defer_audited",   # audited deferring temp in a
+    "argtemp.cond_eager",           # audited NON-MOVABLE temp in a
+                                    # conditional operand: deferral is
+                                    # impossible, so the eager statement
+                                    # hoist stands (sema warns)
+    "argtemp.cond_defer_audited",   # audited movable temp in a
                                     # conditional operand: the emit's
-                                    # region defers it
+                                    # region banks it
     "argtemp.value_union_method",   # method-call value-union member temp
     "argtemp.recursive_union_literal",  # list/dict literal into a recursive-
                                     # union wrapper slot (json.dumps([...]))

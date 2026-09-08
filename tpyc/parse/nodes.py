@@ -245,6 +245,10 @@ class TpyBinOp(TpyExpr):
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
     int_enum_coercion: 'NominalType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
     divisor_non_zero: bool = False  # Set by sema: divisor provably non-zero, skip div-zero check
+    # Set by sema on a chained comparison's synthetic pairs past the first:
+    # the right operand runs only if the preceding compare passed, while the
+    # left is the previous pair's right and has already evaluated.
+    cond_right: bool = False
 
     def children(self) -> list[TpyExpr]:
         return [self.left, self.right]

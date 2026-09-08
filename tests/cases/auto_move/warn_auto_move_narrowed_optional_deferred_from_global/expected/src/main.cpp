@@ -21,7 +21,7 @@ int32_t test() {
     // assert q is not None
     if (!((q != nullptr))) ::tpy::raise_assertion_error();
     // return consume(q)  # tpyc: warning(/copies.*into owned storage/)
-    auto __tmp_1 = (*q);
+    Point __tmp_1 = (*q);
     return consume(std::move(__tmp_1));
 }
 

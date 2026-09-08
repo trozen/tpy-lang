@@ -20,8 +20,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
 from ..parse import SourceLocation
-from ..typesys import (ResolvedBinop, TpyType, unwrap_readonly,
-                       unwrap_ref_type)
+from ..typesys import ResolvedBinop, TpyType
 
 if TYPE_CHECKING:
     # Compatibility metadata only (cpp_local_representation); imported under
@@ -746,8 +745,9 @@ class THIRArgTemp(THIRExpr):
     `__slot_N` precedent), drawing real numbers from the module-cumulative
     `ctx.temps` counter so every body in one module numbers
     continuously. `cpp_type` is the declared C++ type rendered at
-    lowering (`None` -> `auto`, the Own-slot copy row / `TempState.create`'s
-    protocol arm); `brace_init` selects `{init}` over `= init`.
+    lowering (`None` -> `auto`, `TempState.create`'s protocol arm and the
+    rows whose init type has no spelling); `brace_init` selects `{init}`
+    over `= init`.
     `form` says how the temp reads at the arg position: VALUE for
     the value-union row (like a same-union name) and for a scalar Own-slot
     payload, BORROW for the record ref-slot row (a record lvalue the ref
@@ -759,34 +759,24 @@ class THIRArgTemp(THIRExpr):
     move: bool = False
     addr_of: bool = False
     # The AUDITED defer fact: the movable argument passed
-    # to `TempState.create`/`create_typed` for this row, decided at lowering
-    # (inside a conditional region, movable AND spellable => the deferred
-    # optional-slot render). None = the row is UNAUDITED -- the
-    # conditional-operand exit check then rejects the shape on the
-    # conservative `would_defer` guess instead of risking a divergent
-    # eager/deferred placement.
+    # to `TempState.create`/`create_typed` for this row, decided at lowering.
+    # None = the row is UNAUDITED -- it never answered the question, so the
+    # conditional-operand exit check rejects it there rather than let it
+    # land at the enclosing statement.
     movable: 'bool | None' = None
 
-    def would_defer(self) -> bool:
-        """Would the conditional-operand machinery DEFER this temp
-        (an uninit `std::optional<T>` slot + a banked `emplace`) instead of
-        hoisting it eagerly at the statement? Follows
-        `TempState._register`'s decision: movable AND slot-spellable. A
-        `None` cpp_type is the `auto` row (never spellable). The audited
-        `movable` fact answers directly; an unaudited row guesses off the
-        slot type, an unanswerable type reading as movable -- the
-        conservative polarity for a gate that REJECTS deferring shapes."""
+    def would_bank(self) -> bool:
+        """Will the conditional-operand machinery BANK this temp into the
+        region (an uninit `std::optional<T>` slot plus a deferred
+        `emplace`) instead of hoisting it eagerly at the enclosing
+        statement? Asks the shared `banks_in_region` predicate over exactly
+        what the emit hands it: the audited `movable` fact (an UNAUDITED
+        row emits `movable=False`) and the slot spelling (a `None`
+        cpp_type is the `auto` row, which no `std::optional` can name)."""
         # Local import: codegen_cpp.context imports thir.nodes (a genuine
         # cycle), so the printer helper cannot move to module level.
-        from ..codegen_cpp.context import _slot_spellable
-        if not _slot_spellable(self.cpp_type or "auto"):
-            return False
-        if self.movable is not None:
-            return self.movable
-        t = self.result_type
-        if not isinstance(t, TpyType):
-            return True
-        return unwrap_readonly(unwrap_ref_type(t)).is_movable()
+        from ..codegen_cpp.context import banks_in_region
+        return banks_in_region(self.cpp_type or "auto", self.movable)
 
 
 @dataclass(frozen=True)

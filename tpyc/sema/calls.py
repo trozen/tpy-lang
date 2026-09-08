@@ -2820,6 +2820,37 @@ class CallAnalyzer:
                 arg,
             )
 
+    def warn_cond_operand_eager_arg(self, arg: TpyExpr, arg_type: TpyType,
+                                    ptype: TpyType) -> None:
+        """Warn where a freshly built argument of a conditionally evaluated
+        operand is built even when the branch is skipped.
+
+        A reference param binds a named temporary, and inside a logical RHS
+        / ternary arm / later chained comparator that temporary is created
+        where the operand runs -- unless the value cannot be moved, which
+        is what putting it there needs. Then it is built with the enclosing
+        statement, ahead of the guard, and CPython would not have built it
+        at all. The remedy makes that unconditional build explicit in the
+        source instead of hiding it in a skipped branch.
+        """
+        if not self.ctx.cond_operand_depth:
+            return
+        # Only a freshly BUILT value runs early; an lvalue argument already
+        # exists, and an owning slot takes the fresh value directly with no
+        # temporary in between.
+        if not isinstance(arg, (TpyCall, TpyMethodCall)):
+            return
+        if unwrap_optional_own(unwrap_send_sync(ptype)) is not None:
+            return
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(arg_type)))
+        if bare.is_value_type() or bare.is_movable():
+            return
+        self.ctx.warning(
+            f"builds {bare} even when the branch is not taken: a value that "
+            f"cannot be moved cannot be built inside a conditionally "
+            f"evaluated operand; assign it to a local before the expression "
+            f"to make the unconditional build explicit", arg)
+
     def check_own_param(self, arg: TpyExpr, arg_type: TpyType,
                         pname: str, ptype: TpyType) -> None:
         """Run Own[T] / Own[T]|None param checks: @nocopy error and unnecessary-copy warning.
@@ -2828,6 +2859,7 @@ class CallAnalyzer:
         Call this for every parameter that might be ownership-taking.
         Non-nocopy implicit copies are warned by the coercion path.
         """
+        self.warn_cond_operand_eager_arg(arg, arg_type, ptype)
         # Peel the transparent Send/Sync marker so a Send[Own[T]] destination
         # param gets the same ownership checks as a bare Own[T] param.
         ptype = unwrap_send_sync(ptype)

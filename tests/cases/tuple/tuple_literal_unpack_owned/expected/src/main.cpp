@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make(v: Int32) -> Own[Box[Int32]]:
 ::tpystd::tplib::box::Box<int32_t> make(int32_t v) {
     // return Box(v)
-    auto __tmp_1 = v;
+    int32_t __tmp_1 = v;
     return ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
 }
 

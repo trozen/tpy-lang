@@ -1151,6 +1151,13 @@ class SemanticContext:
 
     # --- Control flow (persistent) ---
     in_comprehension: int = 0
+    # Nesting depth of CONDITIONALLY EVALUATED operands (a logical RHS, a
+    # ternary arm, a chained comparator past the first). An argument built
+    # there runs only when the branch is taken -- except where the value
+    # cannot move and so cannot be deferred into the branch, which
+    # `warn_cond_operand_eager_arg` reports. Zeroed for the duration of a
+    # body that carries its own region (`ScopeTracker.deferred_body`).
+    cond_operand_depth: int = 0
     sc_and_walrus: set[str] = field(default_factory=set)
     sc_or_walrus: set[str] = field(default_factory=set)
     is_top_level: bool = False

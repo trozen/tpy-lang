@@ -1,0 +1,6 @@
+main.py:34: warning: builds Pinned even when the branch is not taken: a value that cannot be moved cannot be built inside a conditionally evaluated operand; assign it to a local before the expression to make the unconditional build explicit
+main.py:44: warning: builds Pinned even when the branch is not taken: a value that cannot be moved cannot be built inside a conditionally evaluated operand; assign it to a local before the expression to make the unconditional build explicit
+main.py:53: warning: builds Pinned even when the branch is not taken: a value that cannot be moved cannot be built inside a conditionally evaluated operand; assign it to a local before the expression to make the unconditional build explicit
+main.py:63: warning: builds Pinned even when the branch is not taken: a value that cannot be moved cannot be built inside a conditionally evaluated operand; assign it to a local before the expression to make the unconditional build explicit
+main.py:77: warning: builds Pinned even when the branch is not taken: a value that cannot be moved cannot be built inside a conditionally evaluated operand; assign it to a local before the expression to make the unconditional build explicit
+main.py:85: warning: Own[Pinned] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

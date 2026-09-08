@@ -21,7 +21,7 @@ void array_comp() {
     // xs = [Box(i) for i in range(4)]  # tpyc: type(/Array\[Box\[Int32\], 4\]/)
     std::array<::tpystd::tplib::box::Box<int32_t>, 4> xs = ::tpy::array_from_index<::tpystd::tplib::box::Box<int32_t>, 4>([&](std::size_t __i_0) -> ::tpystd::tplib::box::Box<int32_t> {
         int32_t i = int32_t(__i_0);
-        auto __tmp_1 = i;
+        int32_t __tmp_1 = i;
         return ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
     });
     // print(len(xs), xs[0].get(), xs[3].get())
@@ -36,7 +36,7 @@ void list_comp(int32_t n) {
         const int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
-            auto __tmp_2 = i;
+            int32_t __tmp_2 = i;
             __result.push_back(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_2)));
         }
         std::move(__result);
@@ -54,10 +54,10 @@ void genexpr(int32_t n) {
         [__i = int32_t(0), __stop = static_cast<int32_t>(n)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t i = __i++;
-                auto __tmp_3 = i;
+                int32_t __tmp_3 = i;
                 ::tpystd::tplib::box::Box<int32_t> __tmp_4 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_3));
                 if (is_small(__tmp_4)) {
-                    auto __tmp_5 = i;
+                    int32_t __tmp_5 = i;
                     ::tpystd::tplib::box::Box<int32_t> __tmp_6 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_5));
                     return std::optional<int32_t>(score(__tmp_6));
                 }
@@ -76,7 +76,7 @@ void filtered(int32_t n) {
         const int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t i = 0; i < __stop_0; ++i) {
-            auto __tmp_7 = i;
+            int32_t __tmp_7 = i;
             ::tpystd::tplib::box::Box<int32_t> __tmp_8 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_7));
             if (is_small(__tmp_8)) {
                 __result.push_back(i);
@@ -100,7 +100,7 @@ void walrus_owned(int32_t n) {
         const int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t x = 0; x < __stop_0; ++x) {
-            auto __tmp_9 = x;
+            int32_t __tmp_9 = x;
             ::tpystd::tplib::box::Box<int32_t> __tmp_10 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_9));
             if (((y = score(__tmp_10)) > 0)) {
                 __result.push_back(x);

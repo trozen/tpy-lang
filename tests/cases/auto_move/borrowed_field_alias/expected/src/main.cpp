@@ -13,7 +13,7 @@ void main() {
     // a = o.inner
     Inner& a = o.inner;
     // h.take(o)  # tpyc: warning(/copies/)
-    auto __tmp_1 = o;
+    Outer __tmp_1 = o;
     h.take(std::move(__tmp_1));
     // print(len(a.vals))
     std::cout << ::tpy::__len__(a.vals) << "\n";

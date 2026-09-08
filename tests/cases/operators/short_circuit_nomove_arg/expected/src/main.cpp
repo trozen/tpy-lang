@@ -13,43 +13,174 @@ int32_t take(const Pinned* p) {
 // def and_rhs(flag: bool) -> bool:
 bool and_rhs(bool flag) {
     // # The `and` RHS temp cannot defer -- Pinned has no move ctor.
-    // return flag and take(Pinned(7)) > 0
+    // return flag and take(Pinned(7)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
     Pinned __tmp_1 = Pinned(7);
     return (flag && (take(&(__tmp_1)) > 0));
 }
 
+// def and_rhs_hatch(flag: bool) -> bool:
+bool and_rhs_hatch(bool flag) {
+    // # The hatch: the local says the build is unconditional, so no warning.
+    // p = Pinned(7)  # tpyc: ok
+    Pinned p = Pinned(7);
+    // return flag and take(p) > 0  # tpyc: ok
+    return (flag && (take(&(p)) > 0));
+}
+
 // def or_rhs(flag: bool) -> bool:
 bool or_rhs(bool flag) {
-    // return flag or take(Pinned(8)) > 0
+    // return flag or take(Pinned(8)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
     Pinned __tmp_2 = Pinned(8);
     return (flag || (take(&(__tmp_2)) > 0));
 }
 
+// def or_rhs_hatch(flag: bool) -> bool:
+bool or_rhs_hatch(bool flag) {
+    // p = Pinned(8)
+    Pinned p = Pinned(8);
+    // return flag or take(p) > 0  # tpyc: ok
+    return (flag || (take(&(p)) > 0));
+}
+
 // def ternary_arm(flag: bool) -> Int32:
 int32_t ternary_arm(bool flag) {
-    // return take(Pinned(9)) if flag else -1
+    // return take(Pinned(9)) if flag else -1  # tpyc: warning(/builds Pinned even when the branch is not taken/)
     Pinned __tmp_3 = Pinned(9);
     return ((flag) ? (take(&(__tmp_3))) : (-1));
+}
+
+// def ternary_arm_hatch(flag: bool) -> Int32:
+int32_t ternary_arm_hatch(bool flag) {
+    // p = Pinned(9)
+    Pinned p = Pinned(9);
+    // return take(p) if flag else -1  # tpyc: ok
+    return ((flag) ? (take(&(p))) : (-1));
 }
 
 // def chained(a: Int32, b: Int32) -> bool:
 bool chained(int32_t a, int32_t b) {
     // # Later comparator of a chained compare: also a conditional operand.
-    // return a < b < take(Pinned(10))
+    // return a < b < take(Pinned(10))  # tpyc: warning(/builds Pinned even when the branch is not taken/)
     Pinned __tmp_4 = Pinned(10);
     return ((a < b) && (b < take(&(__tmp_4))));
+}
+
+// def chained_hatch(a: Int32, b: Int32) -> bool:
+bool chained_hatch(int32_t a, int32_t b) {
+    // p = Pinned(10)
+    Pinned p = Pinned(10);
+    // return a < b < take(p)  # tpyc: ok
+    return ((a < b) && (b < take(&(p))));
+}
+
+// def take_ref(p: Pinned) -> Int32:
+int32_t take_ref(const Pinned& p) {
+    // return p.n
+    return p.n;
+}
+
+// def ref_param(flag: bool) -> bool:
+bool ref_param(bool flag) {
+    // return flag or take_ref(Pinned(12)) > 0  # tpyc: warning(/builds Pinned even when the branch is not taken/)
+    Pinned __tmp_5 = Pinned(12);
+    return (flag || (take_ref(__tmp_5) > 0));
+}
+
+// def ref_param_hatch(flag: bool) -> bool:
+bool ref_param_hatch(bool flag) {
+    // p = Pinned(12)
+    Pinned p = Pinned(12);
+    // return flag or take_ref(p) > 0  # tpyc: ok
+    return (flag || (take_ref(p) > 0));
+}
+
+// def take_own(p: Own[Pinned]) -> Int32:  # tpyc: warning(/never consumed/)
+int32_t take_own(Pinned&& p) {
+    // return p.n
+    return p.n;
+}
+
+// def own_param(flag: bool) -> bool:
+bool own_param(bool flag) {
+    // # THE OTHER INVERSE: an `Own[T]` slot binds the rvalue inline, so no temp
+    // # is created and nothing is built ahead of the guard -- warning here would
+    // # be a false positive.
+    // return flag or take_own(Pinned(13)) > 0  # tpyc: ok
+    return (flag || (take_own(Pinned(13)) > 0));
+}
+
+// def use(p: Noisy) -> Int32:
+int32_t use(const Noisy& p) {
+    // return p.n
+    return p.n;
+}
+
+// def comp_rhs(flag: bool) -> bool:
+bool comp_rhs(bool flag) {
+    // # THE LAZY-BODY INVERSE: the comprehension body carries its own region, so
+    // # the per-iteration build happens where the comprehension runs -- inside
+    // # the skipped operand. Warning here would be a false positive, and the
+    // # remedy it names (bind the value to a local before the expression) is not
+    // # available to a value built once per iteration.
+    // return flag or sum([use(Noisy(i)) for i in range(3)]) > 0  # tpyc: ok
+    return (flag || (::tpy::builtin_sum<int32_t>(({
+        std::vector<int32_t> __result;
+        const int32_t __stop_0 = 3;
+        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
+        for (int32_t i = 0; i < __stop_0; ++i) {
+            Noisy __tmp_6 = Noisy(i);
+            __result.push_back(use(__tmp_6));
+        }
+        std::move(__result);
+    })) > 0));
+}
+
+// def left_operand(flag: bool) -> bool:
+bool left_operand(bool flag) {
+    // # THE INVERSE: the LEFT operand always evaluates, so the eager build is
+    // # what the source says and must not warn.
+    // return take(Pinned(11)) > 0 and flag  # tpyc: ok
+    Pinned __tmp_7 = Pinned(11);
+    return ((take(&(__tmp_7)) > 0) && flag);
 }
 
 // def main() -> None:
 void main() {
     // print("and", and_rhs(False), and_rhs(True))
     std::cout << "and" << " " << ::tpy::print_bool(and_rhs(false)) << " " << ::tpy::print_bool(and_rhs(true)) << "\n";
+    // print("and_hatch", and_rhs_hatch(False), and_rhs_hatch(True))
+    std::cout << "and_hatch" << " " << ::tpy::print_bool(and_rhs_hatch(false)) << " " << ::tpy::print_bool(and_rhs_hatch(true)) << "\n";
     // print("or", or_rhs(True), or_rhs(False))
     std::cout << "or" << " " << ::tpy::print_bool(or_rhs(true)) << " " << ::tpy::print_bool(or_rhs(false)) << "\n";
+    // print("or_hatch", or_rhs_hatch(True), or_rhs_hatch(False))
+    std::cout << "or_hatch" << " " << ::tpy::print_bool(or_rhs_hatch(true)) << " " << ::tpy::print_bool(or_rhs_hatch(false)) << "\n";
     // print("ternary", ternary_arm(False), ternary_arm(True))
     std::cout << "ternary" << " " << ternary_arm(false) << " " << ternary_arm(true) << "\n";
+    // print("ternary_hatch", ternary_arm_hatch(False), ternary_arm_hatch(True))
+    std::cout << "ternary_hatch" << " " << ternary_arm_hatch(false) << " " << ternary_arm_hatch(true) << "\n";
     // print("chained", chained(5, 1), chained(0, 5))
     std::cout << "chained" << " " << ::tpy::print_bool(chained(5, 1)) << " " << ::tpy::print_bool(chained(0, 5)) << "\n";
+    // print("chained_hatch", chained_hatch(5, 1), chained_hatch(0, 5))
+    std::cout << "chained_hatch" << " " << ::tpy::print_bool(chained_hatch(5, 1)) << " " << ::tpy::print_bool(chained_hatch(0, 5)) << "\n";
+    // print("refparam", ref_param(True), ref_param(False))
+    std::cout << "refparam" << " " << ::tpy::print_bool(ref_param(true)) << " " << ::tpy::print_bool(ref_param(false)) << "\n";
+    // print("refparam_hatch", ref_param_hatch(True), ref_param_hatch(False))
+    std::cout << "refparam_hatch" << " " << ::tpy::print_bool(ref_param_hatch(true)) << " " << ::tpy::print_bool(ref_param_hatch(false)) << "\n";
+    // print("own", own_param(True), own_param(False))
+    std::cout << "own" << " " << ::tpy::print_bool(own_param(true)) << " " << ::tpy::print_bool(own_param(false)) << "\n";
+    // # Skipped first, then taken: the "built" lines may only follow the second.
+    // # Bound first because `print("tag", f())` writes the literal to the stream
+    // # before calling f(), which would interleave differently under CPython.
+    // comp_skipped = comp_rhs(True)
+    bool comp_skipped = comp_rhs(true);
+    // print("comp_skipped", comp_skipped)
+    std::cout << "comp_skipped" << " " << ::tpy::print_bool(comp_skipped) << "\n";
+    // comp_taken = comp_rhs(False)
+    bool comp_taken = comp_rhs(false);
+    // print("comp_taken", comp_taken)
+    std::cout << "comp_taken" << " " << ::tpy::print_bool(comp_taken) << "\n";
+    // print("left", left_operand(True), left_operand(False))
+    std::cout << "left" << " " << ::tpy::print_bool(left_operand(true)) << " " << ::tpy::print_bool(left_operand(false)) << "\n";
 }
 
 void __tpy_init() {

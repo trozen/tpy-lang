@@ -57,7 +57,7 @@ inline Holder::Holder(Box<int32_t>&& box) : box(std::move(box)) {}
 template<typename T>
 Box<T> wrap(::tpy::param_val_or_ref_t<T> v) {
     // return Box[T](v)
-    auto __tmp_1 = v;
+    T __tmp_1 = v;
     return Box<T>(std::move(__tmp_1));
 }
 

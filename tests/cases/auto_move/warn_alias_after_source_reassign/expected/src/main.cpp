@@ -29,7 +29,7 @@ void main() {
     // alias = p
     Point& alias = (*p);
     // print(consume(p))   # tpyc: warning(/copies.*into owned storage/)
-    auto __tmp_1 = (*p);
+    Point __tmp_1 = (*p);
     std::cout << consume(std::move(__tmp_1)) << "\n";
     // print(alias.x)
     std::cout << alias.x << "\n";

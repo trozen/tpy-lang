@@ -104,7 +104,7 @@ struct FixStr {
     // def append(self, c: Char) -> None:
     void append(char c) {
         // self._storage.init(UInt32(self._size), c)
-        auto __tmp_1 = c;
+        char __tmp_1 = c;
         this->_storage.init(::tpy::int_cast_check<uint32_t>(this->_size), std::move(__tmp_1));
         // self._size += 1
         this->_size = ::tpy::add_check<int32_t>(this->_size, 1);
@@ -135,7 +135,7 @@ struct FixStr {
         // self._storage.drop(UInt32(index))
         this->_storage.drop(::tpy::int_cast_check<uint32_t>(index));
         // self._storage.init(UInt32(index), value)
-        auto __tmp_2 = value;
+        char __tmp_2 = value;
         this->_storage.init(::tpy::int_cast_check<uint32_t>(index), std::move(__tmp_2));
     }
 

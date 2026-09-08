@@ -7,11 +7,51 @@
 
 namespace tpyapp::main {
 
+struct Bag;
+
 inline constexpr std::string_view __name__ = "__main__";
 
-bool take(std::vector<int32_t>&& o);
-bool either(bool b, const std::vector<int32_t>& xs);
+bool seen(std::string_view tag, std::vector<int32_t>&& o);
+int32_t seen_n(std::string_view tag, std::vector<int32_t>&& o);
+bool seen_rec(std::string_view tag, Bag&& b);
+bool seen_str(std::string_view tag, std::string s);
+bool seen_bag(std::string_view tag, const Bag& b);
+bool or_rhs(std::vector<int32_t>& xs);
+bool and_rhs(std::vector<int32_t>& xs);
+bool nested(std::vector<int32_t>& xs, bool flag);
+bool ternary(std::vector<int32_t>& xs);
+bool chained(std::vector<int32_t>& xs);
+int32_t value_select(std::vector<int32_t>& xs);
+bool record_payload(const std::vector<int32_t>& xs);
+bool own_str_name(std::vector<int32_t>& xs, std::string_view tail);
+bool ref_param_rvalue(bool flag);
+bool left_operand(std::vector<int32_t>& xs);
 void main();
 
+// class Bag:
+struct Bag {
+    // vals: list[Int32]
+    std::vector<int32_t> vals;
+
+    // def __init__(self, vals: list[Int32]) -> None:
+    Bag() = default;
+    explicit Bag(const std::vector<int32_t>& vals);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
+    ::tpy::print_object_default(os, "Bag", obj);
+    return os;
+}
+
+
+// def __init__(self, vals: list[Int32]) -> None:
+inline Bag::Bag(const std::vector<int32_t>& vals) {
+    // # The print makes a constructor run in a SKIPPED branch visible.
+    // print("bag", len(vals))
+    std::cout << "bag" << " " << ::tpy::__len__(vals) << "\n";
+    // self.vals = vals
+    this->vals = vals;
+}
 void __tpy_init();
 } // namespace tpyapp::main

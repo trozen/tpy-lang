@@ -1,0 +1,44 @@
+comp skipped True
+comp 2
+comp taken True
+cov skipped True
+cov 15.0
+cov taken True
+genref skipped True
+genref took
+genref taken True
+gencont skipped True
+gencont 3
+gencont taken True
+optptr skipped True
+optptr 3
+optptr taken True
+optptr seen 3
+rulit skipped 0
+rulit int
+rulit int
+rulit int
+rulit taken 3
+ruscalar skipped 0
+ruscalar int
+ruscalar taken 1
+ructor skipped 0
+ructor neg
+ructor taken -3
+rucall skipped 0
+rucall build
+rucall leaf
+rucall taken 1
+ctormut skipped True
+ctormut 4
+ctormut taken True
+genrecv skipped True
+genrecv build 3
+genrecv 3
+genrecv taken True
+deref skipped True
+deref 8
+deref taken True
+dereftern skipped False
+dereftern 20
+dereftern taken True

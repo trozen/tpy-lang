@@ -16,7 +16,7 @@ void main() {
         std::cout << ::tpy::__len__(p.items) << "\n";
     };
     // s.consume(p)  # tpyc: warning(/copies/)
-    auto __tmp_1 = p;
+    Point __tmp_1 = p;
     s.consume(std::move(__tmp_1));
     // show()
     show();

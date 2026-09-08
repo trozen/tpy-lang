@@ -49,7 +49,7 @@ int32_t size_of(Payload&& p) {
         // # is what the warning names, and what keeps p.items intact for the read
         // # below. A wrong move here would empty the vector and give 3 + 0.
         // first = size_of(p)  # tpyc: warning(/copies Payload into owned storage/)
-        auto __tmp_1 = (*p);
+        Payload __tmp_1 = (*p);
         first = size_of(std::move(__tmp_1));
         // return first + len(p.items)
         __state = S_DONE;

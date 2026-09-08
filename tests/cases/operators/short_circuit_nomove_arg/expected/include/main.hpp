@@ -8,14 +8,27 @@
 namespace tpyapp::main {
 
 struct Pinned;
+struct Noisy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take(const Pinned* p);
 bool and_rhs(bool flag);
+bool and_rhs_hatch(bool flag);
 bool or_rhs(bool flag);
+bool or_rhs_hatch(bool flag);
 int32_t ternary_arm(bool flag);
+int32_t ternary_arm_hatch(bool flag);
 bool chained(int32_t a, int32_t b);
+bool chained_hatch(int32_t a, int32_t b);
+int32_t take_ref(const Pinned& p);
+bool ref_param(bool flag);
+bool ref_param_hatch(bool flag);
+int32_t take_own(Pinned&& p);
+bool own_param(bool flag);
+int32_t use(const Noisy& p);
+bool comp_rhs(bool flag);
+bool left_operand(bool flag);
 void main();
 
 // @nomove
@@ -42,6 +55,30 @@ inline std::ostream& operator<<(std::ostream& os, const Pinned& obj) {
     return os;
 }
 
+// @nomove
+// class Noisy:
+struct Noisy {
+    // n: Int32
+    int32_t n;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self, n: Int32) -> None:
+    explicit Noisy(int32_t n);
+    Noisy(const Noisy&) = delete;
+    Noisy& operator=(const Noisy&) = delete;
+    Noisy(Noisy&&) = delete;
+    Noisy& operator=(Noisy&&) = delete;
+
+    // def __del__(self) -> None:
+    ~Noisy();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Noisy";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
+    ::tpy::print_object_default(os, "Noisy", obj);
+    return os;
+}
+
 
 // def __init__(self, n: Int32) -> None:
 inline Pinned::Pinned(int32_t n) : n(n) {}
@@ -51,6 +88,23 @@ inline Pinned::~Pinned() {
     if (!this->__tpy_owned_) return;
     // # A __del__ is what makes codegen emit the deleted move ctor at all;
     // # without it the record keeps an implicit (usable) move.
+    // self.n = 0
+    this->n = 0;
+}
+
+// def __init__(self, n: Int32) -> None:
+inline Noisy::Noisy(int32_t n) {
+    // # Prints from the CONSTRUCTION itself, so a temp hoisted ahead of the
+    // # guard would show as a "built" line under the SKIPPED call.
+    // print("  built", n)
+    std::cout << "  built" << " " << n << "\n";
+    // self.n = n
+    this->n = n;
+}
+
+// def __del__(self) -> None:
+inline Noisy::~Noisy() {
+    if (!this->__tpy_owned_) return;
     // self.n = 0
     this->n = 0;
 }

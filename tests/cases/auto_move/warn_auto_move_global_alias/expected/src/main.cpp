@@ -17,7 +17,7 @@ int32_t test() {
     // q = g  # lvalue init -> T& reference (Tier 2)
     Point& q = (*g);
     // return consume(q)  # tpyc: warning(/copies.*into owned storage/)
-    auto __tmp_1 = q;
+    Point __tmp_1 = q;
     return consume(std::move(__tmp_1));
 }
 

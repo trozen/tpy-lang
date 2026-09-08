@@ -24,7 +24,7 @@ void main() {
     p.x = 10;
     // # Passing Point to Own[Point] would be implicit copy -- p is used after
     // result: Int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
-    auto __tmp_1 = p;
+    Point __tmp_1 = p;
     int32_t result = take_point(std::move(__tmp_1));
     // use_point(p)
     use_point(p);

@@ -15,7 +15,7 @@ void main() {
     auto& g = __ctx_1.__enter__();
     try {
         // g.set(live)                 # tpyc: warning(/copies .* into owned storage/)
-        auto __tmp_1 = live;
+        std::vector<int32_t> __tmp_1 = live;
         g.set(std::move(__tmp_1));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -90,7 +90,7 @@ void main() {
     auto& w = __ctx_5.__enter__();
     try {
         // w.set(shared)               # tpyc: warning(/copies .* into owned storage/)
-        auto __tmp_2 = shared;
+        std::vector<int32_t> __tmp_2 = shared;
         w.set(std::move(__tmp_2));
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {

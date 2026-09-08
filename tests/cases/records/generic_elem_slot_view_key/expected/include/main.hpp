@@ -32,7 +32,7 @@ struct Labels {
     // def add(self, value: T) -> None:
     void add(::tpy::param_val_or_ref_t<T> value) {
         // self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
-        auto __tmp_1 = value;
+        T __tmp_1 = value;
         this->items.append(std::move(__tmp_1));
     }
 

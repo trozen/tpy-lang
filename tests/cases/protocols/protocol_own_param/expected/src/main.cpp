@@ -13,7 +13,7 @@ void main() {
     // words: list[str] = ["hello", "world"]
     std::vector<std::string> words = {"hello", "world"};
     // print(first(words))
-    auto __tmp_1 = words;
+    std::vector<std::string> __tmp_1 = words;
     std::cout << first<std::string>(std::move(__tmp_1)) << "\n";
     // print(to_list(words))
     std::cout << ::tpy::ListPrinter(to_list<std::string>(std::move(words))) << "\n";

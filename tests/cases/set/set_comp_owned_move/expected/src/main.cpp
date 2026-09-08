@@ -17,7 +17,7 @@ void main(int32_t n) {
         ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = n;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            auto __tmp_1 = i;
+            int32_t __tmp_1 = i;
             ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
             if (is_small(__tmp_2)) {
                 __result.insert(i);

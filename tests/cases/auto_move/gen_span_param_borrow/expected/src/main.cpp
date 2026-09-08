@@ -21,7 +21,7 @@ void main() {
     // g = gen(xs)
     auto g = gen(::tpy::as_mut_span(xs));
     // print(drop(xs))  # tpyc: warning(/copies/)
-    auto __tmp_1 = xs;
+    std::vector<int32_t> __tmp_1 = xs;
     std::cout << drop(std::move(__tmp_1)) << "\n";
     // for v in g:
     auto& __src_0 = g;

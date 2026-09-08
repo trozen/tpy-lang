@@ -70,7 +70,7 @@ from .nodes import (
     THIRSubscript,
     THIRFrameSlotWrite,
     THIRPtrLocalDecl, THIRResumableBody, THIRSelf, THIRSimpleGenBody,
-    THIRUnionArgLift, THIRVarDecl,
+    THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
 )
 
 
@@ -316,8 +316,8 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
             if not argtemp_ok:
                 _fail(owner, a, "THIRArgTemp under a non-flushable "
                                 "statement position")
-            if eager_only and a.movable is None and a.would_defer():
-                _fail(owner, a, "unaudited deferring THIRArgTemp under "
+            if eager_only and a.movable is None:
+                _fail(owner, a, "unaudited THIRArgTemp under "
                                 "a conditional operand")
             _walk(owner, a.init, return_type, argtemp_ok=argtemp_ok,
                   eager_only=eager_only)
@@ -349,11 +349,11 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     all, so reaching one is a lowering bug.
 
     `eager_only` marks a CONDITIONAL operand position (a ternary arm, a
-    logical RHS): an AUDITED temp -- one whose creator recorded the movable
-    fact -- is legal there, since the emit's conditional region places it
-    deferred or eager off that fact. An UNAUDITED temp that might defer
-    (`THIRArgTemp.would_defer`'s conservative guess) is a lowering bug: its
-    eager/deferred placement is not decidable here."""
+    logical RHS): only an AUDITED temp -- one whose creator recorded the
+    movable fact -- is legal there, since the emit's conditional region
+    banks it or, where the payload cannot move, knowingly keeps it eager
+    under sema's warning. An UNAUDITED temp never decided that, so
+    reaching one here is a lowering bug."""
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
@@ -378,10 +378,9 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                     _fail(owner, node.receiver,
                           "receiver THIRArgTemp under a non-flushable "
                           "statement position")
-                if (eager_only and node.receiver.movable is None
-                        and node.receiver.would_defer()):
+                if eager_only and node.receiver.movable is None:
                     _fail(owner, node.receiver,
-                          "unaudited deferring THIRArgTemp receiver under "
+                          "unaudited THIRArgTemp receiver under "
                           "a conditional operand")
                 _walk(owner, node.receiver.init, return_type,
                       argtemp_ok=argtemp_ok, eager_only=eager_only)
@@ -394,8 +393,11 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if isinstance(node, THIRErrorReturnUnwrap):
         # The expression unwrap is TRANSPARENT for flushability: its call's
         # arg temps flush at the enclosing statement exactly as they would
-        # unwrapped (the wrapper only composes the `({ ... })` render).
-        _walk(owner, node.call, return_type, argtemp_ok=argtemp_ok)
+        # unwrapped (the wrapper only composes the `({ ... })` render). It is
+        # transparent for the conditional-operand rule too: an unwrap inside a
+        # lazy operand keeps its call's args in that operand.
+        _walk(owner, node.call, return_type, argtemp_ok=argtemp_ok,
+              eager_only=eager_only)
         return
     if isinstance(node, (THIRErrorReturnBind, THIRErrorReturnDiscard)):
         # Statement-level unwrap blocks: the call renders and its temps
@@ -504,6 +506,15 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                 _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
                       eager_only=True)
         return
+    if isinstance(node, THIRValueSelect):
+        # Value-position `and`/`or`: the RHS sits in the ternary branch the
+        # emit renders, so it is the same conditional-operand position as a
+        # logical THIRBinOp's right (which lowering grants cond_eager from
+        # the same site). The LHS evaluates once, unconditionally.
+        for child in _iter_children(node):
+            _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=(True if child is node.rhs else eager_only))
+        return
     if isinstance(node, THIRChainedCompareStmtExpr):
         # Operands 0 and 1 always evaluate; every later one sits behind a
         # passed compare, so inits[2:] are conditional-operand positions --
@@ -516,7 +527,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if (isinstance(node, THIRBinOp) and node.resolved is None
             and node.op in ("&&", "||")):
         # Short-circuit RHS: the conditional-operand rule (audited temps
-        # defer through the emit region, unaudited would-defer ones are a
+        # bank into the emit region, unaudited ones are a
         # lowering bug). The LHS always evaluates: it keeps the plain
         # inherited right (its temp hoists at the statement or banks into
         # an enclosing region).

@@ -842,9 +842,11 @@ class ExpressionAnalyzer:
                 self.ctx.func.narrowed_types.update(type_true)
             else:
                 self.ctx.func.narrowed_types.update(type_false)
+            self.ctx.cond_operand_depth += 1
             try:
                 right_type = self.analyze_expr(expr.right)
             finally:
+                self.ctx.cond_operand_depth -= 1
                 self.ctx.func.narrowed_types = saved_types
                 # Track walrus vars introduced in RHS (short-circuit conditional)
                 rhs_walrus = self.ctx.func.definitely_assigned - saved_assigned
@@ -855,6 +857,12 @@ class ExpressionAnalyzer:
                         self.ctx.sc_or_walrus |= rhs_walrus
                 # Rollback: RHS walrus vars are not definitely assigned
                 self.ctx.func.definitely_assigned = set(saved_assigned)
+        elif expr.cond_right:
+            self.ctx.cond_operand_depth += 1
+            try:
+                right_type = self.analyze_expr(expr.right)
+            finally:
+                self.ctx.cond_operand_depth -= 1
         else:
             right_type = self.analyze_expr(expr.right)
 
@@ -1473,8 +1481,10 @@ class ExpressionAnalyzer:
         """Analyze a chained comparison (a < b < c, etc.)."""
         pairs: list[TpyBinOp] = []
         prev = expr.left
-        for op, comp in zip(expr.ops, expr.comparators):
-            pair = TpyBinOp(prev, op, comp, loc=expr.loc)
+        for i, (op, comp) in enumerate(zip(expr.ops, expr.comparators)):
+            # Only the first two operands always evaluate; every later
+            # comparator sits behind a compare that has to pass.
+            pair = TpyBinOp(prev, op, comp, loc=expr.loc, cond_right=i >= 1)
             self.analyze_expr(pair)
             pairs.append(pair)
             prev = comp
@@ -2834,17 +2844,25 @@ class ExpressionAnalyzer:
         saved_narrowed = dict(self.ctx.func.narrowed_types)
 
         self.ctx.func.narrowed_types.update(then_facts)
-        if type_hint is not None:
-            then_type = self.analyze_expr_with_hint(expr.then_expr, type_hint)
-        else:
-            then_type = self.analyze_expr(expr.then_expr)
+        # Both arms are conditionally evaluated; only the condition above is
+        # not.
+        self.ctx.cond_operand_depth += 1
+        try:
+            if type_hint is not None:
+                then_type = self.analyze_expr_with_hint(expr.then_expr,
+                                                        type_hint)
+            else:
+                then_type = self.analyze_expr(expr.then_expr)
 
-        self.ctx.func.narrowed_types = dict(saved_narrowed)
-        self.ctx.func.narrowed_types.update(else_facts)
-        if type_hint is not None:
-            else_type = self.analyze_expr_with_hint(expr.else_expr, type_hint)
-        else:
-            else_type = self.analyze_expr(expr.else_expr)
+            self.ctx.func.narrowed_types = dict(saved_narrowed)
+            self.ctx.func.narrowed_types.update(else_facts)
+            if type_hint is not None:
+                else_type = self.analyze_expr_with_hint(expr.else_expr,
+                                                        type_hint)
+            else:
+                else_type = self.analyze_expr(expr.else_expr)
+        finally:
+            self.ctx.cond_operand_depth -= 1
 
         self.ctx.func.narrowed_types = saved_narrowed
 

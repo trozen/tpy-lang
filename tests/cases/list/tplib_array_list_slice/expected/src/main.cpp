@@ -15,7 +15,7 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
         // a.append(v)
-        auto __tmp_1 = v;
+        int32_t __tmp_1 = v;
         a.append(std::move(__tmp_1));
     }
     // # Slice with both bounds

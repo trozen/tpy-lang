@@ -18,8 +18,8 @@ from dataclasses import dataclass, field
 from typing import Callable, TextIO
 
 from ..codegen_cpp.context import (
-    INDENT, CondRegion, _as_expression, _slot_spellable,
-    any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
+    INDENT, CondRegion, _as_expression, any_isinstance_check,
+    banks_in_region, cpp_bytes_literal_owned, cpp_bytes_literal_span,
     cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
     qualify_native_name,
@@ -212,12 +212,12 @@ class TempSink:
     def create(self, cpp_type: str, init_expr: str, *,
                brace_init: bool = False, movable: bool = False) -> str:
         # TempState._register's deferral mirror: inside an open conditional
-        # region a movable+spellable temp declares an uninit optional slot,
-        # banks its emplace into the region, and reads `(*__tmp_N)`.
+        # region a banking temp declares an uninit optional slot, banks its
+        # emplace into the region, and reads `(*__tmp_N)`.
         self._counter += 1
         name = f"__tmp_{self._counter}"
         region = self._regions[-1] if self._regions else None
-        if region is None or not movable or not _slot_spellable(cpp_type):
+        if region is None or not banks_in_region(cpp_type, movable):
             self._pending.append((name, cpp_type, init_expr, brace_init))
             return name
         emplace_arg = _as_expression(cpp_type, init_expr, brace_init)

@@ -21,7 +21,7 @@ void main() {
     // a = o.items[0]
     Inner& a = ::tpy::__getitem__(o.items, 0);
     // print(take(o))  # tpyc: warning(/copies/)
-    auto __tmp_1 = o;
+    Outer __tmp_1 = o;
     std::cout << take(std::move(__tmp_1)) << "\n";
     // print(len(a.vals))
     std::cout << ::tpy::__len__(a.vals) << "\n";

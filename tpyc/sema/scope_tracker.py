@@ -42,6 +42,26 @@ class ScopeTracker:
             self.ctx.func.current_scope = old_scope
 
     @contextmanager
+    def deferred_body(self) -> Iterator[None]:
+        """Analyze a body whose statements run inside their own region.
+
+        A comprehension, generator expression, lambda or nested def opens a
+        region of its own, so a temporary built in it is placed there and not
+        at the enclosing statement -- even when the whole expression sits in a
+        conditionally evaluated operand. Leaving the enclosing
+        `cond_operand_depth` in place would make
+        `warn_cond_operand_eager_arg` report an early build that does not
+        happen, and name a remedy (bind the argument to a local before the
+        expression) that a per-iteration value cannot take.
+        """
+        saved = self.ctx.cond_operand_depth
+        self.ctx.cond_operand_depth = 0
+        try:
+            yield
+        finally:
+            self.ctx.cond_operand_depth = saved
+
+    @contextmanager
     def comprehension_scope(self) -> Iterator[Scope]:
         """Create an inner scope for a comprehension (no loop_depth bump)."""
         inner_scope = Scope(self.ctx.func.current_scope)
@@ -49,7 +69,8 @@ class ScopeTracker:
         self.ctx.func.current_scope = inner_scope
         self.ctx.in_comprehension += 1
         try:
-            yield inner_scope
+            with self.deferred_body():
+                yield inner_scope
         finally:
             self.ctx.in_comprehension -= 1
             self.ctx.func.current_scope = old_scope
@@ -66,7 +87,8 @@ class ScopeTracker:
             inner_ns = Namespace(parent=self.ctx.func.current_ns)
             self.ctx.func.current_ns = inner_ns
         try:
-            yield inner_scope
+            with self.deferred_body():
+                yield inner_scope
         finally:
             self.ctx.func.definitely_assigned = old_assigned
             self.ctx.func.current_scope = old_scope
@@ -100,7 +122,8 @@ class ScopeTracker:
         self.ctx.func.in_nested_def = True
         self.ctx.func.nested_def_name = func_node.name
         try:
-            yield inner_scope
+            with self.deferred_body():
+                yield inner_scope
         finally:
             self.ctx.restore_function_state(saved)
             self.ctx.func.current_scope = outer_scope

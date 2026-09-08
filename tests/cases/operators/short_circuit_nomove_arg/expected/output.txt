@@ -1,4 +1,17 @@
 and False True
+and_hatch False True
 or True True
+or_hatch True True
 ternary -1 9
+ternary_hatch -1 9
 chained False True
+chained_hatch False True
+refparam True True
+refparam_hatch True True
+own True True
+comp_skipped True
+  built 0
+  built 1
+  built 2
+comp_taken True
+left True False

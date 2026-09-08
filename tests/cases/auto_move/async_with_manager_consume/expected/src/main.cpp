@@ -52,7 +52,7 @@ namespace tpyapp::main {
     case S_JOIN_2: {
         try {
             // k.take(g)  # tpyc: warning(/copies/)
-            auto __tmp_1 = (*g);
+            Guard __tmp_1 = (*g);
             (*k).take(std::move(__tmp_1));
             __state = S_JOIN_0;
             continue;

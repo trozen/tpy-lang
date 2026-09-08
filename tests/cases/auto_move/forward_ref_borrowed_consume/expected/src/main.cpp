@@ -11,7 +11,7 @@ void main() {
     // n = first(xs)
     P& n = first(xs);
     // print(drop(xs))  # tpyc: warning(/copies/)
-    auto __tmp_1 = xs;
+    std::vector<P> __tmp_1 = xs;
     std::cout << drop(std::move(__tmp_1)) << "\n";
     // print(n.vals[0])
     std::cout << ::tpy::__getitem__(n.vals, 0) << "\n";

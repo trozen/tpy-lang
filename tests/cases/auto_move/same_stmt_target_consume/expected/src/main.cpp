@@ -13,7 +13,7 @@ void main() {
     // d: dict[Int32, Int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> d = ::tpy::ordered_map<int32_t, int32_t>();
     // d[len(b.items)] = k.take(b)  # tpyc: warning(/copies/)
-    auto __tmp_1 = b;
+    Blob __tmp_1 = b;
     ::tpy::__setitem__(d, ::tpy::__len__(b.items), k.take(std::move(__tmp_1)));
     // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";

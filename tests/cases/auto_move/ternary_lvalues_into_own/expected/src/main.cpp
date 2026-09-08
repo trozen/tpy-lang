@@ -21,7 +21,7 @@ void main() {
     // flag = True
     bool flag = true;
     // r = take(a if flag else other)   # tpyc: warning(/copies Box into owned storage/)
-    auto __tmp_1 = ((flag) ? (a) : (other));
+    Box __tmp_1 = ((flag) ? (a) : (other));
     Box r = take(std::move(__tmp_1));
     // print(r.val)                     # 11 (owned value, bumped)
     std::cout << r.val << "\n";

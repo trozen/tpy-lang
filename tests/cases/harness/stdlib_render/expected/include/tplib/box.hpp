@@ -101,7 +101,7 @@ struct Box {
     Box<T> clone() const
       requires ::tpy::Copyable<T> {
         // return Box(self.get())
-        auto __tmp_1 = this->get();
+        T __tmp_1 = this->get();
         return Box<T>(std::move(__tmp_1));
     }
 

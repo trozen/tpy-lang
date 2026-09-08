@@ -73,7 +73,7 @@ inline void Buf::retag(int32_t n) {
 // def rebox(self, n: Int32) -> None:
 inline void Buf::rebox(int32_t n) {
     // fresh: list[Box[Int32]] = [Box(n)]
-    auto __tmp_1 = n;
+    int32_t __tmp_1 = n;
     std::vector<::tpystd::tplib::box::Box<int32_t>> fresh = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1)));
     // self.boxes = fresh  # tpyc: ok -- a copy here would not compile
     this->boxes = std::move(fresh);

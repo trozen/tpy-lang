@@ -26,7 +26,7 @@ namespace tpyapp::main {
     case S_JOIN_0: {
         if ((i < 5)) {
             // await q.put(i)
-            auto __tmp_1 = i;
+            int32_t __tmp_1 = i;
             __sub_0.emplace(q, std::move(__tmp_1));
             __state = S_RESUME_0;
             continue;

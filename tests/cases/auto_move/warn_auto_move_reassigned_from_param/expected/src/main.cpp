@@ -20,7 +20,7 @@ int32_t test(Point& a) {
     // p = a  # rebind to param alias -> lvalue reassignment
     p = &(a);
     // return consume(p)  # tpyc: warning(/copies.*into owned storage/)
-    auto __tmp_1 = (*p);
+    Point __tmp_1 = (*p);
     return consume(std::move(__tmp_1));
 }
 

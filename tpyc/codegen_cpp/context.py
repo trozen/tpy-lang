@@ -799,6 +799,20 @@ def _slot_spellable(cpp_type: str) -> bool:
     return not re.match(r"^(const\s+)?auto\b", stripped)
 
 
+def banks_in_region(cpp_type: str, movable: 'bool | None') -> bool:
+    """True if a temp of this shape goes into an open conditional-operand
+    region's deferred `std::optional` slot instead of hoisting eagerly at the
+    enclosing statement.
+
+    The single authority for that question: the lowering gate PREDICTS it to
+    decide whether an eager placement ahead of the guard is acceptable, and
+    both temp sinks act on it. Two copies of the condition drifted apart once
+    already, which is how a conditionally-evaluated argument's copy came to
+    run unconditionally.
+    """
+    return bool(movable) and _slot_spellable(cpp_type)
+
+
 def _as_expression(type_cpp: str, init_expr: str, brace_init: bool) -> str:
     """Render an initializer as a standalone expression of type `type_cpp`.
 
@@ -874,7 +888,7 @@ class TempState:
                   init_expr: str, brace_init: bool, movable: bool) -> str:
         """Queue a temp decl and return the expression that reads it."""
         region = self._regions[-1] if self._regions else None
-        if region is None or not movable or not _slot_spellable(type_cpp):
+        if region is None or not banks_in_region(type_cpp, movable):
             self._pending.append((temp_name, type_cpp, init_expr, brace_init))
             return temp_name
         emplace_arg = _as_expression(type_cpp, init_expr, brace_init)
