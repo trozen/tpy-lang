@@ -53,7 +53,6 @@ from .nodes import (
     THIRLiteral,
     THIRMatch,
     THIRMethodCall,
-    THIRModule,
     THIRModuleVar,
     THIRConsumingIter,
     THIRCopy,
@@ -751,23 +750,12 @@ def _constructor_lines(name: str, ctor: 'THIRConstructor') -> list[str]:
     return lines
 
 
-def dump_thir(module: THIRModule) -> str:
-    lines: list[str] = []
-    for fn in module.functions:
-        lines.extend(_function_lines(fn))
-        lines.append("")
-    if not module.functions:
-        lines.append("(no THIR-eligible functions)")
-    return "\n".join(lines).rstrip("\n") + "\n"
-
-
 def dump_codegen_thir(module_ast, analyzer, ctx,
                       reasons: 'dict[int, str] | None' = None) -> str:
     """Dump the bodies CODEGEN lowered, read off its per-module THIR caches.
 
-    Unlike `dump_thir` (which renders a standalone `lower_module` result),
-    this shows every body kind -- sync, resumable, simple-generator,
-    constructor -- and names the ones with no THIR, since "what did NOT
+    Every body kind is shown -- sync, resumable, simple-generator,
+    constructor -- and the ones with no THIR are named, since "what did NOT
     lower" is usually the question being asked. `reasons` (the compiler's
     per-body first-reject map) names WHY a body rejected.
 

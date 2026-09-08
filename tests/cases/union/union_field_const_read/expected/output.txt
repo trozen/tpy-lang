@@ -2,3 +2,6 @@ Rex
 Whiskers
 Rex
 Rex
+forward_pet: Rex
+forward_pet: Buddy
+forward_pet: 

@@ -3,6 +3,8 @@
 
 namespace tpyapp::main {
 
+// G: Int32 | None = 5
+std::optional<int32_t> G;
 
 // def g(p: Int32 | None) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
@@ -183,6 +185,43 @@ __gen_g_frame_whole g_frame_whole(std::optional<int32_t> p) {
     return __gen_g_frame_whole(p);
 }
 
+// def g_global() -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        if ((G.has_value())) {
+            // yield G
+            __state = S_RESUME_0;
+            return (*G);
+        } else {
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_RESUME_0: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        // yield -3
+        __state = S_RESUME_1;
+        return -3;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def g_global() -> Iterator[Int32]:
+__gen_g_global g_global() {
+    return __gen_g_global();
+}
+
 // def g_view(s: str | None) -> Iterator[str]:
 std::expected<std::string, ::tpy::StopIteration> __gen_g_view::__next__() {
     while (true) switch (__state) {
@@ -279,14 +318,26 @@ void main() {
         std::cout << x << "\n";
         }
     }
-    // for s in g_view("v"):
+    // for x in g_global():
     {
-        auto __src_8 = g_view("v");
+        auto __src_8 = g_global();
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
-            std::string_view s = ::tpy::unwrap_ref(*__r_9);
+            int32_t x = ::tpy::unwrap_ref(*__r_9);
+        // print("global", x)
+        std::cout << "global" << " " << x << "\n";
+        }
+    }
+    // for s in g_view("v"):
+    {
+        auto __src_10 = g_view("v");
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_11);
         // print(s)
         std::cout << s << "\n";
         }
@@ -298,6 +349,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // G: Int32 | None = 5
+    G = 5;
     // main()
     main();
 }

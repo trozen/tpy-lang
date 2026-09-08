@@ -10,10 +10,10 @@ class E(Exception, ReturnException):
 
 
 @overload
-def f(a: Int32) -> Int32: ...  # tpyc: ok
+def f(a: Int32) -> Int32: ...
 
 @overload
-def f(a: Int32, b: Int32) -> Int32: ...  # tpyc: ok
+def f(a: Int32, b: Int32) -> Int32: ...
 
 @error_return(E)
 def f(a: Int32, b: Int32 = 0) -> Int32:  # tpyc: error(/sig.overload_set.param_names/)

@@ -21,6 +21,9 @@ void main() {
     Outer::Inner inner = Outer::Inner(42);
     // print(inner.y)
     std::cout << inner.y << "\n";
+    // # Nested constructor with a defaulted parameter, positional spelling
+    // print("pair_default", Outer.Pair(1, 2).v, Outer.Pair(5).v)
+    std::cout << "pair_default" << " " << Outer::Pair(1, 2).v << " " << Outer::Pair(5).v << "\n";
 }
 
 void __tpy_init() {

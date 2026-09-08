@@ -1,3 +1,6 @@
+# A reference-typed local needs an initializer at its declaration. The value-
+# typed spelling that IS allowed to stay bare until a later assignment is
+# pinned by tests/cases/pointers/init_tracking.
 from tpy import Int32
 
 class Point:
@@ -9,8 +12,5 @@ class Point:
 
 def bad_no_init() -> None:
     p: Point  # tpyc: error(/must have an initializer/)
-
-def value_no_init_ok() -> None:
-    x: Int32  # tpyc: ok
 
 pt: Point = Point(1, 2)

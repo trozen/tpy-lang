@@ -8,7 +8,7 @@ class NotIterable:
     def __init__(self, v: Int32) -> None:
         self.value = v
 
-def sum_items(items: Iterable[Int32]) -> Int32:  # tpyc: ok
+def sum_items(items: Iterable[Int32]) -> Int32:
     total: Int32 = 0
     for x in items:
         total += x

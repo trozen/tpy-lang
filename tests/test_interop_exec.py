@@ -50,6 +50,7 @@ from conftest import (
     record_exec_pass,
     run_cpython,
     validate_annotations,
+    fail_annotations,
 )
 
 _FACADE_SELFCHECK = (
@@ -194,12 +195,13 @@ def test_interop_exec(case_dir, mod_py, request):
     diag = diag.replace(src_prefix, "")
     check_or_update(diag, expected_dir / "diag.txt", "Diagnostics")
 
-    if not UPDATE_EXPECTED:
-        annotation_errors: list[str] = []
-        for src_file in sorted((case_dir / "src").glob("*.py")):
-            annotation_errors.extend(validate_annotations(src_file, diag))
-        if annotation_errors:
-            pytest.fail("\n".join(annotation_errors), pytrace=False)
+    # Validated in update mode too, against the diagnostics just snapshotted
+    # (see the same gate in test_case.py): regenerating around a wrong
+    # annotation only defers the failure to the next plain run.
+    annotation_errors: list[str] = []
+    for src_file in sorted((case_dir / "src").glob("*.py")):
+        annotation_errors.extend(validate_annotations(src_file, diag))
+    fail_annotations(request, annotation_errors)
 
     gen_hpp = build_dir / "include" / f"{mod}.hpp"
     gen_cpp = build_dir / "src" / f"{mod}.cpp"

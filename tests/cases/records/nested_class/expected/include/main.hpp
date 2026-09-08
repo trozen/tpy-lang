@@ -29,6 +29,20 @@ struct Outer {
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Inner";
     };
 
+    // class Pair:
+    struct Pair {
+        // v: Int32
+        int32_t v;
+
+        // # A defaulted parameter of a NESTED constructor, filled by a
+        // # positional argument or left to its default; the keyword
+        // # spelling is tests/cases/calls/error_nested_ctor_kwargs.
+        // def __init__(self, v: Int32, w: Int32 = 0) -> None:
+        Pair() = default;
+        explicit Pair(int32_t v, int32_t w = 0);
+        static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Pair";
+    };
+
     // x: Int32
     int32_t x;
 
@@ -48,6 +62,11 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
     return os;
 }
 
+inline std::ostream& operator<<(std::ostream& os, const Outer::Pair& obj) {
+    ::tpy::print_object_default(os, "Outer.Pair", obj);
+    return os;
+}
+
 
 // def __init__(self, y: Int32) -> None:
 inline Outer::Inner::Inner(int32_t y) : y(y) {}
@@ -57,6 +76,12 @@ inline int32_t Outer::Inner::doubled() const {
     // return self.y * 2
     return (::tpy::mul_check<int32_t>(this->y, 2));
 }
+
+// # A defaulted parameter of a NESTED constructor, filled by a
+// # positional argument or left to its default; the keyword
+// # spelling is tests/cases/calls/error_nested_ctor_kwargs.
+// def __init__(self, v: Int32, w: Int32 = 0) -> None:
+inline Outer::Pair::Pair(int32_t v, int32_t w) : v((::tpy::add_check<int32_t>(v, w))) {}
 
 // def __init__(self, x: Int32) -> None:
 inline Outer::Outer(int32_t x) : x(x) {}

@@ -122,7 +122,6 @@ from ..nodes import (
     THIRIf,
     THIRLiteral,
     THIRMilInit,
-    THIRModule,
     THIROptViewArg,
     THIRParam,
     THIRAssign,
@@ -2867,7 +2866,7 @@ def unemitted_overload_clones(module: TpyModule, analyzer) -> set[int]:
 
 def iter_module_callables(module: TpyModule, analyzer):
     """Yield `(callable, self_type)` for every function / method the slice may
-    admit -- the single feed list shared by `lower_module` and codegen so the
+    admit -- the one feed list codegen and the lowering pins share, so the
     two never drift. Lowering still has the final say; this only enumerates
     candidates. Free functions yield `self_type=None`; record methods
     (instance / static / property / dunder) yield the owning record's type
@@ -3204,32 +3203,3 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
     except ThirUnsupported as ex:
         note(ex.reason, ex.loc)
         return None
-
-
-def lower_module(module: TpyModule, analyzer, render_type=None,
-                 global_types=None) -> THIRModule:
-    """Try to lower every function and method in `module`; skip the rejects.
-    With `global_types` (the generator's global name -> type map) the module's
-    top-level statements lower too."""
-    out = THIRModule(module_name=getattr(analyzer.ctx, "module_name", "generated"))
-    if global_types is not None:
-        out.top_level = lower_top_level(module, analyzer, global_types,
-                                        render_type=render_type)
-    ng = module_native_globals(module)
-    for func, self_type in iter_module_callables(module, analyzer):
-        stubs = analyzer.overload_groups.get(id(func))
-        if stubs:
-            # Mirror the codegen driver's per-stub seeding (all-or-nothing):
-            # an @overload impl lowers once per stub with that stub's facts.
-            entries = [lower_function(func, analyzer, render_type,
-                                      self_type=self_type, native_globals=ng,
-                                      stub=s)
-                       for s in stubs]
-            if all(e is not None for e in entries):
-                out.functions.extend(entries)
-            continue
-        thir_fn = lower_function(func, analyzer, render_type, self_type=self_type,
-                                 native_globals=ng)
-        if thir_fn is not None:
-            out.functions.append(thir_fn)
-    return out

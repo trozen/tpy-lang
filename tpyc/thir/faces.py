@@ -29,13 +29,6 @@ covers nothing. Without that, an arm witnessing before it
 can raise reads as covered when it never lowered -- which is how a dead arm
 passed this very check.
 
-RESIDUE, measured and real: `lower_module` -- the whole-module entry only
-test helpers drive (`testutil._lower` and two unit files) -- opens no attempt window, so
-witnesses recorded under it are never journalled and never rolled back. The
-whole-corpus census is unaffected: it folds only the compiler-driven path,
-which IS bracketed at every attempt seam. Give `lower_module` a seam (or
-delete it with its last driver) and the gap closes.
-
 The registry is immutable metadata (module-level by design); the mutable
 counts live on the active Compiler (`_thir_face_witnesses`), so the helper
 is a no-op outside a compilation. Recording is NOT flag-gated: it happens

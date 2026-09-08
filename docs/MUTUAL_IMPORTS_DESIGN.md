@@ -150,8 +150,7 @@ inheritance) get targeted rejection.
 
 ### Compatibility with the IR migration
 
-The work sits above the `lower_module(ast, analyzer) -> THIR` boundary
-in `IR_DESIGN.md`. THIR consumes a fully-analyzed module per-module
+The work sits above the per-body lowering boundary in `IR_DESIGN.md`. THIR consumes a fully-analyzed module per-module
 after sema; this plan changes how sema is *driven*, not what it
 produces. The structure aligns better with THIR's "self-contained
 per-module" property than today's per-module-with-publishing model.

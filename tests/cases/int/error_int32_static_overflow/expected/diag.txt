@@ -1,1 +1,1 @@
-main.py:6: error: Integer literal 3000000000 is outside Int32 range [-2147483648, 2147483647] in variable 'too_big'
+main.py:8: error: Integer literal 3000000000 is outside Int32 range [-2147483648, 2147483647] in variable 'too_big'

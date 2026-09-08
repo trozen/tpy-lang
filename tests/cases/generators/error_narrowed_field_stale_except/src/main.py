@@ -1,6 +1,8 @@
 # A narrowed Optional FIELD read in an except handler is stale when the
 # try body suspends: the exception may be raised after a resume where
-# the caller mutated the field, so handler-entry kills field facts.
+# the caller mutated the field, so handler-entry kills field facts. The
+# try body's own first yield still derefs -- that face is pinned by
+# tests/cases/generators/narrowed_value_opt_field_yield.
 from tpy import Int32
 from typing import Iterator
 
@@ -14,7 +16,7 @@ class Box:
     def in_except(self) -> Iterator[Int32]:
         if self.f is not None:
             try:
-                yield self.f  # tpyc: ok
+                yield self.f
                 raise ValueError("boom")
             except ValueError:
                 yield self.f  # tpyc: error(/Type mismatch in yield value/)

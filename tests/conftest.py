@@ -2268,6 +2268,52 @@ def parse_annotations(source: str) -> list[Annotation]:
     return annotations
 
 
+def error_case_annotation_problems(src_dir: Path) -> list[str]:
+    """Why an `error_` case's annotations cannot be trusted, empty when they can.
+
+    Compilation stops at the first error, so a `# tpyc: ok` in an error case
+    is satisfied by a line the phase never reached: a line after the reject is
+    never lowered, a line before it renders into no snapshot. `warning` and
+    `error` legs are not vacuous (they fail when unobserved), so only `ok` is
+    refused -- and at least one `error` leg must name the rejection."""
+    has_error_annotation = False
+    vacuous_ok: list[str] = []
+    for src_file in sorted(src_dir.rglob("*.py")):
+        for ann in parse_annotations(src_file.read_text()):
+            if ann.level == "error":
+                has_error_annotation = True
+            elif ann.level == "ok":
+                vacuous_ok.append(f"{src_file.name}:{ann.line}")
+    problems: list[str] = []
+    if not has_error_annotation:
+        problems.append(
+            "Error test must have at least one '# tpyc: error(...)' annotation")
+    if vacuous_ok:
+        problems.append(
+            "'# tpyc: ok' in an error case asserts nothing -- compilation "
+            "stops at the first error, so this line either never lowered "
+            "or rendered into no snapshot: "
+            + ", ".join(vacuous_ok)
+            + ". Move the claim to a normal case (or a section of one), or "
+            "drop the leg with a pointer to where it is already pinned.")
+    return problems
+
+
+def fail_annotations(request, errors: list[str]) -> None:
+    """Fail the item on annotation errors.
+
+    In update mode the failure waits for the item's teardown, so every
+    snapshot the run rewrites lands first: failing mid-phase would leave
+    the case with its tree wiped and only a fresh diag.txt beside the wrong
+    annotation it reported. A plain run fails on the spot."""
+    if not errors:
+        return
+    message = "\n".join(errors)
+    if not UPDATE_EXPECTED:
+        pytest.fail(message, pytrace=False)
+    request.addfinalizer(lambda: pytest.fail(message, pytrace=False))
+
+
 def validate_annotations(src_file: Path, diagnostics: str) -> list[str]:
     """Validate that diagnostics match inline annotations.
 

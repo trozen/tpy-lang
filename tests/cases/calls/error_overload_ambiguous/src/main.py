@@ -23,12 +23,12 @@ class Hybrid:
 
 
 @overload
-def describe(x: Greeter) -> str:  # tpyc: ok
+def describe(x: Greeter) -> str:
     return "greeter: " + x.greet()
 
 
 @overload
-def describe(x: Farewell) -> str:  # tpyc: ok
+def describe(x: Farewell) -> str:
     return "farewell: " + x.greet()
 
 

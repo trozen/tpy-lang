@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 struct Item;
 template<typename T, std::size_t N> struct Pool;
+struct Tagged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -94,8 +95,64 @@ inline std::ostream& operator<<(std::ostream& os, const Pool<T, N>& obj) {
     return os;
 }
 
+// class Tagged:
+struct Tagged {
+    // n: Int32
+    int32_t n;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self, n: Int32) -> None:
+    explicit Tagged(int32_t n);
+    Tagged(const Tagged&) = delete;
+    Tagged& operator=(const Tagged&) = delete;
+    Tagged(Tagged&& other) noexcept;
+    Tagged& operator=(Tagged&& other) noexcept;
+
+    // def __del__(self) -> None:
+    ~Tagged();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
+    ::tpy::print_object_default(os, "Tagged", obj);
+    return os;
+}
+
 
 // def __init__(self, name: str) -> None:
 inline Item::Item(std::string_view name) : name(name) {}
+
+// def __init__(self, n: Int32) -> None:
+inline Tagged::Tagged(int32_t n) : n(n) {}
+
+inline Tagged::Tagged(Tagged&& other) noexcept : n() {
+    // # `__move__` is inlined into a noexcept move ctor, so sema rejects a
+    // # raise that could escape it -- one a local handler catches cannot.
+    // try:
+    {
+        try {
+            // raise ValueError("guarded")  # tpyc: ok
+            throw ::tpy::ValueError("guarded");
+        } catch (const ::tpy::ValueError&) {
+            // pass
+        }
+    }
+    // self.n = other.n
+    this->n = other.n;
+    other.__tpy_owned_ = false;
+}
+inline Tagged& Tagged::operator=(Tagged&& other) noexcept {
+    if (this != &other) {
+        this->~Tagged();
+        new (this) Tagged(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+inline Tagged::~Tagged() {
+    if (!this->__tpy_owned_) return;
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -16,6 +16,8 @@ inline constexpr std::string_view __name__ = "__main__";
 std::string get_pet_name(const Zoo& z);
 std::string get_pet_name_ro(const Zoo& z);
 std::string greet_pet(std::variant<const Cat*, const Dog*> pet);
+std::string show_dog(const Dog& d);
+std::string forward_pet(std::variant<const Cat*, const Dog*> pet);
 void main();
 
 // class Dog:

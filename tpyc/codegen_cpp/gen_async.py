@@ -2118,8 +2118,8 @@ class AsyncCoroCodegen:
                                      cfg: 'rcfg.CFG'):
         """The body's leaf renderer bound to the live ctx sinks."""
         rb = self._thir_resumable_attempt(func, record_name, cfg)
-        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxIterCounter,
-                                 CtxTempSink, ResumableLeafEmitter)
+        from ..thir.emit import (CommentSink, ModuleCounter, CtxIterCounter,
+                                 TempSink, ResumableLeafEmitter)
 
         def _return_hook(stmt: TpyReturn, indent_level: int) -> str:
             # Nested leaf return: the same scaffolding a ReturnT terminator
@@ -2129,11 +2129,11 @@ class AsyncCoroCodegen:
 
         return ResumableLeafEmitter(
             rb,
-            comments=CtxCommentSink(self.ctx),
-            temps=CtxTempSink(self.ctx),
-            with_counter=CtxCounter(self.ctx, "with_counter"),
-            try_counter=CtxCounter(self.ctx, "try_except_counter"),
-            finally_guard_counter=CtxCounter(
+            comments=CommentSink(self.ctx),
+            temps=TempSink(self.ctx),
+            with_counter=ModuleCounter(self.ctx, "with_counter"),
+            try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+            finally_guard_counter=ModuleCounter(
                 self.ctx, "finally_guard_counter"),
             # The skeleton registers loop-var shadows of frame fields in the
             # LIVE ctx set; leaf renders must suppress the frame `(*name)`

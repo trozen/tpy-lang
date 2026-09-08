@@ -6,9 +6,10 @@ from __future__ import annotations
 import io
 
 from .. import get_lib_dir
+from ..compilation_context import activate_compiler
 from ..compiler import Compiler
 from .emit import emit_thir_constructor_tail
-from .lower import lower_module
+from .lower import iter_module_callables, lower_function
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
@@ -24,10 +25,17 @@ def _entry(modules):
     return [m for m in modules if m.is_entry_point][0]
 
 
-def _lower(source: str, default_int: str = "Int32"):
+def _lower_fn(source: str, name: str, default_int: str = "Int32"):
+    """Compile `source` and lower ONE callable of the entry module through
+    the same per-body entry codegen uses (`lower_function` under an active
+    compiler), so a pin lowers the way a build does."""
     compiler, modules = _compile(source, default_int=default_int)
     entry = _entry(modules)
-    return lower_module(entry.ast, entry.analyzer)
+    func, self_type = next(
+        (f, st) for f, st in iter_module_callables(entry.ast, entry.analyzer)
+        if f.name == name)
+    with activate_compiler(compiler):
+        return lower_function(func, entry.analyzer, self_type=self_type)
 
 
 def _rejects_at(reasons, landmark: str) -> bool:
@@ -75,10 +83,6 @@ def _assert_rejects_at(fallback, landmark: str, shape: str | None = None,
         assert got == count, (
             f"expected {count} body/bodies rejecting at {landmark!r}, "
             f"got {got}: {fallback!r}")
-
-
-def _fn(thir, name):
-    return next((f for f in thir.functions if f.name == name), None)
 
 
 def _assert_byte_identical(source: str, default_int: str = "Int32",

@@ -88,6 +88,19 @@ def _fn_body(src, name):
     return compiler, entry, f
 
 
+def _emitted(src, name):
+    """The C++ one named function emitted to, through the ordinary codegen
+    entry -- so an emit pin reads the text a BUILD produces, ctx-backed sinks
+    and module-cumulative numbering included."""
+    from ..codegen_cpp.context import CodeGenOptions
+    compiler, modules = _compile(src)
+    _, cpp = compiler.generate_code_to_strings(
+        _entry(modules),
+        options=CodeGenOptions(emit_source_comments=False,
+                               comment_line_numbers=False))
+    return compiler, cpp[cpp.index(" " + name + "("):]
+
+
 _SRC = (
     "from tpy import Int32\n"
     "async def af() -> None:\n"
@@ -456,11 +469,7 @@ def test_for_each_gen_call_container_literal_arg_routes():
     # A container-literal arg on the iter_proto iterable call is a
     # temp-hoisting row: the emit flushes the temp inside the rvalue brace
     # scope right before the `__src` bind (the AST's for-each flush point).
-    import io
-
-    from .emit import emit_thir_body
-
-    compiler, entry, f = _fn_body(
+    _, body = _emitted(
         "from tpy import Int32\n"
         "from typing import Iterator\n"
         "def gen(xs: list[Int32]) -> Iterator[Int32]:\n"
@@ -472,16 +481,10 @@ def test_for_each_gen_call_container_literal_arg_routes():
         "        t = t + x\n"
         "    return t\n",
         "routed")
-    with activate_compiler(compiler):
-        begin_attempt()
-        fn = lower_function(f, entry.analyzer, self_type=None)
-        assert fn is not None
-        buf = io.StringIO()
-        emit_thir_body(buf, fn)
-    body = buf.getvalue()
     flush = body.index("std::vector<int32_t> __tmp_1 = {1, 2, 3};")
     src = body.index("auto __src_0 = gen(__tmp_1);")
-    scope = body.index("{\n")
+    # The rvalue brace scope, past the function's own opening brace.
+    scope = body.index("{\n", body.index("{\n") + 1)
     assert scope < flush < src
 
 
@@ -489,11 +492,7 @@ def test_iterator_object_decl_routes():
     # `it = g()` -> `auto it = g();` (decl.iterator_object) and the for-head
     # admits the LOCAL despite its protocol declared type (a protocol PARAM
     # stays deferred -- pinned below).
-    import io
-
-    from .emit import emit_thir_body
-
-    compiler, entry, f = _fn_body(
+    compiler, body = _emitted(
         "from tpy import Int32\n"
         "from typing import Iterator\n"
         "def gen(n: Int32) -> Iterator[Int32]:\n"
@@ -505,13 +504,6 @@ def test_iterator_object_decl_routes():
         "        t = t + v\n"
         "    return t\n",
         "routed")
-    with activate_compiler(compiler):
-        begin_attempt()
-        fn = lower_function(f, entry.analyzer, self_type=None)
-        assert fn is not None
-        buf = io.StringIO()
-        emit_thir_body(buf, fn)
-    body = buf.getvalue()
     assert "auto it = gen(n);\n" in body
     assert "auto& __src_0 = it;\n" in body
     assert compiler._thir_face_witnesses.get("decl.iterator_object") == 1
@@ -569,11 +561,7 @@ def test_protocol_arg_pending_type_resolves():
 def test_for_each_gen_call_record_rvalue_arg_routes():
     # A record-ctor rvalue arg is a DISTINCT temp row (_record_rvalue_temp_arg)
     # from the container-literal one -- pin it at the iter_proto iterable too.
-    import io
-
-    from .emit import emit_thir_body
-
-    compiler, entry, f = _fn_body(
+    _, body = _emitted(
         "from tpy import Int32\n"
         "from typing import Iterator\n"
         "class Rec:\n"
@@ -588,13 +576,6 @@ def test_for_each_gen_call_record_rvalue_arg_routes():
         "        t = t + x\n"
         "    return t\n",
         "routed")
-    with activate_compiler(compiler):
-        begin_attempt()
-        fn = lower_function(f, entry.analyzer, self_type=None)
-        assert fn is not None
-        buf = io.StringIO()
-        emit_thir_body(buf, fn)
-    body = buf.getvalue()
     assert body.index("__tmp_1") < body.index("auto __src_0 = gen(__tmp_1);")
 
 

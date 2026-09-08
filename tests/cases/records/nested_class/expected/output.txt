@@ -2,3 +2,4 @@
 10
 20
 42
+pair_default 3 5

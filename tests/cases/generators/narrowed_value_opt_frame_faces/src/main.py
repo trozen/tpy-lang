@@ -1,8 +1,11 @@
 # Narrowed value-Optional NAMES at resumable-frame sinks deref to the
 # inner value: frame reassign, yield (param and loop-var), whole-optional
-# yield inverse. Field faces live in narrowed_value_opt_field_yield.
+# yield inverse, module global. Field faces live in
+# narrowed_value_opt_field_yield.
 from tpy import Int32
 from typing import Iterator
+
+G: Int32 | None = 5
 
 
 def g(p: Int32 | None) -> Iterator[Int32]:
@@ -37,6 +40,15 @@ def g_frame_whole(p: Int32 | None) -> Iterator[Int32]:
     yield -2
 
 
+def g_global() -> Iterator[Int32]:
+    # A module global is read through its slot rather than the frame, and the
+    # guard still reaches the first yield; a re-read after that yield is the
+    # reject error_narrowed_global_stale_yield pins.
+    if G is not None:
+        yield G
+    yield -3
+
+
 def g_view(s: str | None) -> Iterator[str]:
     if s is not None:
         yield s
@@ -56,6 +68,8 @@ def main() -> None:
             print("none")
     for x in g_frame_whole(8):
         print(x)
+    for x in g_global():
+        print("global", x)
     for s in g_view("v"):
         print(s)
 

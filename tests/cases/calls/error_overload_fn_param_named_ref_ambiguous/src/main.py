@@ -8,12 +8,12 @@ from tpy import Fn, Int32
 
 
 @overload
-def apply[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:  # tpyc: ok
+def apply[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:
     return Int32(0)
 
 
 @overload
-def apply[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:  # tpyc: ok
+def apply[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
     return Int32(0)
 
 
@@ -27,12 +27,12 @@ def apply[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:  # tpyc: ok
 #
 # Result: no winner; the stashed ambiguity error surfaces.
 @overload
-def convert(x: Int32) -> Int32:  # tpyc: ok
+def convert(x: Int32) -> Int32:
     return x * 2
 
 
 @overload
-def convert(x: int) -> Int32:  # tpyc: ok
+def convert(x: int) -> Int32:
     return Int32(0)
 
 

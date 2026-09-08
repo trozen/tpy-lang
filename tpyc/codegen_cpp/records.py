@@ -915,16 +915,16 @@ class RecordGenerator:
                 f"internal error: no lowered constructor for '{record.name}'",
                 record.init_method.loc)
         from ..thir.emit import (
-            CtxCommentSink, CtxCounter, CtxTempSink,
+            CommentSink, ModuleCounter, TempSink,
             emit_thir_constructor_tail,
         )
         emit_thir_constructor_tail(
             out, thir_ctor,
-            comments=CtxCommentSink(self.ctx),
-            temps=CtxTempSink(self.ctx),
-            with_counter=CtxCounter(self.ctx, "with_counter"),
-            try_counter=CtxCounter(self.ctx, "try_except_counter"),
-            finally_guard_counter=CtxCounter(
+            comments=CommentSink(self.ctx),
+            temps=TempSink(self.ctx),
+            with_counter=ModuleCounter(self.ctx, "with_counter"),
+            try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+            finally_guard_counter=ModuleCounter(
                 self.ctx, "finally_guard_counter"),
             body_indent_level=body_indent_level)
 

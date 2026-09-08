@@ -24,6 +24,12 @@ void main() {
     Pool<Item, 4> relocated = std::move(pool);
     // print(relocated.get(0).name, relocated.get(1).name)  # alpha beta
     std::cout << relocated.get(0).name << " " << relocated.get(1).name << "\n";
+    // tag = Tagged(7)
+    Tagged tag = Tagged(7);
+    // moved = tag               # forced last-use move -> runs Tagged.__move__
+    Tagged moved = std::move(tag);
+    // print("move_raise_guarded", moved.n)
+    std::cout << "move_raise_guarded" << " " << moved.n << "\n";
 }
 
 void __tpy_init() {

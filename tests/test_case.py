@@ -47,7 +47,8 @@ from conftest import (
     validate_cast_annotations,
     validate_send_sync_annotations,
     validate_frame_annotations,
-    parse_annotations,
+    error_case_annotation_problems,
+    fail_annotations,
     check_or_update,
     discover_cases,
     module_to_expected_path,
@@ -112,6 +113,15 @@ def test_case(case_dir, main_src, request):
     # here, so manual and CI invocations behave identically with no flag.
     build_only = request.config.getoption("--build-only") or exec_is_cross()
 
+    # An error case's annotations are gated as a set (see
+    # `error_case_annotation_problems`): at least one `error` leg, no `ok`.
+    # Read off src/ alone, so it runs before update mode wipes the tree.
+    src_dir = case_dir / "src"
+    if is_error:
+        problems = error_case_annotation_problems(src_dir)
+        if problems:
+            pytest.fail("\n".join(problems), pytrace=False)
+
     # In update mode, clear stale artifacts so nothing lingers from a previous run
     if UPDATE_EXPECTED:
         diag = expected_dir / "diag.txt"
@@ -136,29 +146,14 @@ def test_case(case_dir, main_src, request):
     expected_diag = expected_dir / "diag.txt"
     check_or_update(result.diagnostics, expected_diag, "Diagnostics")
 
-    # Inline # tpyc: annotations must match diagnostics
-    if not UPDATE_EXPECTED:
-        src_dir = case_dir / "src"
-        all_annotation_errors: list[str] = []
-        for src_file in sorted(src_dir.rglob("*.py")):
-            all_annotation_errors.extend(validate_annotations(src_file, result.diagnostics))
-        if all_annotation_errors:
-            pytest.fail("\n".join(all_annotation_errors), pytrace=False)
-
-    # Error tests must carry at least one error annotation
-    if not UPDATE_EXPECTED and is_error:
-        src_dir = case_dir / "src"
-        has_error_annotation = False
-        for src_file in src_dir.rglob("*.py"):
-            annotations = parse_annotations(src_file.read_text())
-            if any(a.level == "error" for a in annotations):
-                has_error_annotation = True
-                break
-        if not has_error_annotation:
-            pytest.fail(
-                "Error test must have at least one '# tpyc: error(...)' annotation",
-                pytrace=False,
-            )
+    # Inline # tpyc: annotations must match diagnostics. Validated in update
+    # mode too, against the diagnostics just snapshotted: an update run that
+    # skipped this rewrote diag.txt around a wrong annotation and left the
+    # NEXT plain run to fail on it.
+    all_annotation_errors: list[str] = []
+    for src_file in sorted(src_dir.rglob("*.py")):
+        all_annotation_errors.extend(validate_annotations(src_file, result.diagnostics))
+    fail_annotations(request, all_annotation_errors)
 
     # Handle compile failure
     if not result.success:
@@ -171,8 +166,11 @@ def test_case(case_dir, main_src, request):
         # Error cases stop here: no code to verify, no runtime to run
         return
 
-    # Error tests must NOT compile successfully
-    if not UPDATE_EXPECTED and is_error:
+    # Error tests must NOT compile successfully -- in update mode too: the
+    # only snapshot an error case owns is diag.txt, already written, and
+    # running on would regenerate a code tree and output for a case that
+    # asserts a rejection.
+    if is_error:
         pytest.fail(
             f"Error test compiled successfully (expected compilation failure): {main_src}",
             pytrace=False,
@@ -230,7 +228,9 @@ def test_case(case_dir, main_src, request):
                   "rewrites the tree from scratch.",
                 pytrace=False)
 
-    # Additional semantic annotations
+    # Additional semantic annotations. These read compile facts and feed no
+    # snapshot, so a wrong one cannot corrupt a regeneration; they keep the
+    # update-mode exemption CLAUDE.md documents.
     if not UPDATE_EXPECTED:
         if result.declared_var_types is not None:
             errs = validate_type_annotations(main_src, result.declared_var_types)

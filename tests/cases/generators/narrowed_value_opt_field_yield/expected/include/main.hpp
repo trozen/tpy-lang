@@ -15,6 +15,8 @@ struct __gen_Box_gen_field;
 struct __gen_Box_gen_reassign;
 struct __gen_Box_gen_reguard;
 struct __gen_Box_gen_local_bind;
+struct __gen_Box_gen_try_body;
+struct __gen_Box_gen_local_bind_loop;
 
 void main();
 
@@ -34,6 +36,10 @@ struct Box {
     __gen_Box_gen_reguard gen_reguard() const;
 
     __gen_Box_gen_local_bind gen_local_bind() const;
+
+    __gen_Box_gen_try_body gen_try_body() const;
+
+    __gen_Box_gen_local_bind_loop gen_local_bind_loop() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -156,6 +162,70 @@ struct __gen_Box_gen_local_bind : public ::tpy::next_iter_mixin<__gen_Box_gen_lo
 
 inline __gen_Box_gen_local_bind Box::gen_local_bind() const {
     return __gen_Box_gen_local_bind(*this);
+}
+
+// Generator: Box.gen_try_body
+struct __gen_Box_gen_try_body : public ::tpy::next_iter_mixin<__gen_Box_gen_try_body, int32_t> {
+    int32_t __state;
+    const Box& __self;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_JOIN_1 = 5,
+        S_JOIN_2 = 6,
+        S_DONE = 7,
+    };
+
+    __gen_Box_gen_try_body(const Box& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Box_gen_try_body& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box_gen_try_body&) {
+        return os << "<generator Box.gen_try_body>";
+    }
+};
+
+inline __gen_Box_gen_try_body Box::gen_try_body() const {
+    return __gen_Box_gen_try_body(*this);
+}
+
+// Generator: Box.gen_local_bind_loop
+struct __gen_Box_gen_local_bind_loop : public ::tpy::next_iter_mixin<__gen_Box_gen_local_bind_loop, int32_t> {
+    int32_t __state;
+    const Box& __self;
+    std::optional<int32_t> v;
+    int32_t _i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_Box_gen_local_bind_loop(const Box& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Box_gen_local_bind_loop& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box_gen_local_bind_loop&) {
+        return os << "<generator Box.gen_local_bind_loop>";
+    }
+};
+
+inline __gen_Box_gen_local_bind_loop Box::gen_local_bind_loop() const {
+    return __gen_Box_gen_local_bind_loop(*this);
 }
 
 

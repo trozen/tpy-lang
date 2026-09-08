@@ -17,12 +17,15 @@ seam that both lowers and emits, which the `lower/` layering forbids.
 
 from __future__ import annotations
 
+import contextlib
+
+from ..codegen_cpp.context import CondRegion
 from ..namespace import BindingKind
 from ..parse.nodes import (
     TpyCall, TpyFunction, TpyMethodCall, TpyTupleLiteral,
 )
 from ..typesys import TpyType, TupleType, VoidType, unwrap_readonly
-from .emit import _EmitState, _NO_COMMENTS, _emit_expr
+from .emit import _EmitState, _emit_expr
 from .reject import ThirUnsupported, note
 from .lower.context import _LowerCtx
 from .lower.expressions import (
@@ -62,6 +65,57 @@ def add_constant_scope_entry(scope: 'dict[str, TpyType]', name: str,
         scope[name] = st
 
 
+class _ConstPositionSink:
+    """The temp sink and one module-cumulative counter of a CONSTANT position.
+
+    A namespace-scope initializer has no statement above it to flush into,
+    so a construct needing a `__tmp_N` declaration rejects at the allocation
+    rather than emitting a reference to a declaration that never lands. The
+    hidden-name streams carry no such constraint, so they just count; one
+    instance per stream keeps each numbering independent, as a body's do."""
+
+    def __init__(self) -> None:
+        self._n = 0
+
+    def _no_scope(self, *args, **kwargs):
+        raise ThirUnsupported("const.needs_statement_scope")
+
+    create = _no_scope
+    declare_named = _no_scope
+    declare_named_auto = _no_scope
+
+    @contextlib.contextmanager
+    def conditional_region(self):
+        # Entered by every short-circuit operand render, not only an
+        # allocating one -- and nothing can bank here, since `create`
+        # rejects, so the region always closes with an empty prefix.
+        yield CondRegion()
+
+    def checkpoint(self) -> tuple[int, int]:
+        return (0, 0)
+
+    def has_pending_since(self, checkpoint) -> bool:
+        return False
+
+    def has_named_since(self, checkpoint) -> bool:
+        return False
+
+    def flush_since(self, out, checkpoint, indent: str) -> None:
+        ...
+
+    def flush(self, out, indent: str) -> None:
+        ...
+
+    def next(self) -> int:
+        self._n += 1
+        return self._n
+
+    def draw(self) -> int:
+        n = self._n
+        self._n += 1
+        return n
+
+
 def lower_constant(expr, target_type: 'TpyType | None', analyzer, *,
                    const_scope: 'dict[str, TpyType]',
                    render_type=None, render_type_stored=None,
@@ -84,19 +138,13 @@ def lower_constant(expr, target_type: 'TpyType | None', analyzer, *,
     lc.prescan.global_readonly = frozenset(const_scope)
     try:
         node = _lower_constant_expr(expr, target_type, lc, declared)
-        state = _EmitState(comments=_NO_COMMENTS)
+        state = _EmitState(comments=None,
+                           temps=_ConstPositionSink(),
+                           with_counter=_ConstPositionSink(),
+                           try_counter=_ConstPositionSink(),
+                           finally_guard_counter=_ConstPositionSink())
         rendered = _emit_expr(node, state)
-        # A namespace-scope initializer has no statement above it to flush
-        # into, so any construct that needs a `__tmp_N` decl or a hoisted
-        # slot must reject rather than emit a reference to a declaration
-        # that never lands. No admitted shape reaches this today -- sema's
-        # constant grammar stops at literals, unary ops, `analyzed_finals`
-        # reads, numeric binops, one-arg primitive ctors and tuple literals,
-        # none of which allocate -- so this holds the line if that grammar
-        # widens, and has no boundary pin because it has no witness.
-        if (state.temps.has_pending_since((0, 0))
-                or state.temps.has_named_since((0, 0))
-                or state.hoist_lines):
+        if state.hoist_lines:
             raise ThirUnsupported("const.needs_statement_scope")
         return rendered
     except ThirUnsupported as ex:

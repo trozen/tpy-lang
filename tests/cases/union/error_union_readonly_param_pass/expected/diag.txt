@@ -1,1 +1,1 @@
-main.py:24: error: Cannot pass readonly[Dog] as mutable Dog in argument 'd'
+main.py:22: error: Cannot pass readonly[Dog] as mutable Dog in argument 'd'

@@ -5,6 +5,12 @@
 4
 5
 -4
+try_body 4
+try_body -5
+try_body -6
+bind_loop 4
+bind_loop 4
+bind_loop -7
 4
 -3
 -1

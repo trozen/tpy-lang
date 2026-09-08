@@ -39,6 +39,25 @@ class Pool[T, N: int]:
         return self._storage.load(UInt32.trunc(i))
 
 
+class Tagged:
+    n: Int32
+
+    def __init__(self, n: Int32) -> None:
+        self.n = n
+
+    def __del__(self) -> None:
+        pass
+
+    def __move__(self, other: Own[Tagged]) -> None:
+        # `__move__` is inlined into a noexcept move ctor, so sema rejects a
+        # raise that could escape it -- one a local handler catches cannot.
+        try:
+            raise ValueError("guarded")  # tpyc: ok
+        except ValueError:
+            pass
+        self.n = other.n
+
+
 def make() -> Own[Pool[Item, 4]]:
     p = Pool[Item, 4]()
     p.push(Item("alpha"))
@@ -50,6 +69,9 @@ def main() -> None:
     pool = make()
     relocated = pool          # forced last-use move -> runs Pool.__move__
     print(relocated.get(0).name, relocated.get(1).name)  # alpha beta
+    tag = Tagged(7)
+    moved = tag               # forced last-use move -> runs Tagged.__move__
+    print("move_raise_guarded", moved.n)
 
 
 main()

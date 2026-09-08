@@ -23,12 +23,10 @@ from .nodes import (
     THIRSimpleGenBody, THIRUnionArgLift,
 )
 from . import validate as _validate
-from .lower import (
-    iter_module_constructors, lower_constructor, lower_module,
-)
+from .lower import iter_module_constructors, lower_constructor
 from .lower import resumable as _lower_resumable_mod
 from .lower import simple_gen as _lower_simple_gen_mod
-from .testutil import _compile, _entry, _fn, _lower
+from .testutil import _compile, _entry, _lower_fn
 from .validate import (
     THIRValidationError, validate_constructor, validate_function,
     validate_resumable_body, validate_simple_gen_body,
@@ -304,23 +302,18 @@ class TestValidator:
         # The validator runs inside lower_function; any unit in this file
         # lowering successfully already exercises it. Sanity-check one shape
         # with a genuine THIRFormConvert (str view->owned).
-        thir = _lower('def s(v: str) -> str:\n    t: str = v\n    return t\n')
-        assert _fn(thir, "s") is not None
+        fn = _lower_fn('def s(v: str) -> str:\n    t: str = v\n    return t\n',
+                       "s")
+        assert fn is not None
 
     # --- sink-position raise paths (U2): strip the convert off a GOOD
     # --- lowering and assert the validator screams. Built inside a compiler
     # --- context so the pointer-repr predicates resolve.
 
-    def _lowered_in_ctx(self, src: str):
-        compiler, modules = _compile(_PTR_RECORDS + src)
-        entry = _entry(modules)
-        with activate_compiler(compiler):
-            return lower_module(entry.ast, entry.analyzer)
-
     def test_borrow_at_pointer_lifted_field_write_raises(self):
-        thir = self._lowered_in_ctx(
-            "def wf(h: H, v: A | B) -> None:\n    h.u = v\n")
-        fn = _fn(thir, "wf")
+        fn = _lower_fn(
+            _PTR_RECORDS + "def wf(h: H, v: A | B) -> None:\n    h.u = v\n",
+            "wf")
         good = fn.body[0]
         bad = dataclasses.replace(good, value=good.value.value)
         with pytest.raises(THIRValidationError,

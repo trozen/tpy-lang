@@ -1,1 +1,1 @@
-main.py:11: error: Cannot reassign parameter 'p' of type 'Point'; assign to a new local variable instead
+main.py:14: error: Cannot reassign parameter 'p' of type 'Point'; assign to a new local variable instead

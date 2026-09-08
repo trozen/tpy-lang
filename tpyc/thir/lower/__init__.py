@@ -21,7 +21,6 @@ from .functions import (
     iter_module_constructors,
     lower_constructor,
     lower_function,
-    lower_module,
     lower_top_level,
     module_native_globals,
 )
@@ -35,7 +34,6 @@ __all__ = [
     "iter_module_constructors",
     "lower_constructor",
     "lower_function",
-    "lower_module",
     "lower_top_level",
     "lower_resumable",
     "lower_simple_generator",

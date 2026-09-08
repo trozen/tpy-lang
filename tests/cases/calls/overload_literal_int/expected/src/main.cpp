@@ -83,6 +83,27 @@ std::string classify(int32_t x) {
 }
 
 
+
+
+// # A literal-only group with NO base-type fallback stub: an accepted call must
+// # land on one of the Literal stubs, and the per-stub return types make that
+// # selection observable. The call whose literal matches no stub is the reject
+// # pinned by tests/cases/calls/error_overload_literal_no_match.
+// @overload
+// def only_lit(x: Literal[1]) -> Int32: ...
+int32_t only_lit__lit_1(int32_t x) {
+    // return 42
+    return 42;
+}
+
+// @overload
+// def only_lit(x: Literal[2]) -> str: ...
+std::string only_lit__lit_2(int32_t x) {
+    // return "two"
+    return "two";
+}
+
+
 // def main() -> None:
 void main() {
     // # Direct int literals match Literal stubs
@@ -104,6 +125,9 @@ void main() {
     int32_t x = 5;
     // print(classify(x))
     std::cout << classify(x) << "\n";
+    // # No fallback stub: each literal still resolves to its own stub.
+    // print("only_lit:", only_lit(1) + 1, only_lit(2) + "!")
+    std::cout << "only_lit:" << " " << (::tpy::add_check<int32_t>(only_lit__lit_1(1), 1)) << " " << (::tpy::str_concat(only_lit__lit_2(2), "!")) << "\n";
 }
 
 void __tpy_init() {

@@ -1,1 +1,2 @@
 alpha beta
+move_raise_guarded 7

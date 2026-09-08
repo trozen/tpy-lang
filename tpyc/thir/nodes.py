@@ -3410,19 +3410,3 @@ class THIRSimpleGenBody:
     cond: 'THIRExpr | None' = None
     iterable: 'THIRExpr | None' = None
     range_args: tuple[THIRExpr, ...] = ()
-
-
-@dataclass
-class THIRModule:
-    """Container for a module's lowered functions.
-
-    Holds the functions lowering produced; a body it cannot lower is a
-    compile error rather than an omission. Mutable container by design (the
-    nodes it holds are frozen).
-    """
-    module_name: str
-    functions: list[THIRFunction] = field(default_factory=list)
-    # The `__tpy_init` body when top-level lowering routed it. Populated only
-    # when the caller supplies the generator's global-type map (production
-    # seeds `ctx.thir_top_level` directly at the gen_module_init seam).
-    top_level: 'THIRFunction | None' = None

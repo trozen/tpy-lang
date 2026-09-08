@@ -1,3 +1,6 @@
+# Rebinding a reference-typed parameter is rejected -- the caller's object is
+# borrowed, not owned. Reassigning a value-typed parameter, which IS allowed,
+# is pinned by tests/cases/control_flow/param_reassign.
 from tpy import Int32
 
 class Point:
@@ -10,9 +13,5 @@ class Point:
 def bad_reassign(p: Point) -> None:
     p = Point(99, 99)  # tpyc: error(/Cannot reassign parameter/)
     print(p.x)
-
-def value_param_ok(x: Int32) -> Int32:
-    x = x + 1  # tpyc: ok
-    return x
 
 pt: Point = Point(1, 2)

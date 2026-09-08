@@ -1,5 +1,6 @@
 # Error: a value-type field cannot be assigned outside the class's own
-# __init__ -- here, mutating a value-type parameter.
+# __init__ -- here, mutating a value-type parameter. The admitted
+# assignment inside __init__ is pinned by tests/cases/generics/value_type.
 from tpy import Int32, ValueType
 
 
@@ -8,7 +9,7 @@ class Vec2(ValueType):
     y: Int32
 
     def __init__(self, x: Int32, y: Int32) -> None:
-        self.x = x  # tpyc: ok
+        self.x = x
         self.y = y
 
 

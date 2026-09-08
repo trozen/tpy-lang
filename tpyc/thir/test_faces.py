@@ -10,7 +10,6 @@ from ..compilation_context import _current_compiler, activate_compiler
 from .faces import THIR_FACES, witness
 from ..codegen_cpp.context import ThirRejectError
 from .reject import begin_attempt, commit_attempt, reject_attempt
-from .lower import lower_module
 from .testutil import _compile, _entry
 
 
@@ -66,10 +65,10 @@ def test_compile_without_lowering_records_nothing():
 
 
 def test_lowering_witnesses_self_faces():
+    # Through the codegen entry, so the witnesses are the ones a BUILD
+    # records rather than a lowering shape only a test drives.
     compiler, modules = _compile(_SELF_SRC)
-    entry = _entry(modules)
-    with activate_compiler(compiler):
-        lower_module(entry.ast, entry.analyzer)
+    compiler.generate_code_to_strings(_entry(modules))
     w = compiler._thir_face_witnesses
     assert set(w) <= THIR_FACES
     assert w.get("self.this", 0) >= 1

@@ -4,9 +4,8 @@ An immutable, self-contained representation of a fully-analyzed module that
 codegen consumes without referencing the SemanticAnalyzer. See docs/IR_DESIGN.md.
 """
 
-from .dump import dump_thir
 from .emit import emit_thir_body, emit_thir_constructor_tail, THIRCodeGenError
-from .lower import lower_constructor, lower_function, lower_module
+from .lower import lower_constructor, lower_function
 from .nodes import (
     Form,
     THIRAssert,
@@ -26,7 +25,6 @@ from .nodes import (
     THIRLiteral,
     THIRMethodCall,
     THIRMilInit,
-    THIRModule,
     THIRName,
     THIRNode,
     THIRNarrowedRead,
@@ -42,13 +40,11 @@ from .nodes import (
 )
 
 __all__ = [
-    "dump_thir",
     "emit_thir_body",
     "emit_thir_constructor_tail",
     "THIRCodeGenError",
     "lower_constructor",
     "lower_function",
-    "lower_module",
     "Form",
     "THIRAssert",
     "THIRAssign",
@@ -67,7 +63,6 @@ __all__ = [
     "THIRLiteral",
     "THIRMethodCall",
     "THIRMilInit",
-    "THIRModule",
     "THIRName",
     "THIRNode",
     "THIRNarrowedRead",

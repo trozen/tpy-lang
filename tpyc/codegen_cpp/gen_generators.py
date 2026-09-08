@@ -349,15 +349,15 @@ class GeneratorCodegen:
             raise CodeGenError(
                 f"internal error: no lowered simple-generator body for "
                 f"'{func.name}'", func.loc)
-        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
+        from ..thir.emit import (CommentSink, ModuleCounter, TempSink,
                                  SimpleGenLeafEmitter)
         return SimpleGenLeafEmitter(
             sg,
-            comments=CtxCommentSink(self.ctx),
-            temps=CtxTempSink(self.ctx),
-            with_counter=CtxCounter(self.ctx, "with_counter"),
-            try_counter=CtxCounter(self.ctx, "try_except_counter"),
-            finally_guard_counter=CtxCounter(
+            comments=CommentSink(self.ctx),
+            temps=TempSink(self.ctx),
+            with_counter=ModuleCounter(self.ctx, "with_counter"),
+            try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+            finally_guard_counter=ModuleCounter(
                 self.ctx, "finally_guard_counter"),
             # Held-back rebind-slot decls drain into the ctx's nested hoist
             # scope; _lambda_body_sink flushes them at the lambda prologue.

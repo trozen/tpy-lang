@@ -12,14 +12,13 @@ default so emission stays decoupled from the analyzer.
 
 from __future__ import annotations
 
-import contextlib
 import io
 from dataclasses import dataclass, field
 from typing import Callable, TextIO
 
 from ..codegen_cpp.context import (
-    INDENT, CondRegion, _as_expression, any_isinstance_check,
-    banks_in_region, cpp_bytes_literal_owned, cpp_bytes_literal_span,
+    INDENT,
+    any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
     cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
     qualify_native_name,
@@ -165,155 +164,51 @@ class THIRCodeGenError(Exception):
 
 
 class CommentSink:
-    """Renders the source comments that precede / surround statements.
+    """Renders the source comments that precede / surround statements,
+    backed by a CodeGenContext's stateless comment helpers.
 
-    The codegen seam supplies a subclass backed by the stateless `ctx` comment
-    helpers; the no-op default keeps the dump/test paths analyzer-free.
+    Duck-typed on `ctx` so emit.py stays free of a CodeGenContext import.
     """
 
+    def __init__(self, ctx):
+        self._ctx = ctx
+
     def stmt(self, out: TextIO, loc, indent: str) -> None:
-        ...
+        self._ctx.emit_inline_comments(out, loc, indent)
+        self._ctx.emit_source_comment(out, loc, indent)
 
     def inline(self, out: TextIO, loc, indent: str) -> None:
-        ...
+        # Leading `#`-comment trivia only: a skipped statement's comments
+        # still emit even though its code does not.
+        self._ctx.emit_inline_comments(out, loc, indent)
 
     def elif_(self, out: TextIO, loc, indent: str) -> None:
-        ...
+        # An elif condition gets only its source line: a flattened elif
+        # emits no inline comments.
+        self._ctx.emit_source_comment(out, loc, indent)
 
     def case_(self, out: TextIO, loc, indent: str) -> None:
-        ...
+        # A `match` arm gets only its source line -- the case loc's source
+        # comment, never the leading `#`-comment trivia.
+        self._ctx.emit_source_comment(out, loc, indent)
 
     def else_(self, out: TextIO, else_body, indent: str) -> None:
-        ...
+        self._ctx.emit_else_comment(out, else_body, indent)
 
     def trailing(self, out: TextIO, body, indent: str) -> None:
-        ...
-
-
-_NO_COMMENTS = CommentSink()
+        self._ctx.emit_block_trailing_comments(out, body, indent)
 
 
 class TempSink:
     """Allocates `__tmp_N` names for THIRArgTemp and renders the pending
     declarations at the statement flush point -- the emit-side seam of
-    `TempState`. This default implementation is the standalone / unit-test
-    sink: a fresh module-local counter starting at `__tmp_1`, with
-    `TempState._render`'s exact decl spelling. The codegen seam supplies
-    `CtxTempSink` instead, backed by the module-cumulative `ctx.temps`
-    counter, so `__tmp_N` numbering runs continuously across every body in
-    the module."""
-
-    def __init__(self) -> None:
-        self._counter = 0
-        self._pending: list[tuple[str, str, str, bool]] = []
-        self._pending_named: list[tuple[str, str, 'str | None']] = []
-        self._regions: list = []
-
-    def create(self, cpp_type: str, init_expr: str, *,
-               brace_init: bool = False, movable: bool = False) -> str:
-        # TempState._register's deferral mirror: inside an open conditional
-        # region a banking temp declares an uninit optional slot, banks its
-        # emplace into the region, and reads `(*__tmp_N)`.
-        self._counter += 1
-        name = f"__tmp_{self._counter}"
-        region = self._regions[-1] if self._regions else None
-        if region is None or not banks_in_region(cpp_type, movable):
-            self._pending.append((name, cpp_type, init_expr, brace_init))
-            return name
-        emplace_arg = _as_expression(cpp_type, init_expr, brace_init)
-        region.bank(len(self._pending), name, emplace_arg)
-        self._pending.append(
-            (name, f"std::optional<{cpp_type}>", emplace_arg, False))
-        return f"(*{name})"
-
-    @contextlib.contextmanager
-    def conditional_region(self):
-        """Defer temps created inside to the operand (see
-        `TempState.conditional_region`) -- the standalone mirror, sharing
-        CondRegion so `region.prefix` composes identically."""
-        region = CondRegion()
-        self._regions.append(region)
-        try:
-            yield region
-        finally:
-            self._regions.pop()
-            parts = []
-            for index, name, emplace_arg in region._slots:
-                if (index >= len(self._pending)
-                        or self._pending[index][0] != name):
-                    continue
-                _, cpp_type, _, brace_init = self._pending[index]
-                self._pending[index] = (name, cpp_type, None, brace_init)
-                parts.append(f"{name}.emplace({emplace_arg})")
-            region.prefix = "".join(f"{p}, " for p in parts)
-
-    def declare_named(self, name: str, cpp_type: str, *,
-                      init: 'str | None' = None) -> None:
-        """Register a named pre-declaration (walrus target) -- rendered
-        `type name[ = init];` ahead of the anonymous temps, like
-        TempState's."""
-        self._pending_named.append((name, cpp_type, init))
-
-    def declare_named_auto(self, prefix: str, cpp_type: str) -> str:
-        """Register a uniquely-named hoisted slot (the pointer-select's
-        `std::optional<T> __logical_slot_N`) and return its name -- the
-        counter is shared with `__tmp_N`, like TempState's."""
-        self._counter += 1
-        name = f"{prefix}_{self._counter}"
-        self._pending_named.append((name, cpp_type, None))
-        return name
-
-    def checkpoint(self) -> tuple[int, int]:
-        """Snapshot the pending queues -- the cond-position seam
-        (`has_*_since` / `flush_since` take this token), mirroring
-        `TempState.checkpoint`."""
-        return (len(self._pending), len(self._pending_named))
-
-    def has_pending_since(self, checkpoint: tuple[int, ...]) -> bool:
-        return len(self._pending) > checkpoint[0]
-
-    def has_named_since(self, checkpoint: tuple[int, ...]) -> bool:
-        return len(self._pending_named) > checkpoint[1]
-
-    def flush_since(self, out: TextIO, checkpoint: tuple[int, int],
-                    indent: str) -> None:
-        """Emit (and remove) only the anonymous temps registered after
-        `checkpoint` -- the restructured loop-head / nested-elif flush."""
-        pending_n = checkpoint[0]
-        for name, cpp_type, init_expr, brace_init in self._pending[pending_n:]:
-            if init_expr is None:
-                out.write(f"{indent}{cpp_type} {name};\n")
-            elif brace_init:
-                out.write(f"{indent}{cpp_type} {name}{{{init_expr}}};\n")
-            else:
-                out.write(f"{indent}{cpp_type} {name} = {init_expr};\n")
-        del self._pending[pending_n:]
-
-    def flush(self, out: TextIO, indent: str) -> None:
-        for name, cpp_type, init in self._pending_named:
-            if init is not None:
-                out.write(f"{indent}{cpp_type} {name} = {init};\n")
-            else:
-                out.write(f"{indent}{cpp_type} {name};\n")
-        self._pending_named.clear()
-        for name, cpp_type, init_expr, brace_init in self._pending:
-            if init_expr is None:
-                out.write(f"{indent}{cpp_type} {name};\n")
-            elif brace_init:
-                out.write(f"{indent}{cpp_type} {name}{{{init_expr}}};\n")
-            else:
-                out.write(f"{indent}{cpp_type} {name} = {init_expr};\n")
-        self._pending.clear()
-
-
-class CtxTempSink(TempSink):
-    """TempSink backed by a CodeGenContext's `TempState` (duck-typed on `ctx`
-    like CtxCommentSink, keeping emit.py free of a CodeGenContext import).
-    `create` delegates to `create_typed` -- the type is already rendered at
-    lowering, so both TempState arms (`create`'s param-type render and
-    `create_typed`'s explicit string) reduce to the same pending row -- and
-    both draw from the live module-cumulative `__tmp_N` counter, so numbering
-    runs continuously across the module's bodies."""
+    `TempState`, backed by a CodeGenContext's `temps` (duck-typed on `ctx`,
+    keeping emit.py free of a CodeGenContext import). `create` delegates to
+    `create_typed` -- the type is already rendered at lowering, so both
+    TempState arms (`create`'s param-type render and `create_typed`'s
+    explicit string) reduce to the same pending row -- and every draw comes
+    from the live module-cumulative `__tmp_N` counter, so numbering runs
+    continuously across the module's bodies."""
 
     def __init__(self, ctx) -> None:
         self._ctx = ctx
@@ -353,18 +248,20 @@ class CtxTempSink(TempSink):
 
 class ModuleCounter:
     """Module-cumulative int sink for a hidden-name numbering stream
-    (`__ctx_N`, `__after_else_N`, ...). Unlike the per-function counters
-    below, these streams are never reset (like `__tmp_N`) -- the codegen seam
-    passes `CtxCounter` so the numbering runs continuously across the
-    module's bodies. This default is the standalone / unit-test sink (first
-    id is 1, a fresh module's numbering)."""
+    (`__ctx_N`, `__after_else_N`, ...), backed by a named int attribute of
+    the live CodeGenContext (duck-typed on `ctx` like TempSink). Unlike the
+    per-function counters below, these streams are never reset (like
+    `__tmp_N`), so the numbering runs continuously across the module's
+    bodies."""
 
-    def __init__(self) -> None:
-        self._n = 0
+    def __init__(self, ctx, attr: str) -> None:
+        self._ctx = ctx
+        self._attr = attr
 
     def next(self) -> int:
-        self._n += 1
-        return self._n
+        n = getattr(self._ctx, self._attr) + 1
+        setattr(self._ctx, self._attr, n)
+        return n
 
 
 class IterCounter:
@@ -392,21 +289,6 @@ class CtxIterCounter(IterCounter):
     def draw(self) -> int:
         n = self._ctx.iter_counter
         self._ctx.iter_counter = n + 1
-        return n
-
-
-class CtxCounter(ModuleCounter):
-    """ModuleCounter backed by a named int attribute of the live
-    CodeGenContext (duck-typed on `ctx` like CtxTempSink, keeping emit.py
-    free of a CodeGenContext import)."""
-
-    def __init__(self, ctx, attr: str) -> None:
-        self._ctx = ctx
-        self._attr = attr
-
-    def next(self) -> int:
-        n = getattr(self._ctx, self._attr) + 1
-        setattr(self._ctx, self._attr, n)
         return n
 
 
@@ -453,22 +335,25 @@ class _EmitState:
 
     `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
     the enclosing statement line (after its source comment -- one flush point
-    per statement). Unlike the counters above it is NOT per-function: the seam
-    passes a CtxTempSink so the numbering stays module-cumulative across the
-    module's bodies."""
-    comments: CommentSink
-    temps: TempSink = field(default_factory=TempSink)
+    per statement). Unlike the counters above it is NOT per-function: it is
+    ctx-backed, so the numbering stays module-cumulative across the module's
+    bodies.
+
+    `comments` is None only in the constant position (`constants.py`), which
+    emits one EXPRESSION: every comment render hangs off a statement."""
+    comments: 'CommentSink | None'
+    temps: TempSink
     # `with_counter` numbers `__ctx_N` (ctx attr `with_counter`); `try_counter`
     # numbers the throw tier's `__after_else_N` else labels, the return
     # tier's `__except_N`/`__after_try_N`/`__err_opt_N`, and the error_return
     # unwrap temps `__try_tmp_N`/`__er_N` (ctx attr `try_except_counter` --
     # one module-cumulative stream).
-    with_counter: ModuleCounter = field(default_factory=ModuleCounter)
-    try_counter: ModuleCounter = field(default_factory=ModuleCounter)
+    with_counter: ModuleCounter
+    try_counter: ModuleCounter
     # Numbers the `__fin_ran_N` cleanup guards (ctx attr
     # `finally_guard_counter`); allocated per pushed finally frame, in push
     # order.
-    finally_guard_counter: ModuleCounter = field(default_factory=ModuleCounter)
+    finally_guard_counter: ModuleCounter
     return_cpp: 'str | None' = None
     # @error_return context, mirroring the ctx fields the error_return
     # renders read: `error_return_cpp` is the enclosing function's error type
@@ -624,41 +509,6 @@ class _EmitState:
         # is __tup_1); its other consumers are gate-rejected shapes.
         self.unpack_counter += 1
         return self.unpack_counter
-
-
-class CtxCommentSink(CommentSink):
-    """CommentSink backed by a CodeGenContext's stateless comment helpers.
-
-    Duck-typed on `ctx` so emit.py stays free of a CodeGenContext import.
-    """
-
-    def __init__(self, ctx):
-        self._ctx = ctx
-
-    def stmt(self, out: TextIO, loc, indent: str) -> None:
-        self._ctx.emit_inline_comments(out, loc, indent)
-        self._ctx.emit_source_comment(out, loc, indent)
-
-    def inline(self, out: TextIO, loc, indent: str) -> None:
-        # Leading `#`-comment trivia only: a skipped statement's comments
-        # still emit even though its code does not.
-        self._ctx.emit_inline_comments(out, loc, indent)
-
-    def elif_(self, out: TextIO, loc, indent: str) -> None:
-        # An elif condition gets only its source line: a flattened elif
-        # emits no inline comments.
-        self._ctx.emit_source_comment(out, loc, indent)
-
-    def case_(self, out: TextIO, loc, indent: str) -> None:
-        # A `match` arm gets only its source line -- the case loc's source
-        # comment, never the leading `#`-comment trivia.
-        self._ctx.emit_source_comment(out, loc, indent)
-
-    def else_(self, out: TextIO, else_body, indent: str) -> None:
-        self._ctx.emit_else_comment(out, else_body, indent)
-
-    def trailing(self, out: TextIO, body, indent: str) -> None:
-        self._ctx.emit_block_trailing_comments(out, body, indent)
 
 
 # --- expressions ---
@@ -4756,11 +4606,11 @@ def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> Non
 
 
 def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
-                   *, comments: CommentSink | None = None,
-                   temps: TempSink | None = None,
-                   with_counter: ModuleCounter | None = None,
-                   try_counter: ModuleCounter | None = None,
-                   finally_guard_counter: ModuleCounter | None = None,
+                   *, comments: CommentSink,
+                   temps: TempSink,
+                   with_counter: ModuleCounter,
+                   try_counter: ModuleCounter,
+                   finally_guard_counter: ModuleCounter,
                    return_cpp: 'str | None' = None,
                    global_scope: bool = False) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`.
@@ -4768,17 +4618,15 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
     `temps` is the `__tmp_N` sink, `with_counter` the `__ctx_N` sink,
     `try_counter` the try/error_return label+temp sink, and
     `finally_guard_counter` the `__fin_ran_N` cleanup-guard sink -- all
-    module-cumulative, so the codegen seam passes the ctx-backed
-    implementations (CtxTempSink / CtxCounter); the defaults are fresh local
-    sinks (standalone/unit callers). `return_cpp` is the signature's return
+    module-cumulative and ctx-backed, so the numbering runs continuously
+    across the module's bodies. `return_cpp` is the signature's return
     spelling (`ctx.current_return_cpp` at the seam), read only by the
     finally-chain return temp decl. `global_scope` emits the module-init body
     (`__tpy_init`), whose slots spell `static __global_slot_N`."""
-    state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
-                       with_counter=with_counter or ModuleCounter(),
-                       try_counter=try_counter or ModuleCounter(),
-                       finally_guard_counter=(finally_guard_counter
-                                              or ModuleCounter()),
+    state = _EmitState(comments, temps=temps,
+                       with_counter=with_counter,
+                       try_counter=try_counter,
+                       finally_guard_counter=finally_guard_counter,
                        return_cpp=return_cpp,
                        error_return_cpp=fn.error_return_cpp,
                        slot_prefix=("__global_slot" if global_scope
@@ -4799,11 +4647,11 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
 
 
 def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
-                               *, comments: CommentSink | None = None,
-                               temps: TempSink | None = None,
-                               with_counter: ModuleCounter | None = None,
-                               try_counter: ModuleCounter | None = None,
-                               finally_guard_counter: ModuleCounter | None = None,
+                               *, comments: CommentSink,
+                               temps: TempSink,
+                               with_counter: ModuleCounter,
+                               try_counter: ModuleCounter,
+                               finally_guard_counter: ModuleCounter,
                                body_indent_level: int = 2) -> None:
     """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
     follows the signature). The signature itself is written by the record
@@ -4813,11 +4661,10 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     never lower there (gate + validator enforced); the body shares the
     statement machinery and its sink. ``body_indent_level`` is 2 for an
     in-struct definition, 1 for an out-of-line one at namespace scope."""
-    state = _EmitState(comments or _NO_COMMENTS, temps=temps or TempSink(),
-                       with_counter=with_counter or ModuleCounter(),
-                       try_counter=try_counter or ModuleCounter(),
-                       finally_guard_counter=(finally_guard_counter
-                                              or ModuleCounter()))
+    state = _EmitState(comments, temps=temps,
+                       with_counter=with_counter,
+                       try_counter=try_counter,
+                       finally_guard_counter=finally_guard_counter)
     inits = [f"{bi.base_cpp}({', '.join(_emit_expr(a, state) for a in bi.args)})"
              for bi in ctor.base_inits]
     inits.extend(
@@ -4855,11 +4702,11 @@ class ResumableLeafEmitter:
     the seam disagree on the routed body's shape -- a hard error, never
     silently skipped."""
 
-    def __init__(self, body, *, comments: 'CommentSink | None' = None,
-                 temps: 'TempSink | None' = None,
-                 with_counter: 'ModuleCounter | None' = None,
-                 try_counter: 'ModuleCounter | None' = None,
-                 finally_guard_counter: 'ModuleCounter | None' = None,
+    def __init__(self, body, *, comments: 'CommentSink',
+                 temps: 'TempSink',
+                 with_counter: 'ModuleCounter',
+                 try_counter: 'ModuleCounter',
+                 finally_guard_counter: 'ModuleCounter',
                  return_cpp: 'str | None' = None,
                  frame_shadow_probe: 'Callable[[str], bool] | None' = None,
                  resumable_return_hook: 'Callable[[object, int], str] | None'
@@ -4869,12 +4716,11 @@ class ResumableLeafEmitter:
                  iter_counter: 'IterCounter | None' = None,
                  ) -> None:
         self._body = body
-        self._state = _EmitState(comments or _NO_COMMENTS,
-                                 temps=temps or TempSink(),
-                                 with_counter=with_counter or ModuleCounter(),
-                                 try_counter=try_counter or ModuleCounter(),
-                                 finally_guard_counter=(finally_guard_counter
-                                                        or ModuleCounter()),
+        self._state = _EmitState(comments,
+                                 temps=temps,
+                                 with_counter=with_counter,
+                                 try_counter=try_counter,
+                                 finally_guard_counter=finally_guard_counter,
                                  return_cpp=return_cpp,
                                  frame_shadow_probe=frame_shadow_probe,
                                  resumable_return_hook=resumable_return_hook,
@@ -5003,19 +4849,18 @@ class SimpleGenLeafEmitter:
     yield), so the body's blocks and expressions are direct fields, not
     id()-keyed tables."""
 
-    def __init__(self, body, *, comments: 'CommentSink | None' = None,
-                 temps: 'TempSink | None' = None,
-                 with_counter: 'ModuleCounter | None' = None,
-                 try_counter: 'ModuleCounter | None' = None,
-                 finally_guard_counter: 'ModuleCounter | None' = None,
+    def __init__(self, body, *, comments: 'CommentSink',
+                 temps: 'TempSink',
+                 with_counter: 'ModuleCounter',
+                 try_counter: 'ModuleCounter',
+                 finally_guard_counter: 'ModuleCounter',
                  hoist_sink: 'Callable[[str], None] | None' = None) -> None:
         self._body = body
-        self._state = _EmitState(comments or _NO_COMMENTS,
-                                 temps=temps or TempSink(),
-                                 with_counter=with_counter or ModuleCounter(),
-                                 try_counter=try_counter or ModuleCounter(),
-                                 finally_guard_counter=(finally_guard_counter
-                                                        or ModuleCounter()),
+        self._state = _EmitState(comments,
+                                 temps=temps,
+                                 with_counter=with_counter,
+                                 try_counter=try_counter,
+                                 finally_guard_counter=finally_guard_counter,
                                  hoist_drainable=False,
                                  hoist_sink=hoist_sink)
 

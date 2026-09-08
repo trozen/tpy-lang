@@ -844,12 +844,10 @@ def _run_cli(is_runner: bool) -> int:
                 from .codegen_cpp.context import CodeGenOptions
                 assert compiled.analyzer is not None
                 print(f"// === thir/{compiled.name} ===")
-                # Run codegen and read the bodies it actually lowered, rather
-                # than re-lowering standalone: resumable bodies only lower at
-                # frame emission (their CFG needs live codegen state) and
-                # constructors are not reachable from `lower_module` at all,
-                # so a standalone pass silently omits both and can diverge on
-                # the rest. The generated C++ is discarded.
+                # Run codegen and read the bodies it actually lowered:
+                # resumable bodies only lower at frame emission (their CFG
+                # needs live codegen state), so nothing short of a real
+                # codegen pass sees every body kind. The C++ is discarded.
                 try:
                     ctx = compiler.collect_thir(compiled, CodeGenOptions(),
                                                 tolerate_reject=True)

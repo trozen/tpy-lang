@@ -155,7 +155,7 @@ tests/cases/<group>/<case>/
 1. Create the folder under `tests/cases/<group>/` using the naming convention above.
 2. Write `src/main.py` with a short comment (1-2 lines) at the very top explaining what the test covers -- test names alone are often not enough context. **Comment the lines that are the actual subject.** A case is usually mostly scaffolding -- imports, type defs, helper classes, fixture data -- around the few lines whose behavior is under test; put a one-sentence comment on those so a reader isn't left inferring which line the case exists for. Prefer putting test logic inside functions (`def main(): ...` + `main()`) rather than top-level statements. Top-level codegen differs from function codegen (globals use pointer slots, different variable model), so use top-level statements only when specifically testing global variable behavior.
 3. Add `# tpyc:` annotations on lines testing specific compiler behavior. Multiple per line supported (e.g. `# tpyc: warning(/a/) warning(/b/)`):
-   - `# tpyc: ok` -- line should compile without error or warning
+   - `# tpyc: ok` -- line should compile without error or warning. Never in an `error_` case: compilation stops at the first error, so an `ok` leg there asserts nothing and the harness rejects it. Every `ok` / `error` / `warning` annotation is validated in update mode too, against the diagnostics just snapshotted.
    - `# tpyc: error(/regex/)` -- line should produce an error matching the regex
    - `# tpyc: warning(/regex/)` -- line should produce a warning matching the regex
    - `# tpyc: type(TypeName)` -- assert inferred type (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Comp-phase only, not validated in update mode.

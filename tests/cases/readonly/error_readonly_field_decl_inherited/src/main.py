@@ -1,11 +1,13 @@
-# readonly[T] field: inherited readonly fields are also enforced
+# readonly[T] field: inherited readonly fields are also enforced. The
+# permitted write from the declaring class's own __init__ is pinned by
+# tests/cases/readonly/readonly_field_decl.
 from tpy import readonly
 
 class Base:
     name: readonly[str]
 
     def __init__(self, n: str) -> None:
-        self.name = n  # tpyc: ok
+        self.name = n
 
 class Child(Base):
     extra: int

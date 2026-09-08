@@ -1,4 +1,6 @@
-# Readonly narrowed union param passed to mutable free function must be rejected
+# A readonly-narrowed union member is a readonly Dog, so passing it to a
+# mutable Dog parameter must be rejected. The @readonly callee that DOES
+# accept it is pinned by tests/cases/union/union_field_const_read.
 from tpy import readonly
 
 class Dog:
@@ -15,14 +17,9 @@ def rename_dog(d: Dog) -> None:
     d.name = "Bad"
 
 @readonly
-def print_dog(d: Dog) -> None:
-    print(d.name)
-
-@readonly
 def bad(pet: Dog | Cat) -> None:
     if isinstance(pet, Dog):
         rename_dog(pet)  # tpyc: error(/Cannot pass readonly.*as mutable/)
-        print_dog(pet)   # tpyc: ok
 
 def main() -> None:
     pass

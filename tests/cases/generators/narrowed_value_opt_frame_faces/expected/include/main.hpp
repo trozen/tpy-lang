@@ -7,18 +7,21 @@
 
 namespace tpyapp::main {
 
+extern std::optional<int32_t> G;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_g;
 struct __gen_g_loop;
 struct __gen_g_whole;
 struct __gen_g_frame_whole;
+struct __gen_g_global;
 struct __gen_g_view;
 
 __gen_g g(std::optional<int32_t> p);
 __gen_g_loop g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d);
 __gen_g_whole g_whole(std::optional<int32_t> p);
 __gen_g_frame_whole g_frame_whole(std::optional<int32_t> p);
+__gen_g_global g_global();
 __gen_g_view g_view(std::optional<std::string_view> s);
 void main();
 
@@ -123,6 +126,29 @@ struct __gen_g_frame_whole : public ::tpy::next_iter_mixin<__gen_g_frame_whole, 
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_g_frame_whole&) {
         return os << "<generator g_frame_whole>";
+    }
+};
+
+// Generator: g_global
+struct __gen_g_global : public ::tpy::next_iter_mixin<__gen_g_global, int32_t> {
+    int32_t __state;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_g_global()
+        : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_g_global& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_g_global&) {
+        return os << "<generator g_global>";
     }
 };
 

@@ -108,8 +108,9 @@ def _dump(src: str) -> str:
 
 
 def test_dump_includes_async_bodies():
-    # The collection gap this collector closes: `lower_module` never reaches
-    # a resumable body, so the old dump showed nothing for an `async def`.
+    # A resumable body lowers at frame emission, not at the sync per-body
+    # entry, so only a collector reading codegen's caches shows an
+    # `async def` at all.
     out = _dump(
         "import asyncio\nfrom tpy import Int32\n\n"
         "async def f(n: Int32) -> Int32:\n"

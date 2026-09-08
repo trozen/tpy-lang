@@ -1766,7 +1766,7 @@ class FunctionGenerator:
         """
         # Local import: `thir.emit` reaches back into `codegen_cpp`, so an
         # eager import here would close a codegen_cpp <-> thir cycle.
-        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
+        from ..thir.emit import (CommentSink, ModuleCounter, TempSink,
                                  emit_thir_body)
         overload_key = self.ctx.thir_overload_key
         if overload_key is not None:
@@ -1782,11 +1782,11 @@ class FunctionGenerator:
             raise CodeGenError(
                 f"internal error: no lowered body for '{func.name}'", func.loc)
         emit_thir_body(out, thir_fn, indent_level,
-                       comments=CtxCommentSink(self.ctx),
-                       temps=CtxTempSink(self.ctx),
-                       with_counter=CtxCounter(self.ctx, "with_counter"),
-                       try_counter=CtxCounter(self.ctx, "try_except_counter"),
-                       finally_guard_counter=CtxCounter(
+                       comments=CommentSink(self.ctx),
+                       temps=TempSink(self.ctx),
+                       with_counter=ModuleCounter(self.ctx, "with_counter"),
+                       try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+                       finally_guard_counter=ModuleCounter(
                            self.ctx, "finally_guard_counter"),
                        return_cpp=return_cpp)
         # A folded-terminating per-stub body suppresses the trailing-comment
@@ -2014,17 +2014,17 @@ class FunctionGenerator:
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
 
-        from ..thir.emit import (CtxCommentSink, CtxCounter, CtxTempSink,
+        from ..thir.emit import (CommentSink, ModuleCounter, TempSink,
                                  emit_thir_body)
         # `global_scope`: slots spell `static __global_slot_N` at this scope.
         # The ctx seeding above still runs -- gen_main and the record/global
         # emitters read it after this call.
         emit_thir_body(out, self.ctx.thir_top_level, 1,
-                       comments=CtxCommentSink(self.ctx),
-                       temps=CtxTempSink(self.ctx),
-                       with_counter=CtxCounter(self.ctx, "with_counter"),
-                       try_counter=CtxCounter(self.ctx, "try_except_counter"),
-                       finally_guard_counter=CtxCounter(
+                       comments=CommentSink(self.ctx),
+                       temps=TempSink(self.ctx),
+                       with_counter=ModuleCounter(self.ctx, "with_counter"),
+                       try_counter=ModuleCounter(self.ctx, "try_except_counter"),
+                       finally_guard_counter=ModuleCounter(
                            self.ctx, "finally_guard_counter"),
                        global_scope=True)
 

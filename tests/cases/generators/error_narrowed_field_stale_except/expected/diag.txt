@@ -1,1 +1,1 @@
-main.py:20: error: Type mismatch in yield value: expected Int32, got Int32 | None
+main.py:22: error: Type mismatch in yield value: expected Int32, got Int32 | None

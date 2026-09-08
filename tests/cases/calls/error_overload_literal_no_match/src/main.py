@@ -1,4 +1,6 @@
-# Literal value not in any stub's value set, and no base-type fallback
+# Literal value not in any stub's value set, and no base-type fallback.
+# The MATCHING call into such a fallback-less literal-only group is pinned
+# by tests/cases/calls/overload_literal_int.
 from typing import Literal, overload
 from tpy import Int32
 
@@ -12,5 +14,5 @@ def process(x: Literal[3, 4]) -> None: ...
 def process(x: Int32) -> None:
     pass
 
-process(1)   # tpyc: ok
+process(1)
 process(5)   # tpyc: error(/No matching/)

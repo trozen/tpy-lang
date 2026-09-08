@@ -7,7 +7,7 @@ class Container[T]:
     def __init__(self, val: T) -> None:
         self.val = copy(val)
 
-    def get_or(self, fallback: T = 0) -> T:  # tpyc: ok
+    def get_or(self, fallback: T = 0) -> T:
         return fallback
 
 def main() -> None:

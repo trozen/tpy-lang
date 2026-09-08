@@ -5,7 +5,7 @@ class ReturnsInt:
     def __call__(self, x: Int32) -> Int32:
         return x
 
-def apply(f: Fn[[Int32], str], x: Int32) -> str:  # tpyc: ok
+def apply(f: Fn[[Int32], str], x: Int32) -> str:
     return f(x)
 
 def main():

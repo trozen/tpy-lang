@@ -1,1 +1,1 @@
-main.py:11: error: Variable 'p' of type 'Point' must have an initializer
+main.py:14: error: Variable 'p' of type 'Point' must have an initializer

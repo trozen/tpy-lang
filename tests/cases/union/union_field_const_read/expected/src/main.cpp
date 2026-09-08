@@ -67,6 +67,30 @@ std::string greet_pet(std::variant<const Cat*, const Dog*> pet) {
     return "";
 }
 
+// @readonly
+// def show_dog(d: Dog) -> str:
+std::string show_dog(const Dog& d) {
+    // return d.name
+    return d.name;
+}
+
+// # Free function: the readonly-narrowed union member is itself a readonly Dog,
+// # so it admits only at a @readonly parameter -- the mutable sibling is rejected
+// # by tests/cases/union/error_union_readonly_param_pass.
+// @readonly
+// def forward_pet(pet: Dog | Cat) -> str:
+std::string forward_pet(std::variant<const Cat*, const Dog*> pet) {
+    // if isinstance(pet, Dog):
+    if (std::holds_alternative<const Dog*>(pet)) {
+        auto& __pet = *std::get<const Dog*>(pet);
+        // return show_dog(pet)  # tpyc: ok
+        return show_dog(__pet);
+    }
+    auto& __pet = *std::get<const Cat*>(pet);
+    // return ""
+    return "";
+}
+
 // def main() -> None:
 void main() {
     // d = Dog("Rex")
@@ -91,6 +115,17 @@ void main() {
     // # @readonly function with direct union param
     // print(greet_pet(pet))
     std::cout << greet_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet)) << "\n";
+    // # Renaming through the record proves the narrowed member reaching the
+    // # readonly callee still aliases `d`, rather than a copy taken at the
+    // # union local.
+    // print("forward_pet:", forward_pet(pet))
+    std::cout << "forward_pet:" << " " << forward_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet)) << "\n";
+    // d.name = "Buddy"
+    d.name = "Buddy";
+    // print("forward_pet:", forward_pet(pet))
+    std::cout << "forward_pet:" << " " << forward_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet)) << "\n";
+    // print("forward_pet:", forward_pet(pet2))
+    std::cout << "forward_pet:" << " " << forward_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet2)) << "\n";
 }
 
 void __tpy_init() {

@@ -576,8 +576,8 @@ The dump renders what CODEGEN lowered, not a standalone re-lowering: it runs cod
 and reads its per-module THIR caches, then discards the generated C++. That is what
 lets it show resumable (async / generator) bodies -- which only lower at frame
 emission, since their CFG needs live codegen state -- and constructors, neither of
-which `lower_module` reaches. Bodies that fell back to the AST path are named rather
-than omitted, since "what did NOT route" is usually the question. Every concrete
+which the sync per-body entry reaches. Bodies that did NOT lower are named rather
+than omitted, since "what did not route" is usually the question. Every concrete
 `THIRExpr` / `THIRStmt` subclass must have a render arm: the dispatch raises on an
 unregistered node instead of degrading to a `<ClassName>` placeholder, and
 `test_dump.py` fails the moment a new node class lands without one.
@@ -1340,8 +1340,8 @@ prove still apply to the committed-snapshot oracle that replaced them.
 
 - Emit counters that reset per **function** are per-function `_EmitState` ints (`iter_counter`,
   `match_counter`). Module-**cumulative** counters (with/try/try-except) draw from the live
-  `ctx` counter through a `CtxTempSink`-pattern sink so interleaved THIR+AST bodies stay
-  continuous. Verify a counter's reset scope before choosing -- `match_counter` was assumed
+  `ctx` counter through a ctx-backed sink so the numbering stays continuous across the
+  module's bodies. Verify a counter's reset scope before choosing -- `match_counter` was assumed
   cumulative and is per-function.
 
 **Mirroring pre-existing AST bugs, deliberately.**

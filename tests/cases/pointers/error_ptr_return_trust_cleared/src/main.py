@@ -1,5 +1,7 @@
 # Reassigning a trusted-call-return local to a pointer-to-local must
-# clear the trust so the subsequent return is rejected.
+# clear the trust so the subsequent return is rejected. The unclobbered
+# chain -- bind the trusted return, then return it -- is pinned by
+# tests/cases/pointers/ptr_return_trusted_call.
 from tpy import Int32, Ptr
 
 
@@ -20,7 +22,7 @@ def addr_global() -> Ptr[Point]:
 
 
 def reassigned_to_local() -> Ptr[Point]:
-    p: Ptr[Point] = addr_global()  # tpyc: ok (trusted)
+    p: Ptr[Point] = addr_global()  # trusted at this point
     local: Point = Point(5, 6)
     p = local                       # trust must be discarded here
     return p  # tpyc: error(/would dangle/)

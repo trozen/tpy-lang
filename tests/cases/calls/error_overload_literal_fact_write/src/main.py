@@ -6,10 +6,10 @@ from tpy import Int32
 
 
 @overload
-def norm(m: Literal["r", "w"]) -> Int32: ...  # tpyc: ok
+def norm(m: Literal["r", "w"]) -> Int32: ...
 
 @overload
-def norm(m: Literal["x", "y"]) -> Int32: ...  # tpyc: ok
+def norm(m: Literal["x", "y"]) -> Int32: ...
 
 def norm(m: str) -> Int32:  # tpyc: error(/sig.overload_set.literal_fact_write/)
     m = "z"

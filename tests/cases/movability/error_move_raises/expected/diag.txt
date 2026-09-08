@@ -1,1 +1,1 @@
-main.py:22: error: '__move__' must not raise: its body runs inside a 'noexcept' move constructor, so a raise terminates the program
+main.py:19: error: '__move__' must not raise: its body runs inside a 'noexcept' move constructor, so a raise terminates the program

@@ -1,1 +1,1 @@
-main.py:18: error: Cannot assign to readonly field 'name'
+main.py:20: error: Cannot assign to readonly field 'name'
