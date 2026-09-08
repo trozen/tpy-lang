@@ -1,0 +1,1 @@
+main.py:7: error: Sequence, mapping and star patterns are not supported yet

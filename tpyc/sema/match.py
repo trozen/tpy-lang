@@ -843,8 +843,7 @@ class MatchAnalyzer:
 
         else:
             raise self.ctx.error(
-                f"unsupported pattern for @dynamic / polymorphic subject: "
-                f"{type(pattern).__name__}", pattern
+                "unsupported pattern for @dynamic / polymorphic subject", pattern
             )
 
     def _analyze_class_pattern_polymorphic(
@@ -1087,8 +1086,7 @@ class MatchAnalyzer:
 
         else:
             raise self.ctx.error(
-                f"Unsupported pattern type in match on union: "
-                f"{type(pattern).__name__}", pattern
+                "Unsupported pattern type in match on union", pattern
             )
 
     def _analyze_class_pattern(
@@ -1338,13 +1336,11 @@ class MatchAnalyzer:
                         bindings[inner_sub.name] = field_type
                 else:
                     raise self.ctx.error(
-                        f"Unsupported sub-pattern in field binding: "
-                        f"{type(inner_sub).__name__}", sub_pattern
+                        "Unsupported sub-pattern in field binding", sub_pattern
                     )
             else:
                 raise self.ctx.error(
-                    f"Unsupported sub-pattern in field binding: "
-                    f"{type(sub_pattern).__name__}", sub_pattern
+                    "Unsupported sub-pattern in field binding", sub_pattern
                 )
 
     def _check_none_field_nullable(
@@ -1392,8 +1388,7 @@ class MatchAnalyzer:
 
         else:
             raise self.ctx.error(
-                f"Unsupported pattern for {subject_type} subject: "
-                f"{type(pattern).__name__}", pattern
+                f"Unsupported pattern for {subject_type} subject", pattern
             )
 
     def _analyze_pattern_record(
@@ -1423,8 +1418,7 @@ class MatchAnalyzer:
 
         else:
             raise self.ctx.error(
-                f"Unsupported pattern for record subject '{subject_type.name}': "
-                f"{type(pattern).__name__}", pattern
+                f"Unsupported pattern for record subject '{subject_type.name}'", pattern
             )
 
     def _analyze_pattern_optional(
@@ -1502,8 +1496,7 @@ class MatchAnalyzer:
 
         else:
             raise self.ctx.error(
-                f"Unsupported pattern for Optional subject: "
-                f"{type(pattern).__name__}", pattern
+                "Unsupported pattern for Optional subject", pattern
             )
 
     def _analyze_or_pattern(
@@ -1586,7 +1579,7 @@ class MatchAnalyzer:
                 continue
             raise self.ctx.error(
                 "unsupported alternative in an or-pattern over a union "
-                f"subject: {type(alt).__name__}; every alternative must name "
+                "subject; every alternative must name "
                 "a union member class -- give 'None' or a literal its own "
                 "'case' arm", alt
             )

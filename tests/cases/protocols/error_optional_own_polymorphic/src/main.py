@@ -16,7 +16,7 @@ class Dog(Pet):
         return "dog"
 
 
-def maybe_adopt(p: Optional[Own[Pet]]) -> str:  # tpyc: error(/not yet supported: a polymorphic .Own\[Pet\]. lowers to/)
+def maybe_adopt(p: Optional[Own[Pet]]) -> str:  # tpyc: error(/not yet supported: a polymorphic .Own\[Pet\]. is already held/)
     if p is None:
         return "none"
     return p.name()

@@ -3998,7 +3998,7 @@ class Parser:
                     patterns.append(sub)
             return TpyOrPattern(patterns, loc=loc)
 
-        raise ParseError(f"Unsupported pattern: {type(node).__name__}", node)
+        raise ParseError("Sequence, mapping and star patterns are not supported yet", node)
 
     def _parse_expr(self, node: ast.expr) -> TpyExpr:
         """Parse an expression."""

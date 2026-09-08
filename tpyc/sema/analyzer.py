@@ -1774,8 +1774,9 @@ class SemanticAnalyzer:
                     if is_str_type(check_type) or is_str_view_type(check_type):
                         self.ctx.emit_error(
                             f"Escaping closure '{name}' captures str parameter"
-                            f" '{cap_name}' which would dangle (string_view into"
-                            f" caller's storage). Use String for owned capture",
+                            f" '{cap_name}' which would dangle: a str parameter is"
+                            f" a borrowed view of the caller's storage. Use String"
+                            f" for an owned capture",
                             node)
                     elif not raw_type.is_value_type():
                         if is_own_param:

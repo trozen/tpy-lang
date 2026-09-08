@@ -1,1 +1,1 @@
-main.py:23: error: unsupported alternative in an or-pattern over a union subject: TpyLiteralPattern; every alternative must name a union member class -- give 'None' or a literal its own 'case' arm
+main.py:23: error: unsupported alternative in an or-pattern over a union subject; every alternative must name a union member class -- give 'None' or a literal its own 'case' arm

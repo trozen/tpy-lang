@@ -206,9 +206,8 @@ not read C++, and a second backend is planned: no `std::`, `::tpy::`, `int32_t`,
 return over an awaited borrow told the user to copy, and `copy(await ...)` did not lower.
 
 **Check.** Grep new diagnostic strings in `tpyc/` and the changed `diag.txt` files for those
-tokens; compile the remedy every new message names. Baseline debt: the escaping-closure
-capture error says `string_view` in two committed `diag.txt` files; reword it when that
-diagnostic is next touched, and a lint starts from that allowlist.
+tokens; compile the remedy every new message names. `tests/test_diag_text.py` runs the
+grep over every committed `diag.txt`.
 
 ### `no-internal-names-in-diagnostics`
 
@@ -216,7 +215,8 @@ diagnostic is next touched, and a lint starts from that allowlist.
 names, THIR tags, reject-reason codes. Name the Python construct.
 
 **Example.** `main.py:14: error: Unsupported sub-pattern in field binding: TpyOrPattern`
-(`tpyc/sema/match.py`, a `type(node).__name__` interpolation; the user needs "or-pattern").
+(`tpyc/sema/match.py` interpolated `type(node).__name__`; the line the diagnostic points at
+already shows the user what they wrote, so the site now names nothing).
 
 **Check.** Grep the diff for `__name__`, `type(` and `Tpy[A-Z]` inside message strings, and
 the changed `diag.txt` files for `Tpy[A-Z]\w+`.

@@ -442,7 +442,7 @@ class TypeOperations:
                     raise SemanticError(
                         f"`Optional[Own[{own_pointee.name}]]` is not yet "
                         f"supported: a polymorphic `Own[{own_pointee.name}]` "
-                        f"lowers to `unique_ptr<{own_pointee.name}>`, so the "
+                        f"is already held through one indirection, so the "
                         f"optional slot is a double indirection that member "
                         f"access and isinstance do not thread today. Use "
                         f"`Optional[Box[{own_pointee.name}]]` for a nullable "
