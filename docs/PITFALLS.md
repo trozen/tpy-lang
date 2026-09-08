@@ -2,8 +2,10 @@
 
 Rules about the language and the generated code that keep being broken past a green suite and
 a clean review. A class enters the list on its second hand catch; every entry here has several.
-Each states the invariant, a real example with its `BUGS.md` slug where one is filed, and how
-to check it.
+Each states the invariant, a real example -- the source shape, the wrong emit or output and the
+right one, self-contained so it stays true after the fix -- and how to check it. A `BUGS.md`
+slug trails an example only while that bug is open; the fix removes the pointer and leaves the
+example.
 
 `/tpy-fix-bug`, `/tpy-add-feature` and the review agents walk this list; the "Check" line is
 what they do, not what they read.
@@ -18,9 +20,11 @@ what they do, not what they read.
 a copy unavoidable, the compiler warns and the user silences the warning with an explicit
 `copy()`. A copy that neither warns nor is spelled is a defect.
 
-**Example.** A module global `g: tuple[Int32, Cell]` emitted as `extern std::tuple<int32_t, Cell> g`
-(by value) while a scalar `Cell` global is a pointer: `g[1].v = 42` does not reach the original.
-(`BUGS.md#global-tuple-ref-storage-form`)
+**Example.** `V = Box(2)` and `G: tuple[Box, Box] = (V, V)` at module level, then `G[0].n = 42`.
+Wrong: `extern std::tuple<Box, Box> G` (owning storage), so `V.n` prints 2 under TPy and 42 under
+CPython, with no diagnostic. Right: the form the scalar global `G: Box = V` already takes, a
+borrow slot `Box* G`, as the local tuple does with `std::tuple<Box*, Box*>`.
+(open: `BUGS.md#global-tuple-ref-storage-form`)
 
 **Check.** Mutate the object after the boundary (return, yield, param, field store, container
 insert, global) and print a field that shows whether the mutation reached the original, under
@@ -32,11 +36,13 @@ a copy constructor, or a by-value slot where the scalar form is a pointer, is th
 **Rule.** A "copies X" warning fires only where the emitted C++ actually copies, and every
 actual copy of a reference type has a warning or an explicit `copy()`. Both directions.
 
-**Example.** "copies Data into container" reported at `s[0] = z` where `s` is a user class whose
-`__setitem__` binds the value by const reference; nothing copies on that line. Inverse:
-`self.u = copy(v)` for `v: Own[A | B]` written only to silence a warning although the emitted
-member-init is already `u(std::move(v))`.
-(`BUGS.md#setitem-copy-warning-at-call-site`, `BUGS.md#own-union-field-store-copy-warning`)
+**Example.** `s[0] = z` where `s` is a user class with `def __setitem__(self, index: Int32,
+value: Data)`. The emit is `::tpy::__setitem__(s, 0, z)`, a by-reference pass, yet the line warns
+"copies Data into container; use copy()"; the copy, if any, is the callee's own `self.a = value`,
+which warns on its own line. Inverse: `self.u = v` in a constructor with `v: Own[A | B]` warns the
+same way although the member-init emits `u(std::move(v))`, so a `copy()` written to silence it
+would add the copy the warning claims.
+(open: `BUGS.md#setitem-copy-warning-at-call-site`, `BUGS.md#own-union-field-store-copy-warning`)
 
 **Check.** For every line under a copy warning, open the emitted C++ at that line and find the
 copy construction. A const-ref bind or a `std::move` under a copy warning is the defect; a
@@ -49,12 +55,16 @@ copying, ownership, storage form, view-ness), and an N-tuple has, element-wise, 
 each element would have alone. Changing a return type from `Obj` to `(Obj, int)` must not
 change how `Obj` behaves.
 
-**Example.** From one census: the global-tuple storage form above; a borrowed tuple at an
-`Own[T]` call-arg slot taking three different verdicts
-(`BUGS.md#borrowed-tuple-at-own-call-arg`); a `str` element at a local materializing owned
-storage where the scalar local keeps a view (`BUGS.md#str-tuple-element-local-owned`);
-consuming the `Own` element of a mixed owned-plus-borrowed tuple param
-(`BUGS.md#consume-own-element-of-mixed-tuple`).
+**Example.** `def f(x: Own[Box])` renders `Box&&` and the body may move `x`; `def f(p:
+tuple[Own[Box], Box])` renders `const std::tuple<Box, const Box*>&`, so `owned, borrowed = p`
+emits `auto __tup_1 = p;`, a whole-tuple copy, and `owned.n = 99; borrowed.n = 77; return
+p[0].n + p[1].n` prints 78 under TPy and 176 under CPython: element 1 aliases, element 0 does
+not. Same axis, other shapes: `xs.append(v)` at `list[Box]` warns and copies, while at
+`list[tuple[Box, Box]]` the literal `xs.append((v, v))` is a hard error, a local `xs.append(t)` a
+warning and a call result `xs.append(make(v))` silent; `a: str = v` is `std::string_view a = v`
+while `t: tuple[str] = (v,)` is `std::tuple<std::string>(std::string(v))`.
+(open: `BUGS.md#consume-own-element-of-mixed-tuple`, `BUGS.md#borrowed-tuple-at-own-call-arg`,
+`BUGS.md#str-tuple-element-local-owned`)
 
 **Check.** Wrap the subject in `(x,)` and `(x, 1)` and diff the three variants' emitted C++ for
 the element at the same position: a different storage form, deref, view or move verdict is the
@@ -71,17 +81,59 @@ field, container element, global. The compiler decides
 each fact once and every position consumes that decision; a position with its own copy of the
 logic is where the next divergence lives.
 
-**Example.** An integer-literal fold that held at free-function and constructor argument
-slots but not at a method-argument slot, so `x.shift(1 << 3)` kept a runtime shift the
-sibling positions folded. (`BUGS.md#thir-int-methodarg-shift-not-folded`) A borrow-returning
-call at an `Own[T]` return slot was a hard error while the same source at a param, a container
-insert or a field store only warned; the return position had its own verdict (fixed
-2026-09-07, every owning slot now warns and copies).
+**Example.** `return h.get()` at an `Own[Obj]` return, where `get` returns a borrow. Wrong: a
+hard error at the return slot while the same call at an `Own` parameter, a container insert or a
+field store only warned and copied; the return position carried a verdict of its own. Right:
+one verdict at every owning slot, the warning "copies Obj into owned storage; use copy()" and
+the copy, decided where the slot's ownership is decided and consumed by each position.
 
 **Check.** For the construct under change, compile the same subject at two positions other
 than the one the reporter saw and diff the emitted C++ for the subject. A difference is the
 defect. A fix that touches several consuming sites instead of the deciding site is the same
 defect in the compiler.
+
+### `conditional-operand-evaluates-in-place`
+
+**Rule.** An operand of a conditionally evaluated position -- the right side of `or` / `and`, a
+ternary arm, a comprehension filter or element, an `assert` message, the later links of a
+chained comparison -- is evaluated exactly when CPython evaluates it, and exactly once. Nothing
+of it (a temp, an owned copy, a call, a property read) materializes before its guard has run,
+and no operand is spelled twice in the emit to serve it.
+
+**Example.** `(xs.pop() > 0) or take(xs)` with `take(xs: Own[list[Int32]])`. Wrong: `auto
+__tmp_1 = xs;` declared above the `||`, so the call sees the list before the pop where CPython
+sees it after, and the copy is paid when the right side never runs. Right: the temp is created
+inside the right operand's own region, after the guard. Earlier hits of the same class: a
+container literal and a comprehension as the right operand of `or`, hoisted above the guard the
+same way; a chained comparison whose middle operand is a `@property` read, with the getter
+spelled twice so it ran twice and out of order.
+
+**Check.** Put a side effect in the guard that the operand can observe (a `pop`, a counter, a
+print) and run under both interpreters. Then read the emitted C++ of the statement for a
+`__tmp` declaration, a copy or a call above the `||`, `&&`, `?:` or filter it belongs to, and
+for an operand expression that appears twice.
+
+### `generic-equals-monomorphic-twin`
+
+**Rule.** A generic body instantiated at `T = X` has exactly the semantics, diagnostics and
+emitted form of the same body written with `X` spelled directly. The type parameter is a
+placeholder, not a further value shape: a form or ownership verdict taken while `T` is still
+unresolved and not retaken at the instantiation is where the twin drifts.
+
+**Example.** `def find[T](xs: list[T], v: T)` called as `find(names, k)` with `k: str`. Wrong:
+the slot spells `const std::string&` (`param_val_or_ref_t<T>` at `std::string`) and the caller's
+`std::string_view` does not bind, so valid code fails in C++. Right: the twin `def find(xs:
+list[str], v: str)`, whose slot is `std::string_view`. Same class: a borrow-returning call at a
+generic `Own[T]` slot gets no warning where the concrete slot warns and copies; `def probe(self,
+val: T | None)` on `class Container[T]` renders `const T* val` at `Int32` where `def probe(val:
+Int32 | None)` renders `std::optional<int32_t>`.
+(open: `BUGS.md#generic-slot-str-bytes-param-form`, `BUGS.md#generic-own-slot-borrow-call-unwarned`,
+`BUGS.md#generic-optional-scalar-param-pointer-form`)
+
+**Check.** For a changed rule that a generic body can reach, write the monomorphic twin at the
+instantiation the case uses and diff the emitted C++ for the subject and the diagnostics; a
+different form, verdict or warning is the defect. Where the corpus spells only the generic,
+the twin is a probe.
 
 ## Generated code
 
@@ -94,8 +146,9 @@ materializing `std::string` or a byte copy where a view would do is a defect. `O
 value) over the view, so they are idiomatic only where the callee must own the buffer (a field
 store), and a case that uses them says why.
 
-**Example.** `def take(s: Own[str])` in a new case, materializing a `std::string` copy of the
-argument at the call.
+**Example.** `def take(s: Own[str])` in a new case, called with a view. Wrong: a `std::string`
+built from the argument at the call, a copy the plain `str` parameter would not make. Right:
+`def take(s: str)`, a `std::string_view`, unless the callee stores the buffer in a field.
 
 **Check.** Grep for `Own[` on a value type, and for `std::string(`, `std::string ` and
 `bytes_copy(` in the emitted C++ of the shape under change; each needs a position where the
@@ -116,11 +169,13 @@ only to iterate or convert, owned storage in a tuple or optional slot where the 
 would be a view or a pointer.
 
 **Example.** `a: str = v` emits `std::string_view a = v` (free), but `t: tuple[str] = (v,)`
-emits `std::tuple<std::string>(std::string(v))` -- an allocation plus a character copy per
+emits `std::tuple<std::string>(std::string(v))`, an allocation plus a character copy per
 element, twice for `tuple[str, str]`; `bytes` pays `bytes_copy(v)` per element the same way.
-Comparing two small tagged ints through `BigInt::compare()` performs two heap allocations
-because the small-int fast path is missing. (`BUGS.md#str-tuple-element-local-owned`,
-`BUGS.md#bigint-compare-small-int-alloc`)
+`a < b` on two small `int` values went through `BigInt::compare()`, which builds two limb vectors
+where `+`, `-`, `*` and `==` take the small-int fast path. `k in names` with `k: str` and
+`names: set[str]` built a `std::string` from the view to hash it, where the container looks up
+the view itself.
+(open: `BUGS.md#str-tuple-element-local-owned`, `BUGS.md#bigint-compare-small-int-alloc`)
 
 **Check.** Read the emitted C++ of the shape under change for `std::string(`, `bytes_copy(`,
 `std::vector<...>(`, `BigInt(` temporaries, `from_str`, `make_`, `new ` and `__tmp` locals;
@@ -177,10 +232,12 @@ its own diagnostic text, pinned by the `error_` case that carries it (the case i
 tripwire: it fails the day the shape lowers), and queued for a lowering arm in
 `scripts/thir_migration/review/`; it needs no slug.
 
-**Example.** Three `match` rejections landed in one branch as if they were rules: nested `as`
-over an or-group, `case A() | None:` on a union, a recursive-alias leaf pattern. CPython runs
-all three; each is now a filed gap.
-(`BUGS.md#or-pattern-as-binding-no-join`, `BUGS.md#or-pattern-none-alt-union`,
+**Example.** Three `match` rejections landed in one branch as if they were rules, and CPython runs
+all three: `case (Dog() | Cat()) as y:` over `Dog | Cat | Bird` binds `y` as the whole subject
+and rejects `y.n`; `case A() | None:` over `A | B | None` errors "unsupported alternative in an
+or-pattern over a union subject"; `case Int32():` on `type Tree[T] = T | list[Tree[T]]` at
+`Tree[Int32 | str]` errors "'Int32' is not a member of union". Each is now a filed gap.
+(open: `BUGS.md#or-pattern-as-binding-no-join`, `BUGS.md#or-pattern-none-alt-union`,
 `BUGS.md#recursive-alias-leaf-union-member-unnameable`)
 
 **Check.** Run the rejected program under CPython (`PYTHONPATH=lib/cpy uv run python main.py`). If
@@ -193,10 +250,10 @@ defect.
 warning on valid code is a defect; a comment explaining such a warning as expected is the
 defect with a cover story.
 
-**Example.** `case Dog() | None | _:` over `Dog | Fox | None` warned non-exhaustive although an
-or-group containing a wildcard is a catch-all; the case comment narrated the warning as the
-rule.
-(`BUGS.md#match-exhaustiveness-or-wildcard`)
+**Example.** `case Dog() | None | _:` over `Dog | Fox | None` warns "non-exhaustive match on
+'None | Dog | Fox'; missing: Fox" although an or-group containing a wildcard is a catch-all; the
+case comment narrated the warning as the rule.
+(open: `BUGS.md#match-exhaustiveness-or-wildcard`)
 
 **Check.** For each warning in the diagnostics of a valid program, decide from the language
 definition whether the named property holds; the surrounding comment is not evidence.

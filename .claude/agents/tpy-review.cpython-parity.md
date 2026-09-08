@@ -89,6 +89,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Probing individu
 `docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches (author probes with `printf '...' > /tmp/agents/<name>.py`; no Write tool, no heredocs):
 
 - `silent-copy-vs-alias` -- the headline above; the check is the mutate-after-the-boundary probe under both interpreters.
+- `conditional-operand-evaluates-in-place` -- for a changed `or` / `and` / ternary / comprehension-filter / chained-comparison shape, put a side effect in the guard that the operand can observe and run under both interpreters; a temp, copy, call or duplicated operand above the guard in the emit is the finding.
 - `reject-valid-python-only-as-documented-divergence` -- run every new or changed `error_` case's `src/main.py` under CPython (`PYTHONPATH=lib/cpy uv run python`). If CPython runs it clean, the case header must cite `BUGS.md#<slug>` or the `docs/LANGUAGE_FEATURES.md` rule; neither is a Critical (a rejection of valid Python recorded as a rule).
 - `no-warning-on-valid-code` -- for every warning in a changed `diag.txt` of a non-`error_` case, decide from the language definition whether the named property holds; the case comment is not evidence. A warning on valid code is a Critical, and a comment narrating it as expected is the same finding.
 

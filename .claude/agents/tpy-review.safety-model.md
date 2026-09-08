@@ -79,6 +79,7 @@ Out of scope:
 - `silent-copy-vs-alias` -- at every boundary the change touches (return, yield, param, field store, container insert, global), mutate after the boundary and observe; then find the copy constructor or by-value slot in the emit.
 - `copy-warning-at-wrong-site` -- for every line under a "copies X" warning, the emit at that line contains the copy; a const-ref bind or a `std::move` under the warning, or a `copy()` whose removal would only change the warning, is the defect.
 - `tuple-equals-scalar` -- a changed ownership or storage verdict holds identically for `x`, `(x,)` and `(x, 1)`.
+- `generic-equals-monomorphic-twin` -- an ownership, form or warning verdict at a slot whose type is still a type parameter holds identically at its instantiation and at the twin with the type spelled directly.
 
 ## False-positive discipline
 

@@ -72,6 +72,8 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Surface concerns
 - `view-not-copy` -- `str`/`bytes` at borrowed positions stay views; `Own[` on a value type is a finding.
 - `tuple-equals-scalar` -- for a changed boundary rule, compile the subject as `x`, `(x,)` and `(x, 1)` and diff the element's storage form, deref, view and move verdicts.
 - `same-construct-every-position` -- compile the changed construct at two positions the change did not name (the doc's list: free function, method, constructor, module-level statement, generator body, async body, comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match` arm) and diff the emit; a difference is a Critical against the fix, not a new bug.
+- `conditional-operand-evaluates-in-place` -- in a changed statement with `||`, `&&`, `?:` or a comprehension filter, no `__tmp` declaration, copy or call of the guarded operand sits above its guard, and no operand is spelled twice.
+- `generic-equals-monomorphic-twin` -- for a changed rule a generic body can reach, compile the monomorphic twin at the case's instantiation and diff the emit for the subject; a different form is the finding.
 - `generated-cpp-readability` -- multi-item initializer lists and calls past the column width render one item per line.
 
 ## False-positive discipline
