@@ -85,7 +85,7 @@ inline int32_t IntBox::get() const {
 }
 
 // def __init__(self) -> None:
-inline BoxContainer::BoxContainer() : items({IntBox(10), IntBox(20), IntBox(30)}) {}
+inline BoxContainer::BoxContainer() : items(std::vector<IntBox>{IntBox(10), IntBox(20), IntBox(30)}) {}
 
 // @auto_readonly
 // def __getitem__(self, i: Int32) -> IntBox:

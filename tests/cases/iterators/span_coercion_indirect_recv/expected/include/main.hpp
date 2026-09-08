@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 
 
 // def __init__(self) -> None:
-inline Buf::Buf() : xs({1, 2}) {}
+inline Buf::Buf() : xs(std::vector<int32_t>{1, 2}) {}
 
 // def __span__(self) -> Span[readonly[Int32]]:
 inline std::span<const int32_t> Buf::__span__() const {

@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self) -> None:
-inline Bag::Bag() : _items({10, 20, 30}) {}
+inline Bag::Bag() : _items(std::vector<int32_t>{10, 20, 30}) {}
 
 // def add(self, x: Int32) -> None:
 inline void Bag::add(int32_t x) {

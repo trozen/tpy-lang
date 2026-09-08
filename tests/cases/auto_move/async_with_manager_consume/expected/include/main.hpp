@@ -147,7 +147,7 @@ struct __coro_runner {
 
 
 // def __init__(self):
-inline Guard::Guard() : vals({1, 2}) {}
+inline Guard::Guard() : vals(std::vector<int32_t>{1, 2}) {}
 
 // def __init__(self):
 inline K::K() : stored(std::vector<Guard>{}) {}

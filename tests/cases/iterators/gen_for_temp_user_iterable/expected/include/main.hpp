@@ -76,7 +76,7 @@ struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int3
 
 
 // def __init__(self) -> None:
-inline Holder::Holder() : items({5, 6, 7}) {}
+inline Holder::Holder() : items(std::vector<int32_t>{5, 6, 7}) {}
 inline auto g_simple() {
     return ::tpy::make_generator<int32_t>(
         [__src = std::optional<std::decay_t<decltype(make())>>(), __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(make()))>>()]() mutable -> std::optional<int32_t> {

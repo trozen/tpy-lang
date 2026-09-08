@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 inline Payload::Payload(int32_t v) : v(v) {}
 
 // def __init__(self) -> None:
-inline Holder::Holder() : p(Payload(42)), items({1, 2}) {}
+inline Holder::Holder() : p(Payload(42)), items(std::vector<int32_t>{1, 2}) {}
 
 // def brec(self) -> Payload:
 inline Payload& Holder::brec() {

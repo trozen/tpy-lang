@@ -958,8 +958,11 @@ class THIRContainerLiteral(THIRExpr):
     are gate-excluded.
 
     `typed_brace_cpp` applies `typed_brace_init` at the positions whose
-    consumer is a template that cannot deduce a bare brace-init (the
-    dict-comp `insert_or_assign` value slot): the resolver-rendered
+    consumer cannot list-init from a bare brace: a template that cannot
+    deduce it (the dict-comp `insert_or_assign` value slot) and the ctor
+    member-init cell, a paren direct-init where the brace would be an
+    argument to the field type's own constructors (`xs({1})` into a
+    `vector<BigInt>` picks the size constructor). The resolver-rendered
     destination type, prefixed onto the render ONLY when it starts with `{`
     (the make_container / empty-list spellings are already
     self-describing).

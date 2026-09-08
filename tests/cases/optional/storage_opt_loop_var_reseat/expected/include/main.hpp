@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 inline Point::Point(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
-inline Holder::Holder() : pairs({Point(1), std::nullopt}) {}
+inline Holder::Holder() : pairs(std::vector<std::optional<Point>>{Point(1), std::nullopt}) {}
 
 // @readonly
 // def probe(self) -> Int32:

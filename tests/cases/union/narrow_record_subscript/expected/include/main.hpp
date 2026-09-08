@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self) -> None:
-inline Bag::Bag() : xs({10, 20}) {}
+inline Bag::Bag() : xs(std::vector<::tpy::BigInt>{10, 20}) {}
 
 // def __getitem__(self, i: int) -> int:
 inline ::tpy::BigInt Bag::__getitem__(const ::tpy::BigInt& i) const {

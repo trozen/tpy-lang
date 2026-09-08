@@ -36,6 +36,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
-inline Holder::Holder() : nums({1, 2}), tags(::tpy::ordered_set<int32_t>({7})), parts({"a", "b"}), ages(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) {}
+inline Holder::Holder() : nums(std::vector<int32_t>{1, 2}), tags(::tpy::ordered_set<int32_t>({7})), parts(std::vector<std::string>{"a", "b"}), ages(::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) {}
 void __tpy_init();
 } // namespace tpyapp::main

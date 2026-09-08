@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 inline Inner::Inner() : x(0) {}
 
 // def __init__(self) -> None:
-inline Box::Box() : _items({1, 2}), _inner(Inner()), _alt(Inner()) {}
+inline Box::Box() : _items(std::vector<int64_t>{1, 2}), _inner(Inner()), _alt(Inner()) {}
 
 // def rebind_alt(self) -> None:
 inline void Box::rebind_alt() {

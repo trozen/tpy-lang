@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self) -> None:
-inline Base::Base() : _data({1, 2}) {}
+inline Base::Base() : _data(std::vector<int32_t>{1, 2}) {}
 
 // @auto_readonly
 // def items(self) -> Span[auto_readonly[Int32]]:
@@ -83,7 +83,7 @@ inline std::span<const int32_t> Base::items() const {
 }
 
 // def __init__(self) -> None:
-inline Child::Child() : Base(), _extra({3, 4}) {}
+inline Child::Child() : Base(), _extra(std::vector<int32_t>{3, 4}) {}
 
 // @override
 // @auto_readonly

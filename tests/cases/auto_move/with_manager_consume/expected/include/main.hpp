@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 
 
 // def __init__(self):
-inline Guard::Guard() : vals({1, 2}) {}
+inline Guard::Guard() : vals(std::vector<int32_t>{1, 2}) {}
 
 // def __enter__(self) -> None:
 inline void Guard::__enter__() const {

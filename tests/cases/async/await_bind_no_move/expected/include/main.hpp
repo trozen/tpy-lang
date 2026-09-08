@@ -110,6 +110,6 @@ struct __coro_main_coro {
 
 
 // def __init__(self) -> None:
-inline Payload::Payload() : items({1, 2, 3}) {}
+inline Payload::Payload() : items(std::vector<int32_t>{1, 2, 3}) {}
 void __tpy_init();
 } // namespace tpyapp::main

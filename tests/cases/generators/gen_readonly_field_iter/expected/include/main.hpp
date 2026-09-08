@@ -172,12 +172,12 @@ inline __gen_Holder_via_alias Holder::via_alias() const {
 
 
 // def __init__(self):
-inline Holder::Holder() : lst(std::vector<int32_t>{1, 2, 3}), plain({10, 20}) {}
+inline Holder::Holder() : lst(std::vector<int32_t>{1, 2, 3}), plain(std::vector<int32_t>{10, 20}) {}
 
 // def __init__(self, v: Int32):
 inline Counter::Counter(int32_t v) : v(v) {}
 
 // def __init__(self):
-inline Bumper::Bumper() : cells({Counter(5), Counter(6)}) {}
+inline Bumper::Bumper() : cells(std::vector<Counter>{Counter(5), Counter(6)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

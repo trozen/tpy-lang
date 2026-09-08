@@ -79,7 +79,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 inline Point::Point(const ::tpy::BigInt& x) : x(x) {}
 
 // def __init__(self) -> None:
-inline Container::Container() : _items({Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))}) {}
+inline Container::Container() : _items(std::vector<Point>{Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))}) {}
 
 // def first_mutable(self) -> Point:    # non-const: mutable ref into self's data
 inline Point& Container::first_mutable() {

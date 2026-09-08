@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Stack& obj) {
 
 
 // def __init__(self) -> None:
-inline Stack::Stack() : items({1, 2, 3}) {}
+inline Stack::Stack() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def consume(self: auto_own[Self]) -> auto_own[Int32]:
 inline int32_t Stack::consume() const & {

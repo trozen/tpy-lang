@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
-inline Buffer::Buffer() : _data({1, 2, 3}) {}
+inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[Int32]]:

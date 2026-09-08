@@ -68,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const MutBuffer& obj) {
 
 
 // def __init__(self) -> None:
-inline ROBuffer::ROBuffer() : _data({1, 2, 3}) {}
+inline ROBuffer::ROBuffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __span__(self) -> Span[readonly[Int32]]:
 inline std::span<const int32_t> ROBuffer::__span__() const {
@@ -77,7 +77,7 @@ inline std::span<const int32_t> ROBuffer::__span__() const {
 }
 
 // def __init__(self) -> None:
-inline MutBuffer::MutBuffer() : _data({10, 20, 30}) {}
+inline MutBuffer::MutBuffer() : _data(std::vector<int32_t>{10, 20, 30}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[Int32]]:

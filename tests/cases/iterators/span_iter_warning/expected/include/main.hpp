@@ -81,7 +81,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> MyIter::__next__() {
 }
 
 // def __init__(self) -> None:
-inline Dual::Dual() : _data({1, 2, 3}) {}
+inline Dual::Dual() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[Int32]]:

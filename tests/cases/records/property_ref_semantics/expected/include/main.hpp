@@ -86,7 +86,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
-inline Container::Container() : _name("hello"), _items({1, 2, 3}), _pt(Point(10, 20)), _big(::tpy::BigInt::from_str("999999999999999999999")) {}
+inline Container::Container() : _name("hello"), _items(std::vector<int32_t>{1, 2, 3}), _pt(Point(10, 20)), _big(::tpy::BigInt::from_str("999999999999999999999")) {}
 
 // @property
 // def name(self) -> str:

@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 
 
 // def __init__(self) -> None:
-inline Buffer::Buffer() : _data({1, 2, 3}) {}
+inline Buffer::Buffer() : _data(std::vector<int32_t>{1, 2, 3}) {}
 
 // # Per-param: only self is auto_readonly; dest stays mutable in both overloads.
 // def copy_into(self: auto_readonly[Self], dest: list[Int32]) -> Span[auto_readonly[Int32]]:

@@ -139,7 +139,7 @@ inline Dog::Dog(int32_t n) : n(n) {}
 inline Cat::Cat(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
-inline Holder::Holder() : p(Payload(1)), items({1, 2}) {}
+inline Holder::Holder() : p(Payload(1)), items(std::vector<int32_t>{1, 2}) {}
 
 // def brec(self) -> Payload:
 inline Payload& Holder::brec() {

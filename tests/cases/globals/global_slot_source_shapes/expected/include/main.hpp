@@ -111,7 +111,7 @@ inline Point::Point(int32_t x) : x(x) {}
 inline Line::Line() : a(Point(0)) {}
 
 // def __init__(self) -> None:
-inline Holder::Holder() : xs({1, 2}), inner(Point(3)), value(Point(4)) {}
+inline Holder::Holder() : xs(std::vector<int32_t>{1, 2}), inner(Point(3)), value(Point(4)) {}
 
 // def __init__(self) -> None:
 inline Base::Base() : n(1) {}

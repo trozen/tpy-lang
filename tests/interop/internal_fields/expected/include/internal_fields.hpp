@@ -136,7 +136,7 @@ inline Entry Vault::snapshot() const {
     return Entry(this->_log.v);
 }
 
-inline OpError::OpError(std::string_view message, int32_t code, int32_t trace) : code(code), _trace({trace}) {
+inline OpError::OpError(std::string_view message, int32_t code, int32_t trace) : code(code), _trace(std::vector<int32_t>{trace}) {
     this->message = message;
 }
 

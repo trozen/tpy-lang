@@ -317,7 +317,7 @@ inline int32_t Inner::get() const {
 }
 
 // def __init__(self) -> None:
-inline Outer::Outer() : items({Inner(1), Inner(2)}), extra(Inner(3)) {}
+inline Outer::Outer() : items(std::vector<Inner>{Inner(1), Inner(2)}), extra(Inner(3)) {}
 
 // def sum_items(self) -> Int32:                  # for-each + readonly method -- inferred const
 inline int32_t Outer::sum_items() const {

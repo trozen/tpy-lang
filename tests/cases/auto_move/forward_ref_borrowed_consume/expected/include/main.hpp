@@ -32,6 +32,6 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 
 // def __init__(self):
-inline P::P() : vals({5}) {}
+inline P::P() : vals(std::vector<int32_t>{5}) {}
 void __tpy_init();
 } // namespace tpyapp::main

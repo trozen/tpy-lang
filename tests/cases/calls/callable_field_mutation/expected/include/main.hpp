@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, cb: Callable[[list[Int32]], None]) -> None:
-inline Holder::Holder(std::function<void(std::vector<int32_t>&)> cb) : data({0}), cb(cb) {}
+inline Holder::Holder(std::function<void(std::vector<int32_t>&)> cb) : data(std::vector<int32_t>{0}), cb(cb) {}
 
 // def poke(self) -> None:
 inline void Holder::poke() {

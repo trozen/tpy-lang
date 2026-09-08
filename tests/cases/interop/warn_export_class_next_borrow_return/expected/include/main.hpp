@@ -177,7 +177,7 @@ inline std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> Repeat::__ne
 }
 
 // def __init__(self):
-inline Rows::Rows() : _row({1, 2}), _n(0) {}
+inline Rows::Rows() : _row(std::vector<int32_t>{1, 2}), _n(0) {}
 
 // def __next__(self) -> list[Int32]:
 inline std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> Rows::__next__() {

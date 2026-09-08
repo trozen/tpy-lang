@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
-inline Holder::Holder() : n(2), ratio(0.5), tag("t"), rows({7}) {}
+inline Holder::Holder() : n(2), ratio(0.5), tag("t"), rows(std::vector<int32_t>{7}) {}
 
 // def size(self) -> Int32:
 inline int32_t Holder::size() const {

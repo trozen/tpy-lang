@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Token& obj) {
 
 
 // def __init__(self) -> None:
-inline Bag::Bag() : xs({1, 2, 3}) {}
+inline Bag::Bag() : xs(std::vector<::tpy::BigInt>{1, 2, 3}) {}
 
 // def itself(self) -> "Bag":
 inline Bag& Bag::itself() {

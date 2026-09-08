@@ -69,7 +69,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self) -> None:
-inline H::H() : items({1, 2}) {}
+inline H::H() : items(std::vector<int32_t>{1, 2}) {}
 
 // def view(self) -> list[Int32]:
 inline std::vector<int32_t>& H::view() {

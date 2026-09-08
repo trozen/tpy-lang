@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 inline Payload::Payload(int32_t n) : n(n) {}
 
 // def __init__(self) -> None:
-inline Holder::Holder() : items({1, 2}), p(Payload(1)) {}
+inline Holder::Holder() : items(std::vector<int32_t>{1, 2}), p(Payload(1)) {}
 
 // def bctr(self) -> list[Int32]:
 inline std::vector<int32_t>& Holder::bctr() {

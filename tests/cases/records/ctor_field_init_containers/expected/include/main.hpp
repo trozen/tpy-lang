@@ -54,6 +54,10 @@ struct Holder {
     std::vector<Point> moved;
     // copied: list[Int32]
     std::vector<int32_t> copied;
+    // ones: list[int]
+    std::vector<::tpy::BigInt> ones;
+    // one_arr: Array[int, 1]
+    std::array<::tpy::BigInt, 1> one_arr;
 
     // def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[Int32]):
     Holder() = default;

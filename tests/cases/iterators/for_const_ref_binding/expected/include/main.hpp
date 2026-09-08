@@ -79,6 +79,6 @@ inline int32_t Point::value() const {
 }
 
 // def __init__(self) -> None:
-inline Container::Container() : items({1, 2}) {}
+inline Container::Container() : items(std::vector<int32_t>{1, 2}) {}
 void __tpy_init();
 } // namespace tpyapp::main

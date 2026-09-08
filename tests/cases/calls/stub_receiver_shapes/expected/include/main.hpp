@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedList& obj) {
 
 
 // def __init__(self, data: Own[bytearray]) -> None:
-inline Buf::Buf(std::vector<uint8_t>&& data) : data(std::move(data)), nums({1}) {}
+inline Buf::Buf(std::vector<uint8_t>&& data) : data(std::move(data)), nums(std::vector<int32_t>{1}) {}
 
 // @property
 // def view(self) -> bytearray:

@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
-inline Box::Box() : items({10, 20, 30, 40, 50}), _dummy(0) {}
+inline Box::Box() : items(std::vector<int32_t>{10, 20, 30, 40, 50}), _dummy(0) {}
 
 // def get_span(self) -> Own[Span[Int32] | list[Int32]]:  # tpyc: ok
 inline std::variant<std::span<int32_t>, std::vector<int32_t>> Box::get_span() {

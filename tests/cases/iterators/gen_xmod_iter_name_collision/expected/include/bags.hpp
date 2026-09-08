@@ -63,6 +63,6 @@ inline __gen_Bag___iter__ Bag::__iter__() const {
 
 
 // def __init__(self) -> None:
-inline Bag::Bag() : items({7, 8}) {}
+inline Bag::Bag() : items(std::vector<int32_t>{7, 8}) {}
 void __tpy_init();
 } // namespace tpyapp::bags

@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 
 
 // def __init__(self):
-inline Blob::Blob() : items({10, 20, 30}) {}
+inline Blob::Blob() : items(std::vector<int32_t>{10, 20, 30}) {}
 
 // def __init__(self):
 inline K::K() : stored(std::vector<Blob>{}) {}

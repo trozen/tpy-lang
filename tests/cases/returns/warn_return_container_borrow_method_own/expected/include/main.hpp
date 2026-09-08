@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
-inline Holder::Holder() : items({1, 2}) {}
+inline Holder::Holder() : items(std::vector<int32_t>{1, 2}) {}
 
 // def borrow(self) -> list[Int32]:
 inline std::vector<int32_t>& Holder::borrow() {

@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 
 
 // def __init__(self) -> None:
-inline Bag::Bag() : xs({1, 2, 3}) {}
+inline Bag::Bag() : xs(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __contains__(self, k: Int32) -> bool:
 inline bool Bag::__contains__(int32_t k) const {

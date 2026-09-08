@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self):
-inline Point::Point() : items({1, 2, 3}) {}
+inline Point::Point() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self):
 inline Sink::Sink() : stored(std::vector<Point>{}) {}

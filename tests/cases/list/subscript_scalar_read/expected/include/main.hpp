@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self) -> None:
-inline Box::Box() : xs({1, 2, 3}) {}
+inline Box::Box() : xs(std::vector<int32_t>{1, 2, 3}) {}
 
 // def get(self) -> list[Int32]:
 inline std::vector<int32_t>& Box::get() {

@@ -95,6 +95,6 @@ struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int3
 
 
 // def __init__(self) -> None:
-inline Holder::Holder() : items({5, 6}) {}
+inline Holder::Holder() : items(std::vector<int32_t>{5, 6}) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
-inline Source::Source() : items({1, 2, 3}) {}
+inline Source::Source() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self) -> None:
 inline Holder::Holder() : src(Source()), dest(Source()) {}

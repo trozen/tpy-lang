@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
 
 
 // def __init__(self):
-inline Inner::Inner() : vals({7, 8}) {}
+inline Inner::Inner() : vals(std::vector<int32_t>{7, 8}) {}
 
 // def __init__(self):
 inline Outer::Outer() : inner(Inner()) {}

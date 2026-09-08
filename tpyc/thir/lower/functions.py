@@ -2722,11 +2722,7 @@ def _lower_ctor_mil_init(
             _witness("mil.optional_container_literal")
             v = _lower_expr(source, lc, declared, target_type=oc_inner)
             if isinstance(source, TpyArrayLiteral):
-                if not isinstance(v, THIRContainerLiteral):
-                    # The prefix has nowhere to live; reject rather than let a
-                    # `replace` TypeError escape as a crash.
-                    raise ThirUnsupported(_mil_reject_detail(stmt, analyzer))
-                v = replace(v, typed_brace_cpp=lc.render_type(oc_inner))
+                v = _spell_mil_brace_literal(v, oc_inner, stmt, lc)
         elif _str_literal_value_opt_arg(_peel_coerce(source), ftype):
             # `s("xy")` -- the bare str literal at a value-repr Optional[str]
             # slot; C++'s `const char*` -> `optional<string>` chain absorbs it.
@@ -2792,12 +2788,33 @@ def _lower_ctor_mil_init(
             value=_lower_expr(
                 source, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE)))
-    return THIRMilInit(
-        field_cpp=field_cpp,
-        value=_lower_expr(
-            source, lc, declared,
-            field_prechecked=isinstance(source, TpyFieldAccess),
-            target_type=(ftype if _container_storage_field(ftype) else None)))
+    value = _lower_expr(
+        source, lc, declared,
+        field_prechecked=isinstance(source, TpyFieldAccess),
+        target_type=(ftype if _container_storage_field(ftype) else None))
+    if _container_storage_field(ftype) and isinstance(source, TpyArrayLiteral):
+        value = _spell_mil_brace_literal(value, ftype, stmt, lc)
+    return THIRMilInit(field_cpp=field_cpp, value=value)
+
+
+def _spell_mil_brace_literal(v: THIRExpr, slot: TpyType, stmt: TpyAssign,
+                             lc: '_LowerCtx') -> THIRExpr:
+    """Self-describe a list/Array literal at a member-init cell.
+
+    The cell is a paren direct-init of the field, so a bare brace there is an
+    ARGUMENT to the field type's constructor overload set, not a list-init of
+    the field: `xs({1})` into `std::vector<BigInt>` resolves to the size
+    constructor (int -> size_t is a standard conversion, int -> BigInt a
+    user-defined one) and builds one zero. Spelling the slot type
+    (`xs(std::vector<BigInt>{1})`) makes the literal a real list-init, the
+    same render the call-arg slot uses. A bracket literal at a container
+    cell lowers to a container literal or raises, so anything else here is
+    a lowering that lost the prefix's home: reject loudly rather than let
+    the bare brace (or a `replace` TypeError) through."""
+    if not isinstance(v, THIRContainerLiteral):
+        raise ThirUnsupported(_mil_reject_detail(stmt, lc.analyzer))
+    return replace(v, typed_brace_cpp=lc.render_type(slot))
+
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':
     """The `self` receiver type for an M1 method / ctor feed. The qname is

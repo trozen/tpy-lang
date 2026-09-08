@@ -56,7 +56,7 @@ struct Ring {
 
     // def __init__(self, fill: T) -> None:
     Ring() = default;
-    explicit Ring(const T& fill) : data({fill, fill, fill, fill}), size(0) {}
+    explicit Ring(const T& fill) : data(std::array<T, 4>{fill, fill, fill, fill}), size(0) {}
 
     // def put(self, v: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> v) {

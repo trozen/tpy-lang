@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 inline Point::Point(int32_t x, int32_t y) : x(x), y(y) {}
 
 // def __init__(self) -> None:
-inline Container::Container() : items({Point(1, 2), Point(3, 4)}) {}
+inline Container::Container() : items(std::vector<Point>{Point(1, 2), Point(3, 4)}) {}
 
 // def iter_then_mutate(self) -> None:
 inline void Container::iter_then_mutate() {

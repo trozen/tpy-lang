@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 inline P::P(int32_t x) : x(x) {}
 
 // def __init__(self) -> None:
-inline Holder::Holder() : pairs({P(1), std::nullopt, P(3)}) {}
+inline Holder::Holder() : pairs(std::vector<std::optional<P>>{P(1), std::nullopt, P(3)}) {}
 
 // @readonly
 // def first_nonnull(self) -> Int32:

@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
 
 
 // def __init__(self) -> None:
-inline Inner::Inner() : items({1, 2, 3}) {}
+inline Inner::Inner() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self, inner: Own[Inner]) -> None:
 inline Outer::Outer(Inner&& inner) : inner(std::move(inner)) {}

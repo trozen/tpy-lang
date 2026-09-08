@@ -85,6 +85,6 @@ inline __gen_Holder_bump Holder::bump() {
 inline Node::Node(int32_t val) : val(val) {}
 
 // def __init__(self) -> None:
-inline Holder::Holder() : nodes({Node(1), Node(2)}) {}
+inline Holder::Holder() : nodes(std::vector<Node>{Node(1), Node(2)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

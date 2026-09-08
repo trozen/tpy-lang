@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self) -> None:
-inline Dog::Dog() : items({1, 2, 3}) {}
+inline Dog::Dog() : items(std::vector<int32_t>{1, 2, 3}) {}
 
 // def __init__(self, age: Int32) -> None:
 inline Cat::Cat(int32_t age) : age(age) {}

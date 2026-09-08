@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 
 // def __init__(self) -> None:
-inline Foo::Foo() : _items({1, 2, 3}) {}
+inline Foo::Foo() : _items(std::vector<int32_t>{1, 2, 3}) {}
 
 // @property
 // def items(self) -> list[Int32]:

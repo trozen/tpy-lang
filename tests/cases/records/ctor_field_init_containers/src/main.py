@@ -1,9 +1,10 @@
 # Ctor member-init-list inits of builtin-container fields: list/dict/set/Array
 # literals (empty, str-view elements, record elements, nested lists, Own move)
-# and a container-param copy. The param copy and the record element are
-# INTENTIONAL copies at the field-storage boundary (TPy stores fields by
-# value; CPython would alias), so the test only observes the field's own
-# containers, never cross-mutation through the ctor arguments.
+# and a container-param copy. `ones`/`one_arr` guard the render: the cell is a
+# paren direct-init, where a bare `{1}` picked the vector's size ctor on clang.
+# The param copy and the record element are INTENTIONAL copies at the
+# field-storage boundary (CPython would alias), so only the field's own
+# containers are observed, never cross-mutation through the ctor arguments.
 from tpy import Array, Int32, Own
 
 
@@ -26,6 +27,8 @@ class Holder:
     empty_d: dict[Int32, Int32]
     moved: list[Point]
     copied: list[Int32]
+    ones: list[int]
+    one_arr: Array[int, 1]
 
     def __init__(self, prefix: str, p: Point, q: Own[Point], copied: list[Int32]):
         self.items = [1, 2]
@@ -39,6 +42,8 @@ class Holder:
         self.empty_d = {}
         self.moved = [q]
         self.copied = copied  # tpyc: warning(/copies list\[Int32\] into field/)
+        self.ones = [1]  # tpyc: ok -- one BigInt element: must not become a size
+        self.one_arr = [1]  # tpyc: ok -- the Array sibling of the same shape
 
 
 def main():
@@ -53,6 +58,8 @@ def main():
     print(sorted(h.tags), h.arr[0] + h.arr[2])
     print(h.pts[0].v, h.pts[1].v, h.moved[0].v)
     print(h.grid[0], h.grid[1], h.copied)
+    h.ones.append(2)
+    print("ones", h.ones, len(h.ones), "one_arr", h.one_arr)
 
 
 main()

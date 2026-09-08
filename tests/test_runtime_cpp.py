@@ -37,10 +37,14 @@ def test_runtime_selfcheck(source, what, request, tmp_path):
         pytest.skip(f"{what}: --no-exec builds nothing")
     src = _CPP_TESTS / source
     binary = tmp_path / Path(source).stem
+    # A cross driver would hand the link to the host's ELF ld, which rejects
+    # the Mach-O flags -- so stop at the object; the run is skipped below.
+    cross = exec_is_cross()
     cmd = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
         "-I", str(RUNTIME_DIR),
-        str(src), "-o", str(binary),
+        *(["-c"] if cross else []),
+        str(src), "-o", str(binary.with_suffix(".o") if cross else binary),
     ]
     build = subprocess.run(cmd, capture_output=True, text=True)
     if build.returncode != 0:
@@ -49,7 +53,7 @@ def test_runtime_selfcheck(source, what, request, tmp_path):
             f"--- stderr ---\n{build.stderr}",
             pytrace=False,
         )
-    if exec_is_cross() or request.config.getoption("--build-only"):
+    if cross or request.config.getoption("--build-only"):
         return
     run = subprocess.run([str(binary)], capture_output=True, text=True)
     if run.returncode != 0:

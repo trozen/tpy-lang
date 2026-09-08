@@ -98,7 +98,7 @@ inline Seg::Seg(Sector* sector_front) : sector_front(sector_front) {}
 inline SubSector::SubSector(std::vector<Seg*>&& segs) : segs(std::move(segs)) {}
 
 // def __init__(self) -> None:
-inline Map::Map() : sectors({Sector(42), Sector(7)}), segs({Seg(&::tpy::__getitem__(this->sectors, 0)), Seg(&::tpy::__getitem__(this->sectors, 1))}) {
+inline Map::Map() : sectors(std::vector<Sector>{Sector(42), Sector(7)}), segs(std::vector<Seg>{Seg(&::tpy::__getitem__(this->sectors, 0)), Seg(&::tpy::__getitem__(this->sectors, 1))}) {
     // segs: list[Ptr[Seg]] = []
     std::vector<Seg*> segs = std::vector<Seg*>{};
     // segs.append(self.segs[0])
