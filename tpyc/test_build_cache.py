@@ -182,7 +182,7 @@ def test_options_key_sensitive_to_each_flag(tmp_path):
     from tpyc.toolchain import CppCompilerConfig
 
     def make_key(entry="/x/prog.py", lib_dirs=(), compiler=("g++",), **over):
-        flags = dict(release=False, default_int="Int32", pch=True,
+        flags = dict(debug=False, default_int="Int32", pch=True,
                      no_main=False, emit_source=False,
                      pcre2="bundled", mbedtls="bundled", date="bundled")
         flags.update(over)
@@ -192,7 +192,7 @@ def test_options_key_sensitive_to_each_flag(tmp_path):
 
     base = make_key()
     assert make_key() == base
-    variants = [dict(release=True), dict(default_int="BigInt"),
+    variants = [dict(debug=True), dict(default_int="BigInt"),
                 dict(pch=False), dict(no_main=True), dict(emit_source=True),
                 dict(pcre2="system"),
                 dict(mbedtls="none"), dict(date="auto"),

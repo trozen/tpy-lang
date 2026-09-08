@@ -229,7 +229,7 @@ def test_interop_exec(case_dir, mod_py, request):
         must_build = force or not output_txt.exists() or not exec_pass_is_cached(fingerprint)
 
         if must_build:
-            _run_tpyc([str(mod_py), "-b", "-o", str(build_dir), "--cxx", cxx], "build")
+            _run_tpyc([str(mod_py), "-b", "--debug", "-o", str(build_dir), "--cxx", cxx], "build")
             so_path = build_dir / "debug" / f"{mod}.so"
             if not so_path.exists():
                 pytest.fail(f"extension .so not built: {so_path}", pytrace=False)

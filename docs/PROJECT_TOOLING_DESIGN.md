@@ -52,8 +52,8 @@ Concrete Rust <-> TPy alignment:
 | Rust | TPy (this design) |
 |---|---|
 | `cargo new/init/build/run/test/add/clean` | `tpx new/init/build/run/test/add/clean` |
-| `cargo build --release` | `tpx build --release` |
-| `[profile.dev]` / `[profile.release]` | `[tool.tpy.profiles.debug|release]` (kept `debug` -- universal term -- with cargo's `--release` CLI) |
+| `cargo build` / `cargo build --release` | `tpx build --debug` / `tpx build` (optimized is the default, matching `tpy`; see "Build profiles") |
+| `[profile.dev]` / `[profile.release]` | `[tool.tpy.profiles.debug|release]` (kept `debug` -- universal term) |
 | `[[bin]]`, workspaces | `[[tool.tpy.bin]]`, workspaces |
 | `rust-toolchain.toml` (rustup pin) | `[tool.tpy] compiler = "..."` |
 | `#[test]` / `#[should_panic]` | `@test` / `@should_panic` |
@@ -106,7 +106,7 @@ Indicative subcommands:
 tpx init | new        # scaffold pyproject + [tool.tpy]
 tpx add | remove      # edit deps (delegates to the resolver backend)
 tpx sync              # resolve + install into the project env
-tpx build [--release] # native build (auto-syncs first)
+tpx build [--debug]   # native build (auto-syncs first)
 tpx run               # build + run
 tpx test              # build + run the native test harness
 tpx toolchain doctor  # diagnose compiler/ABI/linker/cache
@@ -562,16 +562,23 @@ is a **secondary** convenience considered later, not the primary mechanism.
 Cargo-style, mapping to C++ flags; profiles are named data in
 `[tool.tpy.profiles.*]`:
 
-- `tpx build` -> debug (`-O0 -g`); `--release` -> release (`-O2`/`-O3`).
+- `tpx build` / `tpx run` -> the optimized `release` profile (`-O3`);
+  `--debug` -> `debug` (`-O0 -g`). Same default as `tpy` / `tpyc`, which
+  flipped from debug-by-default: the C++ step dominates build time and
+  `-O0` -> `-O3` measured at ~+1s on a ~4s build, so a debug default
+  bought little iteration speed while costing 3-25x at runtime. Cargo's
+  `--release` is deliberately NOT mirrored; a third named profile can be
+  added when one earns its keep (`-DNDEBUG` did not: measured as noise).
 - Per-profile artifact dirs under a `target/`-like root, namespaced by
   profile + toolchain id; existing `__tpyc__/`, the content-addressed
   stdlib object cache, and ccache live underneath.
 
 Whether a profile may change *codegen/semantics* (e.g. elide runtime safety
-checks in release) is **deferred and must stay explicit**: `--release` =
-perf/debug flags only; any safety-check elision is a *separate, loud, named*
-opt-in, never implied by the profile. Silent semantic change is very hard to
-walk back.
+checks in the optimized profile) is **deferred and must stay explicit**: a
+profile = perf/debug flags only; any safety-check elision is a *separate,
+loud, named* opt-in, never implied by the profile. Silent semantic change is
+very hard to walk back. (This is why the default build carries no
+`-DNDEBUG`: the runtime's `NDEBUG`-gated checks guard compiler invariants.)
 
 ## Compilation options (semantic knobs) -- OPEN, near-term
 
@@ -600,10 +607,10 @@ accrete as ad-hoc one-off flags. Initial set:
 Two categories that must **not** be conflated:
 
 - **Perf/codegen knobs** (opt-level, LTO, inlining, debug info) -- no
-  observable semantic change; safe to bundle into profiles / `--release`.
+  observable semantic change; safe to bundle into profiles.
 - **Semantic knobs** (the table above) -- change what the program *does*.
   Three rules for these:
-  1. **Explicit and loud** -- never implied by `--release` (perf flags only);
+  1. **Explicit and loud** -- never implied by a profile (perf flags only);
      any check-elision is a separate named opt-in (extends the "Build
      profiles" principle above).
   2. **Declared in `[tool.tpy]`** (pyproject.toml) -- the committed, versioned
@@ -633,7 +640,7 @@ member of this set, which is why it surfaced here.
 
 - **fast-math is the boundary case.** It is nominally a perf flag but changes
   observable float results, so it must obey the semantic-knob rules above
-  (explicit, never implied by `--release`) -- the canonical reason perf and
+  (explicit, never implied by a profile) -- the canonical reason perf and
   semantics can't be auto-bundled.
 - **The runtime checks are one family.** Integer overflow, bounds, null/deref,
   div-by-zero, and the uninitialized-storage invariants are all the same kind

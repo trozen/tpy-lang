@@ -34,7 +34,8 @@ for i in range(40):
 ```
 
 ```bash
-$ tpy -O fib.py          # compile to C++ and run (optimized)
+$ tpy fib.py             # compile to C++ (-O3) and run
+$ tpy --debug fib.py     # unoptimized build with debug info (-g -O0)
 $ tpy --dump-code fib.py # inspect generated C++
 ```
 
@@ -109,7 +110,7 @@ Then:
 
 ```bash
 tpy hello.py                     # compile and run a file
-tpy -O hello.py                  # release build (optimized)
+tpy --debug hello.py             # debug build (-g -O0; the default is -O3)
 tpy --dump-code hello.py         # inspect generated C++
 tpy --cxx list                   # show available C++ compilers
 tpy -j4 hello.py                 # parallel compilation (4 jobs)

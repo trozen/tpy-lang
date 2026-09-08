@@ -567,7 +567,7 @@ command). A typical form:
 ```bash
 tpy path/to/snippet.py               # compile + run
 tpy --dump-code path/to/snippet.py   # print generated C++
-tpy -O path/to/snippet.py            # release build
+tpy --debug path/to/snippet.py       # debug build (-g -O0; default is -O3)
 tpy --print-types                    # list every public type/function from lib/tpy/
 ```
 

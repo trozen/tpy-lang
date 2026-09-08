@@ -53,9 +53,9 @@ def bad() -> Ptr[Int32]:
 
 **Status**: Partially implemented (return-local detection, loop-local escape).
 
-### Dangling References -- Complex Cases (Runtime, Debug Mode)
+### Dangling References -- Complex Cases (Runtime Checks)
 
-When the compiler can't statically prove safety, debug builds insert runtime checks.
+When the compiler can't statically prove safety, the runtime checks at use.
 This covers patterns like:
 
 - Pointer to element in a container that gets resized
@@ -66,13 +66,16 @@ This covers patterns like:
 items = [1, 2, 3]
 p = items.ptr()
 items.append(4)       # may reallocate
-print(unsafe_load(p, 0))  # DEBUG: runtime panic (dangling pointer)
-                           # RELEASE: undefined behavior
+print(unsafe_load(p, 0))  # checks on (every tpy build): runtime panic
+                           # -DNDEBUG: undefined behavior
 ```
 
-The debug-mode approach is already used in `UninitHeapStorage` / `UninitArrayStorage`
-(alive-slot tracking). The same pattern generalizes: debug builds track validity,
-release builds trust the programmer.
+The approach is already used in `UninitHeapStorage` / `UninitArrayStorage`
+(alive-slot tracking). The checks are gated on `NDEBUG`; no `tpy` build variant
+defines it -- the default `-O3` build and `--debug` both keep them (measured as
+free at `-O3`) -- so stripping them is a deliberate, explicit opt-in, never a
+side effect of optimizing. The same pattern generalizes: checked builds track
+validity, a stripped build trusts the programmer.
 
 **Status**: Implemented for storage types (alive_ tracking). General pointer
 validity tracking is TODO.
@@ -99,10 +102,10 @@ thread-local ownership -- not aliasing rules).
 |---|---|---|
 | Use-after-move | Compile error | Compile error |
 | Dangling ref (obvious) | Compile error | Compile error |
-| Dangling ref (complex) | Lifetime annotations | Runtime panic (debug) |
+| Dangling ref (complex) | Lifetime annotations | Runtime panic (unless `NDEBUG`) |
 | Aliased mutation | Compile error | Allowed |
-| Double-free / leak | Compile error | Runtime panic (debug) |
-| Iterator invalidation | Compile error | Runtime panic (debug) |
+| Double-free / leak | Compile error | Runtime panic (unless `NDEBUG`) |
+| Iterator invalidation | Compile error | Runtime panic (unless `NDEBUG`) |
 
 ## @noalloc Context
 
@@ -118,12 +121,13 @@ Rust's borrow checker is a hard requirement because Rust has no garbage collecto
 and no runtime safety net. Every safety property must be proven at compile time,
 which forces lifetime annotations and restricts valid programs.
 
-TurboPython has debug-mode runtime checks as a fallback. This means the compiler
+TurboPython has runtime checks as a fallback. This means the compiler
 doesn't need to prove everything statically -- it can defer complex cases to
 runtime. The result:
 
 - No lifetime annotations, ever
 - No fighting the compiler to express valid patterns
-- Debug builds catch safety violations that the compiler can't prove
-- Release builds are zero-overhead (no runtime checks)
+- Runtime checks catch safety violations that the compiler can't prove, in
+  every `tpy` build variant
+- Stripping them (`-DNDEBUG`) is an explicit opt-in, never implied by `-O3`
 - @noalloc provides stricter static guarantees where needed

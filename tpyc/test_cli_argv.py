@@ -1,8 +1,10 @@
-"""Unit tests for tpyc argv pre-split helper."""
+"""Unit tests for tpyc argv pre-split helper and the build-variant selection."""
+
+from argparse import Namespace
 
 import pytest
 
-from .cli import _split_tpyc_argv
+from .cli import _build_variant, _opt_flags, _split_tpyc_argv
 
 
 def test_no_separator_returns_empty_script_args():
@@ -47,6 +49,19 @@ def test_only_separator_passes_through():
 
 
 def test_flag_like_program_args_preserved():
-    before, after = _split_tpyc_argv(["foo.py", "-x", "--", "-O", "--help", "-"])
+    before, after = _split_tpyc_argv(["foo.py", "-x", "--", "--debug", "--help", "-"])
     assert before == ["foo.py", "-x"]
-    assert after == ["-O", "--help", "-"]
+    assert after == ["--debug", "--help", "-"]
+
+
+def test_default_build_is_optimized_without_ndebug():
+    # The NDEBUG-gated runtime checks stay in the default build by design.
+    args = Namespace(debug=False)
+    assert _build_variant(args) == "release"
+    assert _opt_flags(args) == ["-O3"]
+
+
+def test_debug_build_is_unoptimized_with_debug_info():
+    args = Namespace(debug=True)
+    assert _build_variant(args) == "debug"
+    assert _opt_flags(args) == ["-g", "-O0"]

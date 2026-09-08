@@ -124,11 +124,10 @@ class ProgressPrinter:
         return name.replace('.', '/')
 
     def header(self, config: CppCompilerConfig | None = None,
-               release: bool = False, n_jobs: int = 1) -> None:
+               variant: str = "release", n_jobs: int = 1) -> None:
         if not self.enabled:
             return
         if config is not None:
-            variant = "release" if release else "debug"
             cxx = config.compiler_name
             if config.ccache:
                 cxx += " + ccache"
@@ -260,6 +259,19 @@ class _VersionAction(argparse.Action):
         parser.exit()
 
 
+def _build_variant(args: argparse.Namespace) -> str:
+    """Name of the build flavor: keys the per-variant output dir, the PCH
+    dir and the whole-run cache manifest, so the two never clobber."""
+    return "debug" if args.debug else "release"
+
+
+def _opt_flags(args: argparse.Namespace) -> list[str]:
+    """C++ optimization flags per variant. The default carries no -DNDEBUG:
+    the runtime's NDEBUG-gated checks guard compiler invariants (dead
+    frame slots, storage lifecycle) and measured as free at -O3."""
+    return ["-g", "-O0"] if args.debug else ["-O3"]
+
+
 def _cache_options_key(args: argparse.Namespace, input_path: Path,
                        lib_dirs: list[Path],
                        config: CppCompilerConfig) -> dict:
@@ -271,7 +283,7 @@ def _cache_options_key(args: argparse.Namespace, input_path: Path,
     return {
         "tpyc_version": __version__,
         "entry": str(input_path),
-        "variant": "release" if args.release else "debug",
+        "variant": _build_variant(args),
         "default_int": args.default_int,
         "compiler": list(config.compiler),
         "std": config.std,
@@ -405,10 +417,10 @@ def _run_cli(is_runner: bool) -> int:
     if is_runner:
         # tpy: REMAINDER captures everything after the input positional, including
         # flags like -O, matching `python script.py -O`. Limitation: flags that
-        # also exist as tpy options (e.g. -O) AND appear *before* the input
+        # also exist as tpy options (e.g. -j) AND appear *before* the input
         # positional are still consumed by tpy -- with `-c CMD`, there is no
         # input positional to separate them. Use `--` to force forwarding:
-        # `tpy -c CMD -- -O arg`.
+        # `tpy -c CMD -- -j arg`.
         parser.add_argument("script_args", nargs=argparse.REMAINDER,
                             help="Arguments forwarded to the running program as sys.argv[1:]")
     # tpyc: no REMAINDER positional -- tpyc's own options must be parseable in
@@ -419,7 +431,8 @@ def _run_cli(is_runner: bool) -> int:
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v commands+timing, -vv +generated C++)")
     parser.add_argument("-b", "--build", action="store_true", help="Compile C++ to binary after generating")
     parser.add_argument("-x", "--exec", action="store_true", help="Build and run the program")
-    parser.add_argument("-O", "--release", action="store_true", help="Build with optimizations (default: debug)")
+    parser.add_argument("--debug", action="store_true",
+                        help="Build unoptimized with debug info (-g -O0); the default is -O3")
     parser.add_argument("--emit-source", action="store_true", help="Embed Python source as comments in generated C++")
     parser.add_argument("-i", "--repl", action="store_true", help="Start interactive REPL")
     parser.add_argument("--print-types", action="store_true", help="Print API reference (builtins, tplib, bundled stdlib) as markdown")
@@ -712,7 +725,7 @@ def _run_cli(is_runner: bool) -> int:
         if cache_key is not None and not args.rebuild:
             cache_build_dir = build_cache.compute_build_dir(
                 output_dir, module_name,
-                "release" if args.release else "debug", flat=explicit_output)
+                _build_variant(args), flat=explicit_output)
             hit = build_cache.check_up_to_date(cache_build_dir, cache_key)
             if hit is not None:
                 # Diagnostics stay consistent across warm runs: replay the
@@ -757,7 +770,7 @@ def _run_cli(is_runner: bool) -> int:
                 cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
                 if args.ccache is not None:
                     cpp_config.ccache = args.ccache
-            progress.header(cpp_config, args.release, n_jobs)
+            progress.header(cpp_config, _build_variant(args), n_jobs)
         else:
             progress.header()
 
@@ -954,12 +967,11 @@ def _run_cli(is_runner: bool) -> int:
         # Build if requested
         if building:
             assert cpp_config is not None
-            build_variant = "release" if args.release else "debug"
-            layout = BuildLayout(output_dir, module_name, build_variant=build_variant,
+            layout = BuildLayout(output_dir, module_name, build_variant=_build_variant(args),
                                    flat=explicit_output)
             binary_path = layout.so_path() if ext_module_build else layout.binary_path()
 
-            opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
+            opt_flags = _opt_flags(args)
             cpp_config.link_flags = link_flags
 
             # Build or reuse precompiled header. Skipped for ext_module

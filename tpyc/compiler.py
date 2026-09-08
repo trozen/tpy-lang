@@ -245,7 +245,7 @@ class BuildLayout:
             runtime_include_dir: Path to the tpy runtime include directory.
             cpp_files: List of C++ source files to compile.
             output: Output binary path. Defaults to self.binary_path().
-            opt_flags: Optimization flags (e.g., ["-O3", "-DNDEBUG"]).
+            opt_flags: Optimization flags (e.g., ["-O3"]).
             config: Compiler configuration. Defaults to CppCompilerConfig().
             extra_objects: Pre-compiled object files to include in the link step.
             extra_include_dirs: Additional include directories (-I flags).

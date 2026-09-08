@@ -61,7 +61,7 @@ def test_build_cache_lifecycle(tmp_path: Path, request: pytest.FixtureRequest) -
     assert "v1 2" in r.stdout
     assert "X_LIMIT" in r.stderr  # the warning
 
-    manifest = tmp_path / "__tpyc__" / "prog.d" / "debug" / "build-manifest.json"
+    manifest = tmp_path / "__tpyc__" / "prog.d" / "release" / "build-manifest.json"
     assert manifest.is_file()
     data = json.loads(manifest.read_text())
     recorded = {Path(f["path"]).name for f in data["files"]}
@@ -129,7 +129,7 @@ def test_build_cache_lifecycle(tmp_path: Path, request: pytest.FixtureRequest) -
     assert r.returncode == 0, r.stderr
 
     # Deleted binary -> cold rebuild even with a fresh manifest.
-    (tmp_path / "__tpyc__" / "prog.d" / "debug" / "prog").unlink()
+    (tmp_path / "__tpyc__" / "prog.d" / "release" / "prog").unlink()
     r = run_tpyc(tmp_path, "prog.py", "-x")
     assert r.returncode == 0, r.stderr
     assert built_cold(r)

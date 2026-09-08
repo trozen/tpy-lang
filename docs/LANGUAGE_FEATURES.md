@@ -2067,7 +2067,7 @@ Generates `std::move(*p)` in C++. Used by `Box[T].take()` to extract the contain
 
 #### Uninitialized Storage -- `tpy.mem` (Working)
 
-The `tpy.mem` module provides low-level uninitialized storage types for building containers. Elements are not default-constructed -- the caller manages element lifetimes explicitly via `init`/`drop`. Debug builds include lifetime tracking that panics on misuse (double-init, use-after-drop, leak on destruction).
+The `tpy.mem` module provides low-level uninitialized storage types for building containers. Elements are not default-constructed -- the caller manages element lifetimes explicitly via `init`/`drop`. Lifetime tracking that panics on misuse (double-init, use-after-drop, leak on destruction) is compiled in unless `NDEBUG` is defined; neither `tpy` build variant defines it, so both the default `-O3` build and `--debug` keep the checks.
 
 ```python
 from tpy import Int32, Ptr

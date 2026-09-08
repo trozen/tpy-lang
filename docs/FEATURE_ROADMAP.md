@@ -3555,7 +3555,7 @@ dependencies for a TurboPython **application or library**. Distinct from
 which this layer drives.
 
 The shape under discussion is a cargo-like porcelain command, `tpx`
-(`tpx new/init/build/run/test/add/clean`, `tpx build --release`), kept separate
+(`tpx new/init/build/run/test/add/clean`, `tpx build --debug`), kept separate
 from the `tpy` runner so `tpy file.py` stays unambiguous (cargo-vs-rustc split).
 It sits on a stable `[tool.tpy]` contract in `pyproject.toml` describing how to
 *compile and link* (not how to resolve Python packages), and reuses the existing
