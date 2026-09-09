@@ -240,6 +240,13 @@ public:
         if (shift == 0 || signum() == 0) {
             return *this;
         }
+        if (is_small() && shift < 63) {
+            int64_t v = small_value();
+            if (v >= (SMALL_MIN >> shift) && v <= (SMALL_MAX >> shift)) {
+                // Multiplication avoids left-shifting a negative signed value.
+                return make_small(v * (int64_t{1} << shift));
+            }
+        }
         std::vector<uint64_t> mag = abs_limbs();
         return from_sign_mag(signum(), lshift_mag(mag, static_cast<size_t>(shift)));
     }
@@ -250,6 +257,10 @@ public:
         }
         if (shift == 0 || signum() == 0) {
             return *this;
+        }
+        if (is_small()) {
+            int64_t v = small_value();
+            return make_small(shift >= 63 ? (v < 0 ? -1 : 0) : v >> shift);
         }
         BigInt divisor = BigInt(1) << shift;
         return floor_div(divisor);
@@ -276,6 +287,9 @@ public:
     }
 
     BigInt operator~() const {
+        if (is_small()) {
+            return make_small(~small_value());
+        }
         // Python: ~x = -(x+1)
         return -(*this + BigInt(1));
     }
@@ -743,6 +757,11 @@ public:
     std::tuple<BigInt, BigInt> floor_divmod(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
             raise_zero_division_error("integer division or modulo by zero");
+        }
+        if (is_small() && rhs.is_small()) {
+            int64_t a = small_value();
+            int64_t b = rhs.small_value();
+            return {BigInt(div_floor(a, b)), BigInt(mod_floor(a, b))};
         }
         if (signum() == 0) {
             return {BigInt(0), BigInt(0)};
@@ -1307,6 +1326,13 @@ private:
     }
 
     BigInt bitwise_binary(const BigInt& rhs, char op) const {
+        if (is_small() && rhs.is_small()) {
+            int64_t a = small_value();
+            int64_t b = rhs.small_value();
+            if (op == '&') return make_small(a & b);
+            if (op == '|') return make_small(a | b);
+            return make_small(a ^ b);
+        }
         size_t a_limbs = (abs_bit_length() + 63) / 64;
         size_t b_limbs = (rhs.abs_bit_length() + 63) / 64;
         size_t n = (a_limbs > b_limbs ? a_limbs : b_limbs) + 2;
@@ -1329,6 +1355,11 @@ private:
     }
 
     int compare(const BigInt& rhs) const {
+        if (is_small() && rhs.is_small()) {
+            int64_t a = small_value();
+            int64_t b = rhs.small_value();
+            return (a > b) - (a < b);
+        }
         int a_sign = signum();
         int b_sign = rhs.signum();
         if (a_sign != b_sign) {
@@ -1347,6 +1378,10 @@ private:
     BigInt floor_div(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
             raise_zero_division_error("integer division or modulo by zero");
+        }
+        if (is_small() && rhs.is_small()) {
+            // SMALL_MIN / -1 fits int64_t but must promote out of small storage.
+            return BigInt(div_floor(small_value(), rhs.small_value()));
         }
         if (signum() == 0) {
             return BigInt(0);
@@ -1377,6 +1412,9 @@ private:
     BigInt floor_mod(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
             raise_zero_division_error("integer modulo by zero");
+        }
+        if (is_small() && rhs.is_small()) {
+            return BigInt(mod_floor(small_value(), rhs.small_value()));
         }
         if (signum() == 0) {
             return BigInt(0);

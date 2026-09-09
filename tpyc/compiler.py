@@ -879,6 +879,8 @@ class Compiler:
                 # Discover imported library modules
                 self._discover_imports(entry_name, ast, [entry_name])
                 self._discover_implicit_stdlib()
+            self._discover_coroutine_runtime()
+            if self.resolver:
                 self._compute_compile_order()
                 self._propagate_package_directives()
             else:
@@ -933,6 +935,7 @@ class Compiler:
 
         # Rediscover in case user modules added new stdlib deps
         self._discover_implicit_stdlib()
+        self._discover_coroutine_runtime()
 
         # 2. Compute compilation order (topological sort)
         self._compute_compile_order()
@@ -1066,6 +1069,47 @@ class Compiler:
                 continue  # not available (e.g. --no-stdlib)
             self._discover_modules(resolved.canonical_name, resolved.path, [],
                                    is_package_init=resolved.is_package_init)
+
+    def _discover_coroutine_runtime(self) -> None:
+        """Register the runtime dependency introduced by async declarations."""
+        runtime_name = "tpy.coro"
+        pending = list(self.modules.values())
+        index = 0
+        while index < len(pending):
+            compiled = pending[index]
+            index += 1
+            if compiled.name == runtime_name:
+                continue
+            functions = list(compiled.ast.functions)
+            for record in compiled.ast.all_records():
+                functions.extend(record.methods)
+            async_functions = [func for func in functions if func.is_async]
+            if not async_functions:
+                continue
+            lineno = min(
+                (func.loc.line for func in async_functions
+                 if func.loc is not None and func.loc.line > 0),
+                default=0,
+            )
+            if runtime_name not in self.modules:
+                resolved = self.resolver.resolve(runtime_name) if self.resolver else None
+                if resolved is None:
+                    raise CompileError(
+                        "Async functions require the coroutine runtime 'tpy.coro'; "
+                        "enable the standard library or add its root to the library paths",
+                        compiled.name, compiled.path, lineno=lineno,
+                    )
+                discovered = set(self.modules)
+                self._discover_package_inits(runtime_name, [compiled.name], lineno)
+                self._discover_modules(
+                    resolved.canonical_name, resolved.path, [compiled.name], lineno,
+                    is_package_init=resolved.is_package_init,
+                )
+                pending.extend(module for name, module in self.modules.items()
+                               if name not in discovered)
+            # The declaration owns a header dependency, even when unused/inline;
+            # no Python binding or runtime import statement is needed.
+            compiled.ast.user_module_imports.setdefault(runtime_name, lineno)
 
     def _discover_modules(self, module_name: str, path: Path, import_chain: list[str],
                           import_lineno: int | None = None, is_entry_point: bool = False,

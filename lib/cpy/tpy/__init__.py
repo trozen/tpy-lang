@@ -739,6 +739,11 @@ class Representable(_Protocol):
     def __repr__(self) -> str: ...
 
 
+class AnyFixedInt(_Protocol):
+    """Marker bound for fixed-width integers; CPython does not enforce bounds."""
+    pass
+
+
 class ValueType(_Protocol):
     """Marker for types with value semantics (passed by value, copy on access)."""
     pass

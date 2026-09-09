@@ -1,0 +1,136 @@
+module True
+compare 17 3 False True False False True True
+bitwise 1 19 18 -18
+division 5 2 5 2
+identity True
+remainder True True
+compare -17 3 False True True True False False
+bitwise 3 -17 -20 16
+division -6 1 -6 1
+identity True
+remainder True True
+compare 17 -3 False True False False True True
+bitwise 17 -3 -20 -18
+division -6 -1 -6 -1
+identity True
+remainder True True
+compare -17 -3 False True True True False False
+bitwise -19 -1 18 16
+division 5 -2 5 -2
+identity True
+remainder True True
+compare 18 -3 False True False False True True
+bitwise 16 -1 -17 -19
+division -6 0 -6 0
+identity True
+remainder True True
+compare 2 17 False True True True False False
+bitwise 0 19 19 -3
+division 0 2 0 2
+identity True
+remainder True True
+compare -2 17 False True True True False False
+bitwise 16 -1 -17 1
+division -1 15 -1 15
+identity True
+remainder True True
+compare 0 3 False True True True False False
+bitwise 0 3 3 -1
+division 0 0 0 0
+identity True
+remainder True True
+compare 3 0 False True False False True True
+bitwise 0 3 3 -4
+compare 3 3 True False False True False True
+bitwise 3 3 0 -4
+division 1 0 1 0
+identity True
+remainder True True
+compare -4611686018427387904 -1 False True True True False False
+bitwise -4611686018427387904 -1 4611686018427387903 4611686018427387903
+division 4611686018427387904 0 4611686018427387904 0
+identity True
+remainder True True
+compare 4611686018427387903 1 False True False False True True
+bitwise 1 4611686018427387903 4611686018427387902 -4611686018427387904
+division 4611686018427387903 0 4611686018427387903 0
+identity True
+remainder True True
+compare -4611686018427387904 4611686018427387903 False True True True False False
+bitwise 0 -1 -1 4611686018427387903
+division -2 4611686018427387902 -2 4611686018427387902
+identity True
+remainder True True
+compare 4611686018427387903 -4611686018427387904 False True False False True True
+bitwise 0 -1 -1 -4611686018427387904
+division -1 -1 -1 -1
+identity True
+remainder True True
+compare 4611686018427387904 4611686018427387903 False True False False True True
+bitwise 0 9223372036854775807 9223372036854775807 -4611686018427387905
+division 1 1 1 1
+identity True
+remainder True True
+compare -4611686018427387905 -4611686018427387904 False True True True False False
+bitwise -9223372036854775808 -1 9223372036854775807 4611686018427387904
+division 1 -1 1 -1
+identity True
+remainder True True
+compare 4611686018427387903 4611686018427387904 False True True True False False
+bitwise 0 9223372036854775807 9223372036854775807 -4611686018427387904
+division 0 4611686018427387903 0 4611686018427387903
+identity True
+remainder True True
+compare -4611686018427387904 -4611686018427387905 False True False False True True
+bitwise -9223372036854775808 -1 9223372036854775807 4611686018427387903
+division 0 -4611686018427387904 0 -4611686018427387904
+identity True
+remainder True True
+shift fixed 0 1 -1 -4611686018427387904 4611686018427387903
+shift bigint 0 1 -1 -4611686018427387904 4611686018427387903
+shift fixed 1 2 -2 -2305843009213693952 2305843009213693951
+shift bigint 1 2 -2 -2305843009213693952 2305843009213693951
+shift fixed 61 2305843009213693952 -2305843009213693952 -2 1
+shift bigint 61 2305843009213693952 -2305843009213693952 -2 1
+shift fixed 62 4611686018427387904 -4611686018427387904 -1 0
+shift bigint 62 4611686018427387904 -4611686018427387904 -1 0
+shift fixed 63 9223372036854775808 -9223372036854775808 -1 0
+shift bigint 63 9223372036854775808 -9223372036854775808 -1 0
+shift fixed 64 18446744073709551616 -18446744073709551616 -1 0
+shift bigint 64 18446744073709551616 -18446744073709551616 -1 0
+shift fixed 200 1606938044258990275541962092341162602522202993782792835301376 -1606938044258990275541962092341162602522202993782792835301376 -1 0
+shift bigint 200 1606938044258990275541962092341162602522202993782792835301376 -1606938044258990275541962092341162602522202993782792835301376 -1 0
+shift max -1 0
+complement endpoints 4611686018427387903 -4611686018427387904
+heap inverse 2 4611686018427387903
+compound 7
+constructor -6
+method True
+generic twin True True
+optional -9 16
+match int 3
+tuple True -6
+optional none
+match str
+tuple False 5
+generator -9
+generator 1
+async 13
+comprehension -2305843009213693952
+comprehension -1
+closure True
+context enter
+context body -1537228672809129302 2
+context exit
+error_return -6
+error_return caught
+errors floor
+errors finally
+errors modulo
+errors divmod
+errors true division
+errors left shift
+errors right shift
+evaluation True False False 5
+rounding 3.843071682022824e+17 3.843071682022823e+17
+true small 0.3333333333333333 -0.0

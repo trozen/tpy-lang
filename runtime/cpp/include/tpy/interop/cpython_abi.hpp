@@ -2,7 +2,7 @@
 // Hand-mirrored CPython limited-API (abi3) struct layouts -- the ABI subset
 // of the facade. Split out from cpython_h.hpp (which adds the constants and
 // extern "C" function declarations) for one reason: the layout self-check TU
-// (runtime/cpp/tests/interop/cpython_facade_selfcheck.cpp) must include BOTH
+// (runtime/cpp/tests/interop/test_cpython_facade_selfcheck.cpp) must include BOTH
 // real <Python.h> and our mirror to assert they match, and Python.h's
 // #define'd constants (METH_*, PYTHON_API_VERSION) plus its extern "C"
 // function prototypes would collide with ours -- so the self-check includes

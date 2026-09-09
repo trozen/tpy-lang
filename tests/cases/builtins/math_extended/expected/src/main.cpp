@@ -74,11 +74,11 @@ void main() {
     std::cout << ::tpy::print_bool((::std::cbrt(0.0) == 0.0)) << "\n";
     // # exp2 (2**x) -- Python 3.11+
     // print(math.exp2(10.0) == 1024.0)
-    std::cout << ::tpy::print_bool((::std::exp2(10.0) == 1024.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(10.0) == 1024.0)) << "\n";
     // print(math.exp2(0.0) == 1.0)
-    std::cout << ::tpy::print_bool((::std::exp2(0.0) == 1.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(0.0) == 1.0)) << "\n";
     // print(math.exp2(-1.0) == 0.5)
-    std::cout << ::tpy::print_bool((::std::exp2(-(1.0)) == 0.5)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_exp2(-(1.0)) == 0.5)) << "\n";
 }
 
 void __tpy_init() {

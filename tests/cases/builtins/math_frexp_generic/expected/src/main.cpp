@@ -51,7 +51,7 @@ void main() {
     double mm = std::get<0>(__tup_5);
     int32_t ee = std::get<1>(__tup_5);
     // print(math.ldexp(mm, ee))
-    std::cout << ::tpy::print_float(::std::ldexp(mm, ee)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(mm, ee)) << "\n";
 }
 
 void __tpy_init() {

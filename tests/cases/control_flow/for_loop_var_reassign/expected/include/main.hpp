@@ -4,12 +4,283 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
+struct Worker;
+struct Gate;
+struct MarkerError;
+struct Item;
+
+extern int32_t module_count;
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_generator;
+struct __coro_async_body;
+
+void original();
+void steps32(int32_t base, int32_t step);
+void steps64(int64_t base, int64_t step);
+void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step);
+void binding_forms(int32_t subject);
+void comprehension_forms();
+void closure_forms();
+void context_forms();
+void control_edges();
+int32_t parameter_target(int32_t target);
+::tpy::BigInt bound(std::vector<::tpy::BigInt>& events, const ::tpy::BigInt& tag, const ::tpy::BigInt& value);
+void bound_order(const ::tpy::BigInt& step);
+__gen_generator generator();
+__coro_async_body async_body();
+std::expected<::tpy::BigInt, MarkerError> error_body();
+void match_body(const ::tpy::BigInt& subject);
+template<::tpy::AnyFixedInt T>
+::tpy::BigInt generic_count(std::vector<T>& values);
+::tpy::BigInt concrete_count(std::vector<int32_t>& values);
+int32_t readonly32(int32_t stop);
+::tpy::BigInt readonly_big(const ::tpy::BigInt& start, const ::tpy::BigInt& stop);
+void container_inverse();
 void main();
+
+// class Worker:
+struct Worker {
+    // count: int
+    ::tpy::BigInt count;
+
+    // def __init__(self) -> None:
+    Worker();
+
+    // def method(self) -> int:
+    ::tpy::BigInt method() const;
+
+    // @staticmethod
+    // def static() -> int:
+    static ::tpy::BigInt static_();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Worker";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Worker& obj) {
+    ::tpy::print_object_default(os, "Worker", obj);
+    return os;
+}
+
+// @nocopy
+// class Gate:
+struct Gate {
+    // exits: int
+    ::tpy::BigInt exits;
+
+    // def __init__(self) -> None:
+    Gate();
+    // non-copyable (@nocopy)
+    Gate(const Gate&) = delete;
+    Gate& operator=(const Gate&) = delete;
+    Gate(Gate&&) = default;
+    Gate& operator=(Gate&&) = default;
+
+    // def __enter__(self) -> Int32:
+    int32_t __enter__() const;
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+    bool __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Gate";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Gate& obj) {
+    ::tpy::print_object_default(os, "Gate", obj);
+    return os;
+}
+
+// class MarkerError(Exception, ReturnException):
+struct MarkerError : ::tpy::Exception {
+
+    using ::tpy::Exception::Exception;
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<MarkerError>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.MarkerError";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const MarkerError& obj) {
+    ::tpy::print_object_default(os, "MarkerError", obj);
+    return os;
+}
+
+// @nocopy
+// class Item:
+struct Item {
+    // value: int
+    ::tpy::BigInt value;
+
+    // def __init__(self, value: int) -> None:
+    Item() = default;
+    explicit Item(const ::tpy::BigInt& value);
+    // non-copyable (@nocopy)
+    Item(const Item&) = delete;
+    Item& operator=(const Item&) = delete;
+    Item(Item&&) = default;
+    Item& operator=(Item&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
+    ::tpy::print_object_default(os, "Item", obj);
+    return os;
+}
+
+// Async coroutine: async_body
+struct __coro_async_body {
+    int32_t __state;
+    bool __cancel_pending;
+    int32_t count;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_async_body()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_async_body&) {
+        return os << "<coroutine async_body>";
+    }
+};
+
+// Generator: generator
+struct __gen_generator : public ::tpy::next_iter_mixin<__gen_generator, ::tpy::BigInt> {
+    int32_t __state;
+    int32_t count;
+    int32_t i;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_generator()
+        : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_generator& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_generator&) {
+        return os << "<generator generator>";
+    }
+};
+
+
+// def __init__(self) -> None:
+inline Worker::Worker() : count(::tpy::BigInt(0)) {
+    // for i in range(3):
+    for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+        int32_t i = __range_0;
+        // i += 10  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 10);
+        // self.count += 1
+        this->count = (this->count) + (::tpy::BigInt(1));
+    }
+}
+
+// def method(self) -> int:
+inline ::tpy::BigInt Worker::method() const {
+    // # Method: writable target and read-only companion use the same rule.
+    // count = 0
+    int32_t count = 0;
+    // for i in range(3):
+    for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+        int32_t i = __range_0;
+        // i += 10  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 10);
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // for j in range(3):  # tpyc: ok
+    for (int32_t j = 0; j < 3; ++j) {
+        // count += j
+        count = ::tpy::add_check<int32_t>(count, j);
+    }
+    // return count
+    return ::tpy::BigInt(count);
+}
+
+// @staticmethod
+// def static() -> int:
+inline ::tpy::BigInt Worker::static_() {
+    // # Static method: its target remains distinct from induction.
+    // count = 0
+    int32_t count = 0;
+    // for i in range(3):
+    for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+        int32_t i = __range_0;
+        // i += 10  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 10);
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // return count
+    return ::tpy::BigInt(count);
+}
+
+// def __init__(self) -> None:
+inline Gate::Gate() : exits(::tpy::BigInt(0)) {}
+
+// def __enter__(self) -> Int32:
+inline int32_t Gate::__enter__() const {
+    // return 10
+    return 10;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+inline bool Gate::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
+    // self.exits += 1
+    this->exits = (this->exits) + (::tpy::BigInt(1));
+    // return False
+    return false;
+}
+
+// def __init__(self, value: int) -> None:
+inline Item::Item(const ::tpy::BigInt& value) : value(value) {}
+// def generic_count[T: AnyFixedInt](values: list[T]) -> int:
+template<::tpy::AnyFixedInt T>
+::tpy::BigInt generic_count(std::vector<T>& values) {
+    // # len supplies a concrete counter: BUGS.md#generic-param-reassign-rejected.
+    // count = 0
+    int32_t count = 0;
+    // for i in range(len(values)):  # tpyc: ok
+    int32_t __stop_0 = ::tpy::__len__(values);
+    for (int32_t __range_0 = 0; __range_0 < __stop_0; ++__range_0) {
+        int32_t i = __range_0;
+        // i = 10  # tpyc: ok
+        i = 10;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // # Mutation through the parameter must reach the caller's original list.
+    // values.clear()  # tpyc: ok
+    values.clear();
+    // return count
+    return ::tpy::BigInt(count);
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

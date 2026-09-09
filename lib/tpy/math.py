@@ -45,44 +45,44 @@ inf: Final[float] = 1e309
 nan: Final[float] = float("nan")
 
 @overload
-@native("std::log")
+@native("tpy::stdlib::math::checked_log")
 def log(x: float) -> float: ...
 
 @overload
 def log(x: float, base: float) -> float:
     return log(x) / log(base)
 
-@native("std::log10")
+@native("tpy::stdlib::math::checked_log10")
 def log10(x: float) -> float: ...
 
-@native("std::log2")
+@native("tpy::stdlib::math::checked_log2")
 def log2(x: float) -> float: ...
 
-@native("std::sqrt")
+@native("tpy::stdlib::math::checked_sqrt")
 def sqrt(x: float) -> float: ...
 
 @native("std::cbrt")
 def cbrt(x: float) -> float: ...
 
-@native("std::pow")
+@native("tpy::stdlib::math::checked_pow")
 def pow(x: float, y: float) -> float: ...
 
-@native("std::exp")
+@native("tpy::stdlib::math::checked_exp")
 def exp(x: float) -> float: ...
 
-@native("std::exp2")
+@native("tpy::stdlib::math::checked_exp2")
 def exp2(x: float) -> float: ...
 
-@native("std::expm1")
+@native("tpy::stdlib::math::checked_expm1")
 def expm1(x: float) -> float: ...
 
-@native("std::log1p")
+@native("tpy::stdlib::math::checked_log1p")
 def log1p(x: float) -> float: ...
 
-@native("std::tgamma")
+@native("tpy::stdlib::math::checked_gamma")
 def gamma(x: float) -> float: ...
 
-@native("std::lgamma")
+@native("tpy::stdlib::math::checked_lgamma")
 def lgamma(x: float) -> float: ...
 
 @native("std::erf")
@@ -94,10 +94,10 @@ def erfc(x: float) -> float: ...
 @native("std::nextafter")
 def nextafter(x: float, y: float) -> float: ...
 
-@native("std::ldexp")
+@native("tpy::stdlib::math::checked_ldexp")
 def ldexp(x: float, i: Int32) -> float: ...
 
-@native("std::fma")
+@native("tpy::stdlib::math::checked_fma")
 def fma(x: float, y: float, z: float) -> float: ...
 
 @native("tpy::stdlib::math::modf")
@@ -121,13 +121,13 @@ def floor(x: float) -> int: ...
 @native("tpy::BigInt::from_ceil")
 def ceil(x: float) -> int: ...
 
-@native("std::sin")
+@native("tpy::stdlib::math::checked_sin")
 def sin(x: float) -> float: ...
 
-@native("std::cos")
+@native("tpy::stdlib::math::checked_cos")
 def cos(x: float) -> float: ...
 
-@native("std::tan")
+@native("tpy::stdlib::math::checked_tan")
 def tan(x: float) -> float: ...
 
 @native("std::fabs")
@@ -148,19 +148,19 @@ def hypot(*coords: float) -> float:
 @native("std::atan2")
 def atan2(y: float, x: float) -> float: ...
 
-@native("std::asin")
+@native("tpy::stdlib::math::checked_asin")
 def asin(x: float) -> float: ...
 
-@native("std::acos")
+@native("tpy::stdlib::math::checked_acos")
 def acos(x: float) -> float: ...
 
 @native("std::atan")
 def atan(x: float) -> float: ...
 
-@native("std::sinh")
+@native("tpy::stdlib::math::checked_sinh")
 def sinh(x: float) -> float: ...
 
-@native("std::cosh")
+@native("tpy::stdlib::math::checked_cosh")
 def cosh(x: float) -> float: ...
 
 @native("std::tanh")
@@ -169,10 +169,10 @@ def tanh(x: float) -> float: ...
 @native("std::asinh")
 def asinh(x: float) -> float: ...
 
-@native("std::acosh")
+@native("tpy::stdlib::math::checked_acosh")
 def acosh(x: float) -> float: ...
 
-@native("std::atanh")
+@native("tpy::stdlib::math::checked_atanh")
 def atanh(x: float) -> float: ...
 
 @native("std::isnan")
@@ -187,10 +187,10 @@ def isfinite(x: float) -> bool: ...
 @native("std::copysign")
 def copysign(x: float, y: float) -> float: ...
 
-@native("std::fmod")
+@native("tpy::stdlib::math::checked_fmod")
 def fmod(x: float, y: float) -> float: ...
 
-@native("std::remainder")
+@native("tpy::stdlib::math::checked_remainder")
 def remainder(x: float, y: float) -> float: ...
 
 def radians(x: float) -> float:

@@ -145,7 +145,12 @@ from ...codegen_cpp.protocols import (
 )
 from ...codegen_cpp.context import escape_cpp_name, is_constructor_call
 from ...codegen_cpp.protocols import narrow_cast_rhs
-from ...prescan import deref_view_key, match_is_none, parse_deref_view_key
+from ...prescan import (
+    collect_fact_kills,
+    deref_view_key,
+    match_is_none,
+    parse_deref_view_key,
+)
 from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_inner,
                         polymorphic_source_is_pointer,
@@ -14763,6 +14768,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # counter this arm requires).
                 if step_kind in ("literal_pos", "literal_neg", "variable"):
                     step = _lower_range_arg(it.args[2], et, lc, declared)
+            # Binding scans cover match targets; fact kills add closure writes.
+            target_written = (
+                _body_writes_name(stmt.body, stmt.var)
+                or stmt.var in collect_fact_kills(stmt.body).names)
             return THIRForRange(
                 var=stmt.var,
                 elem_type=et,
@@ -14774,6 +14783,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 step=step,
                 step_kind=step_kind,
                 hoist_loop_var=stmt.hoist_loop_var,
+                target_written=target_written,
                 hoist_decls=foreach_hoist_decls,
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
                                           "loop.for_else"),

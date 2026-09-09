@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // # Test math.log (natural log)
     // x = math.log(2.718281828)
-    double x = ::std::log(2.718281828);
+    double x = ::tpy::stdlib::math::checked_log(2.718281828);
     // if x > 0.99 and x < 1.01:
     if (((x > 0.99) && (x < 1.01))) {
         // print("log(e) ok")
@@ -20,7 +20,7 @@ void main() {
     }
     // # Test math.sqrt
     // z = math.sqrt(4.0)
-    double z = ::std::sqrt(4.0);
+    double z = ::tpy::stdlib::math::checked_sqrt(4.0);
     // if z > 1.99 and z < 2.01:
     if (((z > 1.99) && (z < 2.01))) {
         // print("sqrt ok")
@@ -32,9 +32,9 @@ void main() {
     }
     // # Test math.sin/cos
     // s = math.sin(0.0)
-    double s = ::std::sin(0.0);
+    double s = ::tpy::stdlib::math::checked_sin(0.0);
     // c = math.cos(0.0)
-    double c = ::std::cos(0.0);
+    double c = ::tpy::stdlib::math::checked_cos(0.0);
     // if s > -0.01 and s < 0.01 and c > 0.99 and c < 1.01:
     if (((((s > -(0.01)) && (s < 0.01)) && (c > 0.99)) && (c < 1.01))) {
         // print("sin/cos ok")

@@ -15,8 +15,8 @@ readonly 100 100
 loop-var 3
 ctor-slot 110 111
 str-member 120
-return-isinstance 130
-return-match 130
+return-isinstance 131 131
+return-match 132 132
 value-union 181 181
 value-union-match 181 181
 value-union-method 181 181

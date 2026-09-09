@@ -1,0 +1,33 @@
+module level: value then caught domain
+free function: unary domains, overflow, infinities, signed zero
+free function: every unary NaN propagates
+free function: ordinary values and accepted domain boundaries
+free function: binary domains, overflow, NaN precedence and inverses
+free function: ldexp finite overflow, underflow and nonfinite inputs
+free function: ulp max-finite, predecessor, zeros, subnormal, nonfinite
+constructor: value
+method: value then caught domain
+constructor: caught domain
+generator: first yield
+generator: caught after first yield
+async: value then caught domain
+comprehension: guarded values
+comprehension: caught included domain
+closure: value
+closure: caught domain
+context manager: enter
+try/finally: finally
+context manager: exit ValueError
+context manager: outer catch
+@error_return: value
+@error_return: caught ordinary domain
+shapes: optional caught domain
+shapes: union caught domain
+shapes: generic caught domain
+shapes: monomorphic caught domain
+shapes: tuple, optional, union and generic scalar twins
+evaluation: unary and binary arguments evaluated once
+evaluation: ternary and short-circuit placement
+match arm: skipped
+match arm: value
+match arm: caught domain

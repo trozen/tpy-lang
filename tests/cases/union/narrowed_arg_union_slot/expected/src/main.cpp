@@ -37,6 +37,7 @@ int32_t peek(std::variant<const A*, const B*> u) {
 
 // # free function body; the subject is a PARAM narrowed then passed on, the
 // # shape the pass-through verdict used to render bare
+// # Nested captures cannot lower: BUGS.md#nested-def-narrowed-union-capture.
 // def free(v: A | B) -> Int32:
 int32_t free(std::variant<A*, B*> v) {
     // if isinstance(v, A):
@@ -435,6 +436,8 @@ int32_t walrus(std::variant<A*, B*> v) {
 
 // # readonly[A | B] slot: the deep-const pointer-variant spelling (a const
 // # borrow, so nothing is mutated here)
+// # Const-bound members cannot use mutable-pointee slots, including plain loop
+// # variables: BUGS.md#const-member-at-mutable-pointee-union-slot.
 // def readonly_slot(v: A | B) -> Int32:
 int32_t readonly_slot(const std::variant<A*, B*> v) {
     // if isinstance(v, A):
@@ -471,6 +474,7 @@ int32_t loop_var(const std::vector<std::variant<A, B>>& xs) {
 }
 
 // # constructor-parameter slot
+// # Own union slots reject before the union lift, so this slot is borrowed.
 // def ctor_slot(v: A | B) -> Int32:
 int32_t ctor_slot(std::variant<A*, B*> v) {
     // if isinstance(v, A):
@@ -553,6 +557,8 @@ std::variant<A*, B*> pick_match(std::variant<A*, B*> v) {
 // # `std::variant<...> __tmp_N`. A value union cannot show aliasing (its members
 // # are copies by definition), so the twin renders on the same line instead: the
 // # member-typed local at the same slot, which takes the variant-temp row.
+// # Inline narrowing is lost: BUGS.md#inline-narrowed-value-union-arg-rejects.
+// # str aliases are views, unlike owned members: BUGS.md#value-union-str-view-insert.
 // def value_union(v: Int32 | Float64) -> Int32:
 int32_t value_union(const std::variant<int32_t, double>& v) {
     // if isinstance(v, Int32):
@@ -906,19 +912,27 @@ void main() {
     A s = A(130);
     // ret = pick_isinstance(s)
     std::variant<A*, B*> ret = pick_isinstance(std::variant<A*, B*>{&(s)});
+    // # A post-return mutation must remain visible through the returned alias.
+    // # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
+    // s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
+    s.n = (::tpy::add_check<int32_t>(s.n, 1));
     // if isinstance(ret, A):
     if (std::holds_alternative<A*>(ret)) {
         auto& __ret = *std::get<A*>(ret);
-        // print("return-isinstance", ret.n)
-        std::cout << "return-isinstance" << " " << __ret.n << "\n";
+        // print("return-isinstance", ret.n, s.n)
+        std::cout << "return-isinstance" << " " << __ret.n << " " << s.n << "\n";
     }
     // ret2 = pick_match(s)
     std::variant<A*, B*> ret2 = pick_match(std::variant<A*, B*>{&(s)});
+    // # The match return must preserve the same shared object.
+    // # Field writes preserve this record borrow: BUGS.md#record-field-borrow-false-invalidation.
+    // s.n = s.n + 1  # tpyc: warning(/Mutation of 's' while borrowed/)
+    s.n = (::tpy::add_check<int32_t>(s.n, 1));
     // if isinstance(ret2, A):
     if (std::holds_alternative<A*>(ret2)) {
         auto& __ret2 = *std::get<A*>(ret2);
-        // print("return-match", ret2.n)
-        std::cout << "return-match" << " " << __ret2.n << "\n";
+        // print("return-match", ret2.n, s.n)
+        std::cout << "return-match" << " " << __ret2.n << " " << s.n << "\n";
     }
     // # Int32(...) is spelled out because CPython's Int32 stub is an int
     // # SUBCLASS: a bare literal would not satisfy isinstance there
@@ -975,26 +989,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # A union subject narrowed by isinstance / match / a ternary binds the
-    // # member-typed extraction alias, so at a union slot it lifts that alias's
-    // # address back into the pointer variant -- the same lift the member-typed
-    // # twin takes and the same fact the union RETURN position already decided.
-    // # One section per position; the callee mutates through the union slot and
-    // # the caller reads its own object back, so a copy would show. Each section's
-    // # call from main() passes a member-typed local, which is the twin.
-    // # A non-mutating free function's union slot keeps MUTABLE pointees while a
-    // # const-bound member name is `const A&`, so the readonly-method and plain
-    // # loop-variable positions still fail the C++ build -- BUGS.md#const-member-at-mutable-pointee-union-slot.
-    // # An `Own[A | B]` slot never reaches this lift at all (the arg predicate
-    // # rejects an Own slot before the union verdict), so it is out of scope here.
-    // # A closure over the narrowed subject has no section: a nested def capturing
-    // # a narrowed union name does not lower -- BUGS.md#nested-def-narrowed-union-capture.
-    // # The VALUE-union sections take the same fact through the value variant. Two
-    // # of their shapes are out: the inline (ternary) form, because the check phase
-    // # does not carry the inline narrowing
-    // # (BUGS.md#inline-narrowed-value-union-arg-rejects), and a `str` member,
-    // # whose alias is a view while the member is owned
-    // # (BUGS.md#value-union-str-view-insert).
+    // # Narrowed union members pass through union argument and return slots.
+    // # Mutation exposes reference copies; value members retain value semantics.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // main()

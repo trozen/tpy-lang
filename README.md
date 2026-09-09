@@ -133,6 +133,13 @@ and compile-affecting environment variables (`CPATH`,
 `CPLUS_INCLUDE_PATH`, `LIBRARY_PATH`, `CCACHE_*`) are not part of the
 key -- after changing either, run once with `--rebuild`.
 
+Ctrl-C reaches the running program after both fresh builds and cached runs.
+After a fresh build, the launcher reports signal termination as exit status
+`128 + signal` (130 for SIGINT, 143 for SIGTERM); a program that handles the
+signal keeps its own exit status. An intentionally inherited ignored SIGINT
+remains ignored. Cached runs replace the launcher, so process supervisors
+observe signal termination directly instead of a normal launcher exit.
+
 A `sources.cmake` file is generated alongside the C++ output for easy CMake integration.
 By default, the tpy runtime headers are bundled into the output directory so the
 result is self-contained and can be committed or copied to another machine.

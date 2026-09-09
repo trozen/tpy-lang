@@ -9,7 +9,7 @@
 // into an extension .so. Build, e.g.:
 //   g++ -std=c++23 -DPy_LIMITED_API=0x030c0000 \
 //       -I runtime/cpp/include -I "$(python -c 'import sysconfig;print(sysconfig.get_path("include"))')" \
-//       -c runtime/cpp/tests/interop/cpython_facade_selfcheck.cpp -o /dev/null
+//       -c runtime/cpp/tests/interop/test_cpython_facade_selfcheck.cpp -o /dev/null
 
 #define Py_LIMITED_API 0x030c0000
 #include <Python.h>

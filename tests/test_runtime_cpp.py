@@ -21,7 +21,9 @@ _CPP_TESTS = PROJECT_ROOT / "runtime" / "cpp" / "tests"
 # (source, what it pins) -- each is a standalone main() returning non-zero on
 # failure, so the C++ file owns its own assertions.
 _SELFCHECKS = [
-    ("frame_slot_forms.cpp", "resumable-frame slot storage forms"),
+    ("test_frame_slot_forms.cpp", "resumable-frame slot storage forms"),
+    ("test_bigint_small_ops.cpp", "BigInt small-operation values and allocations"),
+    ("test_math_exception_policy.cpp", "math exceptions and IEEE special values"),
 ]
 
 

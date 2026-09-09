@@ -518,10 +518,10 @@ double Random::triangular(double low, double high, std::optional<double> mode) {
         c = ((1.0) - (c));
         // # CPython swaps low/high here; equivalent rewrite:
         // return high + (low - high) * math.sqrt(u * c)
-        return ((high) + (((((low) - (high))) * (::std::sqrt(((u) * (c)))))));
+        return ((high) + (((((low) - (high))) * (::tpy::stdlib::math::checked_sqrt(((u) * (c)))))));
     }
     // return low + (high - low) * math.sqrt(u * c)
-    return ((low) + (((((high) - (low))) * (::std::sqrt(((u) * (c)))))));
+    return ((low) + (((((high) - (low))) * (::tpy::stdlib::math::checked_sqrt(((u) * (c)))))));
 }
 
 // def gauss(self, mu: float, sigma: float) -> float:
@@ -540,11 +540,11 @@ double Random::gauss(double mu, double sigma) {
     // x2pi: float = self.random() * _TWOPI
     double x2pi = ((this->random()) * (_TWOPI));
     // g2rad: float = math.sqrt(-2.0 * math.log(1.0 - self.random()))
-    double g2rad = ::std::sqrt(((-(2.0)) * (::std::log(((1.0) - (this->random()))))));
+    double g2rad = ::tpy::stdlib::math::checked_sqrt(((-(2.0)) * (::tpy::stdlib::math::checked_log(((1.0) - (this->random()))))));
     // z2: float = math.cos(x2pi) * g2rad
-    double z2 = ((::std::cos(x2pi)) * (g2rad));
+    double z2 = ((::tpy::stdlib::math::checked_cos(x2pi)) * (g2rad));
     // self._gauss_next = math.sin(x2pi) * g2rad
-    this->_gauss_next = ((::std::sin(x2pi)) * (g2rad));
+    this->_gauss_next = ((::tpy::stdlib::math::checked_sin(x2pi)) * (g2rad));
     // self._has_gauss_next = True
     this->_has_gauss_next = true;
     // return mu + z2 * sigma
@@ -563,7 +563,7 @@ double Random::gammavariate(double alpha, double beta) {
     // if alpha > 1.0:
     if ((alpha > 1.0)) {
         // ainv: float = math.sqrt(2.0 * alpha - 1.0)
-        double ainv = ::std::sqrt(((((2.0) * (alpha))) - (1.0)));
+        double ainv = ::tpy::stdlib::math::checked_sqrt(((((2.0) * (alpha))) - (1.0)));
         // bbb: float = alpha - _LOG4
         double bbb = ((alpha) - (_LOG4));
         // ccc: float = alpha + ainv
@@ -580,15 +580,15 @@ double Random::gammavariate(double alpha, double beta) {
             // u2: float = 1.0 - self.random()
             double u2 = ((1.0) - (this->random()));
             // v: float = math.log(u1 / (1.0 - u1)) / ainv
-            double v = (::tpy::truediv(::std::log((::tpy::truediv(u1, ((1.0) - (u1))))), ainv));
+            double v = (::tpy::truediv(::tpy::stdlib::math::checked_log((::tpy::truediv(u1, ((1.0) - (u1))))), ainv));
             // x: float = alpha * math.exp(v)
-            double x = ((alpha) * (::std::exp(v)));
+            double x = ((alpha) * (::tpy::stdlib::math::checked_exp(v)));
             // z: float = u1 * u1 * u2
             double z = ((((u1) * (u1))) * (u2));
             // r: float = bbb + ccc * v - x
             double r = ((((bbb) + (((ccc) * (v))))) - (x));
             // if r + _SG_MAGICCONST - 4.5 * z >= 0.0 or r >= math.log(z):
-            if (((((((r) + (_SG_MAGICCONST))) - (((4.5) * (z)))) >= 0.0) || (r >= ::std::log(z)))) {
+            if (((((((r) + (_SG_MAGICCONST))) - (((4.5) * (z)))) >= 0.0) || (r >= ::tpy::stdlib::math::checked_log(z)))) {
                 // return x * beta
                 return ((x) * (beta));
             }
@@ -597,7 +597,7 @@ double Random::gammavariate(double alpha, double beta) {
     // if alpha == 1.0:
     if ((alpha == 1.0)) {
         // return -math.log(1.0 - self.random()) * beta
-        return ((-(::std::log(((1.0) - (this->random()))))) * (beta));
+        return ((-(::tpy::stdlib::math::checked_log(((1.0) - (this->random()))))) * (beta));
     }
     // # 0 < alpha < 1: Ahrens-Dieter rejection sampling.
     // b: float = (math.e + alpha) / math.e
@@ -617,7 +617,7 @@ double Random::gammavariate(double alpha, double beta) {
         // else:
         } else {
             // x2 = -math.log((b - p) / alpha)
-            x2 = -(::std::log((::tpy::truediv(((b) - (p)), alpha))));
+            x2 = -(::tpy::stdlib::math::checked_log((::tpy::truediv(((b) - (p)), alpha))));
         }
         // u1b: float = self.random()
         double u1b = this->random();
@@ -631,7 +631,7 @@ double Random::gammavariate(double alpha, double beta) {
         // else:
         } else {
             // if u1b <= math.exp(-x2):
-            if ((u1b <= ::std::exp(-(x2)))) {
+            if ((u1b <= ::tpy::stdlib::math::checked_exp(-(x2)))) {
                 // return x2 * beta
                 return ((x2) * (beta));
             }
@@ -649,7 +649,7 @@ double Random::vonmisesvariate(double mu, double kappa) {
     // s: float = 0.5 / kappa
     double s = (::tpy::truediv(0.5, kappa));
     // r: float = s + math.sqrt(1.0 + s * s)
-    double r = ((s) + (::std::sqrt(((1.0) + (((s) * (s)))))));
+    double r = ((s) + (::tpy::stdlib::math::checked_sqrt(((1.0) + (((s) * (s)))))));
     // z: float = 0.0
     double z = 0.0;
     // while True:
@@ -657,13 +657,13 @@ double Random::vonmisesvariate(double mu, double kappa) {
         // u1: float = self.random()
         double u1 = this->random();
         // z = math.cos(math.pi * u1)
-        z = ::std::cos(((::tpystd::math::pi) * (u1)));
+        z = ::tpy::stdlib::math::checked_cos(((::tpystd::math::pi) * (u1)));
         // d: float = z / (r + z)
         double d = (::tpy::truediv(z, ((r) + (z))));
         // u2: float = self.random()
         double u2 = this->random();
         // if u2 < 1.0 - d * d or u2 <= (1.0 - d) * math.exp(d):
-        if (((u2 < ((1.0) - (((d) * (d))))) || (u2 <= ((((1.0) - (d))) * (::std::exp(d)))))) {
+        if (((u2 < ((1.0) - (((d) * (d))))) || (u2 <= ((((1.0) - (d))) * (::tpy::stdlib::math::checked_exp(d)))))) {
             // break
             break;
         }
@@ -681,11 +681,11 @@ double Random::vonmisesvariate(double mu, double kappa) {
     // if u3 > 0.5:
     if ((u3 > 0.5)) {
         // theta = mu_mod + math.acos(f)
-        theta = ((mu_mod) + (::std::acos(f)));
+        theta = ((mu_mod) + (::tpy::stdlib::math::checked_acos(f)));
     // else:
     } else {
         // theta = mu_mod - math.acos(f)
-        theta = ((mu_mod) - (::std::acos(f)));
+        theta = ((mu_mod) - (::tpy::stdlib::math::checked_acos(f)));
     }
     // return theta % _TWOPI
     return (::tpy::fmod(theta, _TWOPI));
@@ -712,11 +712,11 @@ void __tpy_init() {
     // _TWOPI: float = 2.0 * math.pi
     _TWOPI = ((2.0) * (::tpystd::math::pi));
     // _LOG4: float = math.log(4.0)
-    _LOG4 = ::std::log(4.0);
+    _LOG4 = ::tpy::stdlib::math::checked_log(4.0);
     // _SG_MAGICCONST: float = 1.0 + math.log(4.5)
-    _SG_MAGICCONST = ((1.0) + (::std::log(4.5)));
+    _SG_MAGICCONST = ((1.0) + (::tpy::stdlib::math::checked_log(4.5)));
     // _NV_MAGICCONST: float = 4.0 * math.exp(-0.5) / math.sqrt(2.0)
-    _NV_MAGICCONST = (::tpy::truediv(((4.0) * (::std::exp(-(0.5)))), ::std::sqrt(2.0)));
+    _NV_MAGICCONST = (::tpy::truediv(((4.0) * (::tpy::stdlib::math::checked_exp(-(0.5)))), ::tpy::stdlib::math::checked_sqrt(2.0)));
     // _inst: Random = Random()
     static Random __global_slot_1 = Random();
     _inst = &__global_slot_1;

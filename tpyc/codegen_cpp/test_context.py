@@ -2,7 +2,46 @@
 
 import pytest
 
-from .context import expand_cpp_template, CodeGenError
+from .context import expand_cpp_template, CodeGenError, resumable_struct_name
+
+
+@pytest.mark.parametrize("prefix", ["__coro_", "__gen_"])
+@pytest.mark.parametrize(("name", "owner", "suffix"), [
+    ("compute", None, "compute"),
+    ("delete", None, "delete_"),
+    ("delete_", None, "delete_"),
+    ("compute", "Worker", "Worker_compute"),
+    ("delete", "Worker", "Worker_delete_"),
+    ("delete_", "Worker", "Worker_delete_"),
+    ("compute", "delete", "delete__compute"),
+    ("compute", "delete_", "delete__compute"),
+])
+def test_resumable_flat_names_preserve_existing_spelling(
+        prefix: str, name: str, owner: str | None, suffix: str) -> None:
+    assert resumable_struct_name(name, owner, prefix) == prefix + suffix
+
+
+@pytest.mark.parametrize("prefix", ["__coro_", "__gen_"])
+def test_resumable_nested_names_are_unambiguous(prefix: str) -> None:
+    subjects = [
+        ("compute", "Outer.Inner"),
+        ("compute", "Outer_Inner.More"),
+        ("compute", "Outer.Inner_More"),
+        ("compute", "Outer.Inner.More"),
+        ("Inner_compute", "Outer.More"),
+        ("compute", "Outer.More_Inner"),
+        ("delete", "Outer.Inner"),
+        ("delete_", "Outer.Inner"),
+        ("compute", "delete.Inner"),
+        ("compute", "delete_.Inner"),
+    ]
+    names = {resumable_struct_name(name, owner, prefix) for name, owner in subjects}
+    assert len(names) == len(subjects)
+    assert all(name.isascii() and name.isidentifier() for name in names)
+    assert prefix + "2_5_Outer_5_Inner_7_compute" in names
+    # These legacy free/method identities already alias; nested names must alias neither.
+    assert resumable_struct_name("Outer_Inner_compute", prefix=prefix) not in names
+    assert resumable_struct_name("compute", "Outer_Inner", prefix) not in names
 
 
 class TestExpandCppTemplate:

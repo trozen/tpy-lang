@@ -2116,9 +2116,9 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     n = state.next_loop_index()
     cpp_elem = stmt.elem_type.to_cpp()
     var = escape_cpp_name(stmt.var)
-    # A hoisted rebind runs the counter through a hidden `__range_N` and assigns
-    # the user var inside the body.
-    counter = f"__range_{n}" if stmt.hoist_loop_var else var
+    # Keep target writes and post-loop values independent of induction.
+    separate_target = stmt.hoist_loop_var or stmt.target_written
+    counter = f"__range_{n}" if separate_target else var
     start_cpp = "0" if stmt.start is None else _emit_expr(stmt.start, state)
     stop_cpp = _emit_expr(stmt.stop, state)
     if stmt.start is not None and not stmt.start_is_literal:
@@ -2166,6 +2166,8 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
                   f"{counter} += __step_{n}) {{\n")
     if stmt.hoist_loop_var:
         out.write(f"{INDENT * (indent_level + 1)}{var} = {counter};\n")
+    elif stmt.target_written:
+        out.write(f"{INDENT * (indent_level + 1)}{cpp_elem} {var} = {counter};\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.loop_depth -= 1

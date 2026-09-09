@@ -1,3 +1,17 @@
 10.0
 0.0
 0.010000000000000002
+fusion True
+low bits True
+nan third True
+nan third swapped True
+nan first True
+nan second True
+infinity True
+negative infinity True
+underflow True True
+zero signs -1.0 1.0
+invalid ValueError
+opposed ValueError
+overflow OverflowError
+negative overflow OverflowError

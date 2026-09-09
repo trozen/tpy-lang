@@ -55,7 +55,7 @@ from conftest import (
 
 _FACADE_SELFCHECK = (
     PROJECT_ROOT / "runtime" / "cpp" / "tests" / "interop"
-    / "cpython_facade_selfcheck.cpp"
+    / "test_cpython_facade_selfcheck.cpp"
 )
 # The abi3 floor: every glue TU and the self-check are built against the 3.12
 # limited API.

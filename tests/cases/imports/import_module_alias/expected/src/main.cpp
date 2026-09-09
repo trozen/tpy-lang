@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // x = m.sqrt(16.0)
-    double x = ::std::sqrt(16.0);
+    double x = ::tpy::stdlib::math::checked_sqrt(16.0);
     // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
 }

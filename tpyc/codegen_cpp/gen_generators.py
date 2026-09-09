@@ -17,7 +17,10 @@ from tpyc import modules as builtin_modules
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame, view_owned_copy_init)
 from . import emit_prims
-from .context import INDENT, CodeGenError, escape_cpp_name, contains_named_expr
+from .context import (
+    INDENT, CodeGenError, escape_cpp_name, contains_named_expr,
+    resumable_struct_name,
+)
 from .resumable_cfg import _stmts_have_any_suspension, same_module_dep_unit
 from .protocols import protocol_param_template_name
 
@@ -252,13 +255,6 @@ class GeneratorCodegen:
         return self.functions.gen_params(func.params, func.type_params,
                                          emit_defaults=emit_defaults, func=func,
                                          defaults=dfl)
-
-    @staticmethod
-    def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:
-        """Compute the generator struct name."""
-        if record_name:
-            return f"__gen_{record_name}_{func.name}"
-        return f"__gen_{func.name}"
 
     @staticmethod
     def is_simple_generator(func: TpyFunction) -> bool:
@@ -1146,8 +1142,7 @@ class GeneratorCodegen:
                 "a resumable frame yet; bind the elements first "
                 "(e.g. `xs = list(...)`) and iterate those",
                 loc=stmt.loc)
-        base = "__gen_" + (f"{escape_cpp_name(owner)}_" if owner else "") \
-            + escape_cpp_name(callee.name)
+        base = resumable_struct_name(callee.name, owner, "__gen_")
         if callee.type_params:
             args = getattr(call_node, "inferred_type_args", None)
             if not args or len(args) != len(callee.type_params):
@@ -1284,4 +1279,3 @@ class GeneratorCodegen:
             if isinstance(stmt, TpyVarDecl):
                 captures.append(escape_cpp_name(stmt.name))
         return ", ".join(captures)
-

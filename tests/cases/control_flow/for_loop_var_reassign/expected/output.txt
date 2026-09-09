@@ -1,2 +1,79 @@
+module 3
 0
+1
+2
+3
+4
 done
+Int32 +1 5 10
+Int32 -1 5 15
+Int32 +2 5 20
+Int32 -2 5 30
+Int32 variable 5 20
+Int32 +1 5 10
+Int32 -1 5 15
+Int32 +2 5 20
+Int32 -2 5 30
+Int32 variable 5 -20
+Int64 +1 5 10
+Int64 -1 5 15
+Int64 +2 5 20
+Int64 -2 5 30
+Int64 variable 5 20
+Int64 +1 5 10
+Int64 -1 5 15
+Int64 +2 5 20
+Int64 -2 5 30
+Int64 variable 5 -20
+BigInt +1 5 10
+BigInt -1 5 15
+BigInt +2 5 20
+BigInt -2 5 30
+BigInt variable 5 20
+BigInt +1 5 10
+BigInt -1 5 15
+BigInt +2 5 20
+BigInt -2 5 30
+BigInt variable 5 -20
+BigInt +1 5 10
+BigInt -1 5 15
+BigInt +2 5 20
+BigInt -2 5 30
+BigInt variable 5 20
+BigInt +1 5 10
+BigInt -1 5 15
+BigInt +2 5 20
+BigInt -2 5 30
+BigInt variable 5 -20
+augassign 5
+walrus 5
+nested scalar 96
+match capture 3
+tuple assignment 30
+comprehension walrus 3
+comprehension filter 3 30
+comprehension shadow inverse 9
+constructor 3
+method 6
+staticmethod 3
+closure body 3
+closure nonlocal 3
+closure parameter inverse 33
+context body 3 1
+continue finally else 3 3
+break finally 2 2
+existing target 20
+empty target 20
+postloop target 3 30
+parameter target 40
+bound order [1, 2, 3] 5
+generator 3 30
+async 3
+error_return 3
+match arm 3
+generic twin 3 3
+generic twin aliases 0 0
+readonly noalloc 10
+readonly heap 5
+scalar container inverse 3 [0, 1, 2]
+reference container inverse 11 12

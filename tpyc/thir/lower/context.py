@@ -834,13 +834,10 @@ class _NarrowScope:
     original variant. `persistent_aliases` mirrors
     `ctx.declared_persistent_aliases` for the post-if statement-level
     extraction's collision bump (`__v` -> `__v_2`). `subject_union` records
-    each narrowed subject's ORIGINAL union (assert / post-if / branch);
-    consumers key it to the DECLARED-type classification print args and
-    subscripts use (ctx.var_types) -- NB that classification has ONE
-    override, `protocol_narrowings`, so a future arm routing
-    protocol-narrowed subjects must not reuse the union-keyed renders.
-    read by the U4 re-assert bump to render the replacement alias after
-    `declared` was retyped to the member. `persistent_narrowed` is the
+    each narrowed subject's ORIGINAL union after `declared` is retyped to
+    the member. Consumers use it for alias lifting and re-extraction;
+    subscript dispatch still follows the narrowed member type.
+    `persistent_narrowed` is the
     var-level subset whose live alias is statement-level.
     A branch/loop body lowers under a `snapshot()`, restored at the closing
     brace -- scope-snapshot semantics. NB `_LowerCtx.inline_narrowed`

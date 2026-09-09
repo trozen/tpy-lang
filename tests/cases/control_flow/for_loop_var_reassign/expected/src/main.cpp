@@ -3,19 +3,1150 @@
 
 namespace tpyapp::main {
 
+// # Module statement: only the count escapes, keeping the target unhoisted.
+// module_count = 0
+int32_t module_count{};
 
-// # Test reassigning for-loop variable inside loop body
-// def main() -> None:
-void main() {
-    // for i in range(5):
-    for (int32_t i = 0; i < 5; ++i) {
+// def original() -> None:
+void original() {
+    // # Free function: preserve the original early-exit regression.
+    // for i in range(5):  # tpyc: ok
+    for (int32_t __range_0 = 0; __range_0 < 5; ++__range_0) {
+        int32_t i = __range_0;
         // print(i)
         std::cout << i << "\n";
-        // i = i + 100
+        // i = i + 100  # tpyc: ok
         i = (::tpy::add_check<int32_t>(i, 100));
     }
     // print("done")
     std::cout << "done" << "\n";
+}
+
+// def steps32(base: Int32, step: Int32) -> None:
+void steps32(int32_t base, int32_t step) {
+    // # Int32: all five emission arms keep a private induction value.
+    // count = 0
+    int32_t count = 0;
+    // total = 0
+    int32_t total = 0;
+    // for a in range(base, base + 5):  # tpyc: ok
+    int32_t __start_0 = base;
+    int32_t __stop_0 = (::tpy::add_check<int32_t>(base, 5));
+    for (int32_t __range_0 = __start_0; __range_0 < __stop_0; ++__range_0) {
+        int32_t a = __range_0;
+        // total += a - base
+        total = ::tpy::add_check<int32_t>(total, (::tpy::sub_check<int32_t>(a, base)));
+        // a = base  # tpyc: ok
+        a = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int32 +1", count, total)
+    std::cout << "Int32 +1" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for b in range(base + 5, base, -1):  # tpyc: ok
+    int32_t __start_1 = (::tpy::add_check<int32_t>(base, 5));
+    int32_t __stop_1 = base;
+    for (int32_t __range_1 = __start_1; __range_1 > __stop_1; --__range_1) {
+        int32_t b = __range_1;
+        // total += b - base
+        total = ::tpy::add_check<int32_t>(total, (::tpy::sub_check<int32_t>(b, base)));
+        // b = base + 5  # tpyc: ok
+        b = (::tpy::add_check<int32_t>(base, 5));
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int32 -1", count, total)
+    std::cout << "Int32 -1" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for c in range(base, base + 10, 2):  # tpyc: ok
+    int32_t __start_2 = base;
+    int32_t __stop_2 = (::tpy::add_check<int32_t>(base, 10));
+    ::tpy::range_check_overflow<int32_t>(__start_2, __stop_2, 2);
+    for (int32_t __range_2 = __start_2; __range_2 < __stop_2; __range_2 += 2) {
+        int32_t c = __range_2;
+        // total += c - base
+        total = ::tpy::add_check<int32_t>(total, (::tpy::sub_check<int32_t>(c, base)));
+        // c = base  # tpyc: ok
+        c = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int32 +2", count, total)
+    std::cout << "Int32 +2" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for d in range(base + 10, base, -2):  # tpyc: ok
+    int32_t __start_3 = (::tpy::add_check<int32_t>(base, 10));
+    int32_t __stop_3 = base;
+    ::tpy::range_check_overflow<int32_t>(__start_3, __stop_3, -2);
+    for (int32_t __range_3 = __start_3; __range_3 > __stop_3; __range_3 += -2) {
+        int32_t d = __range_3;
+        // total += d - base
+        total = ::tpy::add_check<int32_t>(total, (::tpy::sub_check<int32_t>(d, base)));
+        // d = base + 10  # tpyc: ok
+        d = (::tpy::add_check<int32_t>(base, 10));
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int32 -2", count, total)
+    std::cout << "Int32 -2" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for e in range(base, base + 5 * step, step):  # tpyc: ok
+    int32_t __start_4 = base;
+    int32_t __stop_4 = (::tpy::add_check<int32_t>(base, (::tpy::mul_check<int32_t>(5, step))));
+    int32_t __step_4 = step;
+    ::tpy::range_check_step_nonzero(__step_4);
+    ::tpy::range_check_overflow<int32_t>(__start_4, __stop_4, __step_4);
+    for (int32_t __range_4 = __start_4; __step_4 > 0 ? __range_4 < __stop_4 : __range_4 > __stop_4; __range_4 += __step_4) {
+        int32_t e = __range_4;
+        // total += e - base
+        total = ::tpy::add_check<int32_t>(total, (::tpy::sub_check<int32_t>(e, base)));
+        // e = base  # tpyc: ok
+        e = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int32 variable", count, total)
+    std::cout << "Int32 variable" << " " << count << " " << total << "\n";
+}
+
+// def steps64(base: Int64, step: Int64) -> None:
+void steps64(int64_t base, int64_t step) {
+    // # Int64: typed bounds force the wider counter instead of default Int32.
+    // count = 0
+    int32_t count = 0;
+    // total: Int64 = 0
+    int64_t total = 0;
+    // for a in range(base, base + 5):  # tpyc: ok
+    int64_t __start_0 = base;
+    int64_t __stop_0 = (::tpy::add_check<int64_t>(base, 5));
+    for (int64_t __range_0 = __start_0; __range_0 < __stop_0; ++__range_0) {
+        int64_t a = __range_0;
+        // total += a - base
+        total = ::tpy::add_check<int64_t>(total, (::tpy::sub_check<int64_t>(a, base)));
+        // a = base  # tpyc: ok
+        a = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int64 +1", count, total)
+    std::cout << "Int64 +1" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for b in range(base + 5, base, -1):  # tpyc: ok
+    int64_t __start_1 = (::tpy::add_check<int64_t>(base, 5));
+    int64_t __stop_1 = base;
+    for (int64_t __range_1 = __start_1; __range_1 > __stop_1; --__range_1) {
+        int64_t b = __range_1;
+        // total += b - base
+        total = ::tpy::add_check<int64_t>(total, (::tpy::sub_check<int64_t>(b, base)));
+        // b = base + 5  # tpyc: ok
+        b = (::tpy::add_check<int64_t>(base, 5));
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int64 -1", count, total)
+    std::cout << "Int64 -1" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for c in range(base, base + 10, 2):  # tpyc: ok
+    int64_t __start_2 = base;
+    int64_t __stop_2 = (::tpy::add_check<int64_t>(base, 10));
+    ::tpy::range_check_overflow<int64_t>(__start_2, __stop_2, 2);
+    for (int64_t __range_2 = __start_2; __range_2 < __stop_2; __range_2 += 2) {
+        int64_t c = __range_2;
+        // total += c - base
+        total = ::tpy::add_check<int64_t>(total, (::tpy::sub_check<int64_t>(c, base)));
+        // c = base  # tpyc: ok
+        c = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int64 +2", count, total)
+    std::cout << "Int64 +2" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for d in range(base + 10, base, -2):  # tpyc: ok
+    int64_t __start_3 = (::tpy::add_check<int64_t>(base, 10));
+    int64_t __stop_3 = base;
+    ::tpy::range_check_overflow<int64_t>(__start_3, __stop_3, -2);
+    for (int64_t __range_3 = __start_3; __range_3 > __stop_3; __range_3 += -2) {
+        int64_t d = __range_3;
+        // total += d - base
+        total = ::tpy::add_check<int64_t>(total, (::tpy::sub_check<int64_t>(d, base)));
+        // d = base + 10  # tpyc: ok
+        d = (::tpy::add_check<int64_t>(base, 10));
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int64 -2", count, total)
+    std::cout << "Int64 -2" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = 0;
+    // for e in range(base, base + 5 * step, step):  # tpyc: ok
+    int64_t __start_4 = base;
+    int64_t __stop_4 = (::tpy::add_check<int64_t>(base, (::tpy::mul_check<int64_t>(5, step))));
+    int64_t __step_4 = step;
+    ::tpy::range_check_step_nonzero(__step_4);
+    ::tpy::range_check_overflow<int64_t>(__start_4, __stop_4, __step_4);
+    for (int64_t __range_4 = __start_4; __step_4 > 0 ? __range_4 < __stop_4 : __range_4 > __stop_4; __range_4 += __step_4) {
+        int64_t e = __range_4;
+        // total += e - base
+        total = ::tpy::add_check<int64_t>(total, (::tpy::sub_check<int64_t>(e, base)));
+        // e = base  # tpyc: ok
+        e = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("Int64 variable", count, total)
+    std::cout << "Int64 variable" << " " << count << " " << total << "\n";
+}
+
+// def steps_big(base: int, step: int) -> None:
+void steps_big(const ::tpy::BigInt& base, const ::tpy::BigInt& step) {
+    // # BigInt: callers exercise both inline payloads and heap limbs.
+    // count = 0
+    int32_t count = 0;
+    // total: int = 0
+    ::tpy::BigInt total = ::tpy::BigInt(0);
+    // for a in range(base, base + 5):  # tpyc: ok
+    ::tpy::BigInt __start_0 = base;
+    ::tpy::BigInt __stop_0 = ((base) + (::tpy::BigInt(5)));
+    for (::tpy::BigInt __range_0 = __start_0; __range_0 < __stop_0; ++__range_0) {
+        ::tpy::BigInt a = __range_0;
+        // total += a - base
+        total = (total) + (((a) - (base)));
+        // a = base  # tpyc: ok
+        a = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("BigInt +1", count, total)
+    std::cout << "BigInt +1" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = ::tpy::BigInt(0);
+    // for b in range(base + 5, base, -1):  # tpyc: ok
+    ::tpy::BigInt __start_1 = ((base) + (::tpy::BigInt(5)));
+    ::tpy::BigInt __stop_1 = base;
+    for (::tpy::BigInt __range_1 = __start_1; __range_1 > __stop_1; --__range_1) {
+        ::tpy::BigInt b = __range_1;
+        // total += b - base
+        total = (total) + (((b) - (base)));
+        // b = base + 5  # tpyc: ok
+        b = ((base) + (::tpy::BigInt(5)));
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("BigInt -1", count, total)
+    std::cout << "BigInt -1" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = ::tpy::BigInt(0);
+    // for c in range(base, base + 10, 2):  # tpyc: ok
+    ::tpy::BigInt __start_2 = base;
+    ::tpy::BigInt __stop_2 = ((base) + (::tpy::BigInt(10)));
+    ::tpy::BigInt __step_2 = ::tpy::BigInt(2);
+    for (::tpy::BigInt __range_2 = __start_2; __range_2 < __stop_2; __range_2 += __step_2) {
+        ::tpy::BigInt c = __range_2;
+        // total += c - base
+        total = (total) + (((c) - (base)));
+        // c = base  # tpyc: ok
+        c = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("BigInt +2", count, total)
+    std::cout << "BigInt +2" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = ::tpy::BigInt(0);
+    // for d in range(base + 10, base, -2):  # tpyc: ok
+    ::tpy::BigInt __start_3 = ((base) + (::tpy::BigInt(10)));
+    ::tpy::BigInt __stop_3 = base;
+    ::tpy::BigInt __step_3 = ::tpy::BigInt(-2);
+    for (::tpy::BigInt __range_3 = __start_3; __range_3 > __stop_3; __range_3 += __step_3) {
+        ::tpy::BigInt d = __range_3;
+        // total += d - base
+        total = (total) + (((d) - (base)));
+        // d = base + 10  # tpyc: ok
+        d = ((base) + (::tpy::BigInt(10)));
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("BigInt -2", count, total)
+    std::cout << "BigInt -2" << " " << count << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    total = ::tpy::BigInt(0);
+    // for e in range(base, base + 5 * step, step):  # tpyc: ok
+    ::tpy::BigInt __start_4 = base;
+    ::tpy::BigInt __stop_4 = ((base) + (((::tpy::BigInt(::tpy::BigInt(5))) * (step))));
+    ::tpy::BigInt __step_4 = step;
+    ::tpy::range_check_step_nonzero(__step_4);
+    for (::tpy::BigInt __range_4 = __start_4; __step_4 > 0 ? __range_4 < __stop_4 : __range_4 > __stop_4; __range_4 += __step_4) {
+        ::tpy::BigInt e = __range_4;
+        // total += e - base
+        total = (total) + (((e) - (base)));
+        // e = base  # tpyc: ok
+        e = base;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("BigInt variable", count, total)
+    std::cout << "BigInt variable" << " " << count << " " << total << "\n";
+}
+
+// def binding_forms(subject: Int32) -> None:
+void binding_forms(int32_t subject) {
+    // count = 0
+    int32_t count = 0;
+    // for a in range(5):
+    for (int32_t __range_0 = 0; __range_0 < 5; ++__range_0) {
+        int32_t a = __range_0;
+        // # Augmented assignment must not cancel the iterator's increment.
+        // a -= 1  # tpyc: ok
+        a = ::tpy::sub_check<int32_t>(a, 1);
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("augassign", count)
+    std::cout << "augassign" << " " << count << "\n";
+    // count = 0
+    count = 0;
+    // for b in range(5):
+    for (int32_t __range_1 = 0; __range_1 < 5; ++__range_1) {
+        int32_t b = __range_1;
+        // # Walrus writes occur in expression descendants.
+        // if (b := 0) == 0:  # tpyc: ok
+        if (((b = 0) == 0)) {
+            // count += 1
+            count = ::tpy::add_check<int32_t>(count, 1);
+        }
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("walrus", count)
+    std::cout << "walrus" << " " << count << "\n";
+    // total = 0
+    int32_t total = 0;
+    // for c in range(3):
+    for (int32_t __range_2 = 0; __range_2 < 3; ++__range_2) {
+        int32_t c = __range_2;
+        // # Nested scalar reuse changes the outer target, not its cursor.
+        // for c in range(10, 12):  # tpyc: ok
+        for (int32_t __range_3 = 10; __range_3 < 12; ++__range_3) {
+            c = __range_3;
+            // total += c
+            total = ::tpy::add_check<int32_t>(total, c);
+        }
+        // total += c
+        total = ::tpy::add_check<int32_t>(total, c);
+    }
+    // print("nested scalar", total)
+    std::cout << "nested scalar" << " " << total << "\n";
+    // count = 0
+    count = 0;
+    // for d in range(3):
+    for (int32_t __range_4 = 0; __range_4 < 3; ++__range_4) {
+        int32_t d = __range_4;
+        // # A match capture is a binding write even without assignment syntax.
+        // match subject:
+        auto& __match_subject_1 = subject;
+        switch (__match_subject_1) {
+        // case d:  # tpyc: ok
+        default: {
+            d = __match_subject_1;
+            // count += 1
+            count = ::tpy::add_check<int32_t>(count, 1);
+            break;
+        }
+        }
+        // if count > 10:
+        if ((count > 10)) {
+            // break
+            break;
+        }
+    }
+    // print("match capture", count)
+    std::cout << "match capture" << " " << count << "\n";
+    // count = 0
+    count = 0;
+    // for e in range(3):
+    for (int32_t __range_5 = 0; __range_5 < 3; ++__range_5) {
+        int32_t e = __range_5;
+        // # Tuple assignment includes a scalar write to the range target.
+        // e, other = 10, 20  # tpyc: ok
+        e = 10;
+        int32_t other = 20;
+        // count += other - e
+        count = ::tpy::add_check<int32_t>(count, (::tpy::sub_check<int32_t>(other, e)));
+    }
+    // print("tuple assignment", count)
+    std::cout << "tuple assignment" << " " << count << "\n";
+}
+
+// def comprehension_forms() -> None:
+void comprehension_forms() {
+    // count = 0
+    int32_t count = 0;
+    // for a in range(3):
+    for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+        int32_t a = __range_0;
+        // # The comprehension's walrus belongs to the enclosing function.
+        // body_values = [(a := 10) for j in range(1)]  # tpyc: ok
+        std::array<int32_t, 1> body_values = ::tpy::array_from_index<int32_t, 1>([&](std::size_t __i_1) -> int32_t {
+            int32_t j = int32_t(__i_1);
+            return (a = 10);
+        });
+        // count += len(body_values)
+        count = ::tpy::add_check<int32_t>(count, ::tpy::__len__(body_values));
+    }
+    // print("comprehension walrus", count)
+    std::cout << "comprehension walrus" << " " << count << "\n";
+    // count = 0
+    count = 0;
+    // total = 0
+    int32_t total = 0;
+    // for b in range(3):
+    for (int32_t __range_2 = 0; __range_2 < 3; ++__range_2) {
+        int32_t b = __range_2;
+        // # A guarded filter write executes only on the second inner element.
+        // filtered_values = [j for j in range(2) if j == 1 and (b := 10) == 10]  # tpyc: ok
+        std::vector<int32_t> filtered_values = ({
+            std::vector<int32_t> __result;
+            const int32_t __stop_3 = 2;
+            if (__stop_3 > 0) __result.reserve(static_cast<size_t>(__stop_3));
+            for (int32_t j = 0; j < __stop_3; ++j) {
+                if (((j == 1) && ((b = 10) == 10))) {
+                    __result.push_back(j);
+                }
+            }
+            std::move(__result);
+        });
+        // count += len(filtered_values)
+        count = ::tpy::add_check<int32_t>(count, ::tpy::__len__(filtered_values));
+        // total += b
+        total = ::tpy::add_check<int32_t>(total, b);
+    }
+    // print("comprehension filter", count, total)
+    std::cout << "comprehension filter" << " " << count << " " << total << "\n";
+    // total = 0
+    total = 0;
+    // for c in range(3):
+    for (int32_t c = 0; c < 3; ++c) {
+        // # The comprehension induction name is local to its own scope.
+        // shadow_values = [c for c in range(2)]  # tpyc: ok
+        std::array<int32_t, 2> shadow_values = ::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_5) -> int32_t {
+            int32_t c = int32_t(__i_5);
+            return c;
+        });
+        // total += c + len(shadow_values)
+        total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(c, ::tpy::__len__(shadow_values))));
+    }
+    // print("comprehension shadow inverse", total)
+    std::cout << "comprehension shadow inverse" << " " << total << "\n";
+}
+
+// def closure_forms() -> None:
+void closure_forms() {
+    // # Closure body: the range is lowered inside the nested function.
+    // def inner() -> int:
+    auto inner = []() -> ::tpy::BigInt {
+        // count = 0
+        int32_t count = 0;
+        // for i in range(3):
+        for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+            int32_t i = __range_0;
+            // i += 10  # tpyc: ok
+            i = ::tpy::add_check<int32_t>(i, 10);
+            // count += 1
+            count = ::tpy::add_check<int32_t>(count, 1);
+        }
+        // return count
+        return ::tpy::BigInt(count);
+    };
+    // print("closure body", inner())
+    std::cout << "closure body" << " " << inner() << "\n";
+    // count = 0
+    int32_t count = 0;
+    // for a in range(3):
+    for (int32_t __range_1 = 0; __range_1 < 3; ++__range_1) {
+        int32_t a = __range_1;
+        // # A nested definition may write the enclosing target indirectly.
+        // def write() -> None:
+        auto write = [&a]() {
+            // nonlocal a
+            // a += 10  # tpyc: ok
+            a = ::tpy::add_check<int32_t>(a, 10);
+        };
+        // write()
+        write();
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // print("closure nonlocal", count)
+    std::cout << "closure nonlocal" << " " << count << "\n";
+    // total = 0
+    int32_t total = 0;
+    // for b in range(3):
+    for (int32_t b = 0; b < 3; ++b) {
+        // # Local assignment is rejected: BUGS.md#nested-local-shadow-requires-nonlocal.
+        // def local(b: Int32) -> Int32:  # tpyc: ok
+        auto local = [](int32_t b) -> int32_t {
+            // return b
+            return b;
+        };
+        // total += b + local(10)
+        total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(b, local(10))));
+    }
+    // print("closure parameter inverse", total)
+    std::cout << "closure parameter inverse" << " " << total << "\n";
+}
+
+// def context_forms() -> None:
+void context_forms() {
+    // gate = Gate()
+    Gate gate = Gate();
+    // count = 0
+    int32_t count = 0;
+    // # Context-manager body: cleanup observes the completed loop.
+    // with gate:
+    auto& __ctx_1 = gate;
+    __ctx_1.__enter__();
+    try {
+        // for a in range(3):
+        for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+            int32_t a = __range_0;
+            // a += 10  # tpyc: ok
+            a = ::tpy::add_check<int32_t>(a, 10);
+            // count += 1
+            count = ::tpy::add_check<int32_t>(count, 1);
+        }
+        goto __with_exit_1;
+    } catch (::tpy::BaseException& __exc_1) {
+        if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
+        goto __with_after_1;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
+    __with_after_1:;
+    // print("context body", count, gate.exits)
+    std::cout << "context body" << " " << count << " " << gate.exits << "\n";
+}
+
+// def control_edges() -> None:
+void control_edges() {
+    // count = 0
+    int32_t count = 0;
+    // cleaned = 0
+    int32_t cleaned = 0;
+    // for a in range(3):
+    for (int32_t __range_1 = 0; __range_1 < 3; ++__range_1) {
+        int32_t a = __range_1;
+        // # Continue must run finally before advancing the private cursor.
+        // try:
+        {
+            bool __fin_ran_2 = false;
+            try {
+                // count += 1
+                count = ::tpy::add_check<int32_t>(count, 1);
+                // continue
+                __fin_ran_2 = true;
+                // a += 10  # tpyc: ok
+                a = ::tpy::add_check<int32_t>(a, 10);
+                // cleaned += 1
+                cleaned = ::tpy::add_check<int32_t>(cleaned, 1);
+                continue;
+            } catch (...) {
+                if (!__fin_ran_2) {
+                    // a += 10  # tpyc: ok
+                    a = ::tpy::add_check<int32_t>(a, 10);
+                    // cleaned += 1
+                    cleaned = ::tpy::add_check<int32_t>(cleaned, 1);
+                }
+                throw;
+            }
+            // a += 10  # tpyc: ok
+            a = ::tpy::add_check<int32_t>(a, 10);
+            // cleaned += 1
+            cleaned = ::tpy::add_check<int32_t>(cleaned, 1);
+        }
+    }
+    // else:
+    {
+        // print("continue finally else", count, cleaned)
+        std::cout << "continue finally else" << " " << count << " " << cleaned << "\n";
+    }
+    __after_else_0:;
+    // count = 0
+    count = 0;
+    // cleaned = 0
+    cleaned = 0;
+    // for b in range(5):
+    for (int32_t __range_3 = 0; __range_3 < 5; ++__range_3) {
+        int32_t b = __range_3;
+        // try:
+        {
+            bool __fin_ran_3 = false;
+            try {
+                // count += 1
+                count = ::tpy::add_check<int32_t>(count, 1);
+                // if count == 2:
+                if ((count == 2)) {
+                    // break
+                    __fin_ran_3 = true;
+                    // b += 10  # tpyc: ok
+                    b = ::tpy::add_check<int32_t>(b, 10);
+                    // cleaned += 1
+                    cleaned = ::tpy::add_check<int32_t>(cleaned, 1);
+                    goto __after_else_2;
+                }
+            } catch (...) {
+                if (!__fin_ran_3) {
+                    // b += 10  # tpyc: ok
+                    b = ::tpy::add_check<int32_t>(b, 10);
+                    // cleaned += 1
+                    cleaned = ::tpy::add_check<int32_t>(cleaned, 1);
+                }
+                throw;
+            }
+            // b += 10  # tpyc: ok
+            b = ::tpy::add_check<int32_t>(b, 10);
+            // cleaned += 1
+            cleaned = ::tpy::add_check<int32_t>(cleaned, 1);
+        }
+    }
+    // else:
+    {
+        // print("break unexpected else")
+        std::cout << "break unexpected else" << "\n";
+    }
+    __after_else_2:;
+    // print("break finally", count, cleaned)
+    std::cout << "break finally" << " " << count << " " << cleaned << "\n";
+    // old = 7
+    int32_t old = 7;
+    // # Existing storage retains its last write, including an empty successor.
+    // for old in range(3):
+    for (int32_t __range_4 = 0; __range_4 < 3; ++__range_4) {
+        old = __range_4;
+        // old = 20  # tpyc: ok
+        old = 20;
+    }
+    // print("existing target", old)
+    std::cout << "existing target" << " " << old << "\n";
+    // for old in range(0):  # tpyc: ok
+    for (int32_t __range_5 = 0; __range_5 < 0; ++__range_5) {
+        old = __range_5;
+        // old = 99
+        old = 99;
+    }
+    // print("empty target", old)
+    std::cout << "empty target" << " " << old << "\n";
+    // count = 0
+    count = 0;
+    // for fresh in range(3):
+    int32_t fresh;
+    for (int32_t __range_6 = 0; __range_6 < 3; ++__range_6) {
+        fresh = __range_6;
+        // fresh = 30  # tpyc: ok
+        fresh = 30;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // print("postloop target", count, fresh)
+    std::cout << "postloop target" << " " << count << " " << fresh << "\n";
+}
+
+// def parameter_target(target: Int32) -> Int32:
+int32_t parameter_target(int32_t target) {
+    // # Parameter storage is already hoisted before entering the range.
+    // for target in range(3):
+    for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+        target = __range_0;
+        // target = 40  # tpyc: ok
+        target = 40;
+    }
+    // return target
+    return target;
+}
+
+// def bound(events: list[int], tag: int, value: int) -> int:
+::tpy::BigInt bound(std::vector<::tpy::BigInt>& events, const ::tpy::BigInt& tag, const ::tpy::BigInt& value) {
+    // events.append(tag)
+    events.push_back(tag);
+    // return value
+    return value;
+}
+
+// def bound_order(step: int) -> None:
+void bound_order(const ::tpy::BigInt& step) {
+    // events: list[int] = []
+    std::vector<::tpy::BigInt> events = std::vector<::tpy::BigInt>{};
+    // count = 0
+    int32_t count = 0;
+    // # Each bound is captured once, in Python's left-to-right order.
+    // for i in range(bound(events, 1, 0), bound(events, 2, 5), bound(events, 3, step)):  # tpyc: ok
+    ::tpy::BigInt __start_0 = bound(events, ::tpy::BigInt(1), ::tpy::BigInt(0));
+    ::tpy::BigInt __stop_0 = bound(events, ::tpy::BigInt(2), ::tpy::BigInt(5));
+    ::tpy::BigInt __step_0 = bound(events, ::tpy::BigInt(3), step);
+    ::tpy::range_check_step_nonzero(__step_0);
+    for (::tpy::BigInt __range_0 = __start_0; __step_0 > 0 ? __range_0 < __stop_0 : __range_0 > __stop_0; __range_0 += __step_0) {
+        ::tpy::BigInt i = __range_0;
+        // i = 10  # tpyc: ok
+        i = ::tpy::BigInt(10);
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // print("bound order", events, count)
+    std::cout << "bound order" << " " << ::tpy::ListPrinter(events) << " " << count << "\n";
+}
+
+// def generator() -> Iterator[int]:
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_generator::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // count = 0
+        count = 0;
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(3));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        if ((count > 10)) {
+            __state = S_JOIN_1;
+            continue;
+        } else {
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_JOIN_1;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        // # Suspension already preserves separate frame induction state.
+        // i = 10  # tpyc: ok
+        i = 10;
+        // yield i
+        __state = S_RESUME_0;
+        return ::tpy::BigInt(i);
+    }
+    case S_JOIN_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def generator() -> Iterator[int]:
+__gen_generator generator() {
+    return __gen_generator();
+}
+
+// async def async_body() -> None:
+::tpystd::tpy::Poll<::std::monostate> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // count = 0
+        count = 0;
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(3));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        if ((count > 10)) {
+            __state = S_JOIN_1;
+            continue;
+        } else {
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_JOIN_1;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        // # Await resumes with the independent iterator state intact.
+        // i = 10  # tpyc: ok
+        i = 10;
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_JOIN_1: {
+        // print("async", count)
+        std::cout << "async" << " " << count << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def async_body() -> None:
+__coro_async_body async_body() {
+    return __coro_async_body();
+}
+
+// @error_return(MarkerError)
+// def error_body() -> int:
+std::expected<::tpy::BigInt, MarkerError> error_body() {
+    // # Error-return body: the successful result counts every iteration.
+    // count = 0
+    int32_t count = 0;
+    // for i in range(3):
+    for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+        int32_t i = __range_0;
+        // i += 10  # tpyc: ok
+        i = ::tpy::add_check<int32_t>(i, 10);
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // return count
+    return ::tpy::BigInt(count);
+}
+
+// def match_body(subject: int) -> None:
+void match_body(const ::tpy::BigInt& subject) {
+    // # Match arm: a typed subject avoids the separate literal-subject gap.
+    // match subject:
+    auto& __match_subject_1 = subject;
+    // case 1:
+    if (__match_subject_1 == 1) {
+        // count = 0
+        int32_t count = 0;
+        // for i in range(3):
+        for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+            int32_t i = __range_0;
+            // i += 10  # tpyc: ok
+            i = ::tpy::add_check<int32_t>(i, 10);
+            // count += 1
+            count = ::tpy::add_check<int32_t>(count, 1);
+        }
+        // print("match arm", count)
+        std::cout << "match arm" << " " << count << "\n";
+    // case _:
+    } else {
+        // print("match unexpected arm")
+        std::cout << "match unexpected arm" << "\n";
+    }
+}
+
+// def concrete_count(values: list[Int32]) -> int:
+::tpy::BigInt concrete_count(std::vector<int32_t>& values) {
+    // count = 0
+    int32_t count = 0;
+    // for i in range(len(values)):  # tpyc: ok
+    int32_t __stop_0 = ::tpy::__len__(values);
+    for (int32_t __range_0 = 0; __range_0 < __stop_0; ++__range_0) {
+        int32_t i = __range_0;
+        // i = 10  # tpyc: ok
+        i = 10;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // values.clear()  # tpyc: ok
+    values.clear();
+    // return count
+    return ::tpy::BigInt(count);
+}
+
+// @noalloc
+// def readonly32(stop: Int32) -> Int32:
+int32_t readonly32(int32_t stop) {
+    // # No-write inverse: keep the direct, allocation-free fixed-int counter.
+    // total = 0
+    int32_t total = 0;
+    // for i in range(stop):  # tpyc: ok
+    int32_t __stop_0 = stop;
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        // total += i
+        total = ::tpy::add_check<int32_t>(total, i);
+    }
+    // return total
+    return total;
+}
+
+// def readonly_big(start: int, stop: int) -> int:
+::tpy::BigInt readonly_big(const ::tpy::BigInt& start, const ::tpy::BigInt& stop) {
+    // # No-write heap BigInt inverse: no per-iteration target copy is needed.
+    // count = 0
+    int32_t count = 0;
+    // for i in range(start, stop):  # tpyc: ok
+    ::tpy::BigInt __start_0 = start;
+    ::tpy::BigInt __stop_0 = stop;
+    for (::tpy::BigInt i = __start_0; i < __stop_0; ++i) {
+        // if i >= start:
+        if ((i >= start)) {
+            // count += 1
+            count = ::tpy::add_check<int32_t>(count, 1);
+        }
+    }
+    // return count
+    return ::tpy::BigInt(count);
+}
+
+// def container_inverse() -> None:
+void container_inverse() {
+    // values = [0, 1, 2]
+    std::array<int32_t, 3> values = {0, 1, 2};
+    // count = 0
+    int32_t count = 0;
+    // for value in values:
+    auto& __obj_0 = values;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t value = *__beg_0;
+        // # Scalar container iteration already advances an independent cursor.
+        // value = 10  # tpyc: ok
+        value = 10;
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+    }
+    // print("scalar container inverse", count, values)
+    std::cout << "scalar container inverse" << " " << count << " " << ::tpy::ListPrinter(values) << "\n";
+    // items = [Item(1), Item(2)]
+    std::array<Item, 2> items = {Item(::tpy::BigInt(1)), Item(::tpy::BigInt(2))};
+    // for item in items:
+    auto& __obj_1 = items;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        auto&& item = *__beg_1;
+        // # Mutating the borrowed element must reach the original container.
+        // item.value += 10  # tpyc: ok
+        item.value = (item.value) + (::tpy::BigInt(10));
+    }
+    // print("reference container inverse", items[0].value, items[1].value)
+    std::cout << "reference container inverse" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(items, 1).value << "\n";
+}
+
+// def main() -> None:
+void main() {
+    // original()
+    original();
+    // steps32(0, 2)
+    steps32(0, 2);
+    // steps32(0, -2)
+    steps32(0, -2);
+    // steps64(0, 2)
+    steps64(0, 2);
+    // steps64(0, -2)
+    steps64(0, -2);
+    // steps_big(0, 2)
+    steps_big(::tpy::BigInt(0), ::tpy::BigInt(2));
+    // steps_big(0, -2)
+    steps_big(::tpy::BigInt(0), ::tpy::BigInt(-2));
+    // heap = int(1) << 100
+    ::tpy::BigInt heap = ((::tpy::BigInt(1)) << (::tpy::BigInt(100)));
+    // steps_big(heap, 2)
+    steps_big(heap, ::tpy::BigInt(2));
+    // steps_big(-heap, -2)
+    steps_big(-(heap), ::tpy::BigInt(-2));
+    // binding_forms(10)
+    binding_forms(10);
+    // comprehension_forms()
+    comprehension_forms();
+    // worker = Worker()
+    Worker worker = Worker();
+    // print("constructor", worker.count)
+    std::cout << "constructor" << " " << worker.count << "\n";
+    // print("method", worker.method())
+    std::cout << "method" << " " << worker.method() << "\n";
+    // print("staticmethod", Worker.static())
+    std::cout << "staticmethod" << " " << Worker::static_() << "\n";
+    // closure_forms()
+    closure_forms();
+    // context_forms()
+    context_forms();
+    // control_edges()
+    control_edges();
+    // print("parameter target", parameter_target(7))
+    std::cout << "parameter target" << " " << parameter_target(7) << "\n";
+    // bound_order(1)
+    bound_order(::tpy::BigInt(1));
+    // count = 0
+    int32_t count = 0;
+    // total = 0
+    int32_t total = 0;
+    // for value in generator():
+    {
+        auto __src_0 = generator();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& value = ::tpy::unwrap_ref(*__r_1);
+        // count += 1
+        count = ::tpy::add_check<int32_t>(count, 1);
+        // total += value
+        total = ::tpy::add_check<int32_t>(total, (value).to_fixed_check<int32_t>());
+        }
+    }
+    // print("generator", count, total)
+    std::cout << "generator" << " " << count << " " << total << "\n";
+    // asyncio.run(async_body())
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(async_body()));
+    // try:
+    {
+        // print("error_return", error_body())
+        std::cout << "error_return" << " " << ({ auto __er_2 = error_body(); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n";
+        goto __after_try_1;
+        // except MarkerError:
+        __except_1:;
+        // print("error_return unexpected error")
+        std::cout << "error_return unexpected error" << "\n";
+        __after_try_1:;
+    }
+    // match_body(1)
+    match_body(::tpy::BigInt(1));
+    // generic_values = [0, 1, 2]
+    std::vector<int32_t> generic_values = {0, 1, 2};
+    // concrete_values = [0, 1, 2]
+    std::vector<int32_t> concrete_values = {0, 1, 2};
+    // print("generic twin", generic_count(generic_values), concrete_count(concrete_values))
+    std::cout << "generic twin" << " " << generic_count<int32_t>(generic_values) << " " << concrete_count(concrete_values) << "\n";
+    // print("generic twin aliases", len(generic_values), len(concrete_values))
+    std::cout << "generic twin aliases" << " " << ::tpy::__len__(generic_values) << " " << ::tpy::__len__(concrete_values) << "\n";
+    // print("readonly noalloc", readonly32(5))
+    std::cout << "readonly noalloc" << " " << readonly32(5) << "\n";
+    // print("readonly heap", readonly_big(heap, heap + 5))
+    std::cout << "readonly heap" << " " << readonly_big(heap, ((heap) + (::tpy::BigInt(5)))) << "\n";
+    // container_inverse()
+    container_inverse();
 }
 
 void __tpy_init() {
@@ -23,6 +1154,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Range advancement must ignore writes to the Python target binding.
+    // # Fresh-target witnesses never read that target afterward: doing so hoists it.
+    // import asyncio
+    ::tpystd::asyncio::__tpy_init();
+    // # Module statement: only the count escapes, keeping the target unhoisted.
+    // module_count = 0
+    module_count = 0;
+    // for module_target in range(3):
+    for (int32_t __range_0 = 0; __range_0 < 3; ++__range_0) {
+        int32_t module_target = __range_0;
+        // module_target += 10  # tpyc: ok
+        module_target = ::tpy::add_check<int32_t>(module_target, 10);
+        // module_count += 1
+        module_count = ::tpy::add_check<int32_t>(module_count, 1);
+    }
+    // print("module", module_count)
+    std::cout << "module" << " " << module_count << "\n";
     // main()
     main();
 }

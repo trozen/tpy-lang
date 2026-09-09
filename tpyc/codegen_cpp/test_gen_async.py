@@ -10,6 +10,9 @@ shape where the two renders could differ.
 from __future__ import annotations
 
 import re
+from pathlib import Path
+
+import pytest
 
 from ..compiler import Compiler
 from .. import get_lib_dir
@@ -18,6 +21,117 @@ from .context import CodeGenOptions
 
 _SUB_FIELD = re.compile(r"await_arg_capture_t<decltype\(\((.*)\)\)>>> __sub_0;")
 _EMPLACE = re.compile(r"__sub_0\.emplace\((.*)\);")
+
+
+@pytest.mark.parametrize("nested", [False, True], ids=["flat", "nested"])
+@pytest.mark.parametrize("generic", ["none", "owner", "method"])
+@pytest.mark.parametrize("bound", [False, True], ids=["direct_await", "bound_await"])
+def test_resumable_method_frame_declarations_match_references(
+        nested: bool, generic: str, bound: bool) -> None:
+    owner_decl = "Inner[T]" if generic == "owner" else "Inner"
+    method_decl = "compute[T]" if generic == "method" else "compute"
+    value_type = "T" if generic != "none" else "int"
+    record = (
+        f"class {owner_decl}:\n"
+        f"    async def {method_decl}(self, n: {value_type}) -> {value_type}:\n"
+        "        return n\n"
+    )
+    if nested:
+        record = "class Outer:\n" + "".join("    " + line for line in record.splitlines(True))
+    owner_type = "Outer.Inner" if nested else "Inner"
+    if generic == "owner":
+        owner_type += "[int]"
+    body = (
+        "    result = x.compute(n)\n    return await result\n" if bound
+        else "    return await x.compute(n)\n"
+    )
+    compiler = Compiler.from_source(
+        record + f"async def use(x: {owner_type}, n: int) -> int:\n" + body,
+        lib_dirs=[get_lib_dir() / "tpy"],
+    )
+    modules = compiler.compile()
+    entry = next(m for m in modules if m.is_entry_point)
+    hpp, cpp = compiler.generate_code_to_strings(entry)
+    frame = "__coro_2_5_Outer_5_Inner_7_compute" if nested else "__coro_Inner_compute"
+    assert f"struct {frame};" in hpp
+    assert f"struct {frame} {{" in hpp
+    factory_type = frame + ("<T>" if generic != "none" else "")
+    assert f"{factory_type} compute(" in hpp
+    assert f"{factory_type}::__poll__" in hpp + cpp
+    concrete_type = frame + ("<::tpy::BigInt>" if generic != "none" else "")
+    slot = "result" if bound else "__sub_0"
+    assert f"std::optional<{concrete_type}> {slot};" in hpp
+    assert not re.search(r"(?:Outer|Inner)::(?:__coro_|__gen_)", hpp + cpp)
+    assert not re.search(r"__(?:coro|gen)_[\w]*\.", hpp + cpp)
+    assert not compiler.diagnostics
+
+
+@pytest.mark.parametrize("namespace", [None, "custom::workers"])
+@pytest.mark.parametrize(("nested", "import_style"), [
+    (False, "record_alias"), (False, "module_alias"), (True, "record_alias"),
+], ids=["flat_record_alias", "flat_module_alias", "nested_record_alias"])
+def test_coroutine_references_use_defining_module_namespace(
+        tmp_path: Path, import_style: str, namespace: str | None, nested: bool) -> None:
+    record = (
+        "class Outer:\n    class Inner:\n"
+        "        async def compute(self, n: int) -> int:\n            return n\n"
+    ) if nested else (
+        "class Outer:\n    async def compute(self, n: int) -> int:\n        return n\n"
+    )
+    directive = f'# tpy: cpp_namespace("{namespace}")\n' if namespace else ""
+    (tmp_path / "worker.py").write_text(directive + record)
+    (tmp_path / "peer.py").write_text(record)
+    if import_style == "record_alias":
+        imports = "from worker import Outer as First\nfrom peer import Outer as Second\n"
+        first, second = "First", "Second"
+    else:
+        imports = "import worker as first_module\nimport peer as second_module\n"
+        first, second = "first_module.Outer", "second_module.Outer"
+    if nested:
+        first += ".Inner"
+        second += ".Inner"
+    # Local aliases must preserve the two owners' distinct defining modules.
+    source = (
+        imports + "async def use(n: int) -> int:\n"
+        f"    first = {first}()\n    second = {second}()\n"
+        "    pending = first.compute(n)\n"
+        "    result = await pending\n"
+        "    return result + await second.compute(n)\n"
+    )
+    entry_path = tmp_path / "main.py"
+    entry_path.write_text(source)
+    compiler = Compiler(entry_path, lib_dirs=[get_lib_dir() / "tpy"])
+    modules = compiler.compile()
+    entry = next(m for m in modules if m.is_entry_point)
+    hpp, cpp = compiler.generate_code_to_strings(entry)
+    frame = "__coro_2_5_Outer_5_Inner_7_compute" if nested else "__coro_Outer_compute"
+    worker_namespace = namespace or "tpyapp::worker"
+    assert f"std::optional<::{worker_namespace}::{frame}> pending;" in hpp
+    assert f"std::optional<::tpyapp::peer::{frame}> __sub_1;" in hpp
+    assert not re.search(r"(?:Outer|Inner)::(?:__coro_|__gen_)", hpp + cpp)
+    assert not any(alias + "::__coro_" in hpp + cpp
+                   for alias in ("First", "Second", "first_module", "second_module"))
+    assert not compiler.diagnostics
+
+
+def test_stdlib_method_coroutine_keeps_mapped_namespace() -> None:
+    source = (
+        "from asyncio import Event as Ready\n"
+        "async def use(event: Ready) -> bool:\n"
+        "    pending = event.wait()\n"
+        "    first = await pending\n"
+        "    return first and await event.wait()\n"
+    )
+    compiler = Compiler.from_source(source, lib_dirs=[get_lib_dir() / "tpy"])
+    modules = compiler.compile()
+    entry = next(m for m in modules if m.is_entry_point)
+    hpp, _ = compiler.generate_code_to_strings(entry)
+    frame = "::tpystd::asyncio::__coro_Event_wait"
+    assert f"std::optional<{frame}> pending;" in hpp
+    assert f"std::optional<{frame}> __sub_1;" in hpp
+    assert "Ready::__coro_" not in hpp
+    assert "::tpyapp::asyncio::__coro_" not in hpp
+    assert not compiler.diagnostics
 
 
 def _capture_and_emplace(source: str) -> tuple[str, str]:

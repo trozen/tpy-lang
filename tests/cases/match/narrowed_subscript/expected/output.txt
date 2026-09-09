@@ -1,0 +1,39 @@
+str-match a c b
+str-slice bc
+str-match-bounds
+str-isinstance a c b
+str-isinstance-bounds
+bytes-match 97 99 98
+bytes-slice b'bc'
+bytes-match-bounds
+bytes-isinstance 97 99 98
+bytearray-match 97 99 98
+bytearray-match-bounds
+bytearray-isinstance 97 99 98
+bytearray-isinstance-bounds
+capture a c
+capture-other
+generic a 7
+monomorphic a 7
+tuple 97 97 97 99
+constructor a
+method c
+generator 97
+generator 99
+async 196
+comprehension [97, 98, 99]
+closure c
+context a
+try b
+finally c
+error-return 98
+and False
+or True
+ternary b
+index-calls 1
+list 10 20
+list-bounds
+dict 30
+dict-missing
+record 20
+module a c

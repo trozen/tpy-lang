@@ -327,7 +327,7 @@ inline double Random::normalvariate(double mu, double sigma) {
         // zz: float = z * z / 4.0
         double zz = (::tpy::truediv(((z) * (z)), 4.0));
         // if zz <= -math.log(u2):
-        if ((zz <= -(::std::log(u2)))) {
+        if ((zz <= -(::tpy::stdlib::math::checked_log(u2)))) {
             // return mu + z * sigma
             return ((mu) + (((z) * (sigma))));
         }
@@ -337,14 +337,14 @@ inline double Random::normalvariate(double mu, double sigma) {
 // def lognormvariate(self, mu: float, sigma: float) -> float:
 inline double Random::lognormvariate(double mu, double sigma) {
     // return math.exp(self.normalvariate(mu, sigma))
-    return ::std::exp(this->normalvariate(mu, sigma));
+    return ::tpy::stdlib::math::checked_exp(this->normalvariate(mu, sigma));
 }
 
 // def expovariate(self, lambd: float) -> float:
 inline double Random::expovariate(double lambd) {
     // # 1.0 - random() is in (0, 1], so log is in (-inf, 0], result >= 0.
     // return -math.log(1.0 - self.random()) / lambd
-    return (::tpy::truediv(-(::std::log(((1.0) - (this->random())))), lambd));
+    return (::tpy::truediv(-(::tpy::stdlib::math::checked_log(((1.0) - (this->random())))), lambd));
 }
 
 // def paretovariate(self, alpha: float) -> float:
@@ -360,7 +360,7 @@ inline double Random::weibullvariate(double alpha, double beta) {
     // u: float = 1.0 - self.random()
     double u = ((1.0) - (this->random()));
     // return alpha * (-math.log(u)) ** (1.0 / beta)
-    return ((alpha) * ((std::pow(-(::std::log(u)), (::tpy::truediv(1.0, beta))))));
+    return ((alpha) * ((std::pow(-(::tpy::stdlib::math::checked_log(u)), (::tpy::truediv(1.0, beta))))));
 }
 
 // def betavariate(self, alpha: float, beta: float) -> float:

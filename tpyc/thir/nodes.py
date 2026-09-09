@@ -2352,6 +2352,8 @@ class THIRForRange(THIRStmt):
     # counter binds a hidden `__range_N` and the body opens with `var = __range_N;`
     # so post-loop reads see the last value, not the post-increment overshoot.
     hoist_loop_var: bool = False
+    # Body writes must not alter induction, even for a target local to the loop.
+    target_written: bool = False
     # Branch-first-declared value locals used after the loop (sema's
     # `if_branch_decls`): `{cpp_type} {name};` predecls before the loop.
     # Includes the loop var itself when `hoist_loop_var`.

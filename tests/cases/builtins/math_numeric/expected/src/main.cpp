@@ -50,16 +50,16 @@ void main() {
     std::cout << ::tpy::print_float(::std::copysign(0.0, -(1.0))) << "\n";
     // # fmod (truncation; sign of dividend)
     // print(math.fmod(7.5, 2.0))
-    std::cout << ::tpy::print_float(::std::fmod(7.5, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fmod(7.5, 2.0)) << "\n";
     // print(math.fmod(-7.5, 2.0))
-    std::cout << ::tpy::print_float(::std::fmod(-(7.5), 2.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_fmod(-(7.5), 2.0)) << "\n";
     // # remainder (IEEE 754; nearest-even)
     // r1 = math.remainder(7.0, 4.0)
-    double r1 = ::std::remainder(7.0, 4.0);
+    double r1 = ::tpy::stdlib::math::checked_remainder(7.0, 4.0);
     // print(r1 > -1.01 and r1 < -0.99)
     std::cout << ::tpy::print_bool(((r1 > -(1.01)) && (r1 < -(0.99)))) << "\n";
     // r2 = math.remainder(5.0, 4.0)
-    double r2 = ::std::remainder(5.0, 4.0);
+    double r2 = ::tpy::stdlib::math::checked_remainder(5.0, 4.0);
     // print(r2 > 0.99 and r2 < 1.01)
     std::cout << ::tpy::print_bool(((r2 > 0.99) && (r2 < 1.01))) << "\n";
     // # gcd

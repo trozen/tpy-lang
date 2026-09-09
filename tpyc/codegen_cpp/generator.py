@@ -1471,6 +1471,17 @@ class CodeGenerator:
             if protocol.name not in deps.bound_protocols and protocol.name not in deps.prereq_protocols:
                 self._emit_concept_and_dynamic(hpp, protocol)
 
+    def _gen_function_forward_decl(self, hpp: TextIO, func: TpyFunction) -> bool:
+        """Emit the callable's declaration at either signature scheduling point."""
+        if func.is_generator:
+            if not self._resumable_generator_eligible(func):
+                return False
+            with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                return self.gen_async.gen_factory_forward_decl(hpp, func)
+        if func.is_async:
+            return self.gen_async.gen_factory_forward_decl(hpp, func)
+        return self.functions.gen_function_forward_decl(hpp, func)
+
     def _generate_definitions_and_reexports(
         self, hpp: TextIO, module: TpyModule,
         global_decls: list, final_decls: list, seen_globals: dict, deps: _ProtocolDeps
@@ -1654,19 +1665,11 @@ class CodeGenerator:
         for func in module.functions:
             if func.skip_codegen:
                 continue
-            if func.is_generator:
-                if self.gen_generators.is_simple_generator(func):
-                    continue  # Simple generators are inline -- no forward decl
-                if self._resumable_generator_eligible(func):
-                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                        if self.gen_async.gen_factory_forward_decl(hpp, func):
-                            emitted_fwd_func = True
-            elif func.is_async:
-                if self.gen_async.gen_factory_forward_decl(hpp, func):
-                    emitted_fwd_func = True
-            elif _func_uses_nested_type(func):
+            if func.is_generator and self.gen_generators.is_simple_generator(func):
+                continue  # Simple generators are inline -- no forward decl
+            if _func_uses_nested_type(func):
                 deferred_fwd_funcs.append(func)
-            elif self.functions.gen_function_forward_decl(hpp, func):
+            elif self._gen_function_forward_decl(hpp, func):
                 emitted_fwd_func = True
         if emitted_fwd_func:
             hpp.write("\n")
@@ -1707,7 +1710,7 @@ class CodeGenerator:
 
         # Deferred forward declarations for functions with nested types
         for func in deferred_fwd_funcs:
-            self.functions.gen_function_forward_decl(hpp, func)
+            self._gen_function_forward_decl(hpp, func)
         if deferred_fwd_funcs:
             hpp.write("\n")
 

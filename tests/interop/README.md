@@ -44,7 +44,7 @@ gitignored `__tpyc__/` build output stay at the case root:
 - **ext_checks.py** (ext-only, if present): runs against the built `.so`.
 
 `test_facade_selfcheck` compiles the hand-mirrored facade
-(`runtime/cpp/tests/interop/cpython_facade_selfcheck.cpp`) against the real
+(`runtime/cpp/tests/interop/test_cpython_facade_selfcheck.cpp`) against the real
 Python ABI once, turning a mirroring slip into a compile error. It is
 **skipped** (not failed) when Python dev headers (`Python.h`) are unavailable;
 the ext-exec build itself needs no headers (facade only), and the import runs

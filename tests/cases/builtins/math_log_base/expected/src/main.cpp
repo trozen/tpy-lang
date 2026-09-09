@@ -41,7 +41,7 @@ void main() {
     }
     // # Single-arg form still works (natural log of e)
     // if approx(math.log(2.718281828), 1.0):
-    if (approx(::std::log(2.718281828), 1.0)) {
+    if (approx(::tpy::stdlib::math::checked_log(2.718281828), 1.0)) {
         // print("log(e) ok")
         std::cout << "log(e) ok" << "\n";
     // else:

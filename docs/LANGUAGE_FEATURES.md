@@ -425,6 +425,12 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 - **Working**: `int.bit_length()` returns the number of bits to represent `abs(self)`, matching CPython (`(0).bit_length() == 0`, sign is ignored). Returns `Int32`.
 - **Working**: `float.as_integer_ratio()` / `int.as_integer_ratio()` return the exact `(numerator, denominator)` pair (`tuple[int, int]`) in lowest terms with a positive denominator, matching CPython; `float('inf').as_integer_ratio()` raises `OverflowError` and `nan` raises `ValueError`. (Available on `int`/`float` typed values; a bare `int`/`float` literal keeps its `IntLiteral`/`FloatLiteral` type and doesn't expose the method.)
 
+`int` stores values from `-(2**62)` through `2**62 - 1` inline. Comparisons,
+floor division, remainder, `divmod`, shifts, and bitwise operations avoid heap
+allocation when their inputs and integer results fit this range. Larger results
+promote to arbitrary-precision storage. True division retains its correctly
+rounded algorithm and can allocate for intermediate values even with small inputs.
+
 #### Default Integer Type for Unannotated Literals (Working)
 
 Unannotated integer literals (`x = 42`) use the configured default integer type, controlled by `--default-int` (default: `Int32`). Explicit `int` annotations always mean `BigInt`:
@@ -3139,7 +3145,7 @@ def sum_iter(it: Iterator[Int32]) -> Int32:
 print(sum_iter(Counter(5)))        # 10
 ```
 
-**Codegen**: `for i in range(...)` is optimized to a C-style counter loop. `range()` accepts all fixed-width integer types (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64) as well as BigInt, preserving the element type in the loop variable.
+**Codegen**: `for i in range(...)` is optimized to a C-style counter loop. When the body can rebind `i`, a private counter advances the range and binds the user target at each iteration; body writes do not alter iteration. Targets that need no enclosing storage and have no possible write reported by conservative analysis retain the direct counter, avoiding an extra BigInt copy. `range()` accepts all fixed-width integer types (Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64) as well as BigInt, preserving the element type in the loop variable.
 
 Bare integer literals use the configured default integer type (`--default-int`, default: `Int32`), so `range(10)` uses `Range<Int32>` by default. For CPython-like behavior, use `--default-int=BigInt`.
 
@@ -3174,7 +3180,7 @@ for (;;) {
 | Phase | Status | What |
 |-------|--------|------|
 | 1. Iterator protocol | **Working** | User-defined iterators via `__next__()` + `@error_return(StopIteration)` -> `std::expected` |
-| 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
+| 2. Counter-loop optimization | **Working** | `for i in range(...)` -> C-style loop; private induction when the target is writable or needs enclosing storage |
 | 3. Range as NativeIterable | **Working** | `Range[T]` is an immutable container with `begin()`/`end()`, supports `list(range(...))` |
 | 4. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()` builtin |
 | 5. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
@@ -3573,7 +3579,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
     - A free-function overload set whose impl is a generator (the body has `yield`, return type `Iterator[T]`) is supported: the impl's yield type is derived from its `Iterator[T]` return even though the impl is not separately registered. The same shape on a *method* is not yet supported (see BUGS/TODO).
     - Mode (a): stubs require `...` (Ellipsis) or `pass` body. Stub parameter names must prefix-match impl parameter names.
     - Mode (a) arity variation: stubs may have fewer parameters than the implementation; every missing trailing impl parameter must have a default. Each short-arity stub emits a C++ function taking only the stub's params, with the omitted impl params emitted as locals initialized to their defaults at the top of the body. When the default's type narrows the impl param (`None` for `Optional[T]`, literal for non-union), dead-branch elim strips the non-matching paths. Short-arity stubs disallow keyword-only, `*args`, or `**kwargs` on the impl.
-    - Mode (b): each `@overload` has its own body; the group must contain no trailing implementation. Native (`@native`) and `@cpp_template` stubs can coexist with bodied overloads in the same group. Motivating use case: `math.log(x)` is `@native("std::log")`, `math.log(x, base)` is a bodied `@overload` that delegates to the single-arg form.
+    - Mode (b): each `@overload` has its own body; the group must contain no trailing implementation. Native (`@native`) and `@cpp_template` stubs can coexist with bodied overloads in the same group. Motivating use case: `math.log(x)` is a checked native binding, `math.log(x, base)` is a bodied `@overload` that delegates to the single-arg form.
     - Stub parameter types must be subsets of the implementation's union members (mode a)
     - Exhaustiveness check: stubs must cover all union variants per parameter when all stubs include that parameter (missing variants are a sema error). Short-arity stubs that skip a parameter are covered by the impl's default.
     - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
@@ -3765,7 +3771,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `for x in iterator` (for-each over Iterator types -- user-defined iterators)
 - **Working**: `for x in iter_param` (for-each over `Iterator[T]` and `Iterable[T]` protocol-typed parameters)
 - **Working**: `break`, `continue`
-- **Working**: Reassigning loop variables inside for-loop body (compiles as assignment, not redeclaration; note: affects iteration unlike Python). The same storage model makes a NESTED loop whose target reuses an enclosing loop's name write through to the outer counter, which is not an accepted divergence but a filed miscompile (`BUGS.md`) -- the outer loop terminates early and the result is silently wrong.
+- **Working**: Reassigning scalar range targets inside the body does not affect iteration, matching Python. Direct assignment, augmented assignment, walrus writes and accepted nested scalar target reuse use private induction. Existing target storage and post-loop values are preserved. Nested tuple-target reuse remains an admission gap (`BUGS.md#nested-tuple-loop-target-reuse-rejected`).
 - **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless. Parameter mutation inference (see [Implementation Notes](#parameter-mutation-inference-partial)) refines "passing to mutable parameters": if the callee is known not to mutate a specific parameter, passing the loop variable there does not force mutable binding.
 - **Working**: `for/else`, `while/else` -- else block runs when loop completes without `break`; `break` emits `goto` past the else body
 - **Working**: Loop variable and body-declared variables visible after the loop (matching CPython scoping). Only hoisted when actually referenced after the loop -- no codegen change for variables used only inside the loop. Range counter loops use a hidden counter so the user variable holds the last-yielded value (not the C++ post-increment overshoot). A name first declared in the body and only *assigned* after the loop needs no hoist: the block's declarations are revoked at its close, so the later assignment declares the function-scope local itself. Since a block is not a scope in Python, the same holds for the other block-emitting statements -- `while` bodies, `for`/`while` `else` clauses, `match` arms, and `try` / `except` bodies. One gap: a name first declared in a `try`'s `else` body and assigned after the `try` is still rejected by the C++ build (see BUGS.md). Because it is one local, it also carries **one type**: assigning a value the earlier declaration's type cannot hold is rejected (`Type mismatch in reassignment to 'n'`), the same rule a same-scope reassignment already follows -- coercions such as `Int32` into an `int` local still apply. TPy has no re-declaration/shadowing: a name cannot take a second type by crossing a block boundary any more than it can within one scope. The loop *variable* is exempt, since its type comes from the iterable rather than from the user -- `for p in points: ...` followed by `p = Point(9)` binds a fresh local, matching CPython.
@@ -5600,7 +5606,7 @@ Currently working with a stable surface:
 
 | Module | Notes |
 |---|---|
-| `math` | Partial (~50%). Thin libc bindings + pure TPy helpers |
+| `math` | Partial (~50%). Checked libm bindings + pure TPy helpers |
 | `time` | Stub (`time()`, `sleep()`). More planned |
 | `sys` | Stub (`argv`, `stdout`, `stderr`, `exit`, `maxsize`, `byteorder`, `maxunicode`). More planned |
 | `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
@@ -5662,6 +5668,21 @@ program = sys.argv[0]
 ```
 
 #### `math` module (Working)
+
+The libm-backed logarithm, root, power, trigonometric, hyperbolic, gamma,
+remainder, scaling and fused-multiply-add functions raise catchable Python
+`ValueError` for their domain errors or poles and `OverflowError` for
+finite-input overflow. They preserve valid NaNs, infinities, signed zeros
+and underflow results according to each function's contract. For example,
+`sqrt(-1.0)` raises `ValueError`, while `sqrt(-0.0)` retains negative zero
+and `sqrt(inf)` returns infinity. `log(x, base)` checks both logarithms;
+base 1 retains `ZeroDivisionError`. Exceptions also propagate normally
+through generators, async bodies and `@error_return` functions.
+
+`fma` remains fused and follows CPython 3.13's domain/overflow policy;
+CPython 3.12 has no `math.fma`. `ulp` returns finite spacing for either sign
+of the largest finite float. These scalar adapters preserve the existing
+argument signatures and do not change arbitrary user `@native` bindings.
 
 ```python
 import math
@@ -6886,6 +6907,12 @@ Send/Sync rules for built-in types:
 | `tuple[T1, T2, ...]` | Yes (if all Ti Send) | Yes (if all Ti Sync) | Composite |
 
 - **Working (v1)**: `async`/`await` -> resumable-frame state machines.
+  Declaring an async function or method needs no `asyncio` import: the compiler
+  adds its `tpy.coro` runtime dependency automatically, including for unused
+  inline async declarations. This adds no Python name or runtime import call.
+  The dependency follows configured library paths; if the coroutine runtime is
+  unavailable (for example with `--no-stdlib`), compilation reports a located
+  configuration error instead of emitting an incomplete frame.
   `async def f() -> T:` lowers to a struct with
   `__poll__(Waker) -> Own[Poll[T]]`. `await <call-to-async-def>` inlines
   the sub-coroutine struct in the parent's frame; `await <Task[T]>` /

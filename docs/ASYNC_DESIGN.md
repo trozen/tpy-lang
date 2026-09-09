@@ -427,6 +427,27 @@ Naive expansion duplicates each `finally` body at every site that may throw or f
 
 ## Codegen transform
 
+Before ordering modules, the compiler adds a dependency-only `tpy.coro` edge
+for each module declaring an async function or method, recursively including
+methods on nested records. File and source-string compilation share this
+post-discovery step. It conservatively includes unused inline async declarations
+so discovery does not duplicate the frame-emission eligibility decision.
+The existing resolver, registration, ordering and include mapping handle the
+dependency; no Python binding or runtime import statement is synthesized, and
+`asyncio` is not pulled in. Synchronous modules and ordinary generators gain no
+edge. Configured library paths remain authoritative: a missing coroutine runtime
+produces a located configuration diagnostic at the async declaration.
+
+Coroutine and named generator frames live in their defining module's namespace,
+including frames for methods on nested records. A shared identifier helper
+encodes nested owner components with their lengths under a digit-prefixed
+suffix, keeping them distinct from existing free-function and flat-record frame
+names. Awaited frames and delegated generators use the same naming contract;
+class scopes are not part of a frame's namespace qualification.
+Factory declarations whose signatures reference nested types follow the enclosing
+record definitions, using the same scheduling rule as ordinary functions.
+Frame-struct forward declarations remain early so record methods can name them.
+
 ### `async def` lowering -- worked example
 
 ```python

@@ -93,6 +93,20 @@ def escape_cpp_name(name: str) -> str:
     return name
 
 
+def resumable_struct_name(name: str, owner_record: str | None = None,
+                          prefix: str = "__coro_") -> str:
+    """Name a module-scope frame without conflating nested owner components."""
+    if owner_record and "." in owner_record:
+        owners = owner_record.split(".")
+        # A digit cannot start a Python identifier, keeping this namespace
+        # disjoint from free functions and flat owners, including underscores.
+        components = "_".join(f"{len(part)}_{part}" for part in [*owners, name])
+        return f"{prefix}{len(owners)}_{components}"
+    if owner_record:
+        return f"{prefix}{escape_cpp_name(owner_record)}_{escape_cpp_name(name)}"
+    return f"{prefix}{escape_cpp_name(name)}"
+
+
 def expand_cpp_template(template: str, self_val: 'str | None' = None, *args: str,
                         self_type: 'TpyType | None' = None) -> str:
     """Substitute {self}, {cpp}, and positional {0}, {1}, ... into a

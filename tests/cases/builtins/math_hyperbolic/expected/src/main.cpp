@@ -8,19 +8,19 @@ namespace tpyapp::main {
 void main() {
     // # Values at 0 -- exact
     // print(math.sinh(0.0) == 0.0)
-    std::cout << ::tpy::print_bool((::std::sinh(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_sinh(0.0) == 0.0)) << "\n";
     // print(math.cosh(0.0) == 1.0)
-    std::cout << ::tpy::print_bool((::std::cosh(0.0) == 1.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_cosh(0.0) == 1.0)) << "\n";
     // print(math.tanh(0.0) == 0.0)
     std::cout << ::tpy::print_bool((::std::tanh(0.0) == 0.0)) << "\n";
     // # sinh(1) = (e - 1/e) / 2 ~= 1.1752
     // s = math.sinh(1.0)
-    double s = ::std::sinh(1.0);
+    double s = ::tpy::stdlib::math::checked_sinh(1.0);
     // print(s > 1.17 and s < 1.18)
     std::cout << ::tpy::print_bool(((s > 1.17) && (s < 1.18))) << "\n";
     // # cosh(1) = (e + 1/e) / 2 ~= 1.5430
     // c = math.cosh(1.0)
-    double c = ::std::cosh(1.0);
+    double c = ::tpy::stdlib::math::checked_cosh(1.0);
     // print(c > 1.54 and c < 1.55)
     std::cout << ::tpy::print_bool(((c > 1.54) && (c < 1.55))) << "\n";
     // # tanh grows towards 1 for large x
@@ -32,19 +32,19 @@ void main() {
     // print(math.asinh(0.0) == 0.0)
     std::cout << ::tpy::print_bool((::std::asinh(0.0) == 0.0)) << "\n";
     // print(math.acosh(1.0) == 0.0)
-    std::cout << ::tpy::print_bool((::std::acosh(1.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_acosh(1.0) == 0.0)) << "\n";
     // print(math.atanh(0.0) == 0.0)
-    std::cout << ::tpy::print_bool((::std::atanh(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_atanh(0.0) == 0.0)) << "\n";
     // r1 = math.asinh(math.sinh(0.5))
-    double r1 = ::std::asinh(::std::sinh(0.5));
+    double r1 = ::std::asinh(::tpy::stdlib::math::checked_sinh(0.5));
     // print(r1 > 0.49 and r1 < 0.51)
     std::cout << ::tpy::print_bool(((r1 > 0.49) && (r1 < 0.51))) << "\n";
     // r2 = math.acosh(math.cosh(1.5))
-    double r2 = ::std::acosh(::std::cosh(1.5));
+    double r2 = ::tpy::stdlib::math::checked_acosh(::tpy::stdlib::math::checked_cosh(1.5));
     // print(r2 > 1.49 and r2 < 1.51)
     std::cout << ::tpy::print_bool(((r2 > 1.49) && (r2 < 1.51))) << "\n";
     // r3 = math.atanh(math.tanh(0.3))
-    double r3 = ::std::atanh(::std::tanh(0.3));
+    double r3 = ::tpy::stdlib::math::checked_atanh(::std::tanh(0.3));
     // print(r3 > 0.29 and r3 < 0.31)
     std::cout << ::tpy::print_bool(((r3 > 0.29) && (r3 < 0.31))) << "\n";
 }

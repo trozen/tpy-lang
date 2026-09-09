@@ -1,0 +1,2 @@
+main.py:14: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:202: warning: Mutation of 'inner' while borrowed (field assignment may invalidate references)

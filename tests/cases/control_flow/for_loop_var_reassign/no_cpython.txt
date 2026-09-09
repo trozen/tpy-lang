@@ -1,1 +1,0 @@
-C-style for loop: reassigning loop variable affects iteration (differs from Python)

@@ -9,7 +9,7 @@ namespace tpystd::math {
 // def log(x: float, base: float) -> float:
 double log(double x, double base) {
     // return log(x) / log(base)
-    return (::tpy::truediv(::std::log(x), ::std::log(base)));
+    return (::tpy::truediv(::tpy::stdlib::math::checked_log(x), ::tpy::stdlib::math::checked_log(base)));
 }
 
 

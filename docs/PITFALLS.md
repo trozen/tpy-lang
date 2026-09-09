@@ -179,16 +179,19 @@ would be a view or a pointer.
 **Example.** `a: str = v` emits `std::string_view a = v` (free), but `t: tuple[str] = (v,)`
 emits `std::tuple<std::string>(std::string(v))`, an allocation plus a character copy per
 element, twice for `tuple[str, str]`; `bytes` pays `bytes_copy(v)` per element the same way.
-`a < b` on two small `int` values went through `BigInt::compare()`, which builds two limb vectors
-where `+`, `-`, `*` and `==` take the small-int fast path. `k in names` with `k: str` and
+`a < b` on two small `int` values must compare inline payloads without building limb
+vectors; floor division, remainder, `divmod`, shifts and bitwise operations also
+stay allocation-free when their small inputs produce a small result.
+`k in names` with `k: str` and
 `names: set[str]` built a `std::string` from the view to hash it, where the container looks up
 the view itself.
-(open: `BUGS.md#str-tuple-element-local-owned`, `BUGS.md#bigint-compare-small-int-alloc`)
+(open: `BUGS.md#str-tuple-element-local-owned`)
 
 **Check.** Read the emitted C++ of the shape under change for `std::string(`, `bytes_copy(`,
 `std::vector<...>(`, `BigInt(` temporaries, `from_str`, `make_`, `new ` and `__tmp` locals;
 each must be one the type mapping requires at that position. Where the corpus
-does not reach a position, compile a probe and read its emit.
+does not reach a position, compile a probe and read its emit. For runtime operators,
+also inspect the callee: unchanged operator syntax can hide temporary allocations.
 
 ### `generated-cpp-readability`
 

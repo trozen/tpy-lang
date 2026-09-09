@@ -102,8 +102,8 @@ tests under `cases/<feature>/`. Earlier stdlib tests that ended up under
 Examples of the policy in action:
 
 - `bisect` -- fully pure TPy over the `Comparable` protocol. No native code.
-- `math` -- thin `@native` bindings to `std::log`, `std::sqrt`, etc. (libc
-  math is the primitive); no TPy-visible C++ logic beyond the bindings.
+- `math` -- libc math primitives with inline runtime adapters for Python
+  domain, pole and overflow exceptions; total functions bind directly.
   `log(x, base)`, `radians`, `degrees` are pure-TPy overloads/wrappers.
 - `random` -- currently thin binds to `std::rand`; long-term should be a
   pure-TPy Mersenne Twister (matches CPython), with only `os.urandom`-style
@@ -121,7 +121,7 @@ Examples of the policy in action:
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
 | [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Lookup/Value/Type/Attribute/Assertion/OS/FileNotFound/Permission/Connection (+BrokenPipe/Reset/Refused/Aborted)/ZeroDivision/Overflow/FloatingPoint/Arithmetic/Runtime/Recursion/EOF/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
-| [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
+| [`math`](#math) | P0 | Done | ~99% | mixed | Checked libm bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time`, `tzset` (CPython-parity no-op: TPy's tz provider pins TZ at first use) all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
 | [`os`](#os) | P0 | Partial | ~72% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`scandir`/`getenv`) + `stat`/`lstat`/`fstat` -> `stat_result`, `scandir` -> `DirEntry`; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`unlink`/`rename`/`replace`/`symlink`/`readlink`/`link`/`truncate`/`ftruncate`/`chmod`/`chown`/`utime`/`fsync`) over raw POSIX with the shared PEP 3151 errno->OSError table (structured `.errno`/`.strerror`/`.filename` + CPython-exact `str(e)`); low-level fd I/O (`open`/`close`/`read`/`write`/`lseek`/`pipe`/`dup`/`dup2` + `O_*`/`SEEK_*`); `access`(+`*_OK`); `urandom`; process/system queries (`getpid`/`getppid`/`getuid` family/`getlogin`/`umask`/`cpu_count`/`strerror`/`isatty`/`get_terminal_size`); `fspath`; module constants (`name`/`sep`/...); `environ` snapshot mapping + `putenv`/`unsetenv` + `pop`/`setdefault`/`update`/`clear`/`copy`; `walk` (topdown + bottomup, `followlinks`, `onerror`-callback + default error-skip). Process spawning deferred **Un-importable at `--default-int Int64` / `BigInt`** -- sema fails inside the module; see BUGS.md "17 stdlib modules fail sema". |
@@ -359,9 +359,9 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | Item | Status | Notes |
 |---|---|---|
 | `pi`, `tau`, `e`, `inf`, `nan` | Done | Constants as `Final[float]`. `nan` is `Final[float] = float("nan")` -- the `float(str)` literal forms (`"nan"`, `"inf"`, `"-inf"`, plus case/whitespace variants) fold at codegen to constexpr `std::numeric_limits<double>::quiet_NaN()` / `::infinity()`, bypassing the non-constexpr `tpy::float_from_str` runtime |
-| `log`, `log10`, `log2` | Done | `log(x, base)` is pure-TPy overload |
-| `log1p`, `expm1` | Done | Thin `std::log1p` / `std::expm1` |
-| `sqrt`, `cbrt`, `pow`, `exp`, `exp2` | Done | `cbrt` / `exp2` are Python 3.11+. `sqrt` of a negative returns NaN where CPython raises `ValueError` (`BUGS.md#math-sqrt-negative-nan`) |
+| `log`, `log10`, `log2` | Done | Checked domain/pole adapters; pure-TPy `log(x, base)` checks both operands and retains `ZeroDivisionError` for base 1 |
+| `log1p`, `expm1` | Done | Checked domain/pole and finite-input overflow adapters |
+| `sqrt`, `cbrt`, `pow`, `exp`, `exp2` | Done | Python domain/overflow exceptions; `cbrt` binds directly. `cbrt` / `exp2` are Python 3.11+ |
 | `floor`, `ceil`, `trunc` | Done | Return `int` (BigInt) / generic `T` |
 | `sin`, `cos`, `tan` | Done | |
 | `asin`, `acos`, `atan`, `atan2` | Done | |
@@ -373,8 +373,8 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `isnan`, `isinf`, `isfinite` | Done | Thin `std::isnan` / `std::isinf` / `std::isfinite` |
 | `copysign` | Done | |
 | `fmod`, `remainder` | Done | C fmod semantics (truncation); IEEE remainder (nearest-even) |
-| `nextafter`, `ldexp`, `fma` | Done | Thin natives; `fma` is CPython 3.13+ (cpy test is no_cpython) |
-| `ulp` | Done | `tpy::stdlib::math::ulp` helper matching CPython edge cases for nan/inf/0 |
+| `nextafter`, `ldexp`, `fma` | Done | Direct `nextafter`; checked `ldexp` overflow and fused `fma` domain/overflow. `fma` is CPython 3.13+ (separate no_cpython case for the 3.12 test host) |
+| `ulp` | Done | `tpy::stdlib::math::ulp` handles nan/inf/0 and finite spacing at both signs of the largest finite float |
 | `modf` | Done | `tpy::stdlib::math::modf` wrapper returning `std::tuple<double, double>` |
 | `frexp` | Done | Generic over the exponent type: `frexp[T](x) -> tuple[float, T]`. Default T is `DefaultInt` (Int32 under default config); users can pick `Int64` or `int` (BigInt) for wider ranges |
 | `gcd`, `lcm` | Done | Variadic `gcd(*ints)` / `lcm(*ints)` over BigInt. Internal `_gcd2` binary helper; `lcm` uses `(a // gcd(a,b)) * b` to keep the intermediate bounded by `max(|a|, |b|)`. Generic-over-int-type is a follow-up (see math.py header) |
@@ -386,12 +386,22 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `fsum` | Done | Pure-TPy Neumaier compensated summation. Takes `Iterable[float]` |
 | `sumprod` | Done | Pure-TPy; raises `ValueError` on length mismatch via iterator lockstep drive (mirrors CPython's `zip(..., strict=True)`). Takes `Iterable[float]` |
 | `dist` | Done | Pure-TPy Euclidean distance via hypot-fold (overflow-safe for coordinates up to `DBL_MAX`). Takes `Iterable[float]` |
-| `gamma`, `lgamma`, `erf`, `erfc` | Done | Thin natives (`std::tgamma` etc.) |
+| `gamma`, `lgamma`, `erf`, `erfc` | Done | Gamma adapters check poles/domain/finite overflow; direct `erf` / `erfc` natives |
+
+The checked libm family raises ordinary catchable `ValueError` for domain
+errors and poles, and `OverflowError` for finite-input range overflow.
+Per-function NaN, infinity, signed-zero and underflow results remain valid;
+an infinite result alone does not imply overflow. `fma` retains one fused
+operation and follows the CPython 3.13 special-value exception policy.
+Successful scalar calls add no allocation. These adapters do not change
+arbitrary user `@native` calls or the compiler's argument-sequencing rules.
 
 Tests: `math_module`, `math_extended`, `math_log_base`, `math_hyperbolic`,
 `math_numeric`, `math_special`, `math_fma`, `math_frexp_generic`,
 `math_variadic`, `math_iterable`, `panic_sumprod_mismatch` in
-`tests/cases/builtins/`; `float_special_values` in `tests/cases/float/`
+`tests/cases/builtins/`; `float_special_values` in `tests/cases/float/`;
+`math_exception_policy` in `tests/cases/stdlib/math/`, plus the native
+`runtime/cpp/tests/test_math_exception_policy.cpp` special-value self-check.
 (covers `float("nan"/"inf"/"-inf")` fold).
 
 **Remaining gaps to reach 100%:**

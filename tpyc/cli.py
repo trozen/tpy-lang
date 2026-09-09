@@ -71,6 +71,20 @@ def _fmt_ms(seconds: float) -> str:
     return f"{ms / 1000:.1f}s"
 
 
+def _run_program(argv: list[str]) -> int:
+    """Wait for a native program and return its shell-compatible exit status."""
+    prev_sigint = signal.getsignal(signal.SIGINT)
+    if prev_sigint != signal.SIG_IGN:
+        # Callable handlers reset on exec; SIG_IGN would make the child
+        # ignore Ctrl-C too. Preserve an intentionally inherited SIG_IGN.
+        signal.signal(signal.SIGINT, lambda signum, frame: None)
+    try:
+        result = subprocess.run(argv)
+    finally:
+        signal.signal(signal.SIGINT, prev_sigint)
+    return 128 - result.returncode if result.returncode < 0 else result.returncode
+
+
 def _print_info(prog_name: str) -> None:
     """Print compiler version, paths, and environment info."""
     commit = get_git_commit()
@@ -1084,26 +1098,14 @@ def _run_cli(is_runner: bool) -> int:
             if args.exec:
                 progress.separator()
                 t_run_start = time.monotonic()
-                # Let the child own SIGINT: Ctrl-C is delivered to the whole
-                # foreground process group, so without this the launcher would
-                # also raise KeyboardInterrupt and dump its own traceback over
-                # the program's output. Ignoring it here (with restore_signals
-                # default, the child resets SIGINT to SIG_DFL before exec, so a
-                # plain program still terminates on Ctrl-C and an asyncio one
-                # installs its own graceful handler) lets us just return the
-                # child's exit code.
-                prev_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
-                try:
-                    result = subprocess.run([str(binary_path), *args.script_args])
-                finally:
-                    signal.signal(signal.SIGINT, prev_sigint)
+                returncode = _run_program([str(binary_path), *args.script_args])
                 t_run = time.monotonic() - t_run_start
 
                 if args.verbose >= 1:
                     print(f"  run: {t_run*1000:.0f}ms  total: {(t_compile+t_codegen+t_build+t_run)*1000:.0f}ms",
                           file=sys.stderr)
 
-                return result.returncode
+                return returncode
 
         return 0
 

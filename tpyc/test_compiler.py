@@ -5,10 +5,15 @@ from pathlib import Path
 import pytest
 
 from . import get_lib_dir, get_runtime_dir
-from .compiler import Compiler, BuildLayout
+from .compiler import Compiler, BuildLayout, CompileError
 from .compilation_context import activate_compiler
 from .codegen_cpp import CodeGenOptions
 from .diagnostics import SemanticError
+from .frontend_ir import FrontendModule, Import
+from .frontend_plugin import (
+    FrontendOutput, FrontendPlugin, FrontendRegistry, WorkspaceContext,
+)
+from .parse import TpyImport
 from .thir.lower import iter_module_callables
 from .thir.reject import is_bodyless_binding
 from .typesys import (
@@ -95,6 +100,179 @@ class TestCompilerFromSource:
             _, cpp = compiler.generate_code_to_strings(mod)
             assert cpp == ""
 
+
+
+class _CoroImportPlugin(FrontendPlugin):
+    name = "coro_import"
+    extensions = (".coro_import",)
+
+    def parse(self, ctx: WorkspaceContext,
+              module_name: str, file_path: Path) -> FrontendOutput:
+        return FrontendOutput(module=FrontendModule(
+            qname=module_name, source_language=self.name,
+            imports=(Import(module="worker"),),
+        ))
+
+
+class TestImplicitCoroutineRuntime:
+    @pytest.mark.parametrize("source", [
+        "async def compute(n: int) -> int:\n    return n\n",
+        "async def compute(n: tuple[int]) -> tuple[int]:\n    return n\n",
+        "async def compute(n: int | None) -> int | None:\n    return n\n",
+        "async def compute[T](n: T) -> T:\n    return n\n",
+        "class Worker:\n    async def compute(self) -> None:\n        pass\n",
+        "class Outer:\n    class Worker:\n"
+        "        async def compute(self) -> None:\n            pass\n",
+    ], ids=["scalar", "tuple", "optional", "generic", "method", "nested_record"])
+    def test_file_and_source_discover_runtime(self, tmp_path: Path, source: str) -> None:
+        src_file = tmp_path / "main.py"
+        src_file.write_text(source)
+        compilers = [
+            Compiler(src_file, lib_dirs=_STDLIB_DIRS),
+            Compiler.from_source(source, lib_dirs=_STDLIB_DIRS),
+        ]
+        emitted = []
+        for compiler in compilers:
+            modules = compiler.compile()
+            entry = next(m for m in modules if m.is_entry_point)
+            hpp, cpp = compiler.generate_code_to_strings(entry)
+            assert "tpy.coro" in entry.ast.user_module_imports
+            assert compiler.compile_order.index("tpy.coro") < compiler.compile_order.index("main")
+            assert hpp.count('#include "tpystd/coro.hpp"') == 1
+            assert "::tpystd::coro::Waker" in hpp
+            assert not any(name == "asyncio" or name.startswith("asyncio.")
+                           for name in compiler.modules)
+            assert not entry.ast.imports
+            assert not entry.ast.bare_module_imports
+            assert not entry.ast.module_aliases
+            assert not any(isinstance(stmt, TpyImport) for stmt in entry.ast.top_level_stmts)
+            assert "::tpystd::coro::__tpy_init()" not in cpp
+            assert "tpy.coro" not in compiler.modules["tpy.coro"].ast.user_module_imports
+            emitted.append((hpp, cpp))
+        assert compilers[0].modules.keys() == compilers[1].modules.keys()
+        assert emitted[0] == emitted[1]
+
+    def test_each_async_owner_gets_edge_when_runtime_already_discovered(self, tmp_path: Path) -> None:
+        (tmp_path / "explicit.py").write_text("import tpy.coro\n")
+        (tmp_path / "worker.py").write_text("async def compute() -> None:\n    pass\n")
+        (tmp_path / "sync_neighbor.py").write_text("def compute() -> None:\n    pass\n")
+        entry = tmp_path / "main.py"
+        entry.write_text("import explicit\nimport worker\nimport sync_neighbor\n")
+        compiler = Compiler(entry, lib_dirs=_STDLIB_DIRS)
+        compiler.compile()
+        worker = compiler.modules["worker"]
+        hpp, cpp = compiler.generate_code_to_strings(worker)
+        assert "tpy.coro" in worker.ast.user_module_imports
+        assert hpp.count('#include "tpystd/coro.hpp"') == 1
+        assert "::tpystd::coro::__tpy_init()" not in cpp
+        for name in ("main", "sync_neighbor"):
+            module = compiler.modules[name]
+            assert "tpy.coro" not in module.ast.user_module_imports
+        # Implicit stdlib prefix reach can add headers without declaration edges.
+        neighbor = compiler.modules["sync_neighbor"]
+        assert not neighbor.ast.imports
+        assert not neighbor.ast.bare_module_imports
+        assert not neighbor.ast.module_aliases
+        assert not any(isinstance(stmt, TpyImport) for stmt in neighbor.ast.top_level_stmts)
+        _, cpp = compiler.generate_code_to_strings(neighbor)
+        assert "::tpystd::coro::__tpy_init()" not in cpp
+
+    def test_explicit_import_is_idempotent(self) -> None:
+        source = "import tpy.coro\nasync def compute() -> None:\n    pass\n"
+        compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        hpp, _ = compiler.generate_code_to_strings(entry)
+        assert sum(m.name == "tpy.coro" for m in modules) == 1
+        assert hpp.count('#include "tpystd/coro.hpp"') == 1
+        assert sum(isinstance(stmt, TpyImport) and stmt.module_name == "tpy.coro"
+                   for stmt in entry.ast.top_level_stmts) == 1
+
+    @pytest.mark.parametrize("source", [
+        "def compute() -> None:\n    pass\n",
+        "from typing import Iterator\ndef values() -> Iterator[int]:\n    yield 1\n",
+    ], ids=["sync", "generator"])
+    def test_sync_and_generator_do_not_load_runtime(self, source: str) -> None:
+        compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        hpp, _ = compiler.generate_code_to_strings(entry)
+        assert "tpy.coro" not in compiler.modules
+        assert "tpy.coro" not in entry.ast.user_module_imports
+        assert '#include "tpystd/coro.hpp"' not in hpp
+
+    def test_unused_inline_async_conservatively_loads_runtime(self) -> None:
+        source = (
+            "from tpy import inline\n@inline\n"
+            "async def compute(n: int) -> None:\n    print(n)\n"
+        )
+        compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        hpp, _ = compiler.generate_code_to_strings(entry)
+        assert "tpy.coro" in compiler.modules
+        assert "tpy.coro" in entry.ast.user_module_imports
+        assert '#include "tpystd/coro.hpp"' in hpp
+        assert "::tpystd::coro::Waker" not in hpp
+        assert not any(name == "asyncio" or name.startswith("asyncio.")
+                       for name in compiler.modules)
+
+    @pytest.mark.parametrize("route", ["file", "source", "empty_roots"])
+    def test_missing_runtime_reports_first_async_location(self, tmp_path: Path, route: str) -> None:
+        source = (
+            "class Outer:\n    class Worker:\n"
+            "        async def compute(self) -> None:\n            pass\n\n"
+            "async def later() -> None:\n    pass\n"
+        )
+        src_file = tmp_path / "main.py"
+        src_file.write_text(source)
+        if route == "file":
+            compiler = Compiler(src_file)
+        else:
+            compiler = Compiler.from_source(
+                source, lib_dirs=[tmp_path] if route == "empty_roots" else None,
+            )
+        with pytest.raises(CompileError, match="coroutine runtime 'tpy.coro'") as exc_info:
+            compiler.compile()
+        error = exc_info.value
+        assert error.module_name == "main"
+        assert error.lineno == 3
+        assert error.path == (src_file if route == "file" else Path("<stdin>"))
+        assert "enable the standard library" in error.message
+        assert "library paths" in error.message
+        assert not any(token in error.message for token in ("Waker", ".hpp", "::", "Tpy"))
+        assert "tpy.coro" not in compiler.modules
+
+    def test_configured_library_root_supplies_runtime(self, tmp_path: Path) -> None:
+        # An alternate configured root must work without the installed root in lib_dirs.
+        library_root = tmp_path / "custom_library"
+        library_root.symlink_to(_STDLIB_DIRS[0], target_is_directory=True)
+        compiler = Compiler.from_source(
+            "async def compute() -> None:\n    pass\n", lib_dirs=[library_root],
+        )
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        hpp, _ = compiler.generate_code_to_strings(entry)
+        assert "tpy.coro" in entry.ast.user_module_imports
+        assert '#include "tpystd/coro.hpp"' in hpp
+        runtime = compiler.modules["tpy.coro"]
+        configured_runtime = library_root / "tpy/coro/__init__.py"
+        assert runtime.path == configured_runtime
+        assert compiler.input_file_entries[str(configured_runtime)]["path"] == str(configured_runtime)
+
+    def test_plugin_imported_python_async_gets_runtime(self, tmp_path: Path) -> None:
+        (tmp_path / "worker.py").write_text("async def compute() -> None:\n    pass\n")
+        entry = tmp_path / "main.coro_import"
+        entry.write_text("")
+        registry = FrontendRegistry()
+        registry.register(_CoroImportPlugin({}))
+        compiler = Compiler(entry, lib_dirs=_STDLIB_DIRS, frontend_registry=registry)
+        compiler.compile()
+        worker = compiler.modules["worker"]
+        hpp, _ = compiler.generate_code_to_strings(worker)
+        assert "tpy.coro" in worker.ast.user_module_imports
+        assert '#include "tpystd/coro.hpp"' in hpp
+        assert "tpy.coro" not in compiler.modules["main"].ast.user_module_imports
 
 
 class TestThirRouting:

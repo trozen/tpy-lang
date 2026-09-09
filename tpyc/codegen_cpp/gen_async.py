@@ -69,7 +69,10 @@ from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_str_view_type, is_bytes_view_type,
                                   is_free_copy_scalar, view_owned_copy_init)
 from . import emit_prims
-from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
+from .context import (
+    INDENT, escape_cpp_name, CodeGenError, FinallyContext,
+    module_to_cpp_namespace, qualified_cpp_name, resumable_struct_name,
+)
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp, default_emittable
 from . import resumable_cfg as rcfg
@@ -335,9 +338,7 @@ class AsyncCoroCodegen:
         """Resumable-frame struct name for the CURRENT function. Shape-aware:
         `__gen_<funcname>` (/ `__gen_<Record>_<funcname>`) for the generator
         shape, `__coro_<funcname>` (/ `__coro_<Record>_<funcname>`) for the
-        async shape -- so the struct name reflects what it is (the
-        `operator<<` repr and the legacy `GeneratorCodegen.gen_struct_name`
-        use the same `__gen_` convention). Awaited-callee sub-coro structs
+        async shape. Awaited-callee sub-coro structs
         are named via `_sub_struct_name` (always `__coro_`)."""
         prefix = "__gen_" if self._is_generator_shape() else "__coro_"
         return AsyncCoroCodegen._sub_struct_name(func.name, record_name, prefix)
@@ -345,15 +346,8 @@ class AsyncCoroCodegen:
     @staticmethod
     def _sub_struct_name(name: str, owner_record: str | None = None,
                          prefix: str = "__coro_") -> str:
-        """Resumable-frame struct name from raw strings: `<prefix><name>` for
-        free functions, `<prefix><Owner>_<name>` for methods. Single source
-        of truth for `gen_struct_name`, the await payload factory (sub-
-        coroutine of a statically-resolved await -- always `__coro_`), and
-        the async-with prescan (which only has the CM's `NominalType.name`)."""
-        if owner_record:
-            return (f"{prefix}{escape_cpp_name(owner_record)}_"
-                    f"{escape_cpp_name(name)}")
-        return f"{prefix}{escape_cpp_name(name)}"
+        """Shared frame identifier for declarations, await and async-with."""
+        return resumable_struct_name(name, owner_record, prefix)
 
     def _frame_deep_const_verdict(
             self, func: TpyFunction,
@@ -5295,11 +5289,13 @@ def sub_struct_qualname(
     owner_name = None
     owner_args_suffix = ""
     if owner is not None:
-        owner_cpp = types.type_to_cpp(owner)
-        ns_prefix = owner_cpp.split("<", 1)[0]
-        ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
-                   if "::" in ns_prefix else "")
-        owner_name = owner.name
+        record = types.ctx.analyzer.registry.get_record_for_type(owner)
+        owner_name = record.name if record is not None else owner.name
+        if record is not None:
+            # Frames live beside their defining record, outside class scopes.
+            owner_module = record.defining_module or record.module
+            if owner_module and owner_module != types.ctx.analyzer.ctx.module_name:
+                ns_qual = f"::{module_to_cpp_namespace(owner_module)}::"
         if owner.type_args:
             # A call/await site must name the base coro struct with concrete
             # type args. An unbound TypeParamRef here means the MRO-resolved

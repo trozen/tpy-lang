@@ -8,26 +8,26 @@ namespace tpyapp::main {
 void main() {
     // # expm1 / log1p -- exact at 0
     // print(math.expm1(0.0) == 0.0)
-    std::cout << ::tpy::print_bool((::std::expm1(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_expm1(0.0) == 0.0)) << "\n";
     // print(math.log1p(0.0) == 0.0)
-    std::cout << ::tpy::print_bool((::std::log1p(0.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_log1p(0.0) == 0.0)) << "\n";
     // e1 = math.expm1(1.0)          # e - 1 ~= 1.71828
-    double e1 = ::std::expm1(1.0);
+    double e1 = ::tpy::stdlib::math::checked_expm1(1.0);
     // print(e1 > 1.71 and e1 < 1.72)
     std::cout << ::tpy::print_bool(((e1 > 1.71) && (e1 < 1.72))) << "\n";
     // l1 = math.log1p(1.0)          # ln 2 ~= 0.6931
-    double l1 = ::std::log1p(1.0);
+    double l1 = ::tpy::stdlib::math::checked_log1p(1.0);
     // print(l1 > 0.69 and l1 < 0.70)
     std::cout << ::tpy::print_bool(((l1 > 0.69) && (l1 < 0.7))) << "\n";
     // # gamma / lgamma
     // print(math.gamma(5.0))        # 4! = 24
-    std::cout << ::tpy::print_float(::std::tgamma(5.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_gamma(5.0)) << "\n";
     // print(math.gamma(1.0) == 1.0)
-    std::cout << ::tpy::print_bool((::std::tgamma(1.0) == 1.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_gamma(1.0) == 1.0)) << "\n";
     // print(math.lgamma(1.0) == 0.0)
-    std::cout << ::tpy::print_bool((::std::lgamma(1.0) == 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::stdlib::math::checked_lgamma(1.0) == 0.0)) << "\n";
     // g5 = math.lgamma(5.0)         # ln(24)
-    double g5 = ::std::lgamma(5.0);
+    double g5 = ::tpy::stdlib::math::checked_lgamma(5.0);
     // print(g5 > 3.17 and g5 < 3.19)
     std::cout << ::tpy::print_bool(((g5 > 3.17) && (g5 < 3.19))) << "\n";
     // # erf / erfc
@@ -52,9 +52,9 @@ void main() {
     // print(math.nextafter(1.0, 1.0) == 1.0)
     std::cout << ::tpy::print_bool((::std::nextafter(1.0, 1.0) == 1.0)) << "\n";
     // print(math.ldexp(1.5, 3))     # 1.5 * 2^3 = 12.0
-    std::cout << ::tpy::print_float(::std::ldexp(1.5, 3)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.5, 3)) << "\n";
     // print(math.ldexp(1.0, -1))    # 0.5
-    std::cout << ::tpy::print_float(::std::ldexp(1.0, -1)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::stdlib::math::checked_ldexp(1.0, -1)) << "\n";
     // # modf: (fractional, integer) both as float
     // frac, ip = math.modf(3.75)
     auto __tup_1 = ::tpy::stdlib::math::modf(3.75);
