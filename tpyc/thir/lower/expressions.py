@@ -512,9 +512,9 @@ from .predicates import (
     _unwrap_lit_coerce,
     _value_opt_view_name,
 )
-from .context import (_ExprResultUse, _ExprUse, _LowerCtx,
-                      _method_recv_forms, _NO_FORMS,
-                      _ONLY_BTUPLE_SLOT, _ONLY_CORO_FACTORY,
+from .context import (_call_arg_forms, _ExprResultUse, _ExprUse, _LowerCtx,
+                      _recv_forms, _NO_FORMS,
+                      _ONLY_BTUPLE_SLOT,
                       _ONLY_FIELD_RECV_BORROW, _ONLY_INDIRECT_READ,
                       _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_TUPLE_SOURCE,
                       _RecordCtorUse, CallArgKind,
@@ -652,9 +652,8 @@ from .checks import (
     _borrowing_frame_callee,
     _fstring_arg_wrap,
     _fstring_container_call_arg,
+    _generic_arg_slot,
     _generic_plain_arg_ok,
-    _generic_slot_needs_arg_temp,
-    _generic_slot_view_form_arg,
     _raw_record_ctor_fi,
     _is_len_call,
     _is_len_native,
@@ -5899,7 +5898,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 receiver=_lower_expr(
                     e.obj, lc, declared,
                     use=_ExprUse(pos=SinkPos.RECEIVER,
-                                 forms=_ONLY_PTR_OPT_PASSTHROUGH)),
+                                 forms=_recv_forms(True, False))),
                 field_cpp=_field_cpp(e), deref_check=True, loc=loc)
         if (e.needs_optional_runtime_check
                 and isinstance(e.obj, TpyFieldAccess)
@@ -6049,6 +6048,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # A call-shaped receiver's own arg temps flush at the enclosing
             # statement (`Holder(__tmp_1).kind`), so allow_temps rides
             # through; inert for every non-call receiver shape.
+            # Outside `_recv_forms`: this slice's verdict is the one fixed
+            # render the FIELD-READ arm performs, on an axis that does not
+            # combine with the two the helper carries (the arrow / deref
+            # hops ride `is_arrow` and `deref_chain` here, not the form).
             receiver=_lower_expr(
                 e.obj, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.RECEIVER,
@@ -6334,7 +6337,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                          if isinstance(e.obj, TpySubscript)
                          # A MIXED-own-tuple CALL receiver renders bare via
                          # the btuple-slot call admission
-                         # (`std::get<1>(make_mixed(b))`).
+                         # (`std::get<1>(make_mixed(b))`). Outside
+                         # `_recv_forms` for the same reason as the field
+                         # slice: one fixed render this arm decides, on an
+                         # axis the helper's two do not combine with.
                          else (_ExprUse(result=_ExprResultUse.VALUE,
                                         pos=SinkPos.RECEIVER, forms=_ONLY_BTUPLE_SLOT)
                                if (isinstance(e.obj, (TpyCall,
@@ -6419,7 +6425,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                              if _module_var_recv(e.obj, declared, analyzer)
                              else _ExprUse(
                                  pos=SinkPos.RECEIVER,
-                                 forms=None if rec_optrecv else _NO_FORMS)),
+                                 forms=_recv_forms(False, rec_optrecv))),
                         field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                     # A runtime-BigInt key against a FIXED-int key param
                     # narrows here exactly as at a container read
@@ -6863,10 +6869,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # (`(*acc)[0].name` -- the rebind-slot read).
                     use=_ExprUse(
                         pos=SinkPos.RECEIVER,
-                        forms=(None
-                               if (isinstance(e.obj, TpyName)
-                                   and e.obj.name in lc.pointers)
-                               else _NO_FORMS)),
+                        forms=_recv_forms(
+                            False,
+                            isinstance(e.obj, TpyName)
+                            and e.obj.name in lc.pointers)),
                     field_prechecked=isinstance(e.obj, TpyFieldAccess)),
                 index=_lower_expr(e.index, lc, declared),
                 record_getitem=True,
@@ -6960,7 +6966,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                              and e.obj.property_getter_call is not None))
                      else _ExprUse(
                          pos=SinkPos.RECEIVER,
-                         forms=None if _optrecv_deref else _NO_FORMS)),
+                         forms=_recv_forms(False, _optrecv_deref))),
                 field_prechecked=isinstance(e.obj, TpyFieldAccess),
                 subscript_prechecked=isinstance(e.obj, TpySubscript),
                 allow_unrouted_name=own_recv)
@@ -10111,7 +10117,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                              allow_temps=temp_args,
                              pos=SinkPos.RECEIVER,
-                             forms=_method_recv_forms(
+                             forms=_recv_forms(
                                  (e.needs_optional_runtime_check
                                   and isinstance(e.obj,
                                                  (TpyCall, TpyMethodCall))),
@@ -12433,6 +12439,13 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 overload=root):
             raise ThirUnsupported(call_reject_reason("expr.call"))
         peeled = _peel_coerce(a)
+        # The one verdict this seam takes, the same object the free-call
+        # GATE and the method / ctor seams take: whether a bare-T slot's
+        # instantiation owes a temp, and whether that temp's init is the
+        # owned materialization.
+        gslot = _generic_arg_slot(a, ptype, resolved, declared,
+                                  lc.prescan.param_names, analyzer,
+                                  borrowing_frame=borrowing_frame)
 
         def _ref_slot_temp(init: THIRExpr,
                            slot: 'TpyType | None' = None) -> None:
@@ -12440,9 +12453,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
             # temporary hoists into a `param_val_or_ref_t<T>` binding. `slot`
             # overrides the declared type where the resolved slot carries a
             # decoration the TEMP must not (a `readonly[T]` slot's own const).
-            if not _generic_slot_needs_arg_temp(
-                    a, resolved, declared, lc.prescan.param_names, analyzer,
-                    borrowing_frame=borrowing_frame):
+            if gslot is None or not gslot.needs_temp:
                 # The INSTANTIATED slot is `const T&`, which binds the
                 # rvalue for the full expression: the temp is the
                 # reference-typed instantiation's binding aid, and the
@@ -12463,10 +12474,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 movable=unwrap_ref_type(st).is_movable(),
                 loc=getattr(a, "loc", None)))
 
-        if (_is_type_param_slot(ptype)
-                and _generic_slot_view_form_arg(a, resolved, declared,
-                                                lc.prescan.param_names,
-                                                analyzer)):
+        if gslot is not None and gslot.materialize:
             # The view-form source at an OWNING view-family slot: the temp is
             # the materialized copy (`std::string __tmp_N = std::string(k);`
             # / `= ::tpy::bytes_copy(k);`), since the slot binds the storage
@@ -12967,7 +12975,10 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         _witness("call.btuple_pass")
         return _lower_expr(
             a, lc, declared,
-            use=replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG, forms=_ONLY_TUPLE_SOURCE,
+            use=replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG,
+                        forms=_call_arg_forms(whole_tuple=True,
+                                              coro_factory=False,
+                                              ptr_opt_pass=False),
                         result=_ExprResultUse.STORAGE,
                         allow_temps=temp_args))
     if plain_kind and _own_movable_tuple_pass_arg(a, ptype, analyzer):
@@ -12976,7 +12987,10 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         _witness("call.own_tuple_pass")
         return _lower_expr(
             a, lc, declared,
-            use=replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG, forms=_ONLY_TUPLE_SOURCE,
+            use=replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG,
+                        forms=_call_arg_forms(whole_tuple=True,
+                                              coro_factory=False,
+                                              ptr_opt_pass=False),
                         result=_ExprResultUse.STORAGE,
                         allow_temps=temp_args))
     # Kind-blind like the NAME row: a native/template callee's F3-tuple slot
@@ -13634,7 +13648,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         lowered = _lower_expr(a, lc, declared,
                               use=replace(_NESTED_ARG_USE,
                                           pos=SinkPos.CALL_ARG,
-                                          forms=_ONLY_TUPLE_SOURCE),
+                                          forms=_call_arg_forms(
+                                              whole_tuple=True,
+                                              coro_factory=False,
+                                              ptr_opt_pass=False)),
                               allow_unrouted_name=True)
         _witness("move.own_tuple")
         return THIRMove(result_type=lowered.result_type, value=lowered,
@@ -14216,7 +14233,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     if coro_proto is not None:
         _witness("call.coro_factory_adapter")
         inner = _lower_expr(a, lc, declared,
-                            use=_ExprUse(pos=SinkPos.CALL_ARG, forms=_ONLY_CORO_FACTORY,
+                            use=_ExprUse(pos=SinkPos.CALL_ARG,
+                                         forms=_call_arg_forms(
+                                             whole_tuple=False,
+                                             coro_factory=True,
+                                             ptr_opt_pass=False),
                                          allow_temps=temp_args))
         base = dynamic_base_name(coro_proto, lc.analyzer)
         # THIRCoerce is form-preserving by contract (validate.py); the
@@ -14272,8 +14293,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 result_type=proto, cpp_type=None,
                 init=_lower_expr(
                     a, lc, declared,
-                    use=replace(_NESTED_ARG_USE,
-                                pos=SinkPos.CALL_ARG, forms=_ONLY_CORO_FACTORY)),
+                    use=replace(_NESTED_ARG_USE, pos=SinkPos.CALL_ARG,
+                                forms=_call_arg_forms(whole_tuple=False,
+                                                      coro_factory=True,
+                                                      ptr_opt_pass=False))),
                 form=Form.BORROW, loc=getattr(a, "loc", None))
         if isinstance(a, TpyStrLiteral) and not is_dyn_protocol(proto):
             # The str-literal structural temp (`auto __tmp_N = "hello";`):
@@ -15132,7 +15155,10 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _witness("optptr.call_pass")
             return _lower_expr(
                 a, lc, declared,
-                use=_ExprUse(pos=SinkPos.CALL_ARG, forms=_ONLY_PTR_OPT_PASSTHROUGH,
+                use=_ExprUse(pos=SinkPos.CALL_ARG,
+                             forms=_call_arg_forms(whole_tuple=False,
+                                                   coro_factory=False,
+                                                   ptr_opt_pass=True),
                              record_ctor=_RecordCtorUse.NESTED_ARG,
                              allow_temps=temp_args or nested_temps))
         elif opt_face == 'pass' or (isinstance(a, TpyName)

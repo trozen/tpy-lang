@@ -1,0 +1,6 @@
+free_function 2
+method 11
+in_loop 0 21
+in_loop 1 22
+in_loop 2 23
+try_finally 31

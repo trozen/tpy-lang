@@ -7639,43 +7639,64 @@ def _borrowing_frame_callee(fi) -> bool:
     return bool(fi is not None and getattr(fi, "is_generator", False))
 
 
-def _generic_slot_needs_arg_temp(a: TpyExpr, resolved: 'TpyType | None',
-                                 locals_: 'dict[str, TpyType] | None',
-                                 param_names: 'AbstractSet[str]',
-                                 analyzer, *,
-                                 borrowing_frame: bool = False) -> bool:
-    """Does an rvalue argument at a generic `T` slot owe the hoisted
-    `R __tmp_N = <init>;`?
+class _GenericArgSlot(NamedTuple):
+    """What a bare-`T` argument slot owes, answered once from the (source,
+    resolved slot, callee) triple.
 
-    Decided at the INSTANTIATION, which is what the emitted slot resolves
-    against: `param_val_or_ref_t<T>` (and a readonly method's `const T&`)
-    is a CONST reference for a value-typed T, which binds a prvalue for the
-    full expression exactly as the monomorphic twin's slot does, and the
-    mutable `T&` for a reference-typed one, which binds no rvalue at all.
-    Deciding on the OPEN T instead makes every instantiation pay the
-    reference-typed one's temp.
+    `slot` is the peeled resolved type a temp would declare, `materialize`
+    whether the source is a view at a slot spelled off the storage type (so
+    the temp's init is the owned copy, not a binding aid), and `needs_temp`
+    whether anything is owed at all."""
+    slot: TpyType
+    materialize: bool
+    needs_temp: bool
+
+
+def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
+                      resolved: 'TpyType | None',
+                      locals_: 'dict[str, TpyType] | None',
+                      param_names: 'AbstractSet[str]', analyzer, *,
+                      borrowing_frame: bool = False
+                      ) -> '_GenericArgSlot | None':
+    """The ONE verdict the three generic seams take -- the free call, the
+    record method and the record ctor -- so a shape cannot owe a temp at one
+    and render inline at another. None means the question does not arise:
+    the declared param is not a bare `T`, or its instantiation is unknown or
+    still open.
+
+    `needs_temp` is decided at the INSTANTIATION, which is what the emitted
+    slot resolves against: `param_val_or_ref_t<T>` (and a readonly method's
+    `const T&`) is a CONST reference for a value-typed T, which binds a
+    prvalue for the full expression exactly as the monomorphic twin's slot
+    does, and the mutable `T&` for a reference-typed one, which binds no
+    rvalue at all. Deciding on the OPEN T instead makes every instantiation
+    pay the reference-typed one's temp.
 
     Two things still owe a temp at a value-typed instantiation. The owned
-    materialization: a view-form source at a slot spelled off the storage
-    type is a COPY the render cannot drop, not a binding aid. And a callee
-    whose frame BORROWS the slot (`_borrowing_frame_callee`), where the
-    temp is what keeps the borrowed object alive -- the same rule
-    `_container_call_temp_arg` applies at concrete readonly-ref slots.
+    materialization (`materialize`): a view-form source at a slot spelled
+    off the storage type is a COPY the render cannot drop, not a binding
+    aid. And a callee whose frame BORROWS the slot
+    (`_borrowing_frame_callee`), where the temp is what keeps the borrowed
+    object alive -- the same rule `_container_call_temp_arg` applies at
+    concrete readonly-ref slots.
 
-    The verdict all three generic seams take -- the free call, the record
-    method and the record ctor -- so a shape cannot get a temp at one and
-    an inline render at another."""
-    if resolved is None:
-        return False
-    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
-    if contains_type_param(pt):
-        return False
-    if borrowing_frame:
-        return True
-    if _generic_slot_view_form_arg(a, pt, locals_ or {}, param_names,
-                                   analyzer):
-        return True
-    return not pt.is_value_type()
+    The verdict used to be re-asked as two separate predicates at each
+    seam, which is how they could drift. Each seam still owns what is
+    genuinely its own: which SOURCE shapes it renders as a temporary, its
+    reject tag, and the ctor's extra copy."""
+    # `resolved` is a param slot, which at a generic record can be an INT
+    # type argument rather than a type -- not a slot this question is about.
+    if (not _is_type_param_slot(unwrap_ref_type(raw_ptype))
+            or not isinstance(resolved, TpyType)):
+        return None
+    slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
+    if contains_type_param(slot):
+        return None
+    materialize = _generic_slot_view_form_arg(a, slot, locals_ or {},
+                                             param_names, analyzer)
+    return _GenericArgSlot(
+        slot, materialize,
+        materialize or borrowing_frame or not slot.is_value_type())
 
 
 def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
@@ -11793,18 +11814,17 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
     # below: those bind an lvalue of the slot's own C++ type, which a view is
     # not. Keyed on the readonly-aware slot shape, so `readonly[T]` -- whose
     # C++ is the same `const T&` binding -- takes it too.
-    if (_is_type_param_slot(ptype)
-            and _generic_slot_view_form_arg(a, resolved, locals_,
-                                            req.param_names, analyzer)):
+    gslot = _generic_arg_slot(
+        a, ptype, resolved, locals_, req.param_names, analyzer,
+        borrowing_frame=_borrowing_frame_callee(req.overload))
+    if gslot is not None and gslot.materialize:
         return temps_ok or note_detail("call.generic_arg_shape")
     if isinstance(ptype, TypeParamRef):
         # A row hoisting a temp is flush-gated; one whose INSTANTIATED slot
         # binds the rvalue outright renders inline, so it needs no flush
         # position (a `while` condition takes it).
         def _rvalue_ok() -> bool:
-            if not _generic_slot_needs_arg_temp(
-                    a, resolved, locals_, req.param_names, analyzer,
-                    borrowing_frame=_borrowing_frame_callee(req.overload)):
+            if gslot is None or not gslot.needs_temp:
                 return True
             return temps_ok or note_detail("call.generic_arg_shape")
         if _eligible_scalar(resolved):
@@ -14159,35 +14179,32 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
     (`has_view_param_form`) fed a view-form source. There the slot is
     spelled off the storage type while the source renders as the view, so
     the pass-through rows' lvalue bind does not exist. Both halves are
-    `_generic_slot_needs_arg_temp`, the verdict the free-callee seam takes
-    too."""
+    `_generic_arg_slot`, the verdict the free-callee seam takes too."""
     if method_fi is None or idx >= len(method_fi.params):
         return None
-    raw = method_fi.params[idx].type
-    if not _is_type_param_slot(unwrap_ref_type(raw)):
+    g = _generic_arg_slot(a, method_fi.params[idx].type, ptype, locals_,
+                          param_names, analyzer,
+                          borrowing_frame=borrowing_frame)
+    if g is None:
         return None
-    pt = ptype if isinstance(ptype, TpyType) else None
-    if pt is None:
-        return None
-    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    if contains_type_param(pt):
-        return None
-    if pt.is_value_type():
+    if g.slot.is_value_type():
         # A @native / @cpp_template callee spells its own C++ signature by
         # hand (the runtime's lookups take a key BY VIEW), so its bare-T slot
         # is NOT the emitted `param_val_or_ref_t<T>` this leg is about.
         if (method_fi.cpp_template is not None or method_fi.native_function
                 or method_fi.native_name):
             return None
-        return (pt if _generic_slot_needs_arg_temp(
-            a, pt, locals_, param_names, analyzer,
-            borrowing_frame=borrowing_frame) else None)
+        return g.slot if g.needs_temp else None
+    # A non-value resolution owes the temp only for the SOURCE shapes this
+    # seam renders as a temporary: the arg loop here judges the source, where
+    # the free-call prologue asks the shared verdict from inside its
+    # per-shape arms and so needs no test of its own.
     if isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
                       TpyStrLiteral)):
-        return pt
+        return g.slot
     if isinstance(a, (TpyCall, TpyMethodCall)) and is_rvalue_source(
             analyzer, a):
-        return pt
+        return g.slot
     return None
 
 def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,

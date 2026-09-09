@@ -10,14 +10,16 @@ fall-through.
 """
 
 import inspect
+import itertools
 import types
 
 import pytest
 
 from ..compilation_context import _current_compiler, activate_compiler
 from ..parse.nodes import TpyIntLiteral, TpyName, TpyStrLiteral
-from ..typesys import (CHAR, INT32, STRVIEW, OptionalType, OwnType,
-                       RecursiveUnionInfo, TypeParamRef, UnionType)
+from ..typesys import (CHAR, INT32, STRVIEW, ConcreteCoroType, NominalType,
+                       OptionalType, OwnType, PtrType, RecursiveUnionInfo,
+                       TupleType, TypeParamRef, UnionType)
 from .lower import checks
 from .lower.arg_table import (NO_CELL, PROLOGUE_CELL, _ArgReq, _ArgRow,
                               _ArgSink, arg_ok, reached, reached_families,
@@ -25,7 +27,8 @@ from .lower.arg_table import (NO_CELL, PROLOGUE_CELL, _ArgReq, _ArgRow,
                               registered_families)
 from .lower import expressions
 from .lower.context import (SinkForm, SinkPos, _POS_FORMS, _ExprUse,
-                            _RecordCtorUse)
+                            _RecordCtorUse, _call_arg_forms,
+                            _decl_slot_forms)
 from .lower.expressions import (_CTOR_ARG_SINK, _CTOR_NESTED_ARG_SINK,
                                 _pre_ctor_nested_slot_family)
 from .lower.checks import (_GENERIC_PLAIN_ARG_SINK,
@@ -2047,10 +2050,113 @@ class TestReachTally:
                 assert (sink.family, row.row) in cells
 
 
+# One representative slot per row of `_decl_slot_forms`, plus the shape just
+# outside each -- the decl arms hand it nine differently-named locals, so the
+# table names the SHAPE and not the arm. `analyzer` is None: the only row
+# that consults it is the `Ptr[T]` one, and a SCALAR pointee answers before
+# `_f1_record` is reached, so no registry is needed here (a record pointee is
+# the corpus's business).
+_REC = NominalType("Rec")
+_PTR_OPT_REC = OptionalType(_REC)
+_BORROW_TUPLE = TupleType((INT32, _PTR_OPT_REC))
+_VALUE_TUPLE = TupleType((INT32, INT32))
+_CORO = ConcreteCoroType(name="Cancellable", type_args=(INT32,),
+                         coro_func_name="produce")
+
+_DECL_SLOT_ROWS = (
+    # (what it stands for, slot, whole_tuple_call, from_call, ptr_local,
+    #  expected forms)
+    # GROWTH POINT: a `Ptr[<record>]` row would reach `_f1_record` and needs a
+    # real analyzer -- the driver asserts every Ptr pointee here is a scalar,
+    # so such a row fails loudly rather than answering off a None registry.
+    ("coro frame slot off a call", OwnType(_CORO), False, True, False,
+     frozenset({SinkForm.CORO_FACTORY})),
+    ("coro frame slot, Own already peeled", _CORO, False, True, False,
+     frozenset({SinkForm.CORO_FACTORY})),
+    # The factory FORM is a call result, so a coro slot with no call takes it
+    # away again.
+    ("coro frame slot, no call", OwnType(_CORO), False, False, False,
+     frozenset()),
+    ("ptr-repr Optional record, NAME source", _PTR_OPT_REC, False, False,
+     True, frozenset({SinkForm.PTR_OPT_PASSTHROUGH})),
+    ("Ptr[T] value slot", PtrType(INT32), False, False, False,
+     frozenset({SinkForm.PTR_OPT_PASSTHROUGH})),
+    ("value Optional -- not a pointer slot", OptionalType(INT32), False,
+     False, False, frozenset()),
+    # A tuple of OWNED tuples has no pointer-repr element, which is why this
+    # row takes the arm's whole-consumption predicate and not the shape.
+    ("value tuple the sink takes whole", _VALUE_TUPLE, True, True, False,
+     frozenset({SinkForm.TUPLE_SOURCE})),
+    ("value tuple off a call, not taken whole", _VALUE_TUPLE, False, True,
+     False, frozenset()),
+    ("borrow-form tuple off a call", _BORROW_TUPLE, False, True, False,
+     frozenset({SinkForm.BTUPLE_SLOT})),
+    ("borrow-form tuple off a read", _BORROW_TUPLE, False, False, False,
+     frozenset()),
+    # An Optional[tuple] uses pointer repr (its inner is not a value type),
+    # so the pointer row would swallow it if the tuple rows did not answer
+    # first.
+    ("Optional[borrow tuple] taken whole", OptionalType(_BORROW_TUPLE), True,
+     True, False, frozenset({SinkForm.TUPLE_SOURCE})),
+    ("Optional[borrow tuple] off a call", OptionalType(_BORROW_TUPLE), False,
+     True, False, frozenset({SinkForm.BTUPLE_SLOT})),
+    ("plain non-value bound as a pointer off a call", _REC, False, True, True,
+     frozenset({SinkForm.BORROW_RET_PASSTHROUGH})),
+    ("the same slot with Own to peel", OwnType(_REC), False, True, True,
+     frozenset({SinkForm.BORROW_RET_PASSTHROUGH})),
+    ("plain non-value off a call, not a pointer local", _REC, False, True,
+     False, frozenset()),
+    ("plain non-value pointer local, no call", _REC, False, False, True,
+     frozenset()),
+    ("a value scalar takes nothing", INT32, False, True, True, frozenset()),
+    ("no slot at all", None, True, True, True, frozenset()),
+)
+
+
+def _decl_slot_forms_produced():
+    """The forms `_decl_slot_forms` actually returns over the shape table."""
+    out = frozenset()
+    with activate_compiler(_fake_compiler()):
+        for _what, slot, whole, from_call, ptr_local, _want in \
+                _DECL_SLOT_ROWS:
+            out |= _decl_slot_forms(slot, None, whole_tuple_call=whole,
+                                    from_call=from_call,
+                                    ptr_local=ptr_local)
+    return out
+
+
 class TestSinkVocabulary:
     """The sink position and form vocabulary is a closed table: a member added
     to one enum without its row or its admission is caught here, not at the
     first body that reaches it."""
+
+    def test_decl_slot_forms_over_the_shape_table(self):
+        # The corpus is the witness for which shapes REACH each row; this
+        # pins what the helper answers for each of them, including the two
+        # orderings a reader gets wrong from the type system alone: a tuple
+        # slot is answered before the pointer row, and TUPLE_SOURCE keys on
+        # whole-consumption rather than on the tuple's borrow form.
+        # `analyzer=None` holds only while every Ptr pointee answers inside
+        # `_eligible_ptr_value` ahead of its `_f1_record` arm -- a value-typed
+        # pointee does, a record one would ask the registry.
+        for what, slot, *_rest in _DECL_SLOT_ROWS:
+            if isinstance(slot, PtrType):
+                assert slot.pointee.is_value_type(), (
+                    what, "a Ptr[<record>] row needs a real analyzer")
+        with activate_compiler(_fake_compiler()):
+            for what, slot, whole, from_call, ptr_local, want in \
+                    _DECL_SLOT_ROWS:
+                got = _decl_slot_forms(slot, None, whole_tuple_call=whole,
+                                       from_call=from_call,
+                                       ptr_local=ptr_local)
+                assert got == want, (what, got, want)
+
+    def test_call_arg_forms_default_is_the_sink_row(self):
+        # The helper's all-false result must BE the row, or the nine
+        # argument sites that pass no `forms=` would take a different
+        # verdict from the six that ask the helper.
+        assert _call_arg_forms(False, False, False) == _POS_FORMS[
+            SinkPos.CALL_ARG]
 
     def test_pos_forms_is_total_over_sink_pos(self):
         assert set(_POS_FORMS) == set(SinkPos)
@@ -2105,11 +2211,18 @@ class TestSinkVocabulary:
                     i = j
                 else:
                     i += 1
-        # The two helpers in context.py hand a lowering site one of the named
-        # sets by a slot fact, so their returns are producers too.
-        for helper in (ctx_mod._slot_lift_forms, ctx_mod._method_recv_forms):
-            for a in (False, True):
-                for b in (False, True):
-                    produced |= helper(a, b) or frozenset()
+        # The context.py helpers hand a lowering site one of the named sets
+        # by a fact computed at the site, so their returns are producers too.
+        # The boolean-domain ones are enumerated over their own arity, so a
+        # new argument cannot escape the probe; `_decl_slot_forms` keys on
+        # the slot TYPE, which has no enumerable domain, and its producers
+        # come from RUNNING it over the shape table below -- what the
+        # function returns, never a hand-listed tuple beside it.
+        for helper in (ctx_mod._slot_lift_forms, ctx_mod._recv_forms,
+                       ctx_mod._call_arg_forms):
+            arity = len(inspect.signature(helper).parameters)
+            for args in itertools.product((False, True), repeat=arity):
+                produced |= helper(*args) or frozenset()
+        produced |= _decl_slot_forms_produced()
         for form in SinkForm:
             assert form in produced, form

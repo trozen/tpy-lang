@@ -11,6 +11,7 @@ from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr, TpyFieldAccess,
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...typesys import (
     CallableType,
+    ConcreteCoroType,
     OptionalType,
     OwnType,
     ReadonlyType,
@@ -24,7 +25,7 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...codegen_cpp.forms import is_ptr_variant_union
+from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf
 from .predicates import (
     _borrow_tuple_return_type,
@@ -312,10 +313,17 @@ _ONLY_FIELD_VALUE_TUPLE: frozenset[SinkForm] = frozenset(
 # render BARE (a `T*` where the slot wanted `ptr_to_optional`). So a new
 # site is checked against its slot, not against the row -- the per-sink
 # derivation TODO.md schedules removes the hazard by deciding the verdict
-# from the slot at the position.
+# from the slot at the position. Of the two derived sinks, CALL_ARG's
+# `INDIRECT_READ` is the one permissive default still inherited (at 9 sites),
+# and it stays: a pointer-local NAME read derefing at an argument slot is
+# what an argument POSITION is, not a property of any slot.
 _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
     SinkPos.UNSPECIFIED: _NO_FORMS,
-    SinkPos.LOCAL_DECL: _ONLY_TUPLE_SOURCE,
+    # Every LOCAL_DECL site derives its verdict through `_decl_slot_forms`,
+    # so nothing inherits this row and an omitted `forms=` REJECTS again --
+    # the default hazard the comment above names, closed for this sink. The
+    # key stays: the table is total over SinkPos on purpose.
+    SinkPos.LOCAL_DECL: _NO_FORMS,
     SinkPos.CALL_ARG: _ONLY_INDIRECT_READ,
     SinkPos.SETITEM_VALUE: _ONLY_TUPLE_SOURCE,
     SinkPos.RECEIVER: _ONLY_INDIRECT_READ,
@@ -355,17 +363,95 @@ def _slot_lift_forms(ptr_opt_slot: bool,
     return _NO_FORMS
 
 
+def _decl_slot_forms(slot: 'TpyType | None', analyzer, *,
+                     whole_tuple_call: bool, from_call: bool,
+                     ptr_local: bool) -> frozenset[SinkForm]:
+    """Which forms a local DECL slot admits, read off the slot's type plus
+    three facts the decl arm already holds -- whether the init is a call the
+    sink consumes WHOLE, whether it is a call at all, and whether the name
+    binds as a pointer:
+
+      coro frame slot + from_call               -> CORO_FACTORY
+      pointer slot (ptr-repr Optional, Ptr[T])  -> PTR_OPT_PASSTHROUGH
+      tuple slot + whole_tuple_call             -> TUPLE_SOURCE
+      borrow-form tuple slot + from_call        -> BTUPLE_SLOT
+      plain non-value + ptr_local + from_call   -> BORROW_RET_PASSTHROUGH
+      anything else                             -> no forms
+
+    TUPLE_SOURCE is the one row the slot's SHAPE cannot decide: a tuple of
+    OWNED tuples has no pointer-repr element, so the arm's own
+    whole-consumption predicate enters as a boolean, exactly as
+    `_slot_lift_forms` takes its two."""
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+         if slot is not None else None)
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    # CORO_FACTORY names a FACTORY CALL's result, so the row asks for the
+    # call as well as the frame slot.
+    if isinstance(u, ConcreteCoroType) and from_call:
+        return _ONLY_CORO_FACTORY
+    # A tuple slot is answered BEFORE the pointer row: an `Optional[tuple]`
+    # of reference elements uses pointer repr (the inner is not a value
+    # type), and the tuple rows -- not the bare `T*` pass -- are its
+    # verdicts.
+    tup = u if isinstance(u, TupleType) else None
+    if tup is None and isinstance(u, OptionalType):
+        opt_inner = unwrap_readonly(u.inner)
+        tup = opt_inner if isinstance(opt_inner, TupleType) else None
+    if tup is not None:
+        if whole_tuple_call:
+            return _ONLY_TUPLE_SOURCE
+        if from_call and (tup.has_pointer_repr_element()
+                          or tup.has_ref_elements() or tup.is_mixed_own()):
+            return _ONLY_BTUPLE_SLOT
+        return _NO_FORMS
+    if ((isinstance(u, OptionalType) and u.uses_pointer_repr())
+            or _eligible_ptr_value(slot, analyzer)):
+        return _ONLY_PTR_OPT_PASSTHROUGH
+    if from_call and ptr_local and u is not None and is_plain_nonvalue(u):
+        return _ONLY_BORROW_RET_PASSTHROUGH
+    return _NO_FORMS
+
+
+def _call_arg_forms(whole_tuple: bool, coro_factory: bool,
+                    ptr_opt_pass: bool) -> frozenset[SinkForm]:
+    """Which forms an ARGUMENT slot admits. Unlike the decl slot's, these
+    three are (source, slot) PAIR facts the admitting arm has already
+    tested -- a whole-tuple source at a matching tuple param, an async-def
+    factory call at an erased or structural protocol param, a ptr-Optional
+    argument whose face resolves to the bare pass -- so they enter as
+    booleans and the helper owns only the CHOICE of set, the way the
+    receiver's does.
+
+    All three false is the sink's own row: a pointer-local NAME read fully
+    derefs at an argument slot, which is what an argument position IS, not
+    a property of any slot. So the row and this helper agree by
+    construction. The three are mutually exclusive at the arms that test
+    them -- each returns before the next is reached."""
+    if whole_tuple:
+        return _ONLY_TUPLE_SOURCE
+    if coro_factory:
+        return _ONLY_CORO_FACTORY
+    if ptr_opt_pass:
+        return _ONLY_PTR_OPT_PASSTHROUGH
+    return _ONLY_INDIRECT_READ
+
+
 _PTR_OPT_AND_INDIRECT = frozenset({SinkForm.PTR_OPT_PASSTHROUGH,
                                    SinkForm.INDIRECT_READ})
 
 
-def _method_recv_forms(opt_passthrough: bool,
-                       deref: bool) -> frozenset[SinkForm]:
-    """Which forms a method receiver admits. The two verdicts are
-    independent -- whether a checked receiver's `T*` result lands bare in
-    deref_check, and whether a pointer-local NAME derefs for a template or
-    native callee that spells `(*x)` where a real member call spells `->`
-    -- so all four combinations occur and the position admits both."""
+def _recv_forms(opt_passthrough: bool, deref: bool) -> frozenset[SinkForm]:
+    """Which forms a RECEIVER admits -- the object a read or a call is taken
+    OF, at a method call, a field read or a subscript. A receiver has no
+    slot, so unlike the decl and argument helpers both verdicts are facts
+    about the receiver EXPRESSION and the callee: whether a checked
+    receiver's `T*` result lands bare in deref_check, and whether a
+    pointer-local NAME derefs (a template or native callee spells `(*x)`
+    where a real member call spells `->`; a narrowed ptr-Optional name and a
+    pointer-slot local read their deref the same way). The two are
+    independent -- all four combinations occur -- so the position admits
+    both."""
     if opt_passthrough:
         return _PTR_OPT_AND_INDIRECT if deref else _ONLY_PTR_OPT_PASSTHROUGH
     return _ONLY_INDIRECT_READ if deref else _NO_FORMS
