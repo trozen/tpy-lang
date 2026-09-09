@@ -20,20 +20,14 @@ void take_two(Box<int32_t>&& a, Box<int32_t>&& b) {
 void main() {
     // # T=Int32 inferred from sink's parameter type
     // sink(wrap(Int32(10)))
-    int32_t __tmp_2 = 10;
-    sink(wrap<int32_t>(__tmp_2));
+    sink(wrap<int32_t>(10));
     // take_two(wrap(Int32(3)), wrap(Int32(7)))
-    int32_t __tmp_3 = 3;
-    int32_t __tmp_4 = 7;
-    take_two(wrap<int32_t>(__tmp_3), wrap<int32_t>(__tmp_4));
+    take_two(wrap<int32_t>(3), wrap<int32_t>(7));
     // # Bare literals: hint chain infers Int32, coerces literal
     // sink(wrap(20))
-    int32_t __tmp_5 = 20;
-    sink(wrap<int32_t>(__tmp_5));
+    sink(wrap<int32_t>(20));
     // take_two(wrap(5), wrap(9))
-    int32_t __tmp_6 = 5;
-    int32_t __tmp_7 = 9;
-    take_two(wrap<int32_t>(__tmp_6), wrap<int32_t>(__tmp_7));
+    take_two(wrap<int32_t>(5), wrap<int32_t>(9));
     // print("done")
     std::cout << "done" << "\n";
 }

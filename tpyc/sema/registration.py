@@ -2169,10 +2169,13 @@ class TypeRegistrar:
         record_info._is_polymorphic_class = None
 
         # Direct C++ inheritance of a generic @dynamic protocol whose methods
-        # have TypeParamRef in parameter position would emit overrides that
-        # don't match the base virtual's `::tpy::param_val_or_ref_t<T>` shape
-        # (see BUGS.md). Reject with a clean diagnostic until codegen handles
-        # it; the structural-conformance (adapter) path works.
+        # have TypeParamRef in parameter position would emit overrides spelled
+        # with the concrete type where the base virtual is spelled
+        # `::tpy::param_val_or_ref_t<T>`, so the override does not bind the
+        # virtual slot and the class stays abstract. A SIGNATURE mismatch, so
+        # no call-site materialization reaches it. Reject with a clean
+        # diagnostic until the override codegen spells the trait; the
+        # structural-conformance (adapter) path already does.
         for proto in implemented_protocols:
             if not isinstance(proto, NominalType) or not proto.is_dynamic_protocol:
                 continue

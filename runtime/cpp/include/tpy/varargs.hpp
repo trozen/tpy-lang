@@ -152,6 +152,14 @@ struct varargs<T, true> {
     T* end() const { return data_ + size_; }
 };
 
+// A value type (the body view of *args is copied, not aliased, at a generic
+// slot) that nonetheless borrows the caller's backing storage, so it is never
+// Send; Sync mirrors span -- a read-only element view is Sync if the element is.
+template<typename T, bool V> struct is_value_type<varargs<T, V>> : std::true_type {};
+template<typename T, bool V> struct is_send<varargs<T, V>> : std::false_type {};
+template<typename T, bool V> struct is_sync<varargs<T, V>> : std::false_type {};
+template<typename T, bool V> struct is_sync<varargs<const T, V>> : is_sync<T> {};
+
 template<typename T, bool V>
 int32_t __len__(const varargs<T, V>& v) { return v.size(); }
 

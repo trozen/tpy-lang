@@ -7,17 +7,13 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // show(True)
-    bool __tmp_1 = true;
-    show<bool>(__tmp_1);
+    show<bool>(true);
     // show(False)
-    bool __tmp_2 = false;
-    show<bool>(__tmp_2);
+    show<bool>(false);
     // show(42)
-    int32_t __tmp_3 = 42;
-    show<int32_t>(__tmp_3);
+    show<int32_t>(42);
     // show("hello")
-    std::string __tmp_4 = "hello";
-    show<std::string>(__tmp_4);
+    show<std::string>("hello");
 }
 
 void __tpy_init() {

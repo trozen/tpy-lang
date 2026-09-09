@@ -19,9 +19,7 @@ void main() {
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
     // print(multi[Int32, Int32](10, 20))
-    int32_t __tmp_1 = 10;
-    int32_t __tmp_2 = 20;
-    std::cout << multi<int32_t, int32_t>(__tmp_1, __tmp_2) << "\n";
+    std::cout << multi<int32_t, int32_t>(10, 20) << "\n";
     // print("done")
     std::cout << "done" << "\n";
 }

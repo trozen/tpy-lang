@@ -257,6 +257,10 @@ Allowed:
 - I/O (`print`, etc.)
 - Rebinding the variable itself (`p = other_point`)
 - Passing value-type expressions derived from readonly refs to any function
+- `copy(p)`: copying reads the source and never writes it, so a readonly
+  source is valid and the result is a mutable `Own[T]` over independent
+  storage. This is the spelling that reaches rule 4's mutable slot; the
+  borrow itself still cannot
 
 ## Current Implementation
 

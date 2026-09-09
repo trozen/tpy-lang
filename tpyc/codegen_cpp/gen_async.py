@@ -546,6 +546,12 @@ class AsyncCoroCodegen:
         # template-mode Fn cannot answer.
         if is_fn_type(actual):
             return _CoroParamKind.FN
+        # A generic `T | None` slot lands here too, and the arm's spelling is
+        # what it wants: `to_cpp_param_type()` renders the runtime's
+        # per-instantiation form, which owns at a value T and points at a
+        # reference one. Only the KIND's name is a pointer -- the borrow
+        # question is answered per instantiation, on the substituted slot the
+        # call site passes to `_param_borrows`.
         if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
             return _CoroParamKind.POINTER
         if self.ctx.is_ptr_variant_union(actual):
@@ -575,7 +581,13 @@ class AsyncCoroCodegen:
         TYPE_PARAM (generic-async) is intentionally not treated as borrowing
         here: its value-vs-reference form resolves only at instantiation, so
         the borrowing rvalue-arg dangle for an object-typed `T` is left to the
-        generic-async dangle tracked in BUGS.md (#292 M7)."""
+        generic-async dangle tracked in BUGS.md (#292 M7).
+
+        A generic `T | None` slot needs no such carve-out: its only caller
+        (`_hoist_borrowed_args`) asks about the resolved callee's SUBSTITUTED
+        slot, which is a value Optional at a value T (no hoist) and a
+        pointer-repr one at a reference T (hoisted), so the answer is already
+        per instantiation."""
         return self._classify_param_kind(ptype) in (
             _CoroParamKind.REF, _CoroParamKind.POINTER)
 

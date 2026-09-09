@@ -1,0 +1,18 @@
+module True
+free True True True True
+view True
+ref_rvalue True
+ref_lvalue 2 2
+method_ctor 3 True
+comprehension 3
+closure True
+cond_operand True
+while_condition 3
+match_arm True
+try_finally True
+with_body g True
+with_body_exit
+generator_body 1
+error_return_body 7
+generator 84
+async 21

@@ -1,0 +1,6 @@
+free_function: True False
+free_function: 1.5
+method: 1.5 True True
+enum_instantiation: True False
+generator_frame: 1.5 1.5 2.5
+async_frame: 1.5 2.5

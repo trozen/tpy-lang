@@ -28,8 +28,7 @@ void main() {
     std::cout << get_box() << "\n";
     // # Partial inference: args determine T, context not needed
     // y: Int32 = identity(Int32(5))  # tpyc: ok
-    int32_t __tmp_1 = 5;
-    int32_t y = identity<int32_t>(__tmp_1);
+    int32_t y = identity<int32_t>(5);
     // print(y)
     std::cout << y << "\n";
     // # Reassignment context: existing type used as hint

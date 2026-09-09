@@ -24,7 +24,8 @@ a copy unavoidable, the compiler warns and the user silences the warning with an
 Wrong: `extern std::tuple<Box, Box> G` (owning storage), so `V.n` prints 2 under TPy and 42 under
 CPython, with no diagnostic. Right: the form the scalar global `G: Box = V` already takes, a
 borrow slot `Box* G`, as the local tuple does with `std::tuple<Box*, Box*>`.
-(open: `BUGS.md#global-tuple-ref-storage-form`)
+(open: `BUGS.md#global-tuple-ref-storage-form`,
+`BUGS.md#callable-value-borrow-return-copies-unwarned`)
 
 **Check.** Mutate the object after the boundary (return, yield, param, field store, container
 insert, global) and print a field that shows whether the mutation reached the original, under
@@ -120,19 +121,26 @@ emitted form of the same body written with `X` spelled directly. The type parame
 placeholder, not a further value shape: a form or ownership verdict taken while `T` is still
 unresolved and not retaken at the instantiation is where the twin drifts.
 
-**Example.** `def find[T](xs: list[T], v: T)` called as `find(names, k)` with `k: str`. Wrong:
-the slot spells `const std::string&` (`param_val_or_ref_t<T>` at `std::string`) and the caller's
-`std::string_view` does not bind, so valid code fails in C++. Right: the twin `def find(xs:
-list[str], v: str)`, whose slot is `std::string_view`. Same class: a borrow-returning call at a
-generic `Own[T]` slot gets no warning where the concrete slot warns and copies; `def probe(self,
-val: T | None)` on `class Container[T]` renders `const T* val` at `Int32` where `def probe(val:
-Int32 | None)` renders `std::optional<int32_t>`.
-(open: `BUGS.md#generic-slot-str-bytes-param-form`, `BUGS.md#generic-own-slot-borrow-call-unwarned`,
-`BUGS.md#generic-optional-scalar-param-pointer-form`)
+**Example.** `def find[T](xs: list[T], v: T)` called as `find(names, k)` with `k: str`. The slot
+spells `const std::string&` (`param_val_or_ref_t<T>` at `std::string`) while the caller's read is
+a `std::string_view`, so the twin `def find(xs: list[str], v: str)` -- whose slot IS the view --
+binds where the generic did not; the call site now materializes an owned copy, a per-call
+allocation the twin does not pay -- a drift of the emitted form, not a fix. Same class, still open: an owning-slot copy in a generic body is
+judged on the open `T` and hedged (`may copy T ... if not a value type`) where the concrete slot
+names the type it copies -- and reports nothing at all when the instantiation's `T` cannot be
+copied; a `T | None` RETURN is committed to `T*` for every instantiation, so returning the body's
+own `T | None` parameter does not compile at a value `T` where the twin's does.
+(open: `BUGS.md#generic-str-slot-copies-where-twin-binds-view`,
+`BUGS.md#generic-own-slot-copy-verdict-not-reasked`,
+`BUGS.md#generic-own-copy-nomove-instantiation-cpp-error`,
+`BUGS.md#generic-own-slot-borrow-call-unwarned`,
+`BUGS.md#generic-optional-return-committed-to-pointer`,
+`BUGS.md#simple-generator-captures-open-t-param-by-reference`)
 
 **Check.** For a changed rule that a generic body can reach, write the monomorphic twin at the
 instantiation the case uses and diff the emitted C++ for the subject and the diagnostics; a
-different form, verdict or warning is the defect. Where the corpus spells only the generic,
+different form, verdict or warning is the defect, and a temporary, copy or allocation the twin
+does not pay is a different form. Where the corpus spells only the generic,
 the twin is a probe.
 
 ## Generated code

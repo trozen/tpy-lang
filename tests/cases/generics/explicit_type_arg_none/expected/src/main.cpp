@@ -10,8 +10,7 @@ void main() {
     // # what this case exercises; binding the result to a typed local is
     // # covered by `cases/generics/none_annotation_positions`.
     // identity[None](None)
-    std::monostate __tmp_1 = std::monostate{};
-    identity<std::monostate>(__tmp_1);
+    identity<std::monostate>(std::monostate{});
     // print("ran")
     std::cout << "ran" << "\n";
 }

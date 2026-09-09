@@ -14,29 +14,21 @@ void take_box(Box<int32_t>& b) {
 void main() {
     // # Function calls: _ is equivalent to omitting (full inference)
     // r1 = identity[_](Int32(10))  # tpyc: type(Int32)
-    int32_t __tmp_1 = 10;
-    int32_t r1 = identity<int32_t>(__tmp_1);
+    int32_t r1 = identity<int32_t>(10);
     // print(r1)
     std::cout << r1 << "\n";
     // # Function calls: partial explicit + wildcard
     // r2 = pair_func[_, Int64](Int32(5), Int64(20))  # tpyc: type(Int32)
-    int32_t __tmp_2 = 5;
-    int64_t __tmp_3 = 20;
-    int32_t r2 = pair_func<int32_t, int64_t>(__tmp_2, __tmp_3);
+    int32_t r2 = pair_func<int32_t, int64_t>(5, 20);
     // print(r2)
     std::cout << r2 << "\n";
     // r3 = pair_func[Int32, _](Int32(5), Int64(20))  # tpyc: type(Int32)
-    int32_t __tmp_4 = 5;
-    int64_t __tmp_5 = 20;
-    int32_t r3 = pair_func<int32_t, int64_t>(__tmp_4, __tmp_5);
+    int32_t r3 = pair_func<int32_t, int64_t>(5, 20);
     // print(r3)
     std::cout << r3 << "\n";
     // # Triple: wildcard in middle position
     // r4 = triple[Int32, _, Int64](Int32(1), Int64(2), Int64(3))  # tpyc: type(Int64)
-    int32_t __tmp_6 = 1;
-    int64_t __tmp_7 = 2;
-    int64_t __tmp_8 = 3;
-    int64_t r4 = triple<int32_t, int64_t, int64_t>(__tmp_6, __tmp_7, __tmp_8);
+    int64_t r4 = triple<int32_t, int64_t, int64_t>(1, 2, 3);
     // print(r4)
     std::cout << r4 << "\n";
     // # Constructor: wildcard with init args
@@ -60,8 +52,8 @@ void main() {
     std::cout << c.get() << "\n";
     // # Inline constructor with wildcard, resolved from param type
     // take_box(Box[_](Int32(7)))
-    Box<int32_t> __tmp_9 = Box<int32_t>(7);
-    take_box(__tmp_9);
+    Box<int32_t> __tmp_1 = Box<int32_t>(7);
+    take_box(__tmp_1);
     // # Method call: wildcard on method-level type params
     // m = Mapper[Int32](Int32(5))
     Mapper<int32_t> m = Mapper<int32_t>(5);
@@ -71,8 +63,7 @@ void main() {
     std::cout << r5 << "\n";
     // # String literal: wildcard should produce str (same as full inference)
     // s = identity[_]("hello")  # tpyc: type(str)
-    std::string __tmp_10 = "hello";
-    std::string s = identity<std::string>(__tmp_10);
+    std::string s = identity<std::string>("hello");
     // print(s)
     std::cout << s << "\n";
 }

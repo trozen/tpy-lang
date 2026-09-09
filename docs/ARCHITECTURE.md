@@ -418,6 +418,24 @@ cosmetic. Left as one cohesive module.
   `cpp_concept` / `is_marker` / `is_readonly` / method-name set).
   Compared against the live `TpyType` instance; values are
   independent of the implementation path.
+- **Registry-vs-runtime value-type parity** in
+  `tests/test_runtime_value_type_parity.py`: `is_value_type` is
+  decided twice -- by the registry for the front end and by
+  `tpy::is_value_type` in the C++ runtime for every generic body --
+  so the test re-derives both lists (each TypeDef's own
+  `cpp_formatter`, and the specializations found by scanning every
+  header under `runtime/cpp/include/tpy/`) and fails on a value type
+  the runtime would give a mutable `T&` slot. The same scan holds
+  the `is_send` / `is_sync` overrides, which default to
+  `is_value_type` and so must spell out a False.
+  `std::vector<uint8_t>` (shared by `bytes`, `bytearray` and
+  `list[UInt8]`) and `T*` are declared exceptions; user value
+  records are out of scope, since codegen emits their
+  specialization next to the struct. A runtime type declares its own
+  value-ness beside its definition (`span_iter.hpp`, `slice.hpp`,
+  `range.hpp`, `varargs.hpp`, `dict_ops.hpp`); `type_traits.hpp`
+  holds the trait machinery plus the rows for types with no defining
+  header of ours (the `std::` types, the enum-kind default).
 - **Byte-identical generated C++** at any boundary: every case under
   `tests/cases/**/expected/` has pinned `include/*.hpp` and
   `src/*.cpp`, compared in the comp phase. The exec phase (build +

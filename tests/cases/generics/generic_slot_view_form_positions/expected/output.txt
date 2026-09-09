@@ -1,0 +1,20 @@
+module_level True True
+free_function True True
+method True True
+ctor_arg True True
+comprehension [True, False] [True, False]
+gen_body True
+gen_body True
+async_body True
+closure True True
+match_arm True True
+cond_operand True True
+with_body True True
+try_finally True True
+try_finally done
+er_body True True
+bytes_value True
+readonly_slot True True
+readonly_slot True True
+inverse True True
+inverse hi a

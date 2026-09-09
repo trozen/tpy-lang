@@ -107,6 +107,7 @@ from ...type_def_registry import (
     is_fixed_int_type,
     is_dict_view,
     is_float32_type,
+    has_view_param_form,
     is_list,
     is_set,
     is_span,
@@ -301,6 +302,7 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
+    _resolved_viewfam_value,
     _strview_coerce_name,
     _generic_root_subst,
     _is_range_call,
@@ -5246,18 +5248,21 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                           narrowed: 'set[str] | frozenset[str]',
                           param_names: 'AbstractSet[str]' = frozenset(),
                           storage_tuple_locals: 'AbstractSet[str]'
-                          = frozenset()) -> bool:
+                          = frozenset(),
+                          overload=None) -> bool:
     """The generic free-callee family's arg rows, decided against the
     SUBSTITUTED slot -- which is why the sink is handed `resolved` as its
     slot and keeps the unsubstituted one as `open_ptype`.
-    Rows: `_GENERIC_PLAIN_ARG_SINK`, prologue `_pre_generic_slot_family`."""
+    Rows: `_GENERIC_PLAIN_ARG_SINK`, prologue `_pre_generic_slot_family`.
+    `overload` is the resolved stub, which the prologue reads for the one
+    verdict that depends on the CALLEE rather than the slot."""
     resolved = (substitute_type_params_simple(ptype, subst)
                 if ptype is not None else None)
     return arg_ok(_GENERIC_PLAIN_ARG_SINK, a, resolved, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok,
                   storage_tuple_locals=storage_tuple_locals,
-                  open_ptype=ptype)
+                  open_ptype=ptype, overload=overload)
 
 
 def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -7579,6 +7584,98 @@ def _bytes_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
         return True
     return (isinstance(src, TpyName) and src.name in param_names
             and _own_viewfam_param(locals_.get(src.name)) is None)
+
+
+def _viewfam_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
+                              param_names: 'set[str] | frozenset[str]',
+                              analyzer) -> bool:
+    """Either view family's BORROW-form source -- the union of
+    `_str_view_form_source` and `_bytes_view_form_source`, for the sinks that
+    care only that the read is a view and not which family's."""
+    return (_str_view_form_source(a, locals_, param_names, analyzer)
+            or _bytes_view_form_source(a, locals_, param_names, analyzer))
+
+
+def _generic_slot_view_form_arg(a: TpyExpr, resolved: 'TpyType | None',
+                                locals_: dict[str, TpyType],
+                                param_names: 'set[str] | frozenset[str]',
+                                analyzer) -> bool:
+    """A VIEW-form source at a generic `T` slot the instantiation resolves to
+    an OWNING view-family type (`has_view_param_form`): the C++ slot is
+    spelled off the storage type (`param_val_or_ref_t<std::string>` ->
+    `const std::string&`, a readonly method's `const T&`,
+    `param_val_or_ref_t<std::vector<uint8_t>>` -> a mutable ref), so the
+    view does not bind and the argument owes an owned materialization.
+
+    The concrete twin has no such gap -- a `str` param IS `std::string_view`
+    -- which is why the slot's genericity, not the family, is the key."""
+    # Through the pending-view resolver: an inference-pending slot has no
+    # C++ spelling yet, and only the two view families can answer at all.
+    rv = _resolved_viewfam_value(resolved, analyzer)
+    if rv is None or not has_view_param_form(rv):
+        return False
+    return _viewfam_view_form_source(a, locals_, param_names, analyzer)
+
+
+def _borrowing_frame_callee(fi) -> bool:
+    """Does this callee's FRAME borrow an argument slot past the statement,
+    so a prvalue bound only for the full expression dangles on resume?
+
+    The simple-generator peephole does: its lambda captures a generic `T`
+    parameter by reference, a capture form decided on the OPEN `T`
+    (`BUGS.md#simple-generator-captures-open-t-param-by-reference`). A
+    RESUMABLE generator frame and a coroutine frame do not -- both copy the
+    argument into a `val_or_ref_t<T>` member in the frame constructor,
+    inside the full expression (verified for the coroutine by ASAN with the
+    temp elided).
+
+    Which of the two a generator lowers to is `is_simple_generator`, a
+    predicate over the callee's `TpyFunction` that this seam cannot reach:
+    a call site holds a `FunctionInfo`, and the peephole verdict is
+    finalized during codegen (`_prescan_for_src_embedding` may force a
+    simple generator resumable). So every generator factory is treated as
+    borrowing, which costs a resumable one a temp it does not need --
+    TODO.md carries that residue and the two ways to remove it."""
+    return bool(fi is not None and getattr(fi, "is_generator", False))
+
+
+def _generic_slot_needs_arg_temp(a: TpyExpr, resolved: 'TpyType | None',
+                                 locals_: 'dict[str, TpyType] | None',
+                                 param_names: 'AbstractSet[str]',
+                                 analyzer, *,
+                                 borrowing_frame: bool = False) -> bool:
+    """Does an rvalue argument at a generic `T` slot owe the hoisted
+    `R __tmp_N = <init>;`?
+
+    Decided at the INSTANTIATION, which is what the emitted slot resolves
+    against: `param_val_or_ref_t<T>` (and a readonly method's `const T&`)
+    is a CONST reference for a value-typed T, which binds a prvalue for the
+    full expression exactly as the monomorphic twin's slot does, and the
+    mutable `T&` for a reference-typed one, which binds no rvalue at all.
+    Deciding on the OPEN T instead makes every instantiation pay the
+    reference-typed one's temp.
+
+    Two things still owe a temp at a value-typed instantiation. The owned
+    materialization: a view-form source at a slot spelled off the storage
+    type is a COPY the render cannot drop, not a binding aid. And a callee
+    whose frame BORROWS the slot (`_borrowing_frame_callee`), where the
+    temp is what keeps the borrowed object alive -- the same rule
+    `_container_call_temp_arg` applies at concrete readonly-ref slots.
+
+    The verdict all three generic seams take -- the free call, the record
+    method and the record ctor -- so a shape cannot get a temp at one and
+    an inline render at another."""
+    if resolved is None:
+        return False
+    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
+    if contains_type_param(pt):
+        return False
+    if borrowing_frame:
+        return True
+    if _generic_slot_view_form_arg(a, pt, locals_ or {}, param_names,
+                                   analyzer):
+        return True
+    return not pt.is_value_type()
 
 
 def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
@@ -11410,8 +11507,9 @@ def _r_record_rvalue_temp_factory(req: _ArgReq) -> bool:
 
 
 def _r_tparam_slot_temp(req: _ArgReq) -> bool:
-    return _tparam_slot_temp_arg(req.a, req.ptype, req.index, req.overload,
-                                 req.analyzer) is not None
+    return _tparam_slot_temp_arg(
+        req.a, req.ptype, req.index, req.overload, req.analyzer,
+        borrowing_frame=_borrowing_frame_callee(req.overload)) is not None
 
 
 def _r_struct_proto_union(req: _ArgReq) -> bool:
@@ -11690,23 +11788,41 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
                 and _witness("call.generic_open_slot_lambda")):
             return True
         return note_detail("call.generic_arg_slot")
+    # A VIEW-form source at a slot resolved to an OWNING view-family type
+    # hoists the materialized owned temp, AHEAD of every pass-through row
+    # below: those bind an lvalue of the slot's own C++ type, which a view is
+    # not. Keyed on the readonly-aware slot shape, so `readonly[T]` -- whose
+    # C++ is the same `const T&` binding -- takes it too.
+    if (_is_type_param_slot(ptype)
+            and _generic_slot_view_form_arg(a, resolved, locals_,
+                                            req.param_names, analyzer)):
+        return temps_ok or note_detail("call.generic_arg_shape")
     if isinstance(ptype, TypeParamRef):
+        # A row hoisting a temp is flush-gated; one whose INSTANTIATED slot
+        # binds the rvalue outright renders inline, so it needs no flush
+        # position (a `while` condition takes it).
+        def _rvalue_ok() -> bool:
+            if not _generic_slot_needs_arg_temp(
+                    a, resolved, locals_, req.param_names, analyzer,
+                    borrowing_frame=_borrowing_frame_callee(req.overload)):
+                return True
+            return temps_ok or note_detail("call.generic_arg_shape")
         if _eligible_scalar(resolved):
             lit = _peel_coerce(a)
             if isinstance(lit, (TpyIntLiteral, TpyFloatLiteral,
                                 TpyBoolLiteral)):
-                return temps_ok or note_detail("call.generic_arg_shape")
+                return _rvalue_ok()
             if isinstance(a, TpyName):
                 return ((a.name != "self" and a.name in locals_
                          and _resolved_scalar(locals_.get(a.name), analyzer))
                         or note_detail("call.generic_arg_shape"))
-            # A scalar-typed call rvalue (`pair(Float64(2.5), x)`) hoists
-            # the same ref-slot temp; the scalar-ctor arm folds the render.
+            # A scalar-typed call rvalue (`pair(Float64(2.5), x)`) renders
+            # inline at a value-typed slot; the scalar-ctor arm folds it.
             if (isinstance(lit, (TpyCall, TpyMethodCall))
                     and is_rvalue_source(analyzer, lit)
                     and _resolved_scalar(analyzer.get_expr_type(lit),
                                          analyzer)):
-                return temps_ok or note_detail("call.generic_arg_shape")
+                return _rvalue_ok()
             return note_detail("call.generic_arg_shape")
         # A non-scalar-resolved T slot is an lvalue-ref binding
         # (`param_val_or_ref_t<T>`): a record / container NAME lvalue binds
@@ -11738,21 +11854,21 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
                     is not None
                     and _witness("call.generic_nested_tuple_name"))):
             return True
-        # Rvalue sources hoist the ref-slot temp
-        # (`R __tmp_N = <init>;`, TempState.create over resolved.to_cpp()):
-        # a str literal / by-value str call into a str-resolved slot, and
-        # `None` into a `std::monostate` slot -- flush-gated like the
-        # scalar-literal row. Record rvalues stay out (a covariant
-        # upcast declares that temp with the CHILD type, a render this row
-        # does not build).
+        # Rvalue sources at a str-resolved slot (a str literal / by-value str
+        # call) and `None` into a `std::monostate` slot: both instantiations
+        # are value-typed, so the slot is `const T&` and the rvalue renders
+        # inline -- `_rvalue_ok` re-asks per instantiation and flush-gates
+        # only where a temp is still owed. Record rvalues stay out (a
+        # covariant upcast declares that temp with the CHILD type, a render
+        # this row does not build).
         lit = _peel_coerce(a)
         if _resolved_str_value(resolved, analyzer) is not None and (
                 isinstance(lit, TpyStrLiteral)
                 or (isinstance(lit, (TpyCall, TpyMethodCall))
                     and is_rvalue_source(analyzer, lit))):
-            return temps_ok or note_detail("call.generic_arg_shape")
+            return _rvalue_ok()
         if isinstance(resolved, NoneType) and isinstance(lit, TpyNoneLiteral):
-            return temps_ok or note_detail("call.generic_arg_shape")
+            return _rvalue_ok()
         # A list literal into a container-resolved T slot (`use([1, 2])` ->
         # `std::vector<int32_t> __tmp_2 = {1, 2};`): the ref-slot temp with
         # the decl sink's target-typed brace init.
@@ -13985,30 +14101,50 @@ def _none_unit_arg(a: TpyExpr, ptype: 'TpyType | None') -> 'NoneType | None':
         pt = unwrap_readonly(pt.wrapped)
     return pt if isinstance(pt, NoneType) else None
 
-def _raw_record_method_fi(e: TpyMethodCall, locals_: dict[str, TpyType],
-                          analyzer):
-    """The receiver record's RAW method fi (TypeParamRef params intact --
-    not the substituted resolved stub), or None for a non-record receiver.
+def _raw_record_fi_for_type(t: 'TpyType | None', method_name: str,
+                            analyzer) -> 'object | None':
+    """The record's RAW fi for `method_name` (TypeParamRef params intact --
+    not the substituted resolved stub), or None for a non-record type.
     `_tparam_slot_temp_arg` keys its temp decision on the RAW param being a
     bare T, exactly like the user-record loop. Resolved through the
     MRO (`get_method_overloads_with_parents`) so an INHERITED generic
     method sees the same fi the shape gate admitted -- an own-methods-only
     lookup would skip the temp arm the gate promised."""
-    recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        _method_receiver_type(e.obj, locals_, analyzer))))
-    if isinstance(recv_t, OwnType):
-        recv_t = unwrap_readonly(recv_t.wrapped)
-    if not isinstance(recv_t, NominalType):
+    rt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+          if t is not None else None)
+    if isinstance(rt, OwnType):
+        rt = unwrap_readonly(rt.wrapped)
+    if not isinstance(rt, NominalType):
         return None
-    ri = analyzer.registry.get_record_for_type(recv_t)
+    ri = analyzer.registry.get_record_for_type(rt)
     if ri is None:
         return None
     overloads = analyzer.registry.get_method_overloads_with_parents(
-        ri, e.method)
+        ri, method_name)
     return overloads[0] if overloads else None
 
+
+def _raw_record_method_fi(e: TpyMethodCall, locals_: dict[str, TpyType],
+                          analyzer) -> 'object | None':
+    """The RECEIVER record's raw fi for the called method."""
+    return _raw_record_fi_for_type(
+        _method_receiver_type(e.obj, locals_, analyzer), e.method, analyzer)
+
+
+def _raw_record_ctor_fi(rtype: 'TpyType | None',
+                        analyzer) -> 'object | None':
+    """The CONSTRUCTED record's raw `__init__` fi. The ctor arg loop is
+    handed the SUBSTITUTED slots, so the genericity of the emitted parameter
+    (`explicit Boxed(const T& value)`) is only readable here."""
+    return _raw_record_fi_for_type(rtype, "__init__", analyzer)
+
+
 def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
-                          method_fi, analyzer) -> 'TpyType | None':
+                          method_fi, analyzer, *,
+                          locals_: 'dict[str, TpyType] | None' = None,
+                          param_names: 'AbstractSet[str]' = frozenset(),
+                          borrowing_frame: bool = False
+                          ) -> 'TpyType | None':
     """A temporary arg into a generic-record method's T slot, resolved
     non-value at the call site (`printer.get_str(Point(10, 20))`,
     `box_list.set([4, 5, 6])`): the RAW method param is a bare TypeParamRef
@@ -14017,7 +14153,14 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
     the receiver-substituted type). Returns that resolved type, or None.
     `ptype` arrives already substituted (the resolved fi's param); a
     value-type resolution passes bare through the scalar rows instead, and
-    a still-open T (a generic body's own T) stays out."""
+    a still-open T (a generic body's own T) stays out.
+
+    ONE value-typed resolution still hoists: an OWNING view-family type
+    (`has_view_param_form`) fed a view-form source. There the slot is
+    spelled off the storage type while the source renders as the view, so
+    the pass-through rows' lvalue bind does not exist. Both halves are
+    `_generic_slot_needs_arg_temp`, the verdict the free-callee seam takes
+    too."""
     if method_fi is None or idx >= len(method_fi.params):
         return None
     raw = method_fi.params[idx].type
@@ -14027,8 +14170,18 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
     if pt is None:
         return None
     pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    if contains_type_param(pt) or pt.is_value_type():
+    if contains_type_param(pt):
         return None
+    if pt.is_value_type():
+        # A @native / @cpp_template callee spells its own C++ signature by
+        # hand (the runtime's lookups take a key BY VIEW), so its bare-T slot
+        # is NOT the emitted `param_val_or_ref_t<T>` this leg is about.
+        if (method_fi.cpp_template is not None or method_fi.native_function
+                or method_fi.native_name):
+            return None
+        return (pt if _generic_slot_needs_arg_temp(
+            a, pt, locals_, param_names, analyzer,
+            borrowing_frame=borrowing_frame) else None)
     if isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
                       TpyStrLiteral)):
         return pt

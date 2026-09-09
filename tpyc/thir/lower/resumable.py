@@ -170,6 +170,8 @@ from .predicates import (
     _value_opt_view,
     _value_tuple,
     _value_tuple_return,
+    generic_opt_trait_type,
+    unit_opt_instantiation,
 )
 from .statements import (
     _append_assert_narrow,
@@ -280,6 +282,20 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
             or _resolved_bytes_value(t, analyzer) is not None):
         return True
     if _optional_ptr_borrow(t, analyzer) is not None:
+        return True
+    # A generic `T | None` param: the frame field is the same
+    # `opt_param_t<T>` slot the sync signature spells, and every leaf read is
+    # already form-neutral -- `*o` and `o->x` read the optional and the
+    # pointer form alike, and the None test takes the runtime reader -- so no
+    # coro-specific form is needed.
+    if generic_opt_trait_type(t) is not None:
+        return True
+    # ... and its degenerate instantiation `T = None`, which the AWAIT-arg
+    # gate meets as the SUBSTITUTED slot (`None | None`). The fixed-int and
+    # record instantiations of the same slot are admitted above by the value-
+    # opt and optional-ptr families; the unit one has no family of its own,
+    # and its capture and reads are the value form's.
+    if unit_opt_instantiation(t) is not None:
         return True
     # A raw `Ptr[T]` param is a VALUE-kind capture, so the frame field is the
     # bare `T*` the sync param already spells and every leaf read takes the

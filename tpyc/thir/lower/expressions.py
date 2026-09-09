@@ -97,6 +97,7 @@ from ...typesys import (
 )
 from ...type_def_registry import (
     enum_info_of,
+    has_view_param_form,
     is_array,
     is_big_int_type,
     is_bool_type,
@@ -370,6 +371,7 @@ from .predicates import (
     _optional_ptr_borrow_wide_name,
     _storage_optional_return_wide,
     _optional_ptr_borrow_name,
+    generic_opt_trait_name,
     _optional_checked_field,
     _optional_checked_field_over_call_ok,
     _optional_checked_recv_call,
@@ -647,9 +649,13 @@ from .checks import (
     _subscript_over_narrowed_opt_subscript_ok,
     _field_over_field_ok,
     _free_callee_kind,
+    _borrowing_frame_callee,
     _fstring_arg_wrap,
     _fstring_container_call_arg,
     _generic_plain_arg_ok,
+    _generic_slot_needs_arg_temp,
+    _generic_slot_view_form_arg,
+    _raw_record_ctor_fi,
     _is_len_call,
     _is_len_native,
     _iter_proto_call_ret,
@@ -4282,6 +4288,19 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                       subscript_prechecked=True),
                     form=Form.BORROW, loc=loc),
                 negate=e.op == "is not",
+                form=Form.VALUE,
+                loc=loc)
+        if generic_opt_trait_name(operand, declared):
+            # A generic `T | None` slot: the runtime's form-neutral reader,
+            # since the template cannot know whether the slot is an optional
+            # or a pointer at this instantiation.
+            _witness("isnone.generic_opt_trait")
+            return THIRIsNone(
+                result_type=rtype,
+                operand=_lower_expr(operand, lc, declared,
+                                    allow_whole_optional=True),
+                negate=e.op == "is not",
+                trait_repr=True,
                 form=Form.VALUE,
                 loc=loc)
         is_field = isinstance(operand, TpyFieldAccess)
@@ -8010,12 +8029,36 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 eff_params = _ctor_effective_params(
                     e, lc.analyzer.registry.get_record_for_type(rtype))
             args = []
+            raw_ctor_fi = _raw_record_ctor_fi(rtype, lc.analyzer)
             for i, (a, p) in enumerate(zip(e.args, eff_params)):
                 if not _record_ctor_arg_supported(
                         a, p.type, i, fi, lc, declared, use):
                     note_detail(
                         "call.ctor_arg." + _type_family_tag(p.type, analyzer))
                     raise ThirUnsupported(call_reject_reason("expr.call"))
+                # A VIEW-form source at a GENERIC ctor slot: the emitted
+                # parameter is spelled off the record's own `T`
+                # (`explicit Boxed(const T& value)`), so it binds the storage
+                # type and the view owes the owned materialize -- the free
+                # call's and the generic method's arm at the third seam.
+                vt = _tparam_slot_temp_arg(
+                    a, p.type, i, raw_ctor_fi, lc.analyzer, locals_=declared,
+                    param_names=lc.prescan.param_names)
+                if vt is not None and has_view_param_form(vt):
+                    if not temp_args:
+                        note_detail("ctor.generic_slot_view_no_flush")
+                        raise ThirUnsupported(
+                            call_reject_reason("expr.call"))
+                    _witness("argtemp.generic_ref_slot")
+                    args.append(THIRArgTemp(
+                        result_type=vt, cpp_type=vt.to_cpp(),
+                        movable=unwrap_ref_type(vt).is_movable(),
+                        init=THIRFormConvert(
+                            result_type=vt,
+                            value=_lower_expr(a, lc, declared),
+                            form=Form.STORAGE, loc=getattr(a, "loc", None)),
+                        form=Form.VALUE, loc=getattr(a, "loc", None)))
+                    continue
                 rec = (_record_rvalue_temp_slot(a, p.type, lc.analyzer)
                        if i in ctor_mut else None)
                 if rec is not None:
@@ -9796,15 +9839,26 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # hoists the named temp with the substituted type
                 # (`Point __tmp_N = Point(10, 20);`) BEFORE the inline
                 # renders -- the TypeParamRef temp precedes the arg tail.
-                tt = _tparam_slot_temp_arg(a, ptype, index, raw_method_fi,
-                                           lc.analyzer)
+                tt = _tparam_slot_temp_arg(
+                    a, ptype, index, raw_method_fi, lc.analyzer,
+                    locals_=declared,
+                    param_names=lc.prescan.param_names,
+                    borrowing_frame=_borrowing_frame_callee(fi))
                 if tt is not None:
                     _witness("argtemp.generic_ref_slot")
+                    t_init = _lower_expr(a, lc, declared,
+                                         use=_ExprUse(slot_target=tt))
+                    if (has_view_param_form(tt)
+                            and t_init.form is Form.BORROW):
+                        # The view-form source owes the owned materialize the
+                        # storage-typed slot binds; the free-callee twin
+                        # builds the same convert.
+                        t_init = THIRFormConvert(
+                            result_type=tt, value=t_init, form=Form.STORAGE,
+                            loc=getattr(a, "loc", None))
                     return THIRArgTemp(
                         result_type=tt, cpp_type=tt.to_cpp(), movable=unwrap_ref_type(tt).is_movable(),
-                        init=_lower_expr(
-                            a, lc, declared,
-                            use=_ExprUse(slot_target=tt)),
+                        init=t_init,
                         form=Form.VALUE, loc=getattr(a, "loc", None))
                 # A container LITERAL into a pointer-repr Optional[container]
                 # slot: the typed `__tmp_N` + `&(__tmp_N)` face
@@ -9835,6 +9889,29 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         init=minit,
                         addr_of=True, form=Form.BORROW,
                         loc=getattr(a, "loc", None))
+            nf = _tparam_slot_temp_arg(
+                a, ptype, index, raw_method_fi, lc.analyzer,
+                locals_=declared, param_names=lc.prescan.param_names,
+                borrowing_frame=_borrowing_frame_callee(fi))
+            if nf is not None:
+                # Both temps this seam still owes are needed RENDER, not an
+                # optimization, and with no flush position neither can be
+                # hoisted -- so reject honestly (the `call.own_str_no_flush`
+                # precedent) rather than fall through to a pass-through arm.
+                # One tag per REASON: a shared tag is how an unpinned arm
+                # hides behind its neighbour's case.
+                if has_view_param_form(nf):
+                    # The view-form source would render the un-copied view
+                    # into a slot spelled off the storage type.
+                    note_detail("method.generic_slot_view_no_flush")
+                    raise ThirUnsupported(
+                        call_reject_reason("expr.method_call"))
+                if _borrowing_frame_callee(fi):
+                    # A borrowing frame would capture a prvalue that dies at
+                    # the end of the statement.
+                    note_detail("method.generic_frame_slot_no_flush")
+                    raise ThirUnsupported(
+                        call_reject_reason("expr.method_call"))
             # A generator/coro factory METHOD borrows its ref args in the
             # frame past the statement, so a temporary at a ref /
             # readonly-ref slot materializes as a named scope-local
@@ -12322,6 +12399,9 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     analyzer = lc.analyzer
     root, subst = _generic_root_subst(e, analyzer)
     dcbp = root.deep_const_borrow_params
+    # A callee whose FRAME borrows the slot past the statement keeps the
+    # named temp whatever the instantiation resolves to.
+    borrowing_frame = _borrowing_frame_callee(root)
     args = []
     for i, (a, p) in enumerate(zip(e.args, root.params)):
         ptype = unwrap_ref_type(p.type)
@@ -12349,25 +12429,57 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 a, ptype, subst, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed),
                 param_names=lc.prescan.param_names,
-                storage_tuple_locals=frozenset(lc.storage_tuple_locals)):
+                storage_tuple_locals=frozenset(lc.storage_tuple_locals),
+                overload=root):
             raise ThirUnsupported(call_reject_reason("expr.call"))
         peeled = _peel_coerce(a)
 
-        def _ref_slot_temp(init: THIRExpr) -> None:
+        def _ref_slot_temp(init: THIRExpr,
+                           slot: 'TpyType | None' = None) -> None:
             # The shared ref-slot named temp (`R __tmp_N = <init>;`) a
-            # temporary hoists into a `param_val_or_ref_t<T>` binding.
+            # temporary hoists into a `param_val_or_ref_t<T>` binding. `slot`
+            # overrides the declared type where the resolved slot carries a
+            # decoration the TEMP must not (a `readonly[T]` slot's own const).
+            if not _generic_slot_needs_arg_temp(
+                    a, resolved, declared, lc.prescan.param_names, analyzer,
+                    borrowing_frame=borrowing_frame):
+                # The INSTANTIATED slot is `const T&`, which binds the
+                # rvalue for the full expression: the temp is the
+                # reference-typed instantiation's binding aid, and the
+                # monomorphic twin passes the same rvalue inline. Each row
+                # keeps its own init render, so only the decl disappears.
+                _witness("call.generic_rvalue_slot")
+                args.append(init)
+                return
             if not temp_args:
                 raise ThirUnsupported(
                     "generic ref-slot literal temp outside a flush position")
             _witness("argtemp.generic_ref_slot")
+            st = resolved if slot is None else slot
             # TempState.create's movable: the resolved slot's own type.
             args.append(THIRArgTemp(
-                result_type=resolved, cpp_type=resolved.to_cpp(),
+                result_type=st, cpp_type=st.to_cpp(),
                 init=init, form=Form.VALUE,
-                movable=unwrap_ref_type(resolved).is_movable(),
+                movable=unwrap_ref_type(st).is_movable(),
                 loc=getattr(a, "loc", None)))
 
-        if (isinstance(ptype, TypeParamRef)
+        if (_is_type_param_slot(ptype)
+                and _generic_slot_view_form_arg(a, resolved, declared,
+                                                lc.prescan.param_names,
+                                                analyzer)):
+            # The view-form source at an OWNING view-family slot: the temp is
+            # the materialized copy (`std::string __tmp_N = std::string(k);`
+            # / `= ::tpy::bytes_copy(k);`), since the slot binds the storage
+            # type. The convert node is the one place the owned spelling
+            # lives, shared with the decl/return owned sinks. The slot is
+            # peeled to the OWNED type: a `readonly[T]` slot spells its own
+            # const, which the temp's declaration and the owned-conversion
+            # lookup must both see through.
+            vslot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
+            _ref_slot_temp(THIRFormConvert(
+                result_type=vslot, value=_lower_expr(a, lc, declared),
+                form=Form.STORAGE, loc=getattr(a, "loc", None)), vslot)
+        elif (isinstance(ptype, TypeParamRef)
                 and isinstance(peeled, (TpyIntLiteral,
                                         TpyFloatLiteral,
                                         TpyBoolLiteral))):
@@ -15416,11 +15528,17 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
                           or src.name in lc.narrow.narrowed))):
         return _open_t_copy("call.copy_tparam")
     if (_tparam_value(st)
-            and isinstance(src, (TpyCall, TpyMethodCall))
-            and is_rvalue_source(analyzer, src)):
+            and isinstance(src, (TpyCall, TpyMethodCall))):
         # The inner call lowers through its own arms -- an Fn-param
-        # invocation renders itself.
-        return _open_t_copy("call.copy_tparam", use=_NESTED_ARG_USE)
+        # invocation renders itself. A BORROW-returning callee hands back an
+        # alias, not a value, so it takes the lvalue arms' bind (the record
+        # arm's tail splits the same way); the copy-construct tail is the
+        # same either way, since it reads whatever spelling the callee's
+        # return convention produced.
+        return _open_t_copy("call.copy_tparam",
+                            use=(_NESTED_ARG_USE
+                                 if is_rvalue_source(analyzer, src)
+                                 else _COPY_SRC_USE))
     if _tparam_value(st) and isinstance(src, TpySubscript):
         # The general tail's deref is a no-op whatever the receiver: an
         # open-T element is spelled through the `val_or_ptr_t<T>` traits,

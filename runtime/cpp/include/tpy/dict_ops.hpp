@@ -258,6 +258,20 @@ struct dict_items_view<K, const V> {
     }
 };
 
+// All three views are value types (a view is copied, not aliased, at a generic
+// slot) but each holds a pointer into a dict it does not own and may not have
+// exclusive access to -- so neither Send nor Sync, whatever the element is.
+// One row per family covers its `const V` readonly specialization too.
+template<typename K, typename V> struct is_value_type<dict_keys_view<K, V>> : std::true_type {};
+template<typename K, typename V> struct is_value_type<dict_values_view<K, V>> : std::true_type {};
+template<typename K, typename V> struct is_value_type<dict_items_view<K, V>> : std::true_type {};
+template<typename K, typename V> struct is_send<dict_keys_view<K, V>> : std::false_type {};
+template<typename K, typename V> struct is_send<dict_values_view<K, V>> : std::false_type {};
+template<typename K, typename V> struct is_send<dict_items_view<K, V>> : std::false_type {};
+template<typename K, typename V> struct is_sync<dict_keys_view<K, V>> : std::false_type {};
+template<typename K, typename V> struct is_sync<dict_values_view<K, V>> : std::false_type {};
+template<typename K, typename V> struct is_sync<dict_items_view<K, V>> : std::false_type {};
+
 template<typename K, typename V>
 dict_keys_view<K, V> dict_keys(const ordered_map<K, V>& m) { return {&m}; }
 template<typename K, typename V>

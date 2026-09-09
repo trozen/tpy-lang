@@ -7,9 +7,8 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(use(42), use([1, 2]))
-    int32_t __tmp_1 = 42;
-    std::vector<int32_t> __tmp_2 = {1, 2};
-    std::cout << use<int32_t>(__tmp_1) << " " << use<std::vector<int32_t>>(__tmp_2) << "\n";
+    std::vector<int32_t> __tmp_1 = {1, 2};
+    std::cout << use<int32_t>(42) << " " << use<std::vector<int32_t>>(__tmp_1) << "\n";
     // ch = Channel(7)
     Channel<int32_t> ch = Channel<int32_t>(7);
     // print(ch.item)

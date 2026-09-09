@@ -7,9 +7,7 @@ namespace tpyapp::main {
 // def main():
 void main() {
     // p = pick(1, 2)
-    int32_t __tmp_1 = 1;
-    int32_t __tmp_2 = 2;
-    int32_t p = pick<int32_t>(__tmp_1, __tmp_2);
+    int32_t p = pick<int32_t>(1, 2);
     // x = 3
     int32_t x = 3;
     // y = 4

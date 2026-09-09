@@ -21,8 +21,7 @@ void main() {
     // table: dict[str, int] = {"a": 9}
     ::tpy::ordered_map<std::string, ::tpy::BigInt> table = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(9)}});
     // print(use_dict(table, "a").v)
-    std::string __tmp_1 = "a";
-    std::cout << use_dict<std::string, ::tpy::BigInt>(table, __tmp_1).v << "\n";
+    std::cout << use_dict<std::string, ::tpy::BigInt>(table, "a").v << "\n";
 }
 
 void __tpy_init() {

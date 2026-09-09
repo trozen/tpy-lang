@@ -22,7 +22,7 @@ struct Container {
 
     // def __init__(self, val: T | None):
     Container() = default;
-    explicit Container(const T* val) : _val(::tpy::ptr_to_optional(val)) {}
+    explicit Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
 
     // def get(self) -> T | None:
     T* get() {
@@ -31,9 +31,9 @@ struct Container {
     }
 
     // def set(self, val: T | None) -> None:
-    void set(const T* val) {
+    void set(::tpy::opt_cparam_t<T> val) {
         // self._val = val
-        this->_val = ::tpy::ptr_to_optional(val);
+        this->_val = ::tpy::to_opt_storage<std::optional<T>>(val);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };

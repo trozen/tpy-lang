@@ -739,6 +739,31 @@ def view_to_owned_conv(t: "TpyType") -> str:
             else "::tpy::bytes_copy")
 
 
+def has_view_param_form(t: "TpyType") -> bool:
+    """True when `t`'s PARAM form is a DISTINCT view type over its own owning
+    storage form -- `str` (`std::string_view` over `std::string`) and `bytes`
+    (`std::span<const uint8_t>` over `std::vector<uint8_t>`) today.
+
+    Derived from the TypeDef's two formatters rather than enumerated, so a
+    future family joins by registering its forms. `String` and `bytearray`
+    are NOT this shape: their param form is a reference TO the storage form,
+    which an owned lvalue binds.
+
+    The fact matters wherever a slot is spelled with the STORAGE form while
+    the argument renders in the param form -- a generic `T` parameter, whose
+    C++ resolves the convention from the instantiation's C++ type and so
+    cannot see the TPy param form. Such an argument owes an owned
+    materialization, spelled by `view_to_owned_conv`."""
+    from tpyc.typesys import TypeParamRef
+    # An unsubstituted slot renders `param_val_or_ref_t<T>`, which is
+    # "distinct" for a spelling reason, not a form one.
+    if isinstance(t, TypeParamRef):
+        return False
+    storage = t.to_cpp()
+    return t.to_cpp_param_type() not in (storage, f"const {storage}&",
+                                         f"{storage}&")
+
+
 def view_owned_copy_init(t: "TpyType", arg: str) -> str:
     """Full C++ expression copying a borrow-form view param `arg` into its owned
     storage form, for a coro-frame ctor-init / simple-generator init-capture.

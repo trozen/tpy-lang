@@ -2311,6 +2311,19 @@ def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
 
 
 
+def is_open_type_param_return(ret: 'TpyType') -> bool:
+    """A declared return that is a bare, still-unresolved type parameter.
+
+    Such a return hands back whatever the substituted type's own convention
+    gives -- a reference at every reference-type instantiation, a value at the
+    rest -- so every reader asking "could this return borrow" must answer yes
+    for it. One home for the question so the borrow-capability readers cannot
+    drift apart; the RENDER reader (`call_returns_cpp_ref`) deliberately
+    answers the opposite and is not one of them.
+    """
+    return isinstance(unwrap_ref_type(unwrap_readonly(ret)), TypeParamRef)
+
+
 def is_ref_type(t: 'TpyType') -> bool:
     """Return True if t is a RefType."""
     return isinstance(t, RefType)
@@ -3164,6 +3177,22 @@ class OptionalType(TpyType):
             return True
         return not self.inner.is_value_type()
 
+    def uses_generic_param_trait(self) -> bool:
+        """Whether the PARAMETER form of this Optional is left to the runtime
+        trait (`opt_param_t<T>`) instead of being spelled here.
+
+        True only over an OPEN type param: the template is emitted once, so the
+        form has to be decided at instantiation -- `std::optional<T>` for a
+        value T (what the monomorphic twin takes) and `T*` for a reference one.
+        A concrete or ValueType-bounded inner already knows its form.
+
+        Parameters only. The return position stays committed to `T*` (see
+        force_pointer_repr): an optional return cannot alias a field.
+        """
+        return (isinstance(self.inner, TypeParamRef)
+                and self.inner.kind == TypeParamKind.TYPE
+                and not self.inner.is_value_type())
+
     def wraps_pointer_repr_tuple(self) -> bool:
         """True when this Optional wraps a tuple that has a pointer-repr element.
 
@@ -3194,6 +3223,8 @@ class OptionalType(TpyType):
         return self.to_cpp()
 
     def to_cpp_param_type(self) -> str:
+        if self.uses_generic_param_trait():
+            return f"::tpy::opt_param_t<{self.inner.to_cpp()}>"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
         fam = view_family_for_type(self.inner)
@@ -3202,6 +3233,8 @@ class OptionalType(TpyType):
         return self.to_cpp()
 
     def to_cpp_param(self, name: str) -> str:
+        if self.uses_generic_param_trait():
+            return f"::tpy::opt_param_t<{self.inner.to_cpp()}> {name}"
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)
@@ -3210,6 +3243,8 @@ class OptionalType(TpyType):
         return f"{self.to_cpp()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
+        if self.uses_generic_param_trait():
+            return f"::tpy::opt_cparam_t<{self.inner.to_cpp()}> {name}"
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
         fam = view_family_for_type(self.inner)
@@ -5618,6 +5653,14 @@ class FunctionInfo:
     # pair: flipping it to is_readonly=True would merge it with the const
     # sibling and break overload resolution.
     is_auto_readonly_mutable_clone: bool = False
+    # Synthesized for a call through a callable VALUE (an Fn/Callable-typed
+    # param, local or field). The signature comes from the Fn type, not from
+    # a declaration the compiler has checked, so nothing about the callee's
+    # conventions may be read off it -- the body that runs is a lambda or any
+    # other conforming callable. Readers that would otherwise trust the
+    # declared return (does it borrow? is it consuming?) must treat it as
+    # opaque.
+    is_callable_value: bool = False
     kwarg_name: Optional[str] = None  # name of **kwargs param (TypedDict type)
     # FStr inlining: body expression to inline at call sites.
     # Set during method body analysis for methods with FStr params.

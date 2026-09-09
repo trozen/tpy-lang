@@ -4253,6 +4253,40 @@ def _optional_ptr_borrow_name(e: TpyExpr, declared: dict[str, TpyType],
         return None
     return _optional_ptr_borrow(declared[e.name], analyzer)
 
+def generic_opt_trait_type(t: 'TpyType | None') -> 'OptionalType | None':
+    """The generic `T | None` slot type (`::tpy::opt_param_t<T>` in C++), or
+    None. Its form is decided per instantiation, so neither the pointer
+    compare nor `has_value()` is spellable in the template -- reads of such a
+    binding go through the runtime's form-neutral helpers."""
+    if not isinstance(t, TpyType):
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OptionalType) and t.uses_generic_param_trait():
+        return t
+    return None
+
+
+def generic_opt_trait_name(e: TpyExpr, declared: dict[str, TpyType]) -> bool:
+    """`e` is a bare name DECLARED as a generic `T | None` slot."""
+    return (isinstance(e, TpyName) and e.name in declared
+            and generic_opt_trait_type(declared[e.name]) is not None)
+
+
+def unit_opt_instantiation(t: 'TpyType | None') -> 'OptionalType | None':
+    """`None | None` -- a generic `T | None` slot instantiated at `T = None`,
+    or None. It cannot be written by hand (`None | None` IS `None`), so it
+    reaches a slot only through that substitution. `std::optional<
+    std::monostate>`: a value-repr Optional over the unit type, so its
+    capture and its reads are the value form's, exactly like the fixed-int
+    instantiation beside it."""
+    if not isinstance(t, TpyType):
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OptionalType) and isinstance(t.inner, NoneType):
+        return t
+    return None
+
+
 def _ptr_value_none_name(e: TpyExpr, declared: dict[str, TpyType],
                          analyzer) -> bool:
     """`e` is a bare name whose DECLARED type is an eligible `Ptr[T]` VALUE

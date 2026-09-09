@@ -1,0 +1,19 @@
+free_value True True
+free_ref 7 8 8 False
+free_ref_twin 8
+method True True
+method_none False False
+ctor False True True
+field_ref True True
+comprehension True True
+cond_operand True True
+generator True True
+closure True True
+with True True
+try True True
+finally True True
+error_return True True
+async_value True False True False
+async_ref True False True True 7
+async_unit False True
+module True True

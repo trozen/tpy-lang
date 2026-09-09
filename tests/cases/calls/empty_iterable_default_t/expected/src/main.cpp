@@ -17,16 +17,15 @@ void main() {
     std::cout << tag<int32_t>(__tmp_1) << "\n";
     // print(pick_or([], 7))       # tpyc: ok
     auto __tmp_2 = std::vector<int32_t>{};
-    int32_t __tmp_3 = 7;
-    std::cout << pick_or<int32_t>(__tmp_2, __tmp_3) << "\n";
+    std::cout << pick_or<int32_t>(__tmp_2, 7) << "\n";
     // print(pair([1, 2], []))     # tpyc: ok
-    auto __tmp_4 = std::array<int32_t, 2>{1, 2};
-    auto __tmp_5 = std::vector<int32_t>{};
-    std::cout << pair<int32_t>(__tmp_4, __tmp_5) << "\n";
+    auto __tmp_3 = std::array<int32_t, 2>{1, 2};
+    auto __tmp_4 = std::vector<int32_t>{};
+    std::cout << pair<int32_t>(__tmp_3, __tmp_4) << "\n";
     // print(pair([], [1, 2]))     # tpyc: ok
-    auto __tmp_6 = std::vector<int32_t>{};
-    auto __tmp_7 = std::array<int32_t, 2>{1, 2};
-    std::cout << pair<int32_t>(__tmp_6, __tmp_7) << "\n";
+    auto __tmp_5 = std::vector<int32_t>{};
+    auto __tmp_6 = std::array<int32_t, 2>{1, 2};
+    std::cout << pair<int32_t>(__tmp_5, __tmp_6) << "\n";
     // for i, x in enumerate([]):  # tpyc: ok
     {
         auto __src_0 = ::tpy::builtin_enumerate<int32_t>(std::vector<int32_t>{});

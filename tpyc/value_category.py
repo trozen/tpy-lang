@@ -17,8 +17,8 @@ from typing import Any, Protocol
 
 from .typesys import (
     FunctionInfo, TpyType, TypeParamRef, OwnType, OptionalType, UnionType,
-    VoidType, is_protocol_type, unwrap_readonly, unwrap_ref_type,
-    unwrap_send_sync,
+    VoidType, is_open_type_param_return, is_protocol_type, unwrap_readonly,
+    unwrap_ref_type, unwrap_send_sync,
 )
 from .parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
@@ -298,7 +298,9 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
     temporary does not exempt it -- what the callee hands back can reach
     past its receiver, so the temporary bounds nothing. `Wrapper(take_ptr(
     h.o)).get()` returns `h.o` through a pointer field, and the copy the
-    owning slot makes is the divergence the diagnostic names.
+    owning slot makes is the divergence the diagnostic names. A callee
+    returning a bare type param is such a call too -- the generic body must
+    reach the same verdict its monomorphic twin does.
     """
     inner = peel_value_wrappers(expr)
     # An if-expr emits its arms inline, so the slot is filled from whichever
@@ -308,5 +310,32 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
                 or returns_borrow(analyzer, inner.else_expr))
     if isinstance(inner, TpyAwait):
         return inner.await_result_is_borrow
-    return (_borrow_link(inner) is not None
-            and not is_rvalue_source(analyzer, inner))
+    link = _borrow_link(inner)
+    if link is None:
+        return False
+    # A callee declaring a bare type param as its return hands back the same
+    # reference a concrete reference-typed return does at every reference-type
+    # instantiation, and a value at the rest. `is_rvalue_source` answers the
+    # C++ RENDER question and reads the unresolved parameter as a value, which
+    # is the twin's verdict only for the value-typed half -- so at an owning
+    # slot the source counts as borrowed. What the slot then REPORTS is still
+    # hedged on the open payload rather than re-asked at the instantiation
+    # (BUGS.md#generic-own-slot-copy-verdict-not-reasked).
+    if _returns_open_type_param(link[0]):
+        return True
+    return not is_rvalue_source(analyzer, inner)
+
+
+def _returns_open_type_param(fi: 'FunctionInfo | None') -> bool:
+    """The callee's declared return is a bare, still-open type parameter, and
+    the callee is one whose declaration says what its return convention is.
+
+    A callable VALUE is excluded: its signature is the `Fn` type's, not a
+    declaration anyone checked, and the body that runs may build a fresh
+    value -- so `f(x)` at an `Fn[[T], K]` slot is an rvalue exactly as its
+    monomorphic twin `Fn[[Int32], Cell]` is, and reading K as a borrow would
+    warn on the generic where the twin is silent.
+    """
+    if fi is None or fi.is_constructor or fi.is_callable_value:
+        return False
+    return is_open_type_param_return(fi.return_type)

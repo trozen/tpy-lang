@@ -3,6 +3,8 @@
 // Slice adds step (for a[1:3:2] syntax).
 #pragma once
 
+#include "type_traits.hpp"
+
 #include <cstdint>
 #include <optional>
 #include <ostream>
@@ -25,6 +27,11 @@ struct Slice {
     // Implicit conversion from BasicSlice (basic_slice coerces to slice)
     Slice(const BasicSlice& bs) : start(bs.start), stop(bs.stop), step(std::nullopt) {}
 };
+
+// Both are plain bundles of optional ints -- value types, and Send / Sync by
+// the default that follows.
+template<> struct is_value_type<BasicSlice> : std::true_type {};
+template<> struct is_value_type<Slice> : std::true_type {};
 
 inline std::ostream& operator<<(std::ostream& os, const BasicSlice& s) {
     os << "basic_slice(";

@@ -17,11 +17,9 @@ void main() {
     std::cout << first_or<int32_t>(empty) << "\n";
     // # Call with explicit fallback
     // print(first_or(nums, Int32(99)))
-    int32_t __tmp_1 = 99;
-    std::cout << first_or<int32_t>(nums, __tmp_1) << "\n";
+    std::cout << first_or<int32_t>(nums, 99) << "\n";
     // print(first_or(empty, Int32(99)))
-    int32_t __tmp_2 = 99;
-    std::cout << first_or<int32_t>(empty, __tmp_2) << "\n";
+    std::cout << first_or<int32_t>(empty, 99) << "\n";
     // # Bare literal default with generic type
     // print(fallback_or(nums))
     std::cout << fallback_or<int32_t>(nums) << "\n";
@@ -29,13 +27,9 @@ void main() {
     std::cout << fallback_or<int32_t>(empty) << "\n";
     // # Generic with bool default
     // print(pick(Int32(1), Int32(2)))
-    int32_t __tmp_3 = 1;
-    int32_t __tmp_4 = 2;
-    std::cout << pick<int32_t>(__tmp_3, __tmp_4) << "\n";
+    std::cout << pick<int32_t>(1, 2) << "\n";
     // print(pick(Int32(1), Int32(2), False))
-    int32_t __tmp_5 = 1;
-    int32_t __tmp_6 = 2;
-    std::cout << pick<int32_t>(__tmp_5, __tmp_6, false) << "\n";
+    std::cout << pick<int32_t>(1, 2, false) << "\n";
 }
 
 void __tpy_init() {

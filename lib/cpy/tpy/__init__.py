@@ -610,7 +610,22 @@ def copy(obj):
 
     In CPython, uses copy.deepcopy() to match C++ by-value semantics.
     If the object defines __copy__(), delegates to it (matches TurboPython semantics).
+
+    A pointer handed to copy() DIRECTLY stands for the `T&` borrow TPy
+    auto-derefs it to at a T-typed slot (`copy(box.get())`), so the copy
+    duplicates the POINTEE -- and is checked BEFORE __copy__, whose lookup the
+    pointer's attribute forwarding would otherwise answer with the pointer
+    protocol's own sharing `__copy__`. A pointer reached inside a deepcopied
+    record is a Ptr[T] field instead and shares, which is what
+    `_Ptr.__deepcopy__` does.
     """
+    if isinstance(obj, (_Ptr, _ConstPtr)):
+        target = object.__getattribute__(obj, '_obj')
+        if getattr(type(target), '__tpy_heap_slot__', False):
+            # The heap slot is the allocation, not a value: copy the payload
+            # it holds, so the result is a plain T like TPy's owned copy.
+            target = target[0]
+        return copy(target)
     if hasattr(obj, '__copy__'):
         return obj.__copy__()
     return _copy_module.deepcopy(obj)

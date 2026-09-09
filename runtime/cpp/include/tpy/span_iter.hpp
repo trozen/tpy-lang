@@ -39,4 +39,11 @@ struct SpanIter {
     SpanIter& __iter__() { return *this; }
 };
 
+// A lightweight view (span + index): passed by value, but it borrows, and its
+// index_ is mutable state -- so neither Send nor Sync, unlike a value type by
+// default.
+template<typename T> struct is_value_type<SpanIter<T>> : std::true_type {};
+template<typename T> struct is_send<SpanIter<T>> : std::false_type {};
+template<typename T> struct is_sync<SpanIter<T>> : std::false_type {};
+
 } // namespace tpy

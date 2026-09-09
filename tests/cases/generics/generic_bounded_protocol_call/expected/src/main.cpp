@@ -55,13 +55,9 @@ void main() {
     std::cout << cloned.value << "\n";
     // # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
     // print(is_less(1, 2))  # True
-    int32_t __tmp_2 = 1;
-    int32_t __tmp_3 = 2;
-    std::cout << ::tpy::print_bool(is_less<int32_t>(__tmp_2, __tmp_3)) << "\n";
+    std::cout << ::tpy::print_bool(is_less<int32_t>(1, 2)) << "\n";
     // print(is_less(5, 3))  # False
-    int32_t __tmp_4 = 5;
-    int32_t __tmp_5 = 3;
-    std::cout << ::tpy::print_bool(is_less<int32_t>(__tmp_4, __tmp_5)) << "\n";
+    std::cout << ::tpy::print_bool(is_less<int32_t>(5, 3)) << "\n";
 }
 
 void __tpy_init() {

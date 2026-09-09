@@ -17,9 +17,7 @@ void __tpy_init() {
 
     // # Inference from arguments
     // p1 = create_pair(10, "hello")
-    int32_t __tmp_1 = 10;
-    std::string __tmp_2 = "hello";
-    static Pair<int32_t, std::string> __global_slot_1 = create_pair<int32_t, std::string>(__tmp_1, __tmp_2);
+    static Pair<int32_t, std::string> __global_slot_1 = create_pair<int32_t, std::string>(10, "hello");
     p1 = &__global_slot_1;
     // print(p1.first)
     std::cout << p1->first << "\n";

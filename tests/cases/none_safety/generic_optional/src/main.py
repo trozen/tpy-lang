@@ -1,5 +1,7 @@
-# Generic Optional codegen: T | None uses T* in generic templates (reference into
-# stored data), while concrete value-type Optional (e.g. Int32 | None) uses std::optional.
+# Generic Optional codegen: a `T | None` PARAMETER takes its form per
+# instantiation (the runtime's opt_param_t trait), while a `T | None` RETURN is
+# still committed to T* so it can alias the stored field. The concrete twin
+# (Int32 | None) is std::optional either way.
 from typing import Optional
 from tpy import Int32
 

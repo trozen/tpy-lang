@@ -222,7 +222,7 @@ between the two forms. The common helpers:
 
 A container method's ELEMENT-typed parameter splits by what the method does with it. At a LOOKUP slot (`list.remove` / `index` / `count`, `set.remove` / `discard`, the membership read, a `dict` key) the argument is READ-ONLY, so a `str` / `bytes` key passes as a view like any other `str` / `bytes` argument and the RUNTIME compares it against what it stores -- `std::string` against `std::string_view` directly, and `std::vector<uint8_t>` against `std::span<const uint8_t>` through `tpy::key_eq`, the one pair with no `operator==` (`runtime/cpp/include/tpy/lookup_key.hpp`). `ordered_set` and `ordered_map` both give their hash table that transparent hash/equality pair, so a set or dict lookup probes with the key as it arrives and builds none -- and a bare string LITERAL (`d["a"]`, `s.discard("b")`) is a lookup form of `std::string` for the same reason, so it does not allocate either. Neither container needs a `std::hash` specialization on a standard type, which [namespace.std] forbids. At a STORING slot (`append` / `insert` / `add`, `d[k] = v` -- the `Own[T]` spellings), where the runtime does not build the element itself, the borrowed argument materializes the owned form: `std::string(x)` / `::tpy::bytes_copy(x)`. Nothing in the compiler names a method here; the slot's `Own[T]` spelling is the whole rule.
 
-One gap is open on the generic side: a generic instantiated over `str` / `bytes` renders its `T` parameter `param_val_or_ref_t<T>` (`const std::string&` / `std::vector<uint8_t>&`) rather than the type's view parameter form, so `ArrayList[str, N].remove(k)` and a generic free function's `T` slot do not compile with a view argument (BUGS.md#generic-slot-str-bytes-param-form).
+A GENERIC `T` parameter is the one slot spelled off the instantiation's C++ type rather than the TPy type's own parameter form: `param_val_or_ref_t<T>` (and the `const T&` a readonly method or a `readonly[T]` slot spells) resolve to `const std::string&` / `std::vector<uint8_t>&` at `str` / `bytes`, which the caller's view cannot bind. The call site closes it by materializing the owned copy into a named temp -- `std::string __tmp_N = std::string(k);` / `= ::tpy::bytes_copy(k);` -- at a generic free call, a generic record method and a generic record constructor alike. So a generic over `str` costs an allocation per call where the monomorphic twin costs none -- two at the constructor seam, where the member init copies the temp again; the allocation-free end state (the parameter form carried as a template argument) is queued in `TODO.md`. Which arguments owe such a temp is decided at the INSTANTIATION, not on the open `T`: a value-typed instantiation's slot is `const T&`, which binds an rvalue for the full expression, so a literal or a by-value call renders inline exactly as it does at the monomorphic twin's slot; a reference-typed one's is the mutable `T&`, which binds none, so the temp stays. Two value-typed cases keep it anyway. The view-form source above, whose temp is the owned copy. And an argument to a GENERATOR factory: the simple-generator peephole captures its parameter by reference (a capture form decided on the open `T` -- `BUGS.md#simple-generator-captures-open-t-param-by-reference`), so the named temp is what keeps the captured object alive past the statement; whether a given generator lowers to that peephole or to a resumable frame is not knowable at the call site, so the rule covers both. A COROUTINE factory is not in scope -- its frame copies the argument into a `val_or_ref_t<T>` member at construction -- nor is a resumable generator frame, which does the same. Rendering inline restores C++'s unspecified argument evaluation order at these slots, which the temp incidentally serialized: `f(side("A"), side("B"))` at a value-typed `T` runs B before A under g++ where CPython runs A then B. That is the monomorphic twin's behaviour too (`BUGS.md#subexpression-right-to-left-eval`), so the generic and its twin agree; the fix belongs to that entry, not to this slot. In a position with no statement to hoist a needed temp into -- a compound `while` or an `elif` condition -- the call is rejected with a located message rather than emitted uncopied; a call whose arguments render inline needs no such position. A generator factory in such a condition is rejected for that reason even at a value-typed instantiation, and a RESUMABLE one pays that reject only because the call site cannot tell it from the peephole (the residue entry in `TODO.md`).
 
 In either variant form the union's members must render DISTINCT C++ types:
 `bytes | bytearray`, `list[UInt8] | bytes` and `list[UInt8] | bytearray` all
@@ -1368,10 +1368,13 @@ exempt it -- what the callee hands back can reach past its receiver
 other borrowed source. Declaration order cannot change the verdict, because
 no callee-body fact enters it.
 
-One boundary remains: a slot whose `Own` payload is still an unresolved type
-parameter is left alone, because the copy is then the generic callee's
-decision and cannot be spelled with `copy()` at all
-(BUGS.md#generic-own-slot-borrow-call-unwarned).
+A slot whose `Own` payload is still an unresolved type parameter is no
+exception: the copy is the same one the monomorphic twin makes, and `copy()`
+spells it there (its readonly-source admission is what makes that possible).
+The verdict is still HEDGED at such a slot -- `may copy T into owned storage
+if not a value type`, rather than the twin's concrete `copies Cell into owned
+storage` -- because it is taken while `T` is open and not re-asked at the
+instantiation (BUGS.md#generic-own-slot-copy-verdict-not-reasked).
 
 Generated C++:
 ```cpp
@@ -1387,7 +1390,7 @@ Key points:
 - `Own[T]` parameters use `T&&` in C++ for non-value types (zero-cost ownership transfer), or `T` by value for value types (int, bool, float, etc. where copy = move)
 - Generic `Own[T]` where T is a type parameter uses `std::type_identity_t<T>&&` to prevent forwarding-reference deduction
 - Relies on C++ move semantics and RVO/NRVO for efficiency
-- Returning a borrowed source copies, with a warning; `copy()` makes the intent explicit and silences it. Borrowed means the source aliases storage that outlives the return: an lvalue (variable, field access, subscript) **or** a call whose declared return is a bare reference type (`def borrow(self) -> Payload`), which hands back `Payload&`
+- Returning a borrowed source copies, with a warning; `copy()` makes the intent explicit and silences it. Borrowed means the source aliases storage that outlives the return: an lvalue (variable, field access, subscript) **or** a call whose declared return is a bare reference type (`def borrow(self) -> Payload`), which hands back `Payload&` -- including a bare type parameter (`def borrow(self) -> T`), which hands back that same reference at every reference-type instantiation. A call through a callable VALUE (`f(x)` where `f: Fn[[T], K]`) is NOT one today: its signature is the `Fn` type's rather than a declaration the compiler checked, so it reads as an rvalue -- generic and monomorphic alike. That is right for a callable that builds a fresh value and WRONG for one bound to a borrow-returning function, which copies at the owning slot with no warning (BUGS.md#callable-value-borrow-return-copies-unwarned)
 - Returning an rvalue is OK without `copy()`: a constructor call, an owning call (`-> Own[T]`), or a container factory (`list(xs)`, `bytearray(b)`). A borrow-returning call is NOT one, even on a temporary receiver (`make(x).updated()` warns and copies)
 - `Own[T]` coerces to `T` when receiving the value
 
@@ -3600,10 +3603,12 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
 - **Working**: `Optional[T]` from `typing` is equivalent to `T | None` at parse time
   - `from typing import Optional` then `Optional[Int32]` produces the same type as `Int32 | None`
   - Works in all positions: parameters, returns, local annotations, class fields
-- **Working**: `T | None` in generic contexts → `std::optional<T>` (C++ templates)
-  - Generic type parameters (`TypeParamRef`) use `std::optional<T>` representation, not `T*`
-  - Ensures correct codegen when the inner type may be either value or reference at instantiation time
-  - `None` literals in generic Optional positions emit `std::nullopt` (not `nullptr`)
+- **Working**: `T | None` in generic contexts -- the form is decided per instantiation
+  - A generic PARAMETER slot is spelled `::tpy::opt_param_t<T>` (`opt_cparam_t<T>` where the slot is const): `std::optional<T>` at a value `T`, so the caller passes the value exactly as it would to the monomorphic twin, and `T*` / `const T*` at a reference `T`, so a mutation through the slot stays the caller's. A `ValueType`-bounded `T` is a value at every instantiation and keeps the spelled `std::optional<T>`.
+  - Fields and container elements keep the storage form `std::optional<T>`; the lift from a parameter slot into one is `::tpy::to_opt_storage<...>`, which absorbs either form.
+  - A generic RETURN slot is still committed to `T*` for every instantiation (an optional return cannot alias the field it reads), so a `T | None` parameter cannot be returned directly from a `T | None` return -- see `BUGS.md`.
+  - The body's reads are form-neutral: `*o` and `o->x` read both forms, and `o is None` renders `::tpy::opt_has_value(o)`.
+  - `None` literals in generic Optional positions emit `std::nullopt` at a value `T` and `nullptr` at a reference one
 - **Working**: `T | None` for value types (`Int32 | None`, `bool | None`, `float | None`) → `std::optional<T>`
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks
@@ -5214,6 +5219,11 @@ The `copy()` function:
 - Required when returning lvalues (variables, field accesses, subscript) as `Own[T]`
 - Silences copy warnings when assigning lvalues to inline storage (`self.field = copy(x)`, `items.append(copy(x))`)
 - Not required when returning rvalues (constructor calls, function calls)
+- Accepts a `readonly[T]` source (a readonly param, a field read under a
+  `@readonly` method, an `auto_readonly` borrow return) and yields a mutable
+  `Own[T]`: copying reads its source and never writes it, and the result is
+  independent storage. The qualifier is not laundered -- the borrow itself
+  still cannot reach a mutable slot without the `copy()`
 - In generated C++, `copy(x)` simply evaluates to `x` (the `Own[T]` return type handles the by-value semantics)
 - In CPython tests, uses `deepcopy` to match C++ by-value semantics (containers copy all elements)
 

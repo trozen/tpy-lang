@@ -13,8 +13,7 @@ void main() {
     // print(cells[0].n, len(cells))
     std::cout << ::tpy::__getitem__(cells, 0).n << " " << ::tpy::__len__(cells) << "\n";
     // print(len(twice(3)))
-    int32_t __tmp_1 = 3;
-    std::cout << ::tpy::__len__(twice<int32_t>(__tmp_1)) << "\n";
+    std::cout << ::tpy::__len__(twice<int32_t>(3)) << "\n";
 }
 
 void __tpy_init() {

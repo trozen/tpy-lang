@@ -12,6 +12,7 @@
 #include <limits>
 #include <type_traits>
 #include "fixed_int.hpp"
+#include "type_traits.hpp"
 
 namespace tpy {
 
@@ -111,5 +112,9 @@ public:
         return os << ")";
     }
 };
+
+// Owns three T values and borrows nothing -- a value type, Send / Sync by the
+// default that follows.
+template<typename T> struct is_value_type<Range<T>> : std::true_type {};
 
 } // namespace tpy

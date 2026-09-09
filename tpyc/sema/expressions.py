@@ -54,6 +54,7 @@ from ..type_def_registry import (
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
     find_factory_by_simple_name, protocol_info_of,
+    has_view_param_form,
 )
 from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
@@ -4395,18 +4396,15 @@ class ExpressionAnalyzer:
                         f"inferred type argument {type_arg} for {param_name} "
                         f"does not satisfy bound '{bound.name}'"
                     )
-        # Check for C++ param type mismatch (e.g. str: string_view vs const string&).
-        # Generic functions use param_val_or_ref_t<T> which resolves based on the
-        # storage type, but some types have a different param convention (str uses
-        # string_view). This causes C++ compilation errors when the function is
-        # passed through Fn/Callable.
+        # A generic instantiated at a type whose parameter form is a distinct
+        # VIEW over its own storage form takes the storage form at its `T`
+        # slot. At a CALL the argument materializes the owned copy; a function
+        # REFERENCE has no call site to materialize at -- the signature itself
+        # is what the Fn/Callable value carries -- so it stays rejected. A
+        # still-OPEN type argument has no parameter form to compare and is
+        # refused the same way.
         for param_name, type_arg in inferred.items():
-            cpp_storage = type_arg.to_cpp()
-            cpp_param = type_arg.to_cpp_param_type()
-            # param_val_or_ref_t<T> resolves to const T& (value) or T& (object).
-            # Accept T, T&, or const T& -- all compatible with the template.
-            # Reject types with a different convention (e.g. str: string_view).
-            if cpp_param not in (cpp_storage, f"{cpp_storage}&", f"const {cpp_storage}&"):
+            if contains_type_param(type_arg) or has_view_param_form(type_arg):
                 return None, (
                     f"Cannot use '{fi.name}' as function reference with "
                     f"{param_name}={type_arg}: generic functions use a different "

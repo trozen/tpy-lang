@@ -21,14 +21,12 @@ void main() {
     // print(c)
     std::cout << ::tpy::print_bool(c) << "\n";
     // d: Int32 = make_default[Int32](42)
-    int32_t __tmp_1 = 42;
-    int32_t d = make_default<int32_t>(__tmp_1);
+    int32_t d = make_default<int32_t>(42);
     // print(d)
     std::cout << d << "\n";
     // # T inferred from arg
     // e: Int32 = make_default(42)
-    int32_t __tmp_2 = 42;
-    int32_t e = make_default<int32_t>(__tmp_2);
+    int32_t e = make_default<int32_t>(42);
     // print(e)
     std::cout << e << "\n";
 }

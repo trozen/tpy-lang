@@ -16,6 +16,9 @@ from tpy import Ptr, _ConstPtr, take_ptr
 class _HeapSlot:
     """Single-element heap slot. Delegates attribute access to stored value."""
     __slots__ = ('_value',)
+    # Marks the slot as the ALLOCATION rather than a value, so tpy.copy() over
+    # a Ptr into one copies the payload instead of the cell.
+    __tpy_heap_slot__ = True
 
     def __init__(self):
         object.__setattr__(self, '_value', None)

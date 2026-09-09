@@ -23,8 +23,7 @@ void main() {
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
     // # Single-element list from generic function (T inferred from arg)
     // b: list[Int32] = make_single(42)
-    int32_t __tmp_1 = 42;
-    std::vector<int32_t> b = make_single<int32_t>(__tmp_1);
+    std::vector<int32_t> b = make_single<int32_t>(42);
     // b.append(100)
     b.push_back(100);
     // for x in b:

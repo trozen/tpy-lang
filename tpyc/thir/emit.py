@@ -1369,6 +1369,13 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # non-owning borrow copies (`ptr_to_optional`, F2b/F2c). `move` is set
         # by lowering from the `movable_locals` + last-use facts.
         if isinstance(t, OptionalType):
+            if t.uses_generic_param_trait():
+                # A generic `T | None` storage slot: the source may be either
+                # form (a `T*` read or an `opt_param_t<T>` slot), so the lift
+                # is the runtime helper that absorbs both.
+                helper = ("to_opt_storage_move" if e.move
+                          else "to_opt_storage")
+                return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
             helper = "ptr_to_optional_move" if e.move else "ptr_to_optional"
             return f"::tpy::{helper}({inner})"
         # F4 U2: a borrow pointer-variant into a storage `std::variant<A, B>`
@@ -1676,6 +1683,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             check = (f"({inner}.value.has_value() && "
                      f"{inner}.value.type() == typeid(std::monostate))")
             return f"(!{check})" if e.negate else check
+        if e.trait_repr:
+            # A generic `T | None` slot: the form-neutral runtime reader.
+            check = f"::tpy::opt_has_value({inner})"
+            return f"({check})" if e.negate else f"(!{check})"
         if e.value_repr:
             # `std::optional<T>` param: `is None` -> `(!p.has_value())`,
             # `is not None` -> `(p.has_value())`.

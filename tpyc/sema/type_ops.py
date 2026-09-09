@@ -18,7 +18,8 @@ from ..typesys import (
     unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
     is_polymorphic_class_type, is_dynamic_dispatch_inner,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
-    contains_type_param, coro_struct_owner,
+    is_open_type_param_return, contains_type_param, coro_struct_owner,
+    strip_template_repr,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from ..diagnostics import SemanticError, nocopy_container_elem_error
@@ -55,7 +56,7 @@ def signature_may_return_borrow(fi: 'FunctionInfo') -> bool:
         return False
     if is_str_type(ret) or is_borrowing_view_type(ret):
         return True
-    if isinstance(ret, (TupleType, TypeParamRef)):
+    if isinstance(ret, TupleType) or is_open_type_param_return(ret):
         return True
     return not ret.is_value_type()
 
@@ -698,6 +699,26 @@ class TypeOperations:
                         f"Invalid type argument for '{param_name}' of '{typ.name}': {arg}",
                         loc,
                     )
+
+    def substitute_param_type(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
+        """Substitute a PARAMETER slot's type.
+
+        A generic `T | None` parameter is not committed to the template's `T*`:
+        it is spelled as a runtime trait, so each instantiation takes the form
+        the monomorphic twin would take -- the value form at a value T, the
+        pointer form at a reference one. Returns are still committed, so they
+        go through `substitute_type_params` and keep its pointer stamp.
+        """
+        resolved = self.substitute_type_params(typ, subst)
+        # Readonly is the only wrapper an Optional param carries: make_ref is a
+        # no-op over an OptionalType, so there is no Ref layer to peel.
+        declared = unwrap_readonly(typ)
+        if not (isinstance(declared, OptionalType)
+                and declared.uses_generic_param_trait()):
+            return resolved
+        if isinstance(resolved, ReadonlyType):
+            return ReadonlyType(strip_template_repr(resolved.wrapped))
+        return strip_template_repr(resolved)
 
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
         """Substitute type parameters with concrete types.
@@ -1943,7 +1964,7 @@ class TypeOperations:
             if tp not in effective_subst:
                 effective_subst[tp] = TypeParamRef(tp)
         substituted_params = [
-            dc_replace(p, type=self.substitute_type_params(p.type, effective_subst))
+            dc_replace(p, type=self.substitute_param_type(p.type, effective_subst))
             for p in method.params
         ]
         substituted_return = self.substitute_type_params(method.return_type, effective_subst)

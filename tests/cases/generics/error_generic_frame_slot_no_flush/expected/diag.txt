@@ -1,0 +1,1 @@
+main.py:22: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.while:expr.method_call:method.generic_frame_slot_no_flush)

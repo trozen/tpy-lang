@@ -1055,14 +1055,12 @@ class TypeCompatibility:
             ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
             # A call that hands back a borrow is copied into the owning slot
             # exactly as a name or a field is, so it belongs to the same
-            # family -- but not when the payload is still a type parameter:
-            # there the copy is the generic callee's decision, and `copy()`
-            # cannot even be spelled at such a slot because the payload may
-            # be `readonly[T]` (BUGS.md#generic-own-slot-borrow-call-unwarned).
+            # family. An open type-param payload is no exception: the copy is
+            # the same one the monomorphic twin makes, and `copy()` is
+            # spellable there now that it takes a readonly source.
             arrives_borrowed = (self.is_lvalue(source_expr)
                                 or self._tuple_call_carries_borrow(source_expr)
-                                or (returns_borrow(self.ctx, source_expr)
-                                    and not isinstance(ew, TypeParamRef)))
+                                or returns_borrow(self.ctx, source_expr))
             warned_ptr_repr_tuple = False
             if (not is_return and source_expr is not None
                     and (ref_scalar or ptr_repr_tuple)
@@ -2163,11 +2161,27 @@ class TypeCompatibility:
             # one text, and `copy(...)` silences it at all four. The copy is
             # an acknowledged CPython divergence (CPython hands back the very
             # object), which is what the warning declares.
-            self.ctx.warning(
-                f"copies {self._copy_diag_type(self.ctx.get_expr_type(expr))} "
-                f"into owned storage; use copy() to make this explicit",
-                expr
-            )
+            payload = own_type.wrapped
+            if self._is_value_type_param(payload):
+                # A `T: ValueType` bound proves the copy, so there is nothing
+                # to declare -- the same exemption the insert slot applies.
+                return
+            value_type = self._copy_diag_type(self.ctx.get_expr_type(expr))
+            if isinstance(payload, TypeParamRef):
+                # Whether this copies at all is the instantiation's answer,
+                # not the body's, so the text hedges exactly as the sibling
+                # sinks do (BUGS.md#generic-own-slot-copy-verdict-not-reasked).
+                self.ctx.warning(
+                    f"may copy {value_type} into owned storage if not a value "
+                    f"type; use copy() to make this explicit",
+                    expr
+                )
+            else:
+                self.ctx.warning(
+                    f"copies {value_type} into owned storage; use copy() to "
+                    f"make this explicit",
+                    expr
+                )
             return
         verb = "return" if action == "return" else "pass"
         if from_call:

@@ -4883,6 +4883,13 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     # reassigned/hoisted/move-through seeding stays the OUTER function's
     # (setup_body_scope runs once per outer body), so the body's binding
     # classification reads the same sets.
+    # A CAPTURED outer param keeps its outer render inside the lambda (the
+    # capture holds the enclosing signature's form -- a `str` param is a
+    # `std::string_view` on both sides), so the form predicates that ask
+    # "is this name a param" must see the outer names too.
+    prescan.param_names = prescan.param_names | outer_prescan.param_names
+    prescan.owned_viewfam_params = (prescan.owned_viewfam_params
+                                    | outer_prescan.owned_viewfam_params)
     prescan.reassigned = outer_prescan.reassigned
     prescan.rvalue_reassigned = outer_prescan.rvalue_reassigned
     prescan.hoisted = outer_prescan.hoisted

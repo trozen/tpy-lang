@@ -7,14 +7,11 @@ namespace tpyapp::main {
 // def test_literal_infers_str() -> None:
 void test_literal_infers_str() {
     // x = identity("hello")  # tpyc: type(/str|PendingStr/)
-    std::string __tmp_1 = "hello";
-    std::string x = identity<std::string>(__tmp_1);
+    std::string x = identity<std::string>("hello");
     // print(x)
     std::cout << x << "\n";
     // y = first("hello", "world")  # tpyc: type(/str|PendingStr/)
-    std::string __tmp_2 = "hello";
-    std::string __tmp_3 = "world";
-    std::string y = first<std::string>(__tmp_2, __tmp_3);
+    std::string y = first<std::string>("hello", "world");
     // print(y)
     std::cout << y << "\n";
 }
@@ -22,8 +19,7 @@ void test_literal_infers_str() {
 // def test_explicit_str() -> None:
 void test_explicit_str() {
     // x = identity[str]("hello")
-    std::string __tmp_4 = "hello";
-    std::string x = identity<std::string>(__tmp_4);
+    std::string x = identity<std::string>("hello");
     // print(x)
     std::cout << x << "\n";
 }
@@ -31,8 +27,7 @@ void test_explicit_str() {
 // def test_explicit_strview() -> None:
 void test_explicit_strview() {
     // x: StrView = identity[StrView]("hello")
-    std::string_view __tmp_5 = "hello";
-    std::string_view x = identity<std::string_view>(__tmp_5);
+    std::string_view x = identity<std::string_view>("hello");
     // print(x)
     std::cout << x << "\n";
 }
@@ -46,9 +41,7 @@ std::string make_str() {
 // def test_non_literal_str() -> None:
 void test_non_literal_str() {
     // x = first(make_str(), make_str())  # tpyc: type(str)
-    std::string __tmp_6 = make_str();
-    std::string __tmp_7 = make_str();
-    std::string x = first<std::string>(__tmp_6, __tmp_7);
+    std::string x = first<std::string>(make_str(), make_str());
     // print(x)
     std::cout << x << "\n";
 }

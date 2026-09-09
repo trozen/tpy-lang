@@ -100,9 +100,10 @@ struct Box {
     // def clone[T: Copyable](self) -> Own[Box[T]]:
     Box<T> clone() const
       requires ::tpy::Copyable<T> {
-        // return Box(self.get())
-        T __tmp_1 = this->get();
-        return Box<T>(std::move(__tmp_1));
+        // # copy(): the new Box owns its own payload, so the duplication is
+        // # spelled rather than left implicit at the owning slot.
+        // return Box(copy(self.get()))
+        return Box<T>(T(this->get()));
     }
 
     // def take(self: Own[Self]) -> Own[T]:

@@ -1,0 +1,14 @@
+module-level: 1 101
+free: 1 101
+method: 1 101
+borrow-ret: 1 101
+ctor: 1 7
+generic: 1 7
+generator: 1 101
+async: 1 101
+comprehension: 1 101
+closure: 1 101
+with: 1 101
+try-finally: 1 101
+error-return: 1 101
+match: 1 101

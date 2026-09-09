@@ -519,6 +519,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `Cls<CA>::template m<MA>(args)`
     "argtemp.generic_ref_slot",     # literal temporary into a TypeParamRef
                                     # ref slot -> `<resolved> __tmp_N = <lit>;`
+    "call.generic_rvalue_slot",     # the same temporary where the
+                                    # INSTANTIATION is value-typed (the slot
+                                    # is `const T&`) -> the rvalue inline
     "ctor.instantiation",           # record-ctor instantiation form
                                     # (`Cell[Int32]()` / `Poll[T]()`) ->
                                     # rendered `type_to_cpp(call_type)(args)`
@@ -1631,6 +1634,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.mixed_elem_ptr",           # `e = p[1]` off a mixed own-borrow
                                      # tuple LOCAL -> `Box* e =
                                      # std::get<1>(p);` (bare, no lift)
+    "isnone.generic_opt_trait",      # a generic `T | None` slot -> the
+                                     # form-neutral `::tpy::opt_has_value(o)`
     "isnone.union_monostate",        # union-binding `is [not] None` ->
                                      # holds_alternative<std::monostate>
     "isnone.union_wrapper_monostate",  # wrapper-union binding -> the same

@@ -1,7 +1,7 @@
 # Box[T] -- heap-allocated owning container.
 from __future__ import annotations
 from typing import Self
-from tpy import Own, Ptr, UInt64, Deref, Covariant, Copyable, Equatable, Comparable, Hashable, nocopy, readonly, auto_readonly
+from tpy import Own, Ptr, UInt64, Deref, Covariant, Copyable, Equatable, Comparable, Hashable, nocopy, readonly, auto_readonly, copy
 from tpy.unsafe import unsafe_take, unsafe_release, unsafe_replace, unsafe_transfer_ownership
 
 # @nocopy: deliberate duplication is always explicit via Box.clone. Mirrors
@@ -32,7 +32,9 @@ class Box[T](Deref[T], Covariant[T]):
 
     @readonly
     def clone[T: Copyable](self) -> Own[Box[T]]:
-        return Box(self.get())
+        # copy(): the new Box owns its own payload, so the duplication is
+        # spelled rather than left implicit at the owning slot.
+        return Box(copy(self.get()))
 
     def take(self: Own[Self]) -> Own[T]:
         return unsafe_transfer_ownership(self._ptr)

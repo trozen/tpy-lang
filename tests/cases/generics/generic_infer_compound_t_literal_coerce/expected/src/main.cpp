@@ -38,20 +38,16 @@ void main() {
     // counts: dict[Int32, Int32] = {}
     ::tpy::ordered_map<int32_t, int32_t> counts = ::tpy::ordered_map<int32_t, int32_t>();
     // put_dict(counts, 7, 42)  # tpyc: ok
-    int32_t __tmp_1 = 7;
-    int32_t __tmp_2 = 42;
-    put_dict<int32_t, int32_t>(counts, __tmp_1, __tmp_2);
+    put_dict<int32_t, int32_t>(counts, 7, 42);
     // print(counts[7])
     std::cout << ::tpy::__getitem__(counts, 7) << "\n";
     // # set[T] inference with bare literal element.
     // seen: set[Int32] = set()
     ::tpy::ordered_set<int32_t> seen = ::tpy::ordered_set<int32_t>();
     // add_to_set(seen, 11)  # tpyc: ok
-    int32_t __tmp_3 = 11;
-    add_to_set<int32_t>(seen, __tmp_3);
+    add_to_set<int32_t>(seen, 11);
     // add_to_set(seen, 22)  # tpyc: ok
-    int32_t __tmp_4 = 22;
-    add_to_set<int32_t>(seen, __tmp_4);
+    add_to_set<int32_t>(seen, 22);
     // print(len(seen))
     std::cout << ::tpy::__len__(seen) << "\n";
     // # T pinned from a list-literal arg whose elements are literal-typed tuples.
@@ -59,8 +55,8 @@ void main() {
     // # recursion, T would reach codegen as list[tuple[IntLiteral, str]] and
     // # leak the literal value into the C++ template argument.
     // take_any([(1, "a"), (2, "b")])  # tpyc: ok
-    std::vector<std::tuple<int32_t, std::string>> __tmp_5 = {std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}};
-    take_any<std::vector<std::tuple<int32_t, std::string>>>(__tmp_5);
+    std::vector<std::tuple<int32_t, std::string>> __tmp_1 = {std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}};
+    take_any<std::vector<std::tuple<int32_t, std::string>>>(__tmp_1);
     // # Both args are bare literal tuples (T inferred from first, consistency
     // # check + resolution applied through compound shape against the second).
     // # Without the unification, codegen leaked `std::tuple<3, std::string>`.

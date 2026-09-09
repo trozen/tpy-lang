@@ -11,8 +11,7 @@ void main() {
     // print(second_of(c))                   # 1
     std::cout << second_of<int32_t>(c) << "\n";
     // print(use_consume(c, Int32(100)))     # 2
-    int32_t __tmp_1 = 100;
-    std::cout << use_consume<int32_t>(c, __tmp_1) << "\n";
+    std::cout << use_consume<int32_t>(c, 100) << "\n";
 }
 
 void __tpy_init() {

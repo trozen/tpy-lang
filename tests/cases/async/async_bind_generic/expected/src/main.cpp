@@ -9,8 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c = ident(41)
-        int32_t __tmp_1 = 41;
-        c.emplace(ident<int32_t>(__tmp_1));
+        c.emplace(ident<int32_t>(41));
         // print(await c)
         __state = S_RESUME_0;
         continue;
@@ -23,8 +22,7 @@ namespace tpyapp::main {
         // print(await c)
         std::cout << __await_lift_0 << "\n";
         // s = ident("ok")
-        std::string __tmp_2 = "ok";
-        s.emplace(ident<std::string>(__tmp_2));
+        s.emplace(ident<std::string>("ok"));
         // print(await s)
         __state = S_RESUME_1;
         continue;

@@ -14,8 +14,7 @@ std::optional<int32_t> maybe_val(std::optional<int32_t> x) {
 void main() {
     // # Generic Optional with value type
     // c = Container[Int32](Int32(42))
-    int32_t __tmp_1 = 42;
-    Container<int32_t> c = Container<int32_t>(&(__tmp_1));
+    Container<int32_t> c = Container<int32_t>(42);
     // v = c.get()
     int32_t* v = c.get();
     // if v is not None:
@@ -28,7 +27,7 @@ void main() {
         std::cout << "got: None" << "\n";
     }
     // c.set(None)
-    c.set(nullptr);
+    c.set(std::nullopt);
     // v2 = c.get()
     int32_t* v2 = c.get();
     // if v2 is not None:
@@ -41,8 +40,7 @@ void main() {
         std::cout << "after set: None" << "\n";
     }
     // c.set(Int32(99))
-    int32_t __tmp_2 = 99;
-    c.set(&(__tmp_2));
+    c.set(99);
     // v3 = c.get()
     int32_t* v3 = c.get();
     // if v3 is not None:
@@ -52,7 +50,7 @@ void main() {
     }
     // # None-initialized container
     // c2 = Container[Int32](None)
-    Container<int32_t> c2 = Container<int32_t>(nullptr);
+    Container<int32_t> c2 = Container<int32_t>(std::nullopt);
     // v4 = c2.get()
     int32_t* v4 = c2.get();
     // if v4 is None:

@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -31,12 +32,23 @@ class BigInt;
  * Value types (primitives) are returned by copy when accessed from containers.
  * Object types (records, nested containers) are returned by reference.
  */
-template<typename T> struct is_value_type : std::false_type {};
+// Enums are decided by kind, not one specialization per enum: every TPy enum
+// (and every @native enum binding a C/C++ one) is a value type in
+// `tpyc/type_def_registry.py`, and no TPy reference type renders as a C++ enum.
+template<typename T> struct is_value_type : std::bool_constant<std::is_enum_v<T>> {};
 
 // const-qualified types share their unqualified value-ness, so a readonly
 // `*args` param lowered to `varargs<const T>` selects the same specialization
 // (value vs dual-mode) as the mutable `varargs<T>`.
 template<typename T> struct is_value_type<const T> : is_value_type<T> {};
+
+// The value-type rows below are the ones whose type has no defining header of
+// ours: the std:: and builtin types, plus val_or_ref, defined here. A TPy
+// runtime type declares its own value-ness -- and the Send / Sync overrides
+// that go with it -- next to its definition: span_iter.hpp, slice.hpp,
+// range.hpp, varargs.hpp, dict_ops.hpp. (The is_send / is_sync rows for
+// ordered_map / ordered_set are still here behind forward declarations; they
+// are reference types, so they have no value-type row to travel with.)
 
 // Primitive value types
 template<> struct is_value_type<int8_t> : std::true_type {};
@@ -50,6 +62,7 @@ template<> struct is_value_type<uint64_t> : std::true_type {};
 template<> struct is_value_type<bool> : std::true_type {};
 template<> struct is_value_type<char> : std::true_type {};
 template<> struct is_value_type<double> : std::true_type {};
+template<> struct is_value_type<float> : std::true_type {};
 template<> struct is_value_type<std::string> : std::true_type {};
 template<> struct is_value_type<std::string_view> : std::true_type {};
 template<> struct is_value_type<BigInt> : std::true_type {};
@@ -58,11 +71,12 @@ template<> struct is_value_type<BigInt> : std::true_type {};
 // the same way primitives do.
 template<> struct is_value_type<std::monostate> : std::true_type {};
 
-// Forward declaration for SpanIter specialization
-template<typename T> struct SpanIter;
-
-// SpanIter is a lightweight view (span + index), passed by value but borrows
-template<typename T> struct is_value_type<SpanIter<T>> : std::true_type {};
+// A borrowed view is copied, not aliased, at a generic slot. One row covers
+// three TypeDefs -- Span[T], Span[readonly[T]] and BytesView
+// (std::span<const uint8_t>). `tests/test_runtime_value_type_parity.py` holds
+// every such row (here and in the defining headers) against the registry, with
+// the two C++ types that cannot be decided at all.
+template<typename T, std::size_t E> struct is_value_type<std::span<T, E>> : std::true_type {};
 
 // Tuples are value types (immutable in Python, always copied/moved)
 template<typename... Ts> struct is_value_type<std::tuple<Ts...>> : std::true_type {};
@@ -113,9 +127,6 @@ template<> struct is_send<std::string_view> : std::false_type {};
 // span is not Send (non-owning view of another container's storage)
 template<typename T, std::size_t E> struct is_send<std::span<T, E>> : std::false_type {};
 
-// SpanIter borrows from a span -- not safe to transfer or share
-template<typename T> struct is_send<SpanIter<T>> : std::false_type {};
-
 // Containers: Send if elements are Send
 template<typename T, typename A> struct is_send<std::vector<T, A>> : is_send<T> {};
 template<typename T, std::size_t N> struct is_send<std::array<T, N>> : is_send<T> {};
@@ -161,9 +172,6 @@ template<typename T, std::size_t N> struct is_sync<std::array<T, N>> : is_sync<T
 template<typename T, std::size_t E> struct is_sync<std::span<T, E>> : std::false_type {};
 template<typename T, std::size_t E> struct is_sync<std::span<const T, E>> : is_sync<T> {};
 
-// SpanIter has mutable index_ state, not safe to share
-template<typename T> struct is_sync<SpanIter<T>> : std::false_type {};
-
 template<typename T>
 concept Sync = is_sync<T>::value;
 
@@ -199,6 +207,65 @@ namespace detail {
 }
 template<typename T> using val_or_ptr_t  = typename detail::val_or_ptr_impl<T>::type;
 template<typename T> using val_or_cptr_t = typename detail::val_or_cptr_impl<T>::type;
+
+// The `T | None` PARAMETER form for a generic T -- the nullable sibling of
+// param_val_or_ref_t. A value T takes std::optional<T> by value, which is what
+// the monomorphic twin (`def f(v: Int32 | None)`) already takes, so a caller
+// passes the value straight through instead of materializing a temp to point
+// at. A reference T stays a pointer, so a mutation inside the body is visible
+// to the caller (std::optional<T> would copy it). Return position is NOT this
+// form: a `T*` return can alias a field, an optional cannot.
+namespace detail {
+    template<typename T> struct opt_param_impl  { using type = std::conditional_t<is_value_type<T>::value, std::optional<T>, T*>; };
+    template<typename T> struct opt_cparam_impl { using type = std::conditional_t<is_value_type<T>::value, std::optional<T>, const T*>; };
+}
+template<typename T> using opt_param_t  = typename detail::opt_param_impl<T>::type;
+template<typename T> using opt_cparam_t = typename detail::opt_cparam_impl<T>::type;
+
+// Read a generic `T | None` slot: `x is not None` is has_value() on the
+// optional form and a null test on the pointer form. Spelled once here so a
+// generic body's null test is form-neutral. (Dereferencing needs no helper --
+// `*x` reads both forms.)
+template<typename T>
+constexpr bool opt_has_value(const T& x) {
+    if constexpr (std::is_pointer_v<T>) {
+        return x != nullptr;
+    } else {
+        return x.has_value();
+    }
+}
+
+// Lift a generic `T | None` slot into its storage form (std::optional<T>, the
+// field/container shape): the optional form already IS the storage form; the
+// pointer form copies the pointee, nullptr becoming an empty optional. Dest is
+// explicit for the same reason to_val_or_ptr's is -- the source alone does not
+// name the slot.
+template<typename Dest, typename Src>
+Dest to_opt_storage(const Src& s) {
+    if constexpr (std::is_pointer_v<Src>) {
+        if (s != nullptr) return Dest(*s);
+        return Dest{};
+    } else {
+        return s;
+    }
+}
+
+// to_opt_storage's move sibling: the caller has given up the pointee (or the
+// optional), so the payload relocates instead of being copied. No program
+// reaches it yet -- every owning-move source into a generic `T | None` field
+// rejects further up (an `Own[T]` parameter at `assign.field_write_shape`, a
+// rebound local at `method.arg_shape`) -- but the emit picks between the two
+// on the move flag, so a copy here would be silent the day one lands.
+template<typename Dest, typename Src>
+Dest to_opt_storage_move(Src&& s) {
+    using SrcD = std::remove_cvref_t<Src>;
+    if constexpr (std::is_pointer_v<SrcD>) {
+        if (s != nullptr) return Dest(std::move(*s));
+        return Dest{};
+    } else {
+        return Dest(std::forward<Src>(s));
+    }
+}
 
 // Read a generic tuple slot (val_or_ptr_t<T>) as a usable value/reference:
 // deref the non-value pointer case, pass value slots through. Constrained to

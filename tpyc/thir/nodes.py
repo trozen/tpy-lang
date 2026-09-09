@@ -390,13 +390,19 @@ class THIRIsNone(THIRExpr):
     `(!...)`, identical for value- and
     pointer-variant reprs (monostate is a value member in both). A
     recursive-alias WRAPPER binding (`union_wrapper=True`) reads the variant
-    through `.value` (VariantAccess.variant_expr's wrapper indirection)."""
+    through `.value` (VariantAccess.variant_expr's wrapper indirection).
+
+    On a generic `T | None` slot (`trait_repr=True`) neither spelling is
+    available in the template -- the slot is an optional at a value T and a
+    pointer at a reference one -- so the test renders the runtime's
+    form-neutral reader `::tpy::opt_has_value(operand)`."""
     operand: THIRExpr
     negate: bool = False
     value_repr: bool = False
     any_typeid: bool = False
     union_monostate: bool = False
     union_wrapper: bool = False
+    trait_repr: bool = False
 
 
 @dataclass(frozen=True)

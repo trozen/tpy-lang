@@ -10,13 +10,9 @@ void main() {
     // # FloatLiteralType to Float64 (mirrors the long-standing IntLiteralType
     // # promote rule).
     // pair(1.5, Float64(2.5))
-    double __tmp_1 = 1.5;
-    double __tmp_2 = 2.5;
-    pair<double>(__tmp_1, __tmp_2);
+    pair<double>(1.5, 2.5);
     // pair(Float64(3.5), 4.5)
-    double __tmp_3 = 3.5;
-    double __tmp_4 = 4.5;
-    pair<double>(__tmp_3, __tmp_4);
+    pair<double>(3.5, 4.5);
     // # Generic record constructor: int and float literals.
     // bi = Box(42)
     ::tpystd::tplib::box::Box<int32_t> bi = ::tpystd::tplib::box::Box<int32_t>(42);

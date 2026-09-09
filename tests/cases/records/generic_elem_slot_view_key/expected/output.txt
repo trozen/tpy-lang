@@ -1,4 +1,18 @@
-2 1 3
-1 1
-1 8
-4
+scalar 2 1 3
+scalar 1 1
+scalar 1 8
+scalar 4
+lib_str 2 b
+lib_str 1 c
+lib_str 0
+lib_str 2 b
+lib_str 1 c
+lib_str 0
+user_str True
+user_str 1 y False
+user_str True
+user_str 1 y False
+lib_bytes 1 b'b'
+free_fn True
+free_fn True
+free_fn True

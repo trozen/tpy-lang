@@ -7,17 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(first(a=1, b=2))
-    int32_t __tmp_1 = 1;
-    int32_t __tmp_2 = 2;
-    std::cout << first<int32_t>(__tmp_1, __tmp_2) << "\n";
+    std::cout << first<int32_t>(1, 2) << "\n";
     // print(first(10, b=20))
-    int32_t __tmp_3 = 10;
-    int32_t __tmp_4 = 20;
-    std::cout << first<int32_t>(__tmp_3, __tmp_4) << "\n";
+    std::cout << first<int32_t>(10, 20) << "\n";
     // print(first(b="world", a="hello"))
-    std::string __tmp_5 = "hello";
-    std::string __tmp_6 = "world";
-    std::cout << first<std::string>(__tmp_5, __tmp_6) << "\n";
+    std::cout << first<std::string>("hello", "world") << "\n";
 }
 
 void __tpy_init() {

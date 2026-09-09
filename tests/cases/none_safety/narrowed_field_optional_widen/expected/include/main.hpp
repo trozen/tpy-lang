@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 bool is_def(const Pod* o);
 template<typename U>
-bool is_def_gen(const U* o);
+bool is_def_gen(::tpy::opt_cparam_t<U> o);
 Pod* take(T& t);
 void main();
 
@@ -58,11 +58,11 @@ inline Pod::Pod() : x(::tpy::BigInt(0)) {}
 inline T::T() : o(std::nullopt) {}
 // def is_def_gen[U](o: U | None) -> bool:
 template<typename U>
-bool is_def_gen(const U* o) {
+bool is_def_gen(::tpy::opt_cparam_t<U> o) {
     // # Generic sibling: the type param must infer U=Pod from a narrowed field
     // # arg (whose analyzed type is Ref-wrapped), not U=Ref[Pod] -> val_or_ref.
     // return o is not None
-    return (o != nullptr);
+    return (::tpy::opt_has_value(o));
 }
 
 void __tpy_init();

@@ -1125,18 +1125,6 @@ class TestGenericPrologueLegs:
             assert self._pre(TpyName("x"), TypeParamRef("T"), INT32) is False
         assert compiler._thir_reject_detail == "call.generic_arg_shape"
 
-    def test_a_bare_type_param_slot_flush_gates_a_scalar_literal(self):
-        # The ref-slot temp needs a statement to flush into, so the same
-        # literal admits only in a flush position.
-        def _at(temps_ok):
-            return _pre_generic_slot_family(
-                _ArgReq(TpyIntLiteral(1), INT32, {}, None, frozenset(),
-                        frozenset(), False, temps_ok,
-                        open_ptype=TypeParamRef("T")))
-
-        assert _at(True) is True
-        assert _at(False) is False
-
     def test_a_concrete_slot_falls_through_to_the_rows(self):
         assert self._pre(TpyName("x"), INT32, INT32) is None
 

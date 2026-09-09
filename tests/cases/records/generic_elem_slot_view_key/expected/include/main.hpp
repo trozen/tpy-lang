@@ -12,12 +12,21 @@ namespace tpyapp::main {
 using ::tpystd::tplib::array_list::ArrayList;
 
 template<::tpystd::tpy::Equatable T, std::size_t N> struct Labels;
+struct StrLabels;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 void drop_from(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al, int32_t k);
 void drop_literal(::tpystd::tplib::array_list::ArrayList<int32_t, 4>& al);
 void drop_from_record(Labels<int32_t, 4>& box, int32_t k);
+void drop_str_param(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view k);
+void drop_str_local(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al);
+void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view src);
+void drop_bytes(::tpystd::tplib::array_list::ArrayList<std::vector<uint8_t>, 4>& al, std::span<const uint8_t> k);
+bool has_str(Labels<std::string, 4>& box, std::string_view k);
+template<::tpystd::tpy::Equatable T>
+bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
 void main();
 
 // class Labels[T: Equatable, N: int]:
@@ -43,6 +52,27 @@ struct Labels {
         this->items.remove(value);
     }
 
+    // def has(self, value: T) -> bool:
+    bool has(const T& value) const {
+        // # A readonly method spells the slot `const T&` -- the SECOND generic
+        // # parameter spelling, distinct from `param_val_or_ref_t<T>`.
+        // for it in self.items:
+        auto& __src_0 = this->items;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& it = ::tpy::unwrap_ref(*__r_1);
+            // if it == value:
+            if ((it == value)) {
+                // return True
+                return true;
+            }
+        }
+        // return False
+        return false;
+    }
+
     // def tag_len(self, tag: str) -> Int32:
     int32_t tag_len(std::string_view tag) const {
         // # INVERSE: a non-element str param -- still a std::string_view.
@@ -56,6 +86,85 @@ template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Labels<T, N>& obj) {
     ::tpy::print_object_default(os, "Labels", obj);
     return os;
+}
+
+// class StrLabels:
+struct StrLabels {
+    // # The monomorphic twin of Labels[str, 4]: every slot below is spelled str.
+    // items: ArrayList[str, 4]
+    ::tpystd::tplib::array_list::ArrayList<std::string, 4> items;
+
+    // def __init__(self) -> None:
+    StrLabels();
+
+    // def add(self, value: str) -> None:
+    void add(std::string_view value);
+
+    // def drop(self, value: str) -> None:
+    void drop(std::string_view value);
+
+    // def has(self, value: str) -> bool:
+    bool has(std::string_view value) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.StrLabels";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const StrLabels& obj) {
+    ::tpy::print_object_default(os, "StrLabels", obj);
+    return os;
+}
+
+
+// def __init__(self) -> None:
+inline StrLabels::StrLabels() : items(::tpystd::tplib::array_list::ArrayList<std::string, 4>()) {}
+
+// def add(self, value: str) -> None:
+inline void StrLabels::add(std::string_view value) {
+    // self.items.append(value)
+    this->items.append(std::string(value));
+}
+
+// def drop(self, value: str) -> None:
+inline void StrLabels::drop(std::string_view value) {
+    // self.items.remove(value)
+    std::string __tmp_2 = std::string(value);
+    this->items.remove(__tmp_2);
+}
+
+// def has(self, value: str) -> bool:
+inline bool StrLabels::has(std::string_view value) const {
+    // for it in self.items:
+    auto& __src_0 = this->items;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        std::string_view it = ::tpy::unwrap_ref(*__r_1);
+        // if it == value:
+        if ((it == value)) {
+            // return True
+            return true;
+        }
+    }
+    // return False
+    return false;
+}
+// def has_item[T: Equatable](xs: list[T], v: T) -> bool:
+template<::tpystd::tpy::Equatable T>
+bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+    // for x in xs:
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& x = *__beg_0;
+        // if x == v:
+        if ((x == v)) {
+            // return True
+            return true;
+        }
+    }
+    // return False
+    return false;
 }
 
 void __tpy_init();

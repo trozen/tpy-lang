@@ -7,18 +7,12 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // three_params[Int32](10, c=5)
-    int32_t __tmp_1 = 10;
-    int32_t __tmp_2 = 5;
-    three_params<int32_t>(__tmp_1, int32_t{}, __tmp_2);
+    three_params<int32_t>(10, int32_t{}, 5);
     // three_params[Int32](1, 2, 3)
-    int32_t __tmp_3 = 1;
-    int32_t __tmp_4 = 2;
-    int32_t __tmp_5 = 3;
-    three_params<int32_t>(__tmp_3, __tmp_4, __tmp_5);
+    three_params<int32_t>(1, 2, 3);
     // # T inferred from first arg
     // three_params(42)
-    int32_t __tmp_6 = 42;
-    three_params<int32_t>(__tmp_6);
+    three_params<int32_t>(42);
 }
 
 void __tpy_init() {

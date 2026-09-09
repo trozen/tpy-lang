@@ -1755,3 +1755,38 @@ def test_resolve_type_for_codegen_does_not_promote_record_to_protocol():
     promoted = pg.resolve_type_for_codegen(placeholder)
     assert promoted.is_protocol is True
     assert promoted.qualified_name() == protocol_qname
+
+
+def test_view_param_form_set_is_str_and_bytes():
+    """`has_view_param_form` -- a type whose PARAM form is a distinct view
+    over its own storage form -- must derive to exactly `str` and `bytes`.
+
+    KEY: every entry of `type_def_registry._type_defs` that registers BOTH a
+    `cpp_formatter` and a `param_cpp_formatter`, asked through the public
+    predicate on a bare NominalType of that qname. The generic TypeDefs
+    (list, dict, Span, ...) register no param formatter and default to
+    `<storage>&`, which the predicate excludes by construction.
+
+    A new row here changes where the generic-slot materialize fires, so the
+    set is pinned rather than left to a corpus sweep: `String` and
+    `bytearray` pass a REFERENCE to their storage and must stay out, or an
+    owned lvalue would start hoisting a redundant copy at every generic slot.
+    """
+    from tpyc.type_def_registry import _type_defs, has_view_param_form
+
+    scanned = set()
+    view_param = set()
+    for qname, td in _type_defs.items():
+        if td.cpp_formatter is None or td.param_cpp_formatter is None:
+            continue
+        scanned.add(qname)
+        t = ts.NominalType(name=qname.rsplit(".", 1)[-1], type_args=(),
+                           _module_qname=qname)
+        if has_view_param_form(t):
+            view_param.add(qname)
+
+    # Floor on the scan itself: a lookup that silently collapsed would make
+    # the assertion below pass for the wrong reason.
+    assert len(scanned) >= 15, f"formatter scan collapsed: {sorted(scanned)}"
+    assert view_param == {"builtins.str", "builtins.bytes"}, sorted(view_param)
+    assert "tpy.String" in scanned and "builtins.bytearray" in scanned

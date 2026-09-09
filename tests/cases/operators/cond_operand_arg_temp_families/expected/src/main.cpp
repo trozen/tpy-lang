@@ -153,16 +153,15 @@ bool covariant(bool flag) {
 bool generic_ref_slot(bool flag) {
     // # `or` RHS, a scalar literal at a bare type-parameter slot.
     // return flag or anyslot("genref", 42)
-    std::optional<int32_t> __tmp_3;
-    return (flag || (__tmp_3.emplace(42), anyslot<int32_t>("genref", (*__tmp_3))));
+    return (flag || anyslot<int32_t>("genref", 42));
 }
 
 // def generic_container_literal(flag: bool) -> bool:
 bool generic_container_literal(bool flag) {
     // # `or` RHS, a list literal at a `list[T]` slot of a generic function.
     // return flag or listslot("gencont", [1, 2, 3])
-    std::optional<std::vector<int32_t>> __tmp_4;
-    return (flag || (__tmp_4.emplace(std::vector<int32_t>{1, 2, 3}), listslot<int32_t>("gencont", (*__tmp_4))));
+    std::optional<std::vector<int32_t>> __tmp_3;
+    return (flag || (__tmp_3.emplace(std::vector<int32_t>{1, 2, 3}), listslot<int32_t>("gencont", (*__tmp_3))));
 }
 
 // def optptr_container_literal(s: Sink, flag: bool) -> bool:
@@ -170,32 +169,32 @@ bool optptr_container_literal(Sink& s, bool flag) {
     // # `or` RHS, a list literal at a METHOD's pointer-repr `Optional[list]`
     // # slot -- the temp is passed by address.
     // return flag or s.take("optptr", [1, 2, 3])
-    std::optional<std::vector<int32_t>> __tmp_5;
-    return (flag || (__tmp_5.emplace(std::vector<int32_t>{1, 2, 3}), s.take("optptr", &((*__tmp_5)))));
+    std::optional<std::vector<int32_t>> __tmp_4;
+    return (flag || (__tmp_4.emplace(std::vector<int32_t>{1, 2, 3}), s.take("optptr", &((*__tmp_4)))));
 }
 
 // def recursive_union_literal(flag: bool) -> Int32:
 int32_t recursive_union_literal(bool flag) {
     // # `or` RHS, a list literal at a recursive-union wrapper slot.
     // return Int32(0) if flag else show("rulit", [1, 2, 3])
-    std::optional<Value> __tmp_6;
-    return ((flag) ? (0) : (__tmp_6.emplace(std::vector<Value>{1, 2, 3}), show("rulit", (*__tmp_6))));
+    std::optional<Value> __tmp_5;
+    return ((flag) ? (0) : (__tmp_5.emplace(std::vector<Value>{1, 2, 3}), show("rulit", (*__tmp_5))));
 }
 
 // def ru_wrapper_literal(flag: bool) -> Int32:
 int32_t ru_wrapper_literal(bool flag) {
     // # Ternary arm, a scalar literal at the same wrapper slot.
     // return Int32(0) if flag else show("ruscalar", 9)
-    std::optional<Value> __tmp_7;
-    return ((flag) ? (0) : (__tmp_7.emplace(9), show("ruscalar", (*__tmp_7))));
+    std::optional<Value> __tmp_6;
+    return ((flag) ? (0) : (__tmp_6.emplace(9), show("ruscalar", (*__tmp_6))));
 }
 
 // def ru_wrapper_ctor(flag: bool) -> Int32:
 int32_t ru_wrapper_ctor(bool flag) {
     // # Ternary arm, a member-record ctor rvalue at the wrapper slot.
     // return Int32(0) if flag else show("ructor", Neg(3))
-    std::optional<Value> __tmp_8;
-    return ((flag) ? (0) : (__tmp_8.emplace(Neg(3)), show("ructor", (*__tmp_8))));
+    std::optional<Value> __tmp_7;
+    return ((flag) ? (0) : (__tmp_7.emplace(Neg(3)), show("ructor", (*__tmp_7))));
 }
 
 // def ru_wrapper_call(flag: bool) -> Int32:
@@ -203,17 +202,17 @@ int32_t ru_wrapper_call(bool flag) {
     // # Ternary arm, an `Own[Tree[Int32]]`-returning call at the wrapper slot;
     // # the build print says whether the skipped arm ran it.
     // return Int32(0) if flag else leaf_count("rucall", make_leaf())
-    std::optional<Tree<int32_t>> __tmp_9;
-    return ((flag) ? (0) : (__tmp_9.emplace(make_leaf()), leaf_count("rucall", (*__tmp_9))));
+    std::optional<Tree<int32_t>> __tmp_8;
+    return ((flag) ? (0) : (__tmp_8.emplace(make_leaf()), leaf_count("rucall", (*__tmp_8))));
 }
 
 // def ctor_mut_rvalue(flag: bool) -> bool:
 bool ctor_mut_rvalue(bool flag) {
     // # `or` RHS, a record rvalue at a MUTATED constructor slot.
     // return flag or held("ctormut", Outer(Inner(3)))
-    std::optional<Inner> __tmp_10;
-    std::optional<Outer> __tmp_11;
-    return (flag || (__tmp_10.emplace(Inner(3)), __tmp_11.emplace(Outer((*__tmp_10))), held("ctormut", (*__tmp_11))));
+    std::optional<Inner> __tmp_9;
+    std::optional<Outer> __tmp_10;
+    return (flag || (__tmp_9.emplace(Inner(3)), __tmp_10.emplace(Outer((*__tmp_9))), held("ctormut", (*__tmp_10))));
 }
 
 // def gen_recv_temp(flag: bool) -> bool:
@@ -221,11 +220,11 @@ bool gen_recv_temp(bool flag) {
     // # `or` RHS, a GENERATOR method on a constructor rvalue: the frame borrows
     // # the receiver, so the receiver itself hoists a temp inside the operand.
     // return flag or sized("genrecv", [v for v in Counter(3).items()])
-    std::optional<Counter> __tmp_12;
-    std::optional<std::vector<int32_t>> __tmp_13;
-    return (flag || (__tmp_12.emplace(Counter(3)), __tmp_13.emplace(({
+    std::optional<Counter> __tmp_11;
+    std::optional<std::vector<int32_t>> __tmp_12;
+    return (flag || (__tmp_11.emplace(Counter(3)), __tmp_12.emplace(({
         std::vector<int32_t> __result;
-        auto __obj_0 = (*__tmp_12).items();
+        auto __obj_0 = (*__tmp_11).items();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -233,7 +232,7 @@ bool gen_recv_temp(bool flag) {
             __result.push_back(v);
         }
         std::move(__result);
-    })), sized("genrecv", (*__tmp_13))));
+    })), sized("genrecv", (*__tmp_12))));
 }
 
 // def shown(tag: str, p: Point) -> bool:
@@ -259,8 +258,8 @@ bool deref_or_rhs(Ref& r, bool flag) {
     // # always-evaluated left runs first, so the copy must report the BUMPED
     // # value.
     // return flag or (bump(r) and shown("deref", r))
-    std::optional<Point> __tmp_14;
-    return (flag || (bump(r) && (__tmp_14.emplace(r.__deref__()), shown("deref", (*__tmp_14)))));
+    std::optional<Point> __tmp_13;
+    return (flag || (bump(r) && (__tmp_13.emplace(r.__deref__()), shown("deref", (*__tmp_13)))));
 }
 
 // def deref_ternary(r: Ref, flag: bool) -> bool:
@@ -268,8 +267,8 @@ bool deref_ternary(const Ref& r, bool flag) {
     // # Ternary arm: the same deref-coercion temp at the other conditional
     // # position.
     // return shown("dereftern", r) if not flag else False
-    std::optional<Point> __tmp_15;
-    return (((!(flag))) ? (__tmp_15.emplace(r.__deref__()), shown("dereftern", (*__tmp_15))) : (false));
+    std::optional<Point> __tmp_14;
+    return (((!(flag))) ? (__tmp_14.emplace(r.__deref__()), shown("dereftern", (*__tmp_14))) : (false));
 }
 
 // def main() -> None:
@@ -278,13 +277,13 @@ void main() {
     // # print statement is mid-stream would interleave under TPy but not under
     // # CPython, which is a different divergence than the one under test.
     // a1 = comprehension([1, 2, 3], True)
-    std::vector<int32_t> __tmp_16 = {1, 2, 3};
-    bool a1 = comprehension(__tmp_16, true);
+    std::vector<int32_t> __tmp_15 = {1, 2, 3};
+    bool a1 = comprehension(__tmp_15, true);
     // print("comp skipped", a1)
     std::cout << "comp skipped" << " " << ::tpy::print_bool(a1) << "\n";
     // a2 = comprehension([1, 2, 3], False)
-    std::vector<int32_t> __tmp_17 = {1, 2, 3};
-    bool a2 = comprehension(__tmp_17, false);
+    std::vector<int32_t> __tmp_16 = {1, 2, 3};
+    bool a2 = comprehension(__tmp_16, false);
     // print("comp taken", a2)
     std::cout << "comp taken" << " " << ::tpy::print_bool(a2) << "\n";
     // b1 = covariant(True)

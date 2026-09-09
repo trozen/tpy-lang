@@ -14,8 +14,7 @@ void main() {
     std::cout << ::tpy::__len__(items) << "\n";
     // # str satisfies Sized too
     // s = identity("hello")
-    std::string __tmp_2 = "hello";
-    std::string s = identity<std::string>(__tmp_2);
+    std::string s = identity<std::string>("hello");
     // print(len(s))  # Should print 5
     std::cout << ::tpy::__len__(s) << "\n";
 }

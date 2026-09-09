@@ -14,15 +14,11 @@ int32_t pick(int32_t x, int32_t y) {
 // def main() -> None:
 void main() {
     // a: Int32 = use(Int32(1), Int32(2))
-    int32_t __tmp_1 = 1;
-    int32_t __tmp_2 = 2;
-    int32_t a = use<int32_t>(__tmp_1, __tmp_2);
+    int32_t a = use<int32_t>(1, 2);
     // print(a)
     std::cout << a << "\n";
     // f: Float32 = use(Float32(1.5), Float32(2.5))
-    float __tmp_3 = 1.5f;
-    float __tmp_4 = 2.5f;
-    float f = use<float>(__tmp_3, __tmp_4);
+    float f = use<float>(1.5f, 2.5f);
     // print(f)
     std::cout << ::tpy::print_float(static_cast<double>(f)) << "\n";
 }

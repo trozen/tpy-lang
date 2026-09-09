@@ -1746,15 +1746,22 @@ class CallAnalyzer:
                 f"Non-copyable values can only be moved (pass directly at last use).",
                 expr,
             )
+        # A readonly source is a valid source: copy() reads it and never
+        # writes it. The result is a fresh, independently owned value, so the
+        # qualifier does not carry -- keeping it would describe the copy as
+        # borrowed and reject it at every mutable slot, leaving the copy
+        # warnings on readonly payloads with no spelling that silences them.
+        # The param keeps the source's qualifier, which is what copy() borrows.
+        result_type = unwrap_readonly(arg_type)
         expr.resolved_function_info = FunctionInfo(
             name="copy",
             params=[ParamInfo("x", arg_type)],
-            return_type=OwnType(arg_type),
+            return_type=OwnType(result_type),
             is_readonly=True,
             is_builtin_function=True,
             qualified_name="tpy.copy",
         )
-        return OwnType(arg_type)
+        return OwnType(result_type)
 
     def _analyze_tpy_copy_iter(self, expr: TpyCall) -> TpyType:
         """Analyze a call to tpy.copy_iter() - explicit element copy acknowledgment.
@@ -3161,7 +3168,7 @@ class CallAnalyzer:
     ) -> None:
         """Check copy/ownership warnings for constructor args (e.g., Own[T] in Iterable[Own[T]])."""
         for param, arg_type, arg_expr in zip(ctor.params, arg_types, expr.args):
-            param_type = self.type_ops.substitute_type_params(param.type, inferred)
+            param_type = self.type_ops.substitute_param_type(param.type, inferred)
             self.compat.check_type_compatible(
                 arg_type, param_type, f"{expr.func_name}() argument", source_expr=arg_expr,
             )
@@ -5289,7 +5296,7 @@ class CallAnalyzer:
                         f"Cannot use *unpacking: '{func.name}' "
                         f"does not accept *args", arg)
             for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-                resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
+                resolved_ptype = self.type_ops.substitute_param_type(ptype, type_subst)
 
                 # @value_ptr_coercion: Ptr[T] params accept T values via address-of coercion.
                 vpc_active = func.value_ptr_coercion and isinstance(resolved_ptype, PtrType)
@@ -5576,7 +5583,7 @@ class CallAnalyzer:
                         expr
                     )
                 for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                    resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst) if type_subst else ptype
+                    resolved_ptype = self.type_ops.substitute_param_type(ptype, type_subst) if type_subst else ptype
                     arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
                     arg_type = self._restore_readonly_arg(arg, arg_type)
                     self.check_own_param(arg, arg_type, pname, resolved_ptype)
@@ -5688,7 +5695,7 @@ class CallAnalyzer:
                     # Coerce arguments with substitution
                     type_subst = inferred
                     for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                        resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
+                        resolved_ptype = self.type_ops.substitute_param_type(ptype, type_subst)
                         at = self._restore_readonly_arg(arg, arg_types[i])
                         self.check_own_param(arg, at, pname, resolved_ptype)
                         self.mark_pending_arg_context(arg, at, resolved_ptype)
@@ -6011,6 +6018,7 @@ class CallAnalyzer:
             params=[ParamInfo(f"arg{i + 1}", t) for i, t in enumerate(param_types)],
             return_type=return_type,
             is_readonly=False,
+            is_callable_value=True,
         )
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)
