@@ -569,6 +569,7 @@ from .checks import (
     _r_value_opt_scalar_value,
     _r_value_record_rvalue,
     _r_value_union_temp,
+    _r_value_union_narrowed_pass,
     _builtin_value_record,
     _wrapper_union_elem_name_arg,
     _alias_ref_container,
@@ -2015,6 +2016,12 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # `std::variant<...> __tmp_N = v;` temp (`datetime(..., tzinfo=ist)`)
         # -- the free-call arg-temp row, flush-gated.
         _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
+        # Its narrowed sibling needs no temp (the alias is member-typed and
+        # the variant's converting ctor takes it), so no flush gate. Not in
+        # `_CTOR_NESTED_ARG_SINK`: a nested ctor arg is hoisted to a temp that
+        # the DIRECT sink then admits, so the nested family never sees the
+        # shape (no reject reachable there).
+        _ArgRow("value_union_narrowed_pass", _r_value_union_narrowed_pass),
         # A tuple LITERAL at a tuple ctor slot: the borrow/value tuple
         # builders own the per-element admission (a bad element raises
         # inside lowering and rejects the body), exactly the
@@ -15339,12 +15346,14 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     already-union name into a DEEP-CONST slot (a `readonly[...]` annotation
     or `readonly_target`, the threaded `deep_const_borrow_params` verdict)
     takes the explicit `ptr_variant_to_const` wrap -- and a deep-const slot
-    spells the const-pointee variant throughout. A narrowed
-    subject's C++ binding is still the variant (`already_union` via the
-    declared type), so it takes the default render -- the bare
-    extraction alias, the `is_narrowed` wrap skip -- which the plain
-    `_lower_expr` read reproduces; a same-union name into a MUTABLE slot
-    renders bare the same way."""
+    spells the const-pointee variant throughout. A narrowed subject's C++
+    binding is the member-typed extraction alias (`auto& __v =
+    *std::get<A*>(v);`), so it takes the member lift its monomorphic twin
+    takes -- the same fact the RETURN position already decided
+    (`ret.narrowed_union_addr`). Only an ASSIGN-narrowed name is still the
+    variant in C++, and `already_union` keys on the declared type, which stays
+    the union exactly there; a same-union name into a MUTABLE slot renders
+    bare the same way."""
     bl = _union_bytes_literal_temp_arg(a, ptype, lc.analyzer)
     if bl is not None and not readonly_target:
         # The bytes-literal rvalue at a beyond-the-slice union slot: its own
@@ -15408,8 +15417,7 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             value=_lower_expr(a, lc, declared, use=_RECORD_TEMP_FLUSH_USE),
             temp_cpp=at.to_cpp(),
             form=Form.BORROW, loc=loc)
-    if (not isinstance(a, TpyName) or a.name in lc.narrow.narrowed
-            or a.name in lc.inline_narrowed):
+    if not isinstance(a, TpyName):
         return None
     # The `already_union` verdict keys on the C++ DECLARED type,
     # not the (assignment-narrowed) read type: a union-declared name whose read

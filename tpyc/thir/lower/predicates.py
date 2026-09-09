@@ -9278,10 +9278,14 @@ def _value_union_temp_slot(a: TpyExpr, ptype: TpyType | None,
     name, the union-coerced int literal) is not member-valued and rides its
     pass-through arms; membership is a slice guard (sema already typed the
     arg against the union). Consumed by `_lower_call_arg` so admission and
-    temp selection key on one verdict; the NAME-narrowing
-    reject (a narrowed subject reads the extraction alias while the
-    `already_union` verdict renders it bare, temp-free) stays site-specific
-    -- the gate reads `ws.narrowed`, lowering `lc.narrow`."""
+    temp selection key on one verdict. A NARROWED name shares this slot
+    verdict but not the temp: it reads the member-typed extraction alias, so
+    it passes BARE through the `value_union_narrowed_pass` row
+    (`_value_union_narrowed_pass_arg`) and lowering skips the hoist for it.
+    Only the INLINE (ternary) narrowing still rejects, because the check
+    phase records no inline-narrowed names -- the gate reads `ws.narrowed`,
+    lowering `lc.narrow` plus `lc.inline_narrowed`
+    (BUGS.md#inline-narrowed-value-union-arg-rejects)."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None

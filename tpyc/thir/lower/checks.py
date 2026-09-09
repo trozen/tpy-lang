@@ -5985,12 +5985,29 @@ def _value_union_temp_arg(a: TpyExpr, ptype: TpyType | None,
                           locals_: dict[str, TpyType],
                           narrowed: 'set[str] | frozenset[str]',
                           analyzer) -> bool:
-    """Gate arm for the value-union temp row and narrowed-name reject."""
+    """Gate arm for the value-union temp row. A NARROWED name is not this
+    row's shape -- it needs no temp at all and rides
+    `_value_union_narrowed_pass_arg`."""
     if _value_union_temp_slot(a, ptype, locals_, analyzer) is None:
         return False
     if isinstance(a, TpyName) and a.name in narrowed:
         return False
     return True
+
+def _value_union_narrowed_pass_arg(a: TpyExpr, ptype: TpyType | None,
+                                   locals_: dict[str, TpyType],
+                                   narrowed: 'set[str] | frozenset[str]',
+                                   analyzer) -> bool:
+    """The value-union sibling of the member lift (`_union_member_lift_arg`):
+    a NARROWED name at a same-union value-variant slot passes BARE. The
+    narrowed name's C++ binding is the member-typed extraction alias
+    (`const auto& __v = std::get<int32_t>(v)`) and the variant's converting
+    constructor takes a member value directly, so no `std::variant<...>
+    __tmp_N` is needed and the row carries no flush requirement -- unlike the
+    temp row it shares the slot verdict with."""
+    if not (isinstance(a, TpyName) and a.name in narrowed):
+        return False
+    return _value_union_temp_slot(a, ptype, locals_, analyzer) is not None
 
 def _protocol_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
                        locals_: dict[str, TpyType], analyzer, *,
@@ -7029,10 +7046,9 @@ def _union_member_lift_arg(a: TpyExpr, ptype: TpyType | None,
     same lift with the const-pointee variant spelling, decided at
     lowering, so admission is const-blind. A record RVALUE (`take(A(n))`)
     hoists a named temp -> reject. A narrowed subject is admitted here too
-    (its `locals_` type is the member): the `already_union` verdict (the C++
-    binding is still the variant) renders it as the bare extraction alias --
-    a pre-existing miscompile (an `A&` alias into a variant slot; see BUGS.md's
-    union-operand class)."""
+    (its `locals_` type is the member) and takes the same member lift: its C++
+    binding is the member-typed extraction alias, so the variant lifts the
+    alias's address."""
     slot = _arg_ptr_union_slot(ptype, analyzer)
     if slot is None:
         return False
@@ -11052,6 +11068,11 @@ def _r_value_union_temp(req: _ArgReq) -> bool:
                                  req.analyzer)
 
 
+def _r_value_union_narrowed_pass(req: _ArgReq) -> bool:
+    return _value_union_narrowed_pass_arg(req.a, req.ptype, req.locals_,
+                                          req.narrowed, req.analyzer)
+
+
 def _r_opt_own_record_name(req: _ArgReq) -> bool:
     return _opt_own_record_name_arg(req.a, req.ptype, req.locals_,
                                     req.analyzer) is not None
@@ -12385,10 +12406,12 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # (`p.set_pet(new_pet)`); a dcbp slot takes the
         # ptr_variant_to_const wrap (unionlift.const_wrap -- the
         # method loop threads readonly_target), un-narrowed NAMES only
-        # (a narrowed arg renders the bare extraction, wrap skipped).
+        # (a narrowed name binds the member, so it is not a same-union
+        # source at all and this row is not its route).
         _ArgRow("union_pass_deep_const", _r_union_pass_deep_const,
                 face="method.union_pass_arg"),
         _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
+        _ArgRow("value_union_narrowed_pass", _r_value_union_narrowed_pass),
         # A scalar value / `None` into a value-repr Optional[scalar]
         # slot renders bare / `std::nullopt` -- `sock.settimeout(0.5)`.
         _ArgRow("value_opt_scalar_value", _r_value_opt_scalar_value),
@@ -12474,6 +12497,7 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     _ArgRow("value_opt_tuple_pass", _r_value_opt_tuple_pass),
     _ArgRow("none_unit", _r_none_unit),
     _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
+    _ArgRow("value_union_narrowed_pass", _r_value_union_narrowed_pass),
     _ArgRow("own_record_rvalue", _r_own_record_rvalue),
     # An Own[T]-returning call rvalue at an OPEN `Own[T]` slot reached
     # through a qualified receiver (`self._state._push(self._value.take())`
@@ -12655,6 +12679,7 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # registered `(*slot)` read binds the same ref slot bare.
         _ArgRow("container_module_var", _r_container_module_var),
         _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
+        _ArgRow("value_union_narrowed_pass", _r_value_union_narrowed_pass),
         _ArgRow("record_rvalue_temp", _r_record_rvalue_temp,
                 extra=_x_temps_ok),
         # The S1/S6 view->owned convert rows, free-call twins of the

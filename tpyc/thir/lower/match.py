@@ -3173,6 +3173,11 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                     _witness("match.union_alias")
                 if facts:
                     lc.narrow.narrowed[subj_name] = case_alias
+                    # The same pair the isinstance sites register: readers
+                    # that need the ORIGINAL union behind a narrowed name
+                    # (the union return's address-of row) must not have to
+                    # tell an isinstance arm from a match arm.
+                    lc.narrow.subject_union[subj_name] = u
                     arm_declared[subj_name] = facts[subj_name]
                 if test.keywords:
                     conds, field_bindings = _lower_field_subpatterns(

@@ -1,0 +1,31 @@
+free 2 2
+ctor-body 11 0
+method 16 16 1
+comprehension 44 22
+with 31 31
+try-finally 41 42
+error-return 51 51
+match 61 61
+match-capture 71 71
+generator 321 161
+gen-match 341 171
+inline 81 81
+walrus 91 91
+readonly 100 100
+loop-var 3
+ctor-slot 110 111
+str-member 120
+return-isinstance 130
+return-match 130
+value-union 181 181
+value-union-match 181 181
+value-union-method 181 181
+value-union-ctor 181 181
+value-union-comp 363 181
+value-union-readonly 180 180
+value-union-big 191 191
+value-union-record 4 4
+assign-narrowed 51
+async 142 142
+async-match 151 151
+module 201
