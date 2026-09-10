@@ -1,1 +1,1 @@
-main.py:6: error: @overload 'f' has a body and cannot be paired with a trailing implementation; either remove the body or remove the trailing implementation
+main.py:6: error: @overload 'f' has a body: a @overload stub declares one signature of the trailing implementation; use @dispatch for a variant that is its own implementation

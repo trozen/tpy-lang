@@ -1,16 +1,15 @@
 # Callable arg passed by keyword (not positional) for an overloaded
 # generic function. Per-candidate Fn arg typing must follow the kwarg
 # binding to the correct parameter slot.
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def reduce[T, U](xs: list[T], func: Fn[[U, T], U], init: U) -> U:  # tpyc: ok
     return init
 
 
-@overload
+@dispatch
 def reduce[T](xs: list[T], func: Fn[[T, T], T]) -> T:  # tpyc: ok
     return xs[0]
 

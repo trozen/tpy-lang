@@ -1,1 +1,1 @@
-main.py:24: error: Invalid operand types for '+': Int32 and str
+main.py:23: error: Invalid operand types for '+': Int32 and str

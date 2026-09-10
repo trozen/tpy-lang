@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 
-// @overload
+// @dispatch
 // def log(x: float, base: float) -> float:  # tpyc: ok
 double log(double x, double base) {
     // return log(x) / log(base)

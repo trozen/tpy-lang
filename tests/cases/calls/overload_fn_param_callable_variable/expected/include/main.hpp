@@ -21,7 +21,7 @@ template<typename T, typename __F0>
 ::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 void main();
 
-// @overload
+// @dispatch
 // def apply[T](f: Fn[[T], T], x: T) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
@@ -31,7 +31,7 @@ template<typename T, typename __F0>
     // return f(x)
     return f(x);
 }
-// @overload
+// @dispatch
 // def apply[T](f: Fn[[T, T], T], x: T) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {

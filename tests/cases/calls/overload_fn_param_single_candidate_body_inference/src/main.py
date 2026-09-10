@@ -3,8 +3,7 @@
 # supplied for this call. The lambda's return type comes from the
 # body, not the (unresolvable) hint return TPR -- exactly the shape
 # that builtin `map[T,U](Fn[[T], U], Iterable[T])` relies on.
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
 # Two overloads at different arities: the 2-arg `apply` is Fn-bearing
@@ -13,12 +12,12 @@ from tpy import Fn, Int32
 # candidate, we land in Regime B which uses _infer_arg_types ->
 # _analyze_lambda_with_fn_hint -- preserving body-return-TPR
 # inference for U.
-@overload
+@dispatch
 def apply[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:  # tpyc: ok
     return Int32(0)
 
 
-@overload
+@dispatch
 def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
     return a
 

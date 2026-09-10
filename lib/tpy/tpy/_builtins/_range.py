@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Sized, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, error_return, Own
+from .._typing import Sized, Iterator, Iterable
+from .._bootstrap._decorators import readonly, pure, error_return, Own, dispatch
 from .._core._types import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, Float32, AnyFixedInt,
@@ -19,33 +19,33 @@ class Range[T](NativeIterable[T], Iterable[T]):
     def __iter__(self) -> Iterator[T]: ...
 
 
-@overload
+@dispatch
 @cpp_template("::tpy::Range<{T}>({0})")
 @readonly
 @pure
 def range[T: AnyFixedInt](stop: T) -> Range[T]: ...
-@overload
+@dispatch
 @cpp_template("::tpy::Range<{T}>({0}, {1})")
 @readonly
 @pure
 def range[T: AnyFixedInt](start: T, stop: T) -> Range[T]: ...
-@overload
+@dispatch
 @cpp_template("::tpy::Range<{T}>({0}, {1}, {2})")
 @readonly
 @pure
 def range[T: AnyFixedInt](start: T, stop: T, step: T) -> Range[T]: ...
 
-@overload
+@dispatch
 @cpp_template("::tpy::Range<::tpy::BigInt>({0})")
 @readonly
 @pure
 def range(stop: int) -> Range[int]: ...
-@overload
+@dispatch
 @cpp_template("::tpy::Range<::tpy::BigInt>({0}, {1})")
 @readonly
 @pure
 def range(start: int, stop: int) -> Range[int]: ...
-@overload
+@dispatch
 @cpp_template("::tpy::Range<::tpy::BigInt>({0}, {1}, {2})")
 @readonly
 @pure

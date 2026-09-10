@@ -7,16 +7,15 @@
 # and then fail the kwarg type-check. With the fix, per-overload expansion
 # inserts each kwarg's type at its matching param slot so the kwarg can
 # break the tie.
-from typing import overload
-from tpy import Int32
+from tpy import Int32, dispatch
 
 
-@overload
+@dispatch
 def pick(x: Int32, *, tag: str = "") -> str:
     return tag + ":" + str(x)
 
 
-@overload
+@dispatch
 def pick(x: Int32, *, tag: Int32 = 0) -> Int32:
     return x + tag
 

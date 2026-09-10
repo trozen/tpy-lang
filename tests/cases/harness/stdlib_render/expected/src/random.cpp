@@ -34,7 +34,7 @@ double random() {
     return _inst->random();
 }
 
-// @overload
+// @dispatch
 // def seed() -> None:
 void seed() {
     // # No-arg form: re-seed from OS entropy (matches CPython's seed()
@@ -43,7 +43,7 @@ void seed() {
     _inst->_seed(::tpy::stdlib::random::os_entropy_uint32());
 }
 
-// @overload
+// @dispatch
 // def seed(n: Int32) -> None:
 void seed(int32_t n) {
     // # CPython treats negative seeds as their absolute value. For
@@ -72,21 +72,21 @@ int32_t randint(int32_t a, int32_t b) {
     return _inst->randint(a, b);
 }
 
-// @overload
+// @dispatch
 // def randrange(stop: Int32) -> Int32:
 int32_t randrange(int32_t stop) {
     // return _inst.randrange(stop)
     return _inst->randrange(stop);
 }
 
-// @overload
+// @dispatch
 // def randrange(start: Int32, stop: Int32) -> Int32:
 int32_t randrange(int32_t start, int32_t stop) {
     // return _inst.randrange(start, stop)
     return _inst->randrange(start, stop);
 }
 
-// @overload
+// @dispatch
 // def randrange(start: Int32, stop: Int32, step: Int32) -> Int32:
 int32_t randrange(int32_t start, int32_t stop, int32_t step) {
     // return _inst.randrange(start, stop, step)
@@ -402,7 +402,7 @@ uint32_t Random::_randbelow(uint32_t n) {
     return r;
 }
 
-// @overload
+// @dispatch
 // def randrange(self, start: Int32, stop: Int32, step: Int32) -> Int32:
 int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
     // if step == 0:

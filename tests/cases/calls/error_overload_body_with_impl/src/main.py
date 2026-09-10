@@ -1,9 +1,9 @@
-# Error: bodied @overload cannot be paired with a trailing implementation
+# Error: a @overload stub declares a signature and cannot carry a body (that is @dispatch)
 from typing import overload
 
 
 @overload
-def f(x: int) -> int:  # tpyc: error(/body and cannot be paired/)
+def f(x: int) -> int:  # tpyc: error(/has a body.*use @dispatch/)
     return x + 1
 
 @overload

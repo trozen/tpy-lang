@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Literal
-from .._bootstrap._decorators import Own
+from .._typing import Literal
+from .._bootstrap._decorators import Own, dispatch
 from .._bootstrap._extern import native, builtin_type
 from .._core._types import Int32
 
@@ -61,40 +61,40 @@ class BinaryIO:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None: ...
 
 
-@overload
+@dispatch
 @native("tpy::builtin_open")
 def open(path: str) -> TextIO: ...
 
-@overload
+@dispatch
 @native("tpy::builtin_open_mode")
 def open(path: str, mode: Literal[
     "r", "w", "a", "x", "rt", "wt", "at", "xt",
     "r+", "w+", "a+", "x+", "r+t", "w+t", "a+t", "x+t", "rt+", "wt+", "at+", "xt+",
 ]) -> TextIO: ...
 
-@overload
+@dispatch
 @native("tpy::builtin_open_binary")
 def open(path: str, mode: Literal[
     "rb", "wb", "ab", "xb",
     "r+b", "w+b", "a+b", "x+b", "rb+", "wb+", "ab+", "xb+",
 ]) -> BinaryIO: ...
 
-@overload
+@dispatch
 @native("tpy::builtin_open_mode")
 def open(path: str, mode: str) -> TextIO: ...
 
-@overload
+@dispatch
 @native("tpy::builtin_open")
 def open_text(path: str) -> TextIO: ...
 
-@overload
+@dispatch
 @native("tpy::builtin_open_mode")
 def open_text(path: str, mode: str) -> TextIO: ...
 
-@overload
+@dispatch
 @native("tpy::builtin_open_binary")
 def open_binary(path: str) -> BinaryIO: ...
 
-@overload
+@dispatch
 @native("tpy::builtin_open_binary")
 def open_binary(path: str, mode: str) -> BinaryIO: ...

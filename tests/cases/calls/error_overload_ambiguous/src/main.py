@@ -3,7 +3,8 @@
 # specificity tier and widening cost, so there is no principled winner.
 # The compiler must refuse to pick arbitrarily (the pre-refactor bug was to
 # silently pick the first-declared overload via stable-sort tiebreak).
-from typing import Protocol, overload
+from typing import Protocol
+from tpy import dispatch
 
 
 class Greeter(Protocol):
@@ -22,12 +23,12 @@ class Hybrid:
         return "hi"
 
 
-@overload
+@dispatch
 def describe(x: Greeter) -> str:
     return "greeter: " + x.greet()
 
 
-@overload
+@dispatch
 def describe(x: Farewell) -> str:
     return "farewell: " + x.greet()
 

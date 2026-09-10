@@ -4,35 +4,35 @@
 namespace tpyapp::main {
 
 
-// @overload
+// @dispatch
 // def kind(x: bool) -> str:
 std::string kind(bool x) {
     // return "bool"
     return "bool";
 }
 
-// @overload
+// @dispatch
 // def kind(x: str) -> str:
 std::string kind(std::string_view x) {
     // return "str"
     return "str";
 }
 
-// @overload
+// @dispatch
 // def sv(x: bool) -> str:
 std::string sv(bool x) {
     // return "sv-bool"
     return "sv-bool";
 }
 
-// @overload
+// @dispatch
 // def sv(x: StrView) -> str:
 std::string sv(std::string_view x) {
     // return "sv-str"
     return "sv-str";
 }
 
-// @overload
+// @dispatch
 // def gen_ov(x: bool) -> str:
 std::string gen_ov(bool x) {
     // return "gen-bool"

@@ -136,12 +136,12 @@ timedelta // timedelta -> int
 the float surface; v1 ships `timedelta / timedelta -> float` only. The
 `/`-overload result-typing bug that also blocked it is fixed.)
 
-Python has one `__sub__`, so this is expressed with `typing.overload`. TPy
-supports two spellings: typed stubs plus one shared implementation that
-dispatches via `isinstance` (the CPython-source shape), or individually
-implemented overloads, each with its own body (the C++-overload shape --
-`functools.reduce` precedent). The module uses the individually-implemented
-form: the isinstance dispatch was pure ceremony since the compiler
+Python has one `__sub__`, so this is an overload set. TPy has two
+spellings: `typing.overload` -- typed stubs plus one shared implementation
+that dispatches via `isinstance` (the CPython-source shape) -- or
+`tpy.dispatch` -- individually implemented variants, each with its own body
+(the C++-overload shape; `functools.reduce` precedent). The module uses
+`@dispatch`: the isinstance dispatch was pure ceremony since the compiler
 specializes per operand type anyway. Sema resolves and narrows the result
 type by operand either way.
 

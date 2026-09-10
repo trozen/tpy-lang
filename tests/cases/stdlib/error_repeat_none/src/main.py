@@ -5,7 +5,7 @@ import itertools
 
 def main():
     obj = "x"
-    for v in itertools.repeat(obj, None):  # tpyc: error(/No matching @overload for repeat/)
+    for v in itertools.repeat(obj, None):  # tpyc: error(/No matching overload for repeat/)
         print(v)
 
 

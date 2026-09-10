@@ -71,6 +71,7 @@ UNSAFE_SYNC = "tpy.unsafe_sync"
 NOSEND = "tpy.nosend"
 NOSYNC = "tpy.nosync"
 NOMOVE = "tpy.nomove"
+DISPATCH = "tpy.dispatch"
 
 # -- typing --
 PROTOCOL = "typing.Protocol"

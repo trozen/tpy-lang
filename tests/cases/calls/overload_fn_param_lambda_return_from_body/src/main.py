@@ -4,16 +4,15 @@
 # both arities and verifies state cleanup (the lambda body running under
 # trial_scope must not leak call edges, mutated params, expr_types,
 # borrows, or counters into the enclosing function).
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def m[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:
     return Int32(len(xs))
 
 
-@overload
+@dispatch
 def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
     return Int32(2 * len(xs))
 

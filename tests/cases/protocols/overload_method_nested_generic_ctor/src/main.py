@@ -7,8 +7,8 @@
 # exercises the methods.py:344 probe path: each substituted overload's
 # return type matches the LHS hint shape, and the methods probe-seeder
 # should thread `Box[Pet]` to the inner Box's first-pass analysis.
-from typing import Protocol, overload
-from tpy import dynamic, Own, StrView
+from typing import Protocol
+from tpy import dynamic, Own, StrView, dispatch
 from tplib import Box, Rc
 
 
@@ -29,11 +29,11 @@ class Wrapper[T]:
     def __init__(self) -> None:
         pass
 
-    @overload
+    @dispatch
     def wrap(self, x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
         return Rc.new(x)
 
-    @overload
+    @dispatch
     def wrap(self, x: str) -> Own[Rc[Box[str]]]:
         return Rc.new(Box(x))
 

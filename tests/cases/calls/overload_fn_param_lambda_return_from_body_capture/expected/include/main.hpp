@@ -21,7 +21,7 @@ template<typename T, typename U, typename __F0>
 int32_t m(__F0&& f, const std::vector<T>& xs);
 void main();
 
-// @overload
+// @dispatch
 // def m[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
@@ -31,7 +31,7 @@ int32_t m(__F0&& f, const std::vector<T>& xs) {
     // return Int32(len(xs))
     return ::tpy::__len__(xs);
 }
-// @overload
+// @dispatch
 // def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {

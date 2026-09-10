@@ -16,7 +16,7 @@ template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
-// @overload
+// @dispatch
 // def pick[U](x: U, y: U) -> U:
 template<typename U>
 ::tpy::val_or_ref_t<U> pick(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y) {

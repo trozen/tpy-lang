@@ -100,7 +100,7 @@ def set_priority(level: Literal[4, 5]) -> None: ...
 def set_priority(level: Int32) -> None: ...
 
 set_priority(3)   # ok
-set_priority(x)   # error: No matching @overload
+set_priority(x)   # error: No matching overload
 ```
 
 

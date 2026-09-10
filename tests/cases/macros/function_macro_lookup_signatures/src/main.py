@@ -5,7 +5,7 @@
 # collapsed). It then retypes a bool-string local to the bool param it
 # flows into, so the program only compiles if the looked-up types are
 # correct and usable.
-from typing import overload
+from tpy import dispatch
 
 from helpermod import paint, Color, paint as painter
 from paramsmod import deduce_from_slot
@@ -15,12 +15,12 @@ def local_sink(flag: bool, label: str) -> bool:
     return flag if label else flag
 
 
-@overload
+@dispatch
 def amb(x: bool) -> bool:
     return x
 
 
-@overload
+@dispatch
 def amb(x: str) -> str:
     return x
 

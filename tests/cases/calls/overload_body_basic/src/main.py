@@ -1,12 +1,12 @@
-# @overload variants with bodies directly (no trailing impl)
-from typing import overload
+# @dispatch variants: each carries its own body, no trailing impl
+from tpy import dispatch
 
 
-@overload
+@dispatch
 def describe(x: int) -> str:  # tpyc: ok
     return "int: " + str(x)
 
-@overload
+@dispatch
 def describe(x: str) -> str:  # tpyc: ok
     return "str: " + x
 

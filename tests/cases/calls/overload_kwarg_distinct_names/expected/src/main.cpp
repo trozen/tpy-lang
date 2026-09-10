@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// @overload
+// @dispatch
 // def report(a: Int32, b: Int32 = 0, *, mode: str = "x") -> str:
 std::string report(int32_t a, int32_t b, std::string_view mode) {
     // return mode + ":" + str(a + b)
     return (::tpy::str_concat((::tpy::str_concat(mode, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b)))));
 }
 
-// @overload
+// @dispatch
 // def report(a: Int32, b: Int32 = 0, *, count: Int32 = 1) -> Int32:
 int32_t report(int32_t a, int32_t b, int32_t count) {
     // return (a + b) * count

@@ -6,8 +6,7 @@
 # `resolve_kwargs` against the winning signature post-resolution. Before
 # the fix, the method path raised "Keyword arguments not supported for
 # overloaded method 'apply'" outright.
-from typing import overload
-from tpy import Int32
+from tpy import Int32, dispatch
 
 
 class Box:
@@ -16,11 +15,11 @@ class Box:
     def __init__(self, base: Int32) -> None:
         self.base = base
 
-    @overload
+    @dispatch
     def apply(self, x: Int32, *, tag: str = "") -> str:
         return tag + ":" + str(self.base + x)
 
-    @overload
+    @dispatch
     def apply(self, x: Int32, *, tag: Int32 = 0) -> Int32:
         return self.base + x + tag
 

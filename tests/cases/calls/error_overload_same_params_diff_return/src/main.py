@@ -1,16 +1,15 @@
-# Two @overload variants with identical positional param types but
+# Two @dispatch variants with identical positional param types but
 # different return types. C++ overloads on parameter shape only, so
 # this can't be realized. Sema rejects up front.
-from typing import overload
-from tpy import Int32
+from tpy import Int32, dispatch
 
 
-@overload
+@dispatch
 def convert(x: Int32) -> Int32:
     return x * 2
 
 
-@overload
+@dispatch
 def convert(x: Int32) -> str:  # tpyc: error(/identical parameter types/)
     return "v=" + str(x)
 

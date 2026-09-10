@@ -10,8 +10,8 @@
 # the structured `.errno`/`.strerror`/`.filename` attributes populated and
 # CPython-exact `str(e)` text; `rename`/`replace`/`link`/`symlink` also set
 # `.filename2`.
-from typing import Final, overload, Iterator, Callable
-from tpy import Int64, Own, readonly
+from typing import Final, Iterator, Callable
+from tpy import Int64, Own, readonly, dispatch
 from tpy.extern import native_global
 from . import path
 from .path import join as _join
@@ -241,14 +241,14 @@ def mkdir(path: str, mode: Int64 = 0o777) -> None:
 # `str`, so `len(os.getenv(k, ""))` type-checks. Both read the os.environ
 # snapshot (CPython's getenv is environ.get), not libc -- so a bare os.putenv
 # is not observable here, matching CPython.
-@overload
+@dispatch
 def getenv(key: str) -> str | None:
     if key in environ:
         return environ[key]
     return None
 
 
-@overload
+@dispatch
 def getenv(key: str, default: str) -> str:
     if key in environ:
         return environ[key]

@@ -1,33 +1,32 @@
 # A string LITERAL arg at an overloaded call site must bind to the
 # sema-resolved overload, not be re-ranked by C++ (const char[N] -> bool
 # outranks -> string_view, so a bare literal silently picked a bool overload).
-from typing import overload
 
-from tpy import StrView
+from tpy import StrView, dispatch
 
 
-@overload
+@dispatch
 def kind(x: bool) -> str:
     return "bool"
-@overload
+@dispatch
 def kind(x: str) -> str:
     return "str"
 
 
-@overload
+@dispatch
 def sv(x: bool) -> str:
     return "sv-bool"
-@overload
+@dispatch
 def sv(x: StrView) -> str:
     return "sv-str"
 
 
 # Generic overload: a str literal resolving here binds T by deduction, so the
 # pin must be skipped (the param renders param_val_or_ref_t<T>, not a view).
-@overload
+@dispatch
 def gen_ov[T](x: T) -> str:
     return "generic"
-@overload
+@dispatch
 def gen_ov(x: bool) -> str:
     return "gen-bool"
 
@@ -37,10 +36,10 @@ def echo(x: str) -> str:
 
 
 class C:
-    @overload
+    @dispatch
     def kind(self, x: bool) -> str:
         return "m-bool"
-    @overload
+    @dispatch
     def kind(self, x: str) -> str:
         return "m-str"
 

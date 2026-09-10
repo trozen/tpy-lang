@@ -1,16 +1,15 @@
 # Two same-arity Fn-bearing overloads; a named function whose signature
 # matches one but not the other. Regime C's per-candidate dry matcher
 # should accept only the matching candidate, leaving a unique winner.
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def g[T](f: Fn[[T], Int32], xs: list[T]) -> Int32:  # tpyc: ok
     return f(xs[0])
 
 
-@overload
+@dispatch
 def g[T](f: Fn[[T, T], Int32], xs: list[T]) -> Int32:  # tpyc: ok
     return f(xs[0], xs[0])
 

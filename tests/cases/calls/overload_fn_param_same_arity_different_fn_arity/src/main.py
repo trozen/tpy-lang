@@ -1,15 +1,14 @@
 # Regime C: same-arity overloads with different Fn shapes. The lambda's
 # parameter count picks the matching overload.
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def g[T](f: Fn[[T], Int32], xs: list[T]) -> Int32:  # tpyc: ok
     return f(xs[0])
 
 
-@overload
+@dispatch
 def g[T](f: Fn[[T, T], Int32], xs: list[T]) -> Int32:  # tpyc: ok
     return f(xs[0], xs[0])
 

@@ -5,7 +5,7 @@ namespace tpystd::math {
 
 
 
-// @overload
+// @dispatch
 // def log(x: float, base: float) -> float:
 double log(double x, double base) {
     // return log(x) / log(base)
@@ -242,14 +242,14 @@ double degrees(double x) {
     return x;
 }
 
-// @overload
+// @dispatch
 // def perm(n: int) -> int:
 ::tpy::BigInt perm(const ::tpy::BigInt& n) {
     // return factorial(n)
     return factorial(n);
 }
 
-// @overload
+// @dispatch
 // def perm(n: int, k: int) -> int:
 ::tpy::BigInt perm(const ::tpy::BigInt& n, const ::tpy::BigInt& k) {
     // if n < 0 or k < 0:

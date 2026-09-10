@@ -3,16 +3,15 @@
 # is picked), the per-candidate trial saves the body error and surfaces it
 # instead of a generic "no matching overload" message. Exercises the
 # saved_dry_error path through _lambda_body_dry_run + _build_regime_c_evidence.
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def m[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:
     return Int32(0)
 
 
-@overload
+@dispatch
 def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
     return Int32(0)
 

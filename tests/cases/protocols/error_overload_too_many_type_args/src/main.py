@@ -10,16 +10,15 @@
 # pre-validates against `max(len(f.type_params) for f in generic)`
 # before dispatching to the overload resolver, mirroring the builtin
 # path at calls.py:3815.
-from typing import overload
-from tpy import Int32
+from tpy import Int32, dispatch
 
 
-@overload
+@dispatch
 def f[T](x: T) -> T:
     return x
 
 
-@overload
+@dispatch
 def f[U, V](x: U, y: V) -> U:
     return x
 

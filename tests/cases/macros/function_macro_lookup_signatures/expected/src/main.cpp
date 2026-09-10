@@ -10,14 +10,14 @@ bool local_sink(bool flag, std::string_view label) {
     return (((!label.empty())) ? (flag) : (flag));
 }
 
-// @overload
+// @dispatch
 // def amb(x: bool) -> bool:
 bool amb(bool x) {
     // return x
     return x;
 }
 
-// @overload
+// @dispatch
 // def amb(x: str) -> str:
 std::string amb(std::string_view x) {
     // return x

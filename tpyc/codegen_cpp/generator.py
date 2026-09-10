@@ -499,7 +499,7 @@ class CodeGenerator:
         self.ctx.thir_resumables = {}
         self.ctx.thir_simple_gens = {}
         for f, self_type in _thir_callables(module, self.analyzer):
-            # A bodyless binding has no emit at all. A BODIED `@overload`
+            # A bodyless binding has no emit at all. A bodied `@dispatch`
             # variant does have one -- the function driver emits it standalone
             # -- so it is lowered like any other body.
             if is_bodyless_binding(f):

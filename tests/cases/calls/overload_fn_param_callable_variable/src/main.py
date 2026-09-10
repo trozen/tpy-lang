@@ -2,16 +2,16 @@
 # variable's type is pre-analyzed and feeds the candidate scoring as
 # a baseline; the matching candidate's Fn shape determines the
 # winner. `Callable` (not `Fn`) is used for local bindings.
-from typing import Callable, overload
-from tpy import Fn, Int32
+from typing import Callable
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def apply[T](f: Fn[[T], T], x: T) -> T:  # tpyc: ok
     return f(x)
 
 
-@overload
+@dispatch
 def apply[T](f: Fn[[T, T], T], x: T) -> T:  # tpyc: ok
     return f(x, x)
 

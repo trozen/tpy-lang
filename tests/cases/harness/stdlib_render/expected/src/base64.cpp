@@ -268,7 +268,7 @@ std::vector<uint8_t> b64encode(std::span<const uint8_t> data, std::optional<std:
     return _b64_encode(data, _build_altchars_alphabet((*altchars)));
 }
 
-// @overload
+// @dispatch
 // def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False) -> bytes:
 std::vector<uint8_t> b64decode(std::span<const uint8_t> data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
     // c62: Int32 = _CHAR_PLUS
@@ -296,7 +296,7 @@ std::vector<uint8_t> b64decode(std::span<const uint8_t> data, std::optional<std:
     return _b64_decode(_filter_b64_input(data, c62, c63), c62, c63);
 }
 
-// @overload
+// @dispatch
 // def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
 std::vector<uint8_t> b64decode(std::string_view data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
     // return b64decode(data.encode(), altchars, validate)
@@ -309,14 +309,14 @@ std::vector<uint8_t> standard_b64encode(std::span<const uint8_t> data) {
     return _b64_encode(data, _B64_STD);
 }
 
-// @overload
+// @dispatch
 // def standard_b64decode(data: bytes) -> bytes:
 std::vector<uint8_t> standard_b64decode(std::span<const uint8_t> data) {
     // return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH)
     return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH);
 }
 
-// @overload
+// @dispatch
 // def standard_b64decode(data: str) -> bytes:
 std::vector<uint8_t> standard_b64decode(std::string_view data) {
     // return standard_b64decode(data.encode())
@@ -329,14 +329,14 @@ std::vector<uint8_t> urlsafe_b64encode(std::span<const uint8_t> data) {
     return _b64_encode(data, _B64_URL);
 }
 
-// @overload
+// @dispatch
 // def urlsafe_b64decode(data: bytes) -> bytes:
 std::vector<uint8_t> urlsafe_b64decode(std::span<const uint8_t> data) {
     // return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER)
     return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER);
 }
 
-// @overload
+// @dispatch
 // def urlsafe_b64decode(data: str) -> bytes:
 std::vector<uint8_t> urlsafe_b64decode(std::string_view data) {
     // return urlsafe_b64decode(data.encode())
@@ -387,7 +387,7 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
     throw ::tpy::ValueError("Invalid base16 character");
 }
 
-// @overload
+// @dispatch
 // def b16decode(data: bytes, casefold: bool = False) -> bytes:
 std::vector<uint8_t> b16decode(std::span<const uint8_t> data, bool casefold) {
     // n: Int32 = Int32(len(data))
@@ -416,7 +416,7 @@ std::vector<uint8_t> b16decode(std::span<const uint8_t> data, bool casefold) {
     return ::tpy::bytes_copy(result);
 }
 
-// @overload
+// @dispatch
 // def b16decode(data: str, casefold: bool = False) -> bytes:
 std::vector<uint8_t> b16decode(std::string_view data, bool casefold) {
     // return b16decode(data.encode(), casefold)
@@ -623,7 +623,7 @@ std::vector<uint8_t> _b32_preprocess(std::span<const uint8_t> data, bool casefol
     return ::tpy::bytes_copy(buf);
 }
 
-// @overload
+// @dispatch
 // def b32decode(data: bytes, casefold: bool = False, map01: bytes | None = None) -> bytes:
 std::vector<uint8_t> b32decode(std::span<const uint8_t> data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
     // if casefold or map01 is not None:
@@ -635,7 +635,7 @@ std::vector<uint8_t> b32decode(std::span<const uint8_t> data, bool casefold, std
     return _b32decode_impl(data);
 }
 
-// @overload
+// @dispatch
 // def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
 std::vector<uint8_t> b32decode(std::string_view data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
     // return b32decode(data.encode(), casefold, map01)

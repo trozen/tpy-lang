@@ -395,7 +395,7 @@ def export_method_shape_error(fn: 'TpyFunction', *, allow_error_return: bool = F
     if (fn.is_property_getter or fn.is_property_setter) and not allow_property:
         return f"'{fn.name}' cannot be a @property"
     if fn.is_overload_stub:
-        return f"'{fn.name}' cannot be @overload"
+        return f"'{fn.name}' cannot be @{fn.overload_form.value}"
     if fn.type_params:
         return (f"'{fn.name}' cannot be generic (a template can't cross the "
                 f"CPython boundary, which needs one concrete method)")

@@ -39,6 +39,13 @@ def pure(): ...
 @builtin_decorator("tpy.inline")
 def inline(): ...
 
+# Overloading with self-contained variants: every same-named @dispatch def
+# carries its own implementation (a body, @native or @cpp_template) and the
+# set has no trailing implementation. Contrast typing.overload, whose
+# bodyless stubs declare the signatures of one trailing implementation.
+@builtin_decorator("tpy.dispatch")
+def dispatch(): ...
+
 @builtin_decorator("tpy.error_return")
 def error_return(exc_type: type): ...
 

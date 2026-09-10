@@ -1,18 +1,17 @@
-# BUGS.md regression: 2-arg / 3-arg generic @overloads with Fn[...] at pos 0,
+# BUGS.md regression: 2-arg / 3-arg generic @dispatch variants with Fn[...] at pos 0,
 # called with a named function. Before the fix, the 2-arg form failed with
 # "'add' is not a variable" because overload resolution picked the 3-arg
 # overload (declared first) as the fn_generic provider but couldn't pin
 # its U from a 2-arg call.
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def f[T, U](g: Fn[[U, T], U], a: list[T], init: U) -> U:  # tpyc: ok
     return init
 
 
-@overload
+@dispatch
 def f[T](g: Fn[[T, T], T], a: list[T]) -> T:  # tpyc: ok
     return a[0]
 

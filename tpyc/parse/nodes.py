@@ -1333,6 +1333,20 @@ class RecordLinkage(Enum):
     NATIVE_C = "native_c"    # C struct import (fields only)
 
 
+class OverloadForm(Enum):
+    """The two overload decorators.
+
+    OVERLOAD is CPython's `typing.overload`: bodyless stubs declaring the
+    signatures of one trailing implementation, which sema specializes per
+    stub. DISPATCH is `tpy.dispatch`: every variant is its own
+    implementation (a body, `@native` or `@cpp_template`) and the set has
+    no trailing implementation. Both register the same overload set; only
+    group validation and the CPython runtime differ.
+    """
+    OVERLOAD = "overload"
+    DISPATCH = "dispatch"
+
+
 @dataclass
 class TpyFunction:
     """Function definition.
@@ -1358,7 +1372,11 @@ class TpyFunction:
     is_pure: bool = False
     is_override: bool = False
     hides_parent: bool = False
-    is_overload_stub: bool = False
+    # Which overload decorator the def carries, or None for a plain def.
+    # Decided in the parser; sema and codegen read `is_overload_stub` for
+    # "member of an overload set" and `overload_form` only where the two
+    # forms differ (group validation, diagnostics).
+    overload_form: OverloadForm | None = None
     is_method: bool = False
     is_staticmethod: bool = False
     # A @classmethod also sets is_staticmethod (no receiver param, static
@@ -1490,17 +1508,8 @@ class TpyFunction:
     loc: SourceLocation | None = None
 
     @property
-    def has_implementation(self) -> bool:
-        """True when this function/stub has its own implementation.
-
-        A function has an implementation if it carries a body, maps to an
-        external C++ symbol (@native), or expands via a C++ template
-        (@cpp_template). Plain bodyless stubs (``def f(x: int) -> int: ...``)
-        are declaration-only and need a separate implementation.
-        """
-        if not self.is_stub:
-            return True
-        return self.linkage != FunctionLinkage.DEFAULT or self.cpp_template is not None
+    def is_overload_stub(self) -> bool:
+        return self.overload_form is not None
 
     @property
     def is_extern_c(self) -> bool:

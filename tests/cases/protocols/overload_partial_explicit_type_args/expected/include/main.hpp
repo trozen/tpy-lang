@@ -17,7 +17,7 @@ int32_t stub(__F0&& fn);
 std::string stub(std::string_view val);
 void main();
 
-// @overload
+// @dispatch
 // def stub[T, U](fn: Fn[[T], U]) -> Int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {

@@ -30,6 +30,6 @@ def describe(animal: Dog | Cat) -> str:
 
 def main() -> None:
     b = Bird(True)
-    print(describe(b))  # tpyc: error(/No matching @overload/)
+    print(describe(b))  # tpyc: error(/No matching overload/)
 
 main()

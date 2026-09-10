@@ -16,16 +16,15 @@
 # arg type, returns Int32, and the str = Int32 assignment fails with a
 # type mismatch -- the error surfaces at assignment, NOT during the
 # overload probe.
-from typing import overload
-from tpy import Int32, Float32
+from tpy import Int32, Float32, dispatch
 
 
-@overload
+@dispatch
 def f(x: Int32) -> Int32:
     return x
 
 
-@overload
+@dispatch
 def f(x: Float32) -> Float32:
     return x
 

@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// @overload
+// @dispatch
 // def describe(x: int) -> str:  # tpyc: ok
 std::string describe(const ::tpy::BigInt& x) {
     // return "int: " + str(x)
     return (::tpy::str_concat("int: ", (x).to_string()));
 }
 
-// @overload
+// @dispatch
 // def describe(x: str) -> str:  # tpyc: ok
 std::string describe(std::string_view x) {
     // return "str: " + x

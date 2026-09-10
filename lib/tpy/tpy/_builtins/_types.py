@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Sized, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, error_return, Own
+from .._typing import Sized, Iterator, Iterable
+from .._bootstrap._decorators import readonly, pure, error_return, Own, dispatch
 from .._core._types import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, Float32, AnyFixedInt,
@@ -12,28 +12,28 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 @builtin_type("builtins.bool")
 @native("bool")
 class bool(Equatable):
-    @overload
+    @dispatch
     @cpp_template("false")
     def __init__(self) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("{0}")
     def __init__(self, x: bool) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("({0} != 0)")
     def __init__(self, x: Int32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("({0} != 0)")
     def __init__(self, x: int) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("({0} != 0.0)")
     def __init__(self, x: float) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("({0} != 0.0f)")
     def __init__(self, x: Float32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("(std::string_view({0}).size() != 0)")
     def __init__(self, x: str) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::__bool__", function=True)
     @readonly
     @pure
@@ -59,46 +59,46 @@ class bool(Equatable):
 @builtin_type("builtins.int")
 @native("::tpy::BigInt")
 class int(Comparable, Equatable):
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt()")
     def __init__(self) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("{0}")
     def __init__(self, x: int) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
     def __init__(self, x: Int8) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
     def __init__(self, x: Int16) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
     def __init__(self, x: Int32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int64_t>({0}))")
     def __init__(self, x: Int64) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
     def __init__(self, x: UInt8) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
     def __init__(self, x: UInt16) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
     def __init__(self, x: UInt32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
     def __init__(self, x: UInt64) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::BigInt::from_float", function=True)
     def __init__(self, x: float) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::BigInt::from_str", function=True)
     def __init__(self, x: str) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int32_t>({0}))")
     def __init__(self, x: bool) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::BigInt(static_cast<int32_t>({0}))")
     def __init__(self, x: Char) -> None: ...
     @cpp_template("({self}) + ({0})")
@@ -184,176 +184,176 @@ class int(Comparable, Equatable):
 @builtin_type("builtins.float")
 @native("double")
 class float(Comparable, Equatable):
-    @overload
+    @dispatch
     @cpp_template("0.0")
     def __init__(self) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("{0}")
     def __init__(self, x: float) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: Int32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: int) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: bool) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: Float32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: Int8) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: Int16) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: Int64) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: UInt8) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: UInt16) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: UInt32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: UInt64) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::float_from_str", function=True)
     def __init__(self, x: str) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) + ({0})")
     def __add__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) + static_cast<double>({0})")
     def __add__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) + static_cast<double>({0})")
     def __add__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) - ({0})")
     def __sub__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) - static_cast<double>({0})")
     def __sub__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) - static_cast<double>({0})")
     def __sub__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) * ({0})")
     def __mul__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) * static_cast<double>({0})")
     def __mul__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({self}) * static_cast<double>({0})")
     def __mul__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::truediv({self}, {0})")
     def __truediv__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::truediv({self}, static_cast<double>({0}))")
     def __truediv__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::truediv({self}, static_cast<double>({0}))")
     def __truediv__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::floordiv({self}, {0})")
     def __floordiv__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::floordiv({self}, static_cast<double>({0}))")
     def __floordiv__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::floordiv({self}, static_cast<double>({0}))")
     def __floordiv__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fmod({self}, {0})")
     def __mod__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fmod({self}, static_cast<double>({0}))")
     def __mod__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fmod({self}, static_cast<double>({0}))")
     def __mod__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("std::pow({self}, {0})")
     def __pow__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("std::pow({self}, static_cast<double>({0}))")
     def __pow__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("std::pow({self}, static_cast<double>({0}))")
     def __pow__(self, other: AnyFixedInt) -> float: ...
     @cpp_template("+({self})")
     def __pos__(self) -> float: ...
     @cpp_template("-({self})")
     def __neg__(self) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({0}) + ({self})")
     def __radd__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0}) + ({self})")
     def __radd__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0}) + ({self})")
     def __radd__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({0}) - ({self})")
     def __rsub__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0}) - ({self})")
     def __rsub__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0}) - ({self})")
     def __rsub__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("({0}) * ({self})")
     def __rmul__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0}) * ({self})")
     def __rmul__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("static_cast<double>({0}) * ({self})")
     def __rmul__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::truediv({0}, {self})")
     def __rtruediv__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::truediv(static_cast<double>({0}), {self})")
     def __rtruediv__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::truediv(static_cast<double>({0}), {self})")
     def __rtruediv__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::floordiv({0}, {self})")
     def __rfloordiv__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::floordiv(static_cast<double>({0}), {self})")
     def __rfloordiv__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::floordiv(static_cast<double>({0}), {self})")
     def __rfloordiv__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fmod({0}, {self})")
     def __rmod__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fmod(static_cast<double>({0}), {self})")
     def __rmod__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fmod(static_cast<double>({0}), {self})")
     def __rmod__(self, other: AnyFixedInt) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("std::pow({0}, {self})")
     def __rpow__(self, other: float) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("std::pow(static_cast<double>({0}), {self})")
     def __rpow__(self, other: int) -> float: ...
-    @overload
+    @dispatch
     @cpp_template("std::pow(static_cast<double>({0}), {self})")
     def __rpow__(self, other: AnyFixedInt) -> float: ...
     @cpp_template("({self} != 0.0)")
@@ -379,52 +379,52 @@ class float(Comparable, Equatable):
 @builtin_type("builtins.str")
 @native("std::string")
 class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
-    @overload
+    @dispatch
     @cpp_template("std::string()")
     def __init__(self) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("std::string({0})")
     def __init__(self, x: str) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("std::string(::tpy::bool_to_str({0}))")
     def __init__(self, x: bool) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("std::string(::tpy::char_to_str({0}))")
     def __init__(self, x: Char) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<int8_t>({0})")
     def __init__(self, x: Int8) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<int16_t>({0})")
     def __init__(self, x: Int16) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<int32_t>({0})")
     def __init__(self, x: Int32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<int64_t>({0})")
     def __init__(self, x: Int64) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<uint8_t>({0})")
     def __init__(self, x: UInt8) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<uint16_t>({0})")
     def __init__(self, x: UInt16) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<uint32_t>({0})")
     def __init__(self, x: UInt32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::fixed_to_str<uint64_t>({0})")
     def __init__(self, x: UInt64) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("({0}).to_string()")
     def __init__(self, x: int) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::float_to_str", function=True)
     def __init__(self, x: float) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::float_to_str(static_cast<double>({0}))")
     def __init__(self, x: Float32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("std::string(::tpy::__str__({0}))")
     @readonly
     @pure
@@ -440,34 +440,34 @@ class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @pure
     def __len__(self) -> Int32: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::__getitem__({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: Int32) -> Char: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_slice({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: basic_slice) -> StrView: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_stepped_slice({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: slice) -> str: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_concat({self}, {0})")
     def __add__(self, other: str) -> String: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_concat({self}, {0})")
     def __add__(self, other: String) -> String: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_concat({self}, {0})")
     def __add__(self, other: StrView) -> String: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_concat({self}, ::tpy::char_to_str({0}))")
     def __add__(self, other: Char) -> String: ...
 
@@ -481,17 +481,17 @@ class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @pure
     def __rmul__(self, n: Int32) -> str: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_split_whitespace({self})")
     @readonly
     @pure
     def split(self) -> Own[list[str]]: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_split({self}, {0})")
     @readonly
     @pure
     def split(self, sep: str) -> Own[list[str]]: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::str_split({self}, {0}, {1})")
     @readonly
     @pure

@@ -103,15 +103,15 @@ struct Random {
     // def randint(self, a: Int32, b: Int32) -> Int32:
     int32_t randint(int32_t a, int32_t b);
 
-    // @overload
+    // @dispatch
     // def randrange(self, stop: Int32) -> Int32:
     int32_t randrange(int32_t stop);
 
-    // @overload
+    // @dispatch
     // def randrange(self, start: Int32, stop: Int32) -> Int32:
     int32_t randrange(int32_t start, int32_t stop);
 
-    // @overload
+    // @dispatch
     // def randrange(self, start: Int32, stop: Int32, step: Int32) -> Int32:
     int32_t randrange(int32_t start, int32_t stop, int32_t step);
 
@@ -276,7 +276,7 @@ inline int32_t Random::randint(int32_t a, int32_t b) {
     return (::tpy::add_check<int32_t>(a, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(width)))));
 }
 
-// @overload
+// @dispatch
 // def randrange(self, stop: Int32) -> Int32:
 inline int32_t Random::randrange(int32_t stop) {
     // if stop <= 0:
@@ -288,7 +288,7 @@ inline int32_t Random::randrange(int32_t stop) {
     return ::tpy::int_cast_check<int32_t>(this->_randbelow(static_cast<uint32_t>(stop)));
 }
 
-// @overload
+// @dispatch
 // def randrange(self, start: Int32, stop: Int32) -> Int32:
 inline int32_t Random::randrange(int32_t start, int32_t stop) {
     // if stop <= start:

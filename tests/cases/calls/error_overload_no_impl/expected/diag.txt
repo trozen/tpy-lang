@@ -1,1 +1,1 @@
-main.py:15: error: @overload stubs for 'describe' have no implementation function
+main.py:15: error: @overload stubs for 'describe' have no implementation; add a trailing `def describe` without @overload, or use @dispatch for variants that are their own implementation

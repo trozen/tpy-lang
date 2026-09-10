@@ -2655,17 +2655,18 @@ of per-branch return types.
 Key use cases: `__getitem__` with `Int32 | slice` (different return types), constructor
 variants (`ArrayList` from span vs iterable), `pop()` vs `pop(index)`.
 
-**Current state**: Done. Two modes: **(a) stubs + impl** (bodyless stubs followed by
-one implementation; body is specialized per-stub via dead-branch elim) and **(b) bodied
-stubs** (each `@overload` carries its own body, no trailing impl needed). Mode (a)
+**Current state**: Done. Two decorators: **`typing.overload`** (bodyless stubs followed
+by one implementation; body is specialized per-stub via dead-branch elim) and
+**`tpy.dispatch`** (each variant is its own implementation -- a body, `@native` or
+`@cpp_template` -- with no trailing impl). `@overload`
 supports arity-variant stubs: stubs may have fewer params than the impl when the
 omitted trailing params have defaults. Dead-branch elim handles isinstance if/elif/else,
 match/case on union subjects, `is None` on Optional params, and equality checks on
 literal-defaulted params. Exhaustiveness checking ensures stubs cover all union variants
 (relaxed for params not present in every stub). Literal[...] dispatch, cross-module
-imports, and methods all work. CPython compatible via `lib/cpy/sitecustomize.py`,
-which patches only `typing.overload` with a runtime dispatch shim (arity +
-isinstance).
+imports, and methods all work. `@overload` runs under stock CPython; `@dispatch`
+under CPython is a runtime dispatcher (arity + isinstance) in the `tpy` stub
+package.
 
 **Dependencies**: Union types (done), isinstance narrowing (done). `slice` type needed
 for the `__getitem__` use case (orthogonal).

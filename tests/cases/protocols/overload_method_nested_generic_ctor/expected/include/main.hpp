@@ -67,14 +67,14 @@ struct Wrapper {
         // pass
     }
 
-    // @overload
+    // @dispatch
     // def wrap(self, x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap(::tpystd::tplib::box::Box<T>&& x) {
         // return Rc.new(x)
         return Rc<::tpystd::tplib::box::Box<T>>::template new_<::tpystd::tplib::box::Box<T>>(std::move(x));
     }
 
-    // @overload
+    // @dispatch
     // def wrap(self, x: str) -> Own[Rc[Box[str]]]:
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x) {
         // return Rc.new(Box(x))

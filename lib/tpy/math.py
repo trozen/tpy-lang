@@ -34,8 +34,8 @@
 #   `base == 2` to dispatch to `log2` (one fewer transcendental call).
 #   Minor; consider if benchmarks warrant.
 
-from typing import Final, Iterable, overload
-from tpy import Int32
+from typing import Final, Iterable
+from tpy import Int32, dispatch
 from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 
 pi: Final[float] = 3.141592653589793
@@ -44,11 +44,11 @@ e: Final[float] = 2.718281828459045
 inf: Final[float] = 1e309
 nan: Final[float] = float("nan")
 
-@overload
+@dispatch
 @native("tpy::stdlib::math::checked_log")
 def log(x: float) -> float: ...
 
-@overload
+@dispatch
 def log(x: float, base: float) -> float:
     return log(x) / log(base)
 
@@ -267,11 +267,11 @@ def isqrt(n: int) -> int:
         y = (x + n // x) // 2
     return x
 
-@overload
+@dispatch
 def perm(n: int) -> int:
     return factorial(n)
 
-@overload
+@dispatch
 def perm(n: int, k: int) -> int:
     if n < 0 or k < 0:
         raise ValueError("perm() arguments must be non-negative")
@@ -309,21 +309,21 @@ def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0)
         max_ab = fabs(b)
     return diff <= abs_tol or diff <= rel_tol * max_ab
 
-@overload
+@dispatch
 def prod(iterable: Iterable[Int32], *, start: Int32 = Int32(1)) -> Int32:
     result: Int32 = start
     for x in iterable:
         result = result * x
     return result
 
-@overload
+@dispatch
 def prod(iterable: Iterable[int], *, start: int = 1) -> int:
     result: int = start
     for x in iterable:
         result = result * x
     return result
 
-@overload
+@dispatch
 def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
     result: float = start
     for x in iterable:

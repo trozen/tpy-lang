@@ -1,9 +1,8 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._bootstrap._decorators import readonly, Own
+from .._bootstrap._decorators import readonly, Own, dispatch
 from .._bootstrap._extern import cpp_template, native, native_field, virtual_raise
 from .._core._types import Int32, ReturnException, StrView, Throwable
-from .._typing import overload
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp).
@@ -68,200 +67,200 @@ class OSError(Exception):
     filename: str
     filename2: str
 
-    @overload
+    @dispatch
     @cpp_template("tpy::OSError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::OSError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::OSError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::OSError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::FileNotFoundError")
 class FileNotFoundError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::FileNotFoundError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::FileNotFoundError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::FileNotFoundError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::FileNotFoundError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::PermissionError")
 class PermissionError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::PermissionError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::PermissionError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::PermissionError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::PermissionError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::FileExistsError")
 class FileExistsError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::FileExistsError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::FileExistsError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::FileExistsError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::FileExistsError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::NotADirectoryError")
 class NotADirectoryError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::NotADirectoryError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::NotADirectoryError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::NotADirectoryError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::NotADirectoryError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::IsADirectoryError")
 class IsADirectoryError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::IsADirectoryError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::IsADirectoryError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::IsADirectoryError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::IsADirectoryError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 # Connection-related OSError subclasses (PEP 3151).
 @native("tpy::ConnectionError")
 class ConnectionError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::BrokenPipeError")
 class BrokenPipeError(ConnectionError):
-    @overload
+    @dispatch
     @cpp_template("tpy::BrokenPipeError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::BrokenPipeError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::BrokenPipeError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::BrokenPipeError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::ConnectionResetError")
 class ConnectionResetError(ConnectionError):
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionResetError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionResetError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionResetError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionResetError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::ConnectionRefusedError")
 class ConnectionRefusedError(ConnectionError):
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionRefusedError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionRefusedError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionRefusedError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionRefusedError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
 @native("tpy::ConnectionAbortedError")
 class ConnectionAbortedError(ConnectionError):
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionAbortedError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionAbortedError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionAbortedError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::ConnectionAbortedError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
@@ -269,19 +268,19 @@ class ConnectionAbortedError(ConnectionError):
 # the asyncio reactor catches it to park on fd readiness (CPython parity).
 @native("tpy::BlockingIOError")
 class BlockingIOError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::BlockingIOError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::BlockingIOError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::BlockingIOError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::BlockingIOError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 
@@ -357,19 +356,19 @@ class StopAsyncIteration(Exception):
 # written `except OSError` catches socket/connection timeouts unchanged.
 @native("tpy::TimeoutError")
 class TimeoutError(OSError):
-    @overload
+    @dispatch
     @cpp_template("tpy::TimeoutError()")
     def __init__(self) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::TimeoutError({0})")
     def __init__(self, message: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::TimeoutError({0}, {1})")
     def __init__(self, errno: Int32, strerror: str) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("tpy::TimeoutError({0}, {1}, {2})")
     def __init__(self, errno: Int32, strerror: str, filename: str) -> None: ...
 

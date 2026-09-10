@@ -22,11 +22,11 @@ struct Animal {
     Animal() = default;
     explicit Animal(std::string_view name);
 
-    // @overload
+    // @dispatch
     // def greet(self, x: int) -> str:  # tpyc: ok
     std::string greet(const ::tpy::BigInt& x);
 
-    // @overload
+    // @dispatch
     // def greet(self, x: str) -> str:  # tpyc: ok
     std::string greet(std::string_view x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Animal";
@@ -41,14 +41,14 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 // def __init__(self, name: str) -> None:
 inline Animal::Animal(std::string_view name) : name(name) {}
 
-// @overload
+// @dispatch
 // def greet(self, x: int) -> str:  # tpyc: ok
 inline std::string Animal::greet(const ::tpy::BigInt& x) {
     // return self.name + " got " + str(x) + " treats"
     return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(this->name, " got ")), (x).to_string())), " treats"));
 }
 
-// @overload
+// @dispatch
 // def greet(self, x: str) -> str:  # tpyc: ok
 inline std::string Animal::greet(std::string_view x) {
     // return self.name + " heard '" + x + "'"

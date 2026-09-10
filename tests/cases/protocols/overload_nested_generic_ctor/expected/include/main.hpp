@@ -88,7 +88,7 @@ inline std::string_view Dog::name() const {
     // return self.label
     return this->label;
 }
-// @overload
+// @dispatch
 // def wrap[T](x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
 template<typename T>
 ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap(::tpystd::tplib::box::Box<T>&& x) {

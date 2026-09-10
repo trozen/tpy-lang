@@ -4780,7 +4780,7 @@ class CallAnalyzer:
             # gets every candidate rejected by `infer_type_params_for_function`
             # (len > type_params returns None), the structural-match fallback
             # at line 3893 catches each candidate's `_validate_explicit_type_args`
-            # raise and continues, and the user sees "No matching @overload"
+            # raise and continues, and the user sees "No matching overload"
             # instead of the specific "too many type arguments" error.
             # Mirrors the builtin overload path at calls.py:3815.
             if expr.type_args:
@@ -4853,7 +4853,7 @@ class CallAnalyzer:
                             expr)
             arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
             raise self.ctx.error(
-                f"No matching @overload for {expr.func_name}({arg_type_strs})", expr)
+                f"No matching overload for {expr.func_name}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
 
     def _ambiguous_overload_error(

@@ -6,7 +6,8 @@
 # first (as below) would have silently picked it -- the `describe(Dog)`
 # specialisation would never fire. This test pins the fix in place: reorder
 # the stubs and the output must not change.
-from typing import Protocol, overload
+from typing import Protocol
+from tpy import dispatch
 
 
 class Animal(Protocol):
@@ -21,12 +22,12 @@ class Dog:
         return "Rex"
 
 
-@overload
+@dispatch
 def describe(x: Animal) -> str:  # tpyc: ok
     return "animal: " + x.name()
 
 
-@overload
+@dispatch
 def describe(x: Dog) -> str:  # tpyc: ok
     return "dog: " + x.name()
 

@@ -1,1 +1,1 @@
-main.py:8: error: No matching @overload for repeat(str, None)
+main.py:8: error: No matching overload for repeat(str, None)

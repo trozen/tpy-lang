@@ -13,16 +13,15 @@
 #      The middle param `b` has a default; with only the first positional
 #      and a trailing kwarg supplied, the expansion fills the gap with
 #      `p.type` so cross-overload scoring isn't skewed.
-from typing import overload
-from tpy import Int32
+from tpy import Int32, dispatch
 
 
-@overload
+@dispatch
 def report(a: Int32, b: Int32 = 0, *, mode: str = "x") -> str:
     return mode + ":" + str(a + b)
 
 
-@overload
+@dispatch
 def report(a: Int32, b: Int32 = 0, *, count: Int32 = 1) -> Int32:
     return (a + b) * count
 

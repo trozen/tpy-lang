@@ -1,24 +1,24 @@
 # tpy: native_module
-from typing import overload
+from ._bootstrap._decorators import dispatch
 from tpy.extern import native, cpp_template
 from tpy import Ptr, Own, Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64, Float32, StrView, String, Char, Array, readonly
 
 # unsafe_ptr: get a raw pointer from a container or string. The `str`
 # overload points at view storage that is NOT null-terminated -- use
 # unsafe_cstr() when handing a string to a C function.
-@overload
+@dispatch
 @cpp_template("{0}.data()")
 def unsafe_ptr(s: str) -> Ptr[readonly[Char]]: ...
 
-@overload
+@dispatch
 @cpp_template("{0}.data()")
 def unsafe_ptr[T, N: int](a: Array[T, N]) -> Ptr[T]: ...
 
-@overload
+@dispatch
 @cpp_template("{0}.data()")
 def unsafe_ptr[T](l: list[T]) -> Ptr[T]: ...
 
-@overload
+@dispatch
 @cpp_template("{0}.data()")
 def unsafe_ptr(b: bytes) -> Ptr[readonly[UInt8]]: ...
 
@@ -31,20 +31,20 @@ def unsafe_ptr(b: bytes) -> Ptr[readonly[UInt8]]: ...
 # `{T}*` substitutes T via to_cpp_stored() and produces
 # `std::monostate*`, defeating the opaque-pointer-for-@native-C-interop
 # convention of `Ptr[None]`.
-@overload
+@dispatch
 @cpp_template("reinterpret_cast<{cpp}>({0})")
 def unsafe_cast[T, U](p: Ptr[U]) -> Ptr[T]: ...
 
-@overload
+@dispatch
 @cpp_template("reinterpret_cast<{cpp}>({0})")
 def unsafe_cast[T, U](p: Ptr[readonly[U]]) -> Ptr[readonly[T]]: ...
 
 # unsafe_load: read a value through a pointer at offset
-@overload
+@dispatch
 @cpp_template("{0}[{1}]")
 def unsafe_load[T](p: Ptr[T], offset: UInt32) -> Own[T]: ...
 
-@overload
+@dispatch
 @cpp_template("{0}[{1}]")
 def unsafe_load[T](p: Ptr[readonly[T]], offset: UInt32) -> Own[T]: ...
 
@@ -55,11 +55,11 @@ def unsafe_load[T](p: Ptr[readonly[T]], offset: UInt32) -> Own[T]: ...
 def unsafe_store[T](p: Ptr[T], offset: UInt32, value: Own[T]) -> None: ...
 
 # unsafe_copy_n: copy N elements between pointers
-@overload
+@dispatch
 @cpp_template("std::copy_n({1}, {2}, {0})")
 def unsafe_copy_n[T](dest: Ptr[T], src: Ptr[T], count: UInt32) -> None: ...
 
-@overload
+@dispatch
 @cpp_template("std::copy_n({1}, {2}, {0})")
 def unsafe_copy_n[T](dest: Ptr[T], src: Ptr[readonly[T]], count: UInt32) -> None: ...
 
@@ -68,20 +68,20 @@ def unsafe_copy_n[T](dest: Ptr[T], src: Ptr[readonly[T]], count: UInt32) -> None
 def unsafe_const_cast[T](p: Ptr[readonly[T]]) -> Ptr[T]: ...
 
 # unsafe_ptr_add: advance a pointer by a signed element offset
-@overload
+@dispatch
 @cpp_template("({0} + {1})")
 def unsafe_ptr_add[T](p: Ptr[T], delta: Int64) -> Ptr[T]: ...
 
-@overload
+@dispatch
 @cpp_template("({0} + {1})")
 def unsafe_ptr_add[T](p: Ptr[readonly[T]], delta: Int64) -> Ptr[readonly[T]]: ...
 
 # unsafe_ptr_diff: distance between two pointers in elements
-@overload
+@dispatch
 @cpp_template("static_cast<int64_t>({0} - {1})")
 def unsafe_ptr_diff[T](p1: Ptr[T], p2: Ptr[T]) -> Int64: ...
 
-@overload
+@dispatch
 @cpp_template("static_cast<int64_t>({0} - {1})")
 def unsafe_ptr_diff[T](p1: Ptr[readonly[T]], p2: Ptr[readonly[T]]) -> Int64: ...
 
@@ -167,11 +167,11 @@ def unsafe_read_f64(data: bytes, offset: Int32) -> float: ...
 def unsafe_read_bytes(data: bytes, offset: Int32, count: Int32) -> bytes: ...
 
 # unsafe_str_view: create a StrView from a pointer and length
-@overload
+@dispatch
 @cpp_template("std::string_view({0}, {1})")
 def unsafe_str_view(p: Ptr[Char], size: UInt32) -> StrView: ...
 
-@overload
+@dispatch
 @cpp_template("std::string_view({0}, {1})")
 def unsafe_str_view(p: Ptr[readonly[Char]], size: UInt32) -> StrView: ...
 

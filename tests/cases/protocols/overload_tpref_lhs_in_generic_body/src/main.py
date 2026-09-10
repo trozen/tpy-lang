@@ -8,16 +8,15 @@
 # the non-generic gate skips matching when `lhs_hint` contains a
 # `TypeParamRef`, mirroring `_is_useful_seed_binding`'s TPRef filter on the
 # generic branch.
-from typing import overload
-from tpy import Int32, Float32
+from tpy import Int32, Float32, dispatch
 
 
-@overload
+@dispatch
 def pick(x: Int32, y: Int32) -> Int32:
     return x
 
 
-@overload
+@dispatch
 def pick[U](x: U, y: U) -> U:
     return x
 

@@ -1549,10 +1549,9 @@ def _runtime_hash() -> str:
 
 @functools.cache
 def _cpy_stubs_hash() -> str:
-    """Hash of the CPython stub tree: lib/cpy/tpy/** plus the root-level
-    lib/cpy/*.py (sitecustomize's runtime-@overload dispatcher, any future
-    stub). Session-cached. Both feed every CPython run, so a change to either
-    must re-key the cpy fingerprints."""
+    """Hash of the CPython stub tree: lib/cpy/tpy/** plus any root-level
+    lib/cpy/*.py. Session-cached. Both feed every CPython run, so a change
+    to either must re-key the cpy fingerprints."""
     stubs = sorted((CPY_LIB_DIR / "tpy").rglob("*.py"))
     stubs += sorted(CPY_LIB_DIR.glob("*.py"))
     return _hash_files(stubs)

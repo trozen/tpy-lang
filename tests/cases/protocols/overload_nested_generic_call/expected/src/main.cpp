@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// @overload
+// @dispatch
 // def double_wrap(inner: str) -> Own[Box[Rc[str]]]:
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>> double_wrap(std::string_view inner) {
     // return Box(Rc.new(inner))

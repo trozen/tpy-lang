@@ -3,8 +3,8 @@
 # probe-seed propagation surface, different inner expression shape -- pins
 # that the seeded probe path threads the hint through both
 # `_analyze_generic_function_call` and `_analyze_record_constructor`.
-from typing import Protocol, overload
-from tpy import dynamic, Own, StrView
+from typing import Protocol
+from tpy import dynamic, Own, StrView, dispatch
 from tplib import Box, Rc
 
 
@@ -21,12 +21,12 @@ class Dog:
         return self.label
 
 
-@overload
+@dispatch
 def double_wrap[T](inner: Own[Rc[T]]) -> Own[Box[Rc[T]]]:
     return Box(inner)
 
 
-@overload
+@dispatch
 def double_wrap(inner: str) -> Own[Box[Rc[str]]]:
     return Box(Rc.new(inner))
 

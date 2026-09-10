@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Self, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, Own, auto_readonly
+from .._typing import Self, Iterator, Iterable
+from .._bootstrap._decorators import readonly, pure, Own, auto_readonly, dispatch
 from .._core._types import Int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type, copy_returns_warn
 
@@ -71,13 +71,13 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @cpp_template("::tpy::dict_construct<{K}, {V}>({0})")
     def __init__(self, x: Iterable[Own[tuple[K, V]]]) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::__iter__", function=True)
     @pure
     @readonly
     def __iter__(self) -> Iterator[K]: ...
 
-    @overload
+    @dispatch
     @native("tpy::own_iter_dict", function=True)
     def __iter__(self: Own[Self]) -> Iterator[Own[K]]: ...
 
@@ -105,7 +105,7 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @readonly
     def __contains__(self, key: readonly[K]) -> bool: ...
 
-    @overload
+    @dispatch
     @native("tpy::dict_get", function=True)
     @pure
     @readonly
@@ -113,18 +113,18 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
 
     # Copies where CPython aliases, so `d.get(k, []).append(x)` silently
     # no-ops -- @copy_returns_warn flags the call site.
-    @overload
+    @dispatch
     @native("tpy::dict_get_default", function=True)
     @pure
     @readonly
     @copy_returns_warn
     def get(self, key: readonly[K], default: V) -> Own[V]: ...
 
-    @overload
+    @dispatch
     @native("tpy::dict_pop", function=True)
     def pop(self, key: readonly[K]) -> Own[V]: ...
 
-    @overload
+    @dispatch
     @native("tpy::dict_pop_default", function=True)
     def pop(self, key: readonly[K], default: V) -> Own[V]: ...
 

@@ -782,7 +782,7 @@ class RecordGenerator:
         - ``__init__`` / ``__del__`` / ``__move__``: handled by dedicated code
           paths (constructor / destructor / move constructor body).
         - Bodyless ``@overload`` stubs: the trailing impl emits all
-          overloads. Bodied ``@overload`` stubs (mode b) self-emit and so
+          overloads. Bodied ``@dispatch`` variants self-emit and so
           aren't filtered here.
         - ``skip_codegen``: ``@inline`` methods get inlined at call sites.
         """

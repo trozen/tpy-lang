@@ -294,7 +294,8 @@ def _validate_dyn_dunder_kind(record: 'TpyRecord', dunder_name: str) -> object:
     if method.is_property_getter or method.is_property_setter:
         raise SemanticError(f"{dunder_name} cannot be a @property", loc)
     if method.is_overload_stub:
-        raise SemanticError(f"{dunder_name} cannot be @overload", loc)
+        raise SemanticError(
+            f"{dunder_name} cannot be @{method.overload_form.value}", loc)
     if method.is_generator:
         raise SemanticError(f"{dunder_name} cannot be a generator (no `yield` in body)", loc)
     if method.error_return:
@@ -1635,7 +1636,7 @@ class TypeRegistrar:
         # them under the property's distinct lvalue/rvalue paths.
         # Dynamic-attr dunders are excluded so their own
         # `_validate_dyn_dunder_kind` can produce a more specific
-        # diagnostic ("__getattr__ cannot be @overload").
+        # diagnostic ("__getattr__ cannot be @overload" / "@dispatch").
         _DYN_DUNDER_NAMES = ("__getattr__", "__setattr__", "__delattr__")
         for method_name, method_infos in methods.items():
             if len(method_infos) <= 1:
@@ -3746,8 +3747,9 @@ class TypeRegistrar:
                     prev_loc = self.ctx._resolve_loc(prev_node)
                     if prev_loc is not None:
                         prev_loc_hint = f" (first defined at line {prev_loc.line})"
+                decorator = nodes[0].overload_form.value if nodes else "overload"
                 raise self.ctx.error(
-                    f"@overload variants of '{info.name}' have identical "
+                    f"@{decorator} variants of '{info.name}' have identical "
                     f"parameter types ({params_str}){prev_loc_hint}; overloads "
                     f"must differ in at least one parameter type, not just "
                     f"the return type",

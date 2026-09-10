@@ -1,4 +1,4 @@
-# @overload Dispatch Flattening (B10)
+# Overloading: `typing.overload` and `tpy.dispatch` (B10)
 
 ## Roadmap
 
@@ -22,6 +22,7 @@
 | Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `Int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
 | Overload on arity | Different parameter counts per stub. Maps to C++ overloads with different parameter counts. |
 | Dead branch elimination generalization | Extend dead-branch elimination beyond overload dispatch -- e.g. when isinstance/match has only a single possible type, eliminate the check entirely even without `@overload`. |
+| `register`-style `@dispatch` variants; `singledispatch` | A `@area.variant` registration form (variants named `_`, as in `functools.singledispatch`) is the only spelling type checkers accept for self-contained variants; `singledispatch` itself maps onto a first-argument-only `@dispatch` set with a generic fallback variant. Low priority; tracked in TODO.md. |
 | Move return type validation to sema | Currently done in codegen (post dead branch elimination). Moving to sema would surface errors in IDE diagnostics and avoid reimplementing compatibility rules. |
 
 ---
@@ -93,7 +94,43 @@ Current scope is union-typed parameters only. Non-union overloads (e.g., `Int32`
 
 ## Syntax and Semantics
 
-### Declaration
+### Two decorators
+
+Overloading has two forms, and each has its own decorator so that the
+form is chosen by name rather than inferred from whether a def has a body:
+
+| | `typing.overload` | `tpy.dispatch` |
+|---|---|---|
+| Variant def | bodyless stub (`...` / `pass`) | its own implementation: a body, `@native` or `@cpp_template` |
+| Trailing same-name impl | required (one) | forbidden |
+| Under stock CPython | runs the impl (PEP 484) | runtime dispatcher in the `tpy` stub package |
+| mypy / pyright | accepted | same-name redefinition flagged (as for `multipledispatch`) |
+
+Both register one overload set in sema and share call-site resolution
+(below); the compiler emits one specialized C++ function per variant
+either way. The parser records the decorator as `TpyFunction.overload_form`
+and validates each def against it (a `@overload` stub with a body or a
+native binding, a `@dispatch` variant with neither); sema's
+`_require_overload_form` validates the group (no mixing under one name, a
+`@overload` set ends in an implementation, a `@dispatch` set does not).
+`@dispatch` is the form the builtin stubs use throughout (`lib/tpy/tpy`),
+and the convenient one for arity-variant APIs in larger programs;
+`@overload` is the form to reach for when the source must also type-check
+and run under stock CPython.
+
+```python
+from tpy import dispatch
+
+@dispatch
+def area(w: Int32) -> Int32:
+    return w * w
+
+@dispatch
+def area(w: Int32, h: Int32) -> Int32:
+    return w * h
+```
+
+### Declaration (`typing.overload`)
 
 ```python
 from typing import overload
@@ -113,7 +150,7 @@ def f(x: A | B) -> R1 | R2:
 ```
 
 Rules:
-- Stubs must have body `...` (Ellipsis) or `pass`
+- Stubs must have body `...` (Ellipsis) or `pass`; a `@overload` stub is never `@native` / `@cpp_template`
 - Exactly one non-stub implementation with the same name must follow the stubs
 - The implementation's union-typed parameters must be supertypes of each stub's params
 - Stubs can have different return types (the key use case)

@@ -380,7 +380,7 @@ Current: `lib/tpy/math.py` -- native C++ wrappers. Sufficient for numerics-heavy
 | `gcd`, `lcm` | Done | Variadic `gcd(*ints)` / `lcm(*ints)` over BigInt. Internal `_gcd2` binary helper; `lcm` uses `(a // gcd(a,b)) * b` to keep the intermediate bounded by `max(|a|, |b|)`. Generic-over-int-type is a follow-up (see math.py header) |
 | `factorial` | Done | Pure-TPy over BigInt; raises `ValueError` on negative |
 | `isqrt` | Done | Pure-TPy Newton's method over BigInt; initial guess from `bit_length()` for O(log log n) iteration count |
-| `perm`, `comb` | Done | Pure-TPy over BigInt. `perm` has both one-arg (`perm(n) == factorial(n)`) and two-arg overloads via `@overload`. `comb` is binary only |
+| `perm`, `comb` | Done | Pure-TPy over BigInt. `perm` has both one-arg (`perm(n) == factorial(n)`) and two-arg overloads via `@dispatch`. `comb` is binary only |
 | `isclose` | Done | Pure-TPy; `rel_tol` / `abs_tol` are kw-only to match CPython |
 | `prod` | Done | Pure-TPy; `start` is kw-only to match CPython. Three overloads: `Iterable[Int32]` -> Int32 (fast path), `Iterable[int]` -> int (exact BigInt for arbitrary-precision products), `Iterable[float]` -> float. Kwarg disambiguation lets `prod(empty, start=1.0)` / `start=int(1)` / `start=Int32(1)` pick the right family |
 | `fsum` | Done | Pure-TPy Neumaier compensated summation. Takes `Iterable[float]` |
@@ -798,7 +798,7 @@ BUGS.md / TODO.md, not on macro or closure infrastructure:
 | `partial` | Missing | Full variadic form needs function-macro or `*args` forwarding on user classes |
 | `partialmethod` | Missing | Descriptor-protocol heavy |
 | `lru_cache`, `cache` | Missing | Decorator must wrap + return a new callable with mutable cache dict. `@function_macro` exists now but only rewrites a body in place; it cannot yet return a new wrapping callable, which is what this needs |
-| `singledispatch` | Missing | Runtime dispatch; use `@overload` instead |
+| `singledispatch` | Missing | Runtime dispatch; use `@dispatch` instead |
 | `cached_property` | Missing | Needs descriptor support |
 
 ### random
@@ -858,9 +858,9 @@ Sketch:
 
     _inst: Random = Random()  # auto-seeds via _os_entropy_uint32()
 
-    @overload
+    @dispatch
     def seed() -> None: _inst._seed(_os_entropy_uint32())
-    @overload
+    @dispatch
     def seed(n: Int32) -> None: ...                       # negatives -> abs()
     # ...
 
@@ -1022,7 +1022,7 @@ and pinned for process life -- a mid-run `TZ` change (libc rereads;
 | Item | Status |
 |---|---|
 | `timedelta`, `date` | Done (v1, integer surface -- byte-parity with CPython) |
-| `time`, `datetime` | Done (v2, hand-written `datetime` ordering, `@overload` `dt - dt` / `dt - td`) |
+| `time`, `datetime` | Done (v2, hand-written `datetime` ordering, `@dispatch` `dt - dt` / `dt - td`) |
 | `datetime.now/utcnow/today/fromtimestamp/utcfromtimestamp/combine`, `date.today` | Done (v2; v3 added the `tz` params to now/fromtimestamp/combine; out-of-range timestamp raises `ValueError`, beyond-time_t raises `OverflowError`) |
 | fixed-offset `timezone`, aware `datetime` (utcoffset/tzname/dst, aware arithmetic/comparison/hash, `astimezone`) | Done (v3; awareness is a runtime property, naive/aware ordering+subtraction raise `TypeError` like CPython; `timezone.utc` is spelled via the module-level `UTC` alias -- class attr is a loud compile error, see DATETIME_DESIGN divergences) |
 | `strftime` (`date`/`time`/`datetime`) | Done (v3; full documented directive set incl. `%c/%x/%X` C-locale compositions and ISO `%G/%V/%u`; hardcoded English tables, `LC_TIME` never consulted) |
@@ -1082,7 +1082,7 @@ char raise `ValueError`. Padding errors always raise.
 | `b32decode(data, casefold=False, map01=None)` | Done | Strict by default; `casefold=True` accepts lowercase; `map01` maps `'0'`->`'O'` and `'1'`->`'I'` or `'L'` |
 | `encodebytes(data)` / `decodebytes(data)` | Done | MIME-style 76-char line wrap with trailing `\n`; decode passes through `b64decode` (lax) |
 | `bytes` / `bytearray` inputs | Done | Auto-converted via `__span__` (generated signature is `std::span<const uint8_t>`) |
-| `str` input on decoders (`b64decode`, `standard_b64decode`, `urlsafe_b64decode`, `b32decode`, `b16decode`) | Done | `@overload` delegating through `.encode()`; matches CPython which accepts ASCII str on decoders |
+| `str` input on decoders (`b64decode`, `standard_b64decode`, `urlsafe_b64decode`, `b32decode`, `b16decode`) | Done | `@dispatch` delegating through `.encode()`; matches CPython which accepts ASCII str on decoders |
 | `BytesView` input | Partial | Works as C++ span but TPy-level coercion not yet tested |
 | `b85encode`/`b85decode`, `a85encode`/`a85decode` | Missing | Rare; separate ~100-LOC algorithms |
 | `memoryview` input | Blocked | Depends on `memoryview` builtin (see `builtins` section) |

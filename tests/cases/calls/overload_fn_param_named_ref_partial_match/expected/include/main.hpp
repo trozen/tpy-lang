@@ -23,7 +23,7 @@ int32_t square(int32_t x);
 int32_t add(int32_t a, int32_t b);
 void main();
 
-// @overload
+// @dispatch
 // def g[T](f: Fn[[T], Int32], xs: list[T]) -> Int32:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
@@ -33,7 +33,7 @@ int32_t g(__F0&& f, const std::vector<T>& xs) {
     // return f(xs[0])
     return f(::tpy::__getitem__(xs, 0));
 }
-// @overload
+// @dispatch
 // def g[T](f: Fn[[T, T], Int32], xs: list[T]) -> Int32:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {

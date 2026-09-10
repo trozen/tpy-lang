@@ -48,7 +48,7 @@ double sumprod(const T_p& p, const T_q& q);
 template<::tpystd::typing::Iterable<double> T_p, ::tpystd::typing::Iterable<double> T_q>
 double dist(const T_p& p, const T_q& q);
 
-// @overload
+// @dispatch
 // def prod(iterable: Iterable[Int32], *, start: Int32 = Int32(1)) -> Int32:
 template<::tpystd::typing::Iterable<int32_t> T_iterable>
 int32_t prod(T_iterable& iterable, int32_t start) {
@@ -67,7 +67,7 @@ int32_t prod(T_iterable& iterable, int32_t start) {
     // return result
     return result;
 }
-// @overload
+// @dispatch
 // def prod(iterable: Iterable[int], *, start: int = 1) -> int:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
 ::tpy::BigInt prod(T_iterable& iterable, const ::tpy::BigInt& start) {
@@ -86,7 +86,7 @@ template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
     // return result
     return result;
 }
-// @overload
+// @dispatch
 // def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
 template<::tpystd::typing::Iterable<double> T_iterable>
 double prod(T_iterable& iterable, double start) {

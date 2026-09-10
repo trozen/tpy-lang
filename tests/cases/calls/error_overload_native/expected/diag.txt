@@ -1,0 +1,1 @@
+main.py:10: error: @overload 'mag' cannot also be @native or @cpp_template: a @overload stub declares one signature of the trailing implementation; use @dispatch for a variant that is its own implementation

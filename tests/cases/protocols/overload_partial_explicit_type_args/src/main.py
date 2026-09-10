@@ -13,16 +13,15 @@
 # unhinted -> compile error ("Lambda parameter types cannot be
 # inferred"). Post-fix, the merge fires (T=Int32) and the lambda hint
 # becomes Fn[[Int32], U] -> body analyzes under Int32 -> compiles.
-from typing import overload
-from tpy import Int32, Fn
+from tpy import Int32, Fn, dispatch
 
 
-@overload
+@dispatch
 def stub[T, U](fn: Fn[[T], U]) -> Int32:
     return Int32(0)
 
 
-@overload
+@dispatch
 def stub(val: str) -> str:
     return val
 

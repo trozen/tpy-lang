@@ -3,16 +3,15 @@
 # single-overload path's behavior. Before, the multi-overload path silently
 # rejected every candidate and emitted a bare "No matching @overload" error
 # that hid the real cause from the user.
-from typing import overload
-from tpy import Int32
+from tpy import Int32, dispatch
 
 
-@overload
+@dispatch
 def pick(x: Int32, *, mode: str = "x") -> str:
     return mode + ":" + str(x)
 
 
-@overload
+@dispatch
 def pick(x: Int32, *, count: Int32 = 1) -> Int32:
     return x + count
 

@@ -1,1 +1,1 @@
-main.py:21: error: 'pick' got unexpected keyword argument 'bogus'
+main.py:20: error: 'pick' got unexpected keyword argument 'bogus'

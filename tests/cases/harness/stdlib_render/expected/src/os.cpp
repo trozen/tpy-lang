@@ -296,7 +296,7 @@ void mkdir(std::string_view path, int64_t mode) {
 // # `str`, so `len(os.getenv(k, ""))` type-checks. Both read the os.environ
 // # snapshot (CPython's getenv is environ.get), not libc -- so a bare os.putenv
 // # is not observable here, matching CPython.
-// @overload
+// @dispatch
 // def getenv(key: str) -> str | None:
 std::optional<std::string> getenv(std::string_view key) {
     // if key in environ:
@@ -308,7 +308,7 @@ std::optional<std::string> getenv(std::string_view key) {
     return std::nullopt;
 }
 
-// @overload
+// @dispatch
 // def getenv(key: str, default: str) -> str:
 std::string getenv(std::string_view key, std::string_view default_) {
     // if key in environ:

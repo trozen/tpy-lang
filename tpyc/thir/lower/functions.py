@@ -479,8 +479,8 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # -- the body lowers identically to a plain static.
     elif func.is_staticmethod:
         raise ThirUnsupported("sig.staticmethod_flag")
-    # A BODIED `@overload` variant is self-contained: sema forbids mixing it
-    # with a trailing implementation, so it owns its body, keys its own
+    # A bodied `@dispatch` variant is self-contained: it has no trailing
+    # implementation, so it owns its body, keys its own
     # id(func), and the function driver emits it standalone. Only the bodyless
     # stub -- emitted per-specialization off a shared impl -- is special here.
     bodied_overload = func.is_overload_stub and not func.is_stub
@@ -497,7 +497,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # sensitive to none of them lowers identically per stub). Two carve-outs
     # on the same argument -- each entry owns its body, so there is no
     # shared-impl to hijack: a property getter+setter pair (one registry name,
-    # two bodies) and a bodied `@overload` variant.
+    # two bodies) and a bodied `@dispatch` variant.
     #
     # A generator is a second carve-out on the same argument, one tier up:
     # the function driver diverts every generator to its frame emitter (the

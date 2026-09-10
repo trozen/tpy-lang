@@ -19,9 +19,9 @@
 # timezone | ZoneInfo | None; user tzinfo subclasses stay unsupported.
 from __future__ import annotations
 import time as _time
-from typing import Final, overload
+from typing import Final
 from dataclasses import dataclass
-from tpy import Int8, Int16, Int32, Int64, String, ValueType
+from tpy import Int8, Int16, Int32, Int64, String, ValueType, dispatch
 from _bindings import hinnant_date, tz_intern
 from _datetime_cal import (
     _MAXORDINAL, _days_in_month, _is_leap, _ymd2ord, _ord2ymd,
@@ -111,43 +111,43 @@ class timedelta(ValueType):
         return timedelta(days=self.days, seconds=self.seconds,
                          microseconds=self.microseconds)
 
-    @overload
+    @dispatch
     def __mul__(self, other: int) -> timedelta:
         return timedelta(days=self.days * other, seconds=self.seconds * other,
                          microseconds=self.microseconds * other)
 
-    @overload
+    @dispatch
     def __mul__(self, other: float) -> timedelta:
         a, b = other.as_integer_ratio()
         return timedelta(microseconds=_divide_and_round(self._to_microseconds() * a, b))
 
-    @overload
+    @dispatch
     def __rmul__(self, other: int) -> timedelta:
         return timedelta(days=self.days * other, seconds=self.seconds * other,
                          microseconds=self.microseconds * other)
 
-    @overload
+    @dispatch
     def __rmul__(self, other: float) -> timedelta:
         a, b = other.as_integer_ratio()
         return timedelta(microseconds=_divide_and_round(self._to_microseconds() * a, b))
 
-    @overload
+    @dispatch
     def __floordiv__(self, other: timedelta) -> int:
         return self._to_microseconds() // other._to_microseconds()
 
-    @overload
+    @dispatch
     def __floordiv__(self, other: int) -> timedelta:
         return timedelta(microseconds=self._to_microseconds() // other)
 
-    @overload
+    @dispatch
     def __truediv__(self, other: timedelta) -> float:
         return self._to_microseconds() / other._to_microseconds()
 
-    @overload
+    @dispatch
     def __truediv__(self, other: int) -> timedelta:
         return timedelta(microseconds=_divide_and_round(self._to_microseconds(), other))
 
-    @overload
+    @dispatch
     def __truediv__(self, other: float) -> timedelta:
         a, b = other.as_integer_ratio()
         return timedelta(microseconds=_divide_and_round(b * self._to_microseconds(), a))
@@ -446,11 +446,11 @@ class date(ValueType):
             raise OverflowError("result out of range")
         return date.fromordinal(o)
 
-    @overload
+    @dispatch
     def __sub__(self, other: "date") -> timedelta:
         return timedelta(days=self.toordinal() - other.toordinal())
 
-    @overload
+    @dispatch
     def __sub__(self, other: timedelta) -> "date":
         o = self.toordinal() - other.days
         if o < 1 or o > _MAXORDINAL:
@@ -1085,7 +1085,7 @@ class datetime(ValueType):
         return datetime(y, mo, d, hh, mm, ss, int(delta.microseconds),
                         self.tzinfo)
 
-    @overload
+    @dispatch
     def __sub__(self, other: "datetime") -> timedelta:
         # CPython's __sub__ short-circuits `self._tzinfo is other._tzinfo`
         # to the plain wall difference -- a same-zone fold pair subtracts
@@ -1098,6 +1098,6 @@ class datetime(ValueType):
                              - other._epoch_us())
         return timedelta(microseconds=self._utc_us() - other._utc_us())
 
-    @overload
+    @dispatch
     def __sub__(self, other: timedelta) -> "datetime":
         return self + (-other)

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// @overload
+// @dispatch
 // def stub(val: str) -> str:
 std::string stub(std::string_view val) {
     // return val

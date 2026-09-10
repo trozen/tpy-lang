@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
-from .._typing import overload, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure
+from .._typing import Iterator, Iterable
+from .._bootstrap._decorators import readonly, pure, dispatch
 from .._bootstrap._decorators import Own
 from ._types import UInt8, UInt64, Int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
@@ -10,7 +10,7 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 @builtin_type("tpy.BytesView")
 @native("std::span<const uint8_t>")
 class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
-    @overload
+    @dispatch
     @cpp_template("std::span<const uint8_t>()")
     def __init__(self) -> None: ...
 
@@ -24,19 +24,19 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
     @pure
     def __len__(self) -> Int32: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_getitem", function=True)
     @readonly
     @pure
     def __getitem__(self, index: Int32) -> UInt8: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::bytes_slice({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: basic_slice) -> BytesView: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::bytes_stepped_slice({self}, {0})")
     @readonly
     @pure
@@ -112,12 +112,12 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
     @pure
     def lstrip(self) -> BytesView: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_rstrip_view", function=True)
     @readonly
     @pure
     def rstrip(self) -> BytesView: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_rstrip_chars_view", function=True)
     @readonly
     @pure

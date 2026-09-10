@@ -3,16 +3,15 @@
 # other candidate is rejected for an unrelated reason. The dry
 # matcher's ambiguity SemanticError is stashed and surfaces only when
 # no candidate ultimately wins.
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def apply[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:
     return Int32(0)
 
 
-@overload
+@dispatch
 def apply[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
     return Int32(0)
 
@@ -26,12 +25,12 @@ def apply[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
 # so it rejects silently in the dry matcher (returns None).
 #
 # Result: no winner; the stashed ambiguity error surfaces.
-@overload
+@dispatch
 def convert(x: Int32) -> Int32:
     return x * 2
 
 
-@overload
+@dispatch
 def convert(x: int) -> Int32:
     return Int32(0)
 

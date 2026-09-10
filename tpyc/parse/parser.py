@@ -29,7 +29,7 @@ from .desugar_suspensions import desugar_suspension_positions
 if TYPE_CHECKING:
     from ..typesys import TpyType
 from .nodes import (
-    ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
+    ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage, OverloadForm,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
     ResolverInputNode, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -167,6 +167,10 @@ def _validate_fstring_format_spec(spec: str) -> str | None:
             return "'%' (percentage) type is not supported"
 
     return None
+
+
+def _overload_display(form: OverloadForm) -> str:
+    return "@overload stub" if form is OverloadForm.OVERLOAD else "@dispatch variant"
 
 
 def _validate_cpp_template(template: str) -> str | None:
@@ -2333,7 +2337,7 @@ class Parser:
         is_inline = False
         is_hotpath = False
         is_override = False
-        is_overload_stub = False
+        overload_form: OverloadForm | None = None
         auto_readonly = False
         auto_readonly_dec = None
         error_return: str | None = None
@@ -2380,7 +2384,9 @@ class Parser:
             elif qname == qnames.OVERRIDE:
                 is_override = True
             elif qname == qnames.OVERLOAD:
-                is_overload_stub = True
+                overload_form = OverloadForm.OVERLOAD
+            elif qname == qnames.DISPATCH:
+                overload_form = OverloadForm.DISPATCH
             elif qname == qnames.READONLY:
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(pos, dec)
             elif qname == qnames.AUTO_READONLY:
@@ -2571,8 +2577,9 @@ class Parser:
         vararg_type = None
         if node.args.vararg is not None:
             va = node.args.vararg
-            if is_overload_stub:
-                raise ParseError("*args is not supported on @overload stubs", node)
+            if overload_form is not None:
+                raise ParseError(
+                    f"*args is not supported on {_overload_display(overload_form)}s", node)
             if va.annotation is None:
                 raise ParseError(
                     f"*{va.arg} must have a type annotation (element type)", node)
@@ -2620,13 +2627,12 @@ class Parser:
             if err is not None:
                 raise ParseError(err, node)
         is_stub_body = self._is_stub_body(node.body)
-        is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
-        is_stub = (is_stub_body and not is_overload_stub) or cpp_template is not None
-        if is_overload_stub:
-            # @overload methods may be bodyless (`...` / `pass`, paired with a
-            # trailing impl) or carry their own body (self-contained overload
-            # variant -- sema validates that a group is all-bodied or all-bodyless).
-            body = [] if is_overload_stub_body else self._parse_body(node.body)
+        is_stub = is_stub_body or cpp_template is not None
+        if overload_form is not None:
+            body, is_stub = self._overload_variant_body(
+                node, overload_form,
+                has_native_impl=(method_linkage != FunctionLinkage.DEFAULT
+                                 or cpp_template is not None))
         elif is_stub:
             body = []
         else:
@@ -2694,8 +2700,8 @@ class Parser:
             is_pure=is_pure,
             has_auto_readonly_decorator=auto_readonly_dec is not None,
             is_override=is_override,
-            is_overload_stub=is_overload_stub,
-            is_stub=is_overload_stub_body if is_overload_stub else is_stub,
+            overload_form=overload_form,
+            is_stub=is_stub,
             linkage=method_linkage,
             native_name=native_name,
             native_function=native_function,
@@ -2748,7 +2754,7 @@ class Parser:
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
-        is_overload_stub = False
+        overload_form: OverloadForm | None = None
         value_ptr_coercion = False
         error_return: str | None = None
         builtin_decorator_key: str | None = None
@@ -2781,7 +2787,9 @@ class Parser:
             elif qname == qnames.AUTO_READONLY:
                 raise ParseError("@auto_readonly is only valid on methods, not free functions", dec)
             elif qname == qnames.OVERLOAD:
-                is_overload_stub = True
+                overload_form = OverloadForm.OVERLOAD
+            elif qname == qnames.DISPATCH:
+                overload_form = OverloadForm.DISPATCH
             elif qname == qnames.ERROR_RETURN:
                 error_return = pos.name
             elif qname == qnames.VALUE_PTR_COERCION:
@@ -2919,8 +2927,9 @@ class Parser:
         if node.args.vararg is not None:
             va = node.args.vararg
             if builtin_function_key is None:
-                if is_overload_stub:
-                    raise ParseError("*args is not supported on @overload stubs", node)
+                if overload_form is not None:
+                    raise ParseError(
+                        f"*args is not supported on {_overload_display(overload_form)}s", node)
                 if va.annotation is None:
                     raise ParseError(
                         f"*{va.arg} must have a type annotation (element type)", node)
@@ -2965,10 +2974,22 @@ class Parser:
 
         # Validate body vs linkage
         is_stub_body = self._is_stub_body(node.body)
-        is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
         is_stub = False
 
-        if builtin_decorator_key is not None:
+        if cpp_template is not None:
+            if not is_stub_body:
+                raise ParseError(
+                    f"@cpp_template function '{node.name}' must have `...` body", node)
+            err = _validate_cpp_template(cpp_template)
+            if err is not None:
+                raise ParseError(err, node)
+
+        if overload_form is not None:
+            body, is_stub = self._overload_variant_body(
+                node, overload_form,
+                has_native_impl=(linkage != FunctionLinkage.DEFAULT
+                                 or cpp_template is not None))
+        elif builtin_decorator_key is not None:
             if not self._is_stub_body(node.body):
                 raise ParseError(
                     f"@builtin_decorator function '{node.name}' must have `...` body", node)
@@ -2978,19 +2999,8 @@ class Parser:
             is_stub = True
             body = []
         elif cpp_template is not None:
-            if not self._is_stub_body(node.body):
-                raise ParseError(
-                    f"@cpp_template function '{node.name}' must have `...` body", node)
-            err = _validate_cpp_template(cpp_template)
-            if err is not None:
-                raise ParseError(err, node)
             is_stub = True
             body = []
-        elif is_overload_stub:
-            # @overload functions may be bodyless (`...` / `pass`, paired with a
-            # trailing impl) or carry their own body (self-contained overload
-            # variant -- sema validates that a group is all-bodied or all-bodyless).
-            body = [] if is_overload_stub_body else self._parse_body(node.body)
         elif linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
             if not (self._is_stub_body(node.body)):
                 display = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
@@ -3052,13 +3062,13 @@ class Parser:
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
-            is_overload_stub=is_overload_stub,
+            overload_form=overload_form,
             linkage=linkage,
             exposed_to_host=exposed_to_host,
             native_name=native_name,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
-            is_stub=is_overload_stub_body if is_overload_stub else is_stub,
+            is_stub=is_stub,
             value_ptr_coercion=value_ptr_coercion,
             type_params=type_params,
             type_param_kinds=type_param_kinds,
@@ -3081,6 +3091,40 @@ class Parser:
             pending_macros=pending_macros,
             loc=self._loc(node)
         )
+
+    def _overload_variant_body(
+        self, node: ast.FunctionDef | ast.AsyncFunctionDef, form: OverloadForm,
+        has_native_impl: bool,
+    ) -> tuple[list[TpyStmt], bool]:
+        """Body and is_stub of an @overload stub or @dispatch variant.
+
+        The two decorators differ exactly here: a @overload stub declares a
+        signature for the trailing implementation, so it is bodyless and
+        never a native binding; a @dispatch variant is its own
+        implementation, so it carries a body or a native binding.
+        """
+        bodyless = self._is_stub_body(node.body) or self._is_pass_body(node.body)
+        if form is OverloadForm.OVERLOAD:
+            if has_native_impl:
+                raise ParseError(
+                    f"@overload '{node.name}' cannot also be @native or "
+                    f"@cpp_template: a @overload stub declares one signature of "
+                    f"the trailing implementation; use @dispatch for a variant "
+                    f"that is its own implementation", node)
+            if not bodyless:
+                raise ParseError(
+                    f"@overload '{node.name}' has a body: a @overload stub "
+                    f"declares one signature of the trailing implementation; "
+                    f"use @dispatch for a variant that is its own implementation",
+                    node)
+            return [], True
+        if bodyless and not has_native_impl:
+            raise ParseError(
+                f"@dispatch '{node.name}' has no body: a @dispatch variant is "
+                f"its own implementation (a body, @native or @cpp_template); "
+                f"use @overload stubs with a trailing implementation instead",
+                node)
+        return ([] if bodyless else self._parse_body(node.body)), bodyless
 
     def _is_stub_body(self, body: list[ast.stmt]) -> bool:
         """Check if a function body is a stub (only `...`).

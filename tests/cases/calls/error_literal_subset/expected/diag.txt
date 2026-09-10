@@ -1,1 +1,1 @@
-main.py:17: error: No matching @overload for f(Literal["r", "rb"])
+main.py:17: error: No matching overload for f(Literal["r", "rb"])

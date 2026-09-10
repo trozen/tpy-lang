@@ -1,0 +1,1 @@
+main.py:6: error: *args is not supported on @dispatch variants

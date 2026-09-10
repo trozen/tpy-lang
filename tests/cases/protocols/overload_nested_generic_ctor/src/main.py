@@ -6,8 +6,8 @@
 # (cache short-circuit), producing C++ that mixes Box<Dog> into a
 # Box<Pet> slot. With the seed, the inner Box first-pass-analyzes under
 # hint Box[Pet] and codegen emits Box<Pet>(Adapter<Pet, Dog>(...)).
-from typing import Protocol, overload
-from tpy import dynamic, Own, StrView
+from typing import Protocol
+from tpy import dynamic, Own, StrView, dispatch
 from tplib import Box, Rc
 
 
@@ -24,12 +24,12 @@ class Dog:
         return self.label
 
 
-@overload
+@dispatch
 def wrap[T](x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
     return Rc.new(x)
 
 
-@overload
+@dispatch
 def wrap(x: str) -> Own[Rc[Box[str]]]:
     return Rc.new(Box(x))
 

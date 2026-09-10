@@ -5,16 +5,16 @@
 # Now the bound check skips UnknownElementType-typed inferences, and the
 # generic single-call retry surfaces the cleaner "Cannot infer type
 # arguments" diagnostic.
-from typing import Iterable, overload
-from tpy import Comparable
+from typing import Iterable
+from tpy import Comparable, dispatch
 
 
-@overload
+@dispatch
 def g[T: Comparable](xs: Iterable[T]) -> str:
     return "comp"
 
 
-@overload
+@dispatch
 def g(xs: Iterable[float], y: float) -> str:
     return "float"
 

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// @overload
+// @dispatch
 // def describe(x: Dog) -> str:  # tpyc: ok
 std::string describe(Dog& x) {
     // return "dog: " + x.name()

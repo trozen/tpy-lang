@@ -103,9 +103,8 @@
 #     decision, affects all code).
 # tpy: cpp_namespace("tpystd::random")
 # tpy: include("<tpy/stdlib/random.hpp>")
-from tpy import Int32, UInt8, UInt32, Array, copy
+from tpy import Int32, UInt8, UInt32, Array, copy, dispatch
 from tpy.extern import native
-from typing import overload
 import math
 
 
@@ -296,19 +295,19 @@ class Random:
         width: Int32 = b - a + 1
         return a + Int32(self._randbelow(UInt32(width)))
 
-    @overload
+    @dispatch
     def randrange(self, stop: Int32) -> Int32:
         if stop <= 0:
             raise ValueError("empty range for randrange()")
         return Int32(self._randbelow(UInt32(stop)))
 
-    @overload
+    @dispatch
     def randrange(self, start: Int32, stop: Int32) -> Int32:
         if stop <= start:
             raise ValueError("empty range for randrange()")
         return start + Int32(self._randbelow(UInt32(stop - start)))
 
-    @overload
+    @dispatch
     def randrange(self, start: Int32, stop: Int32, step: Int32) -> Int32:
         if step == 0:
             raise ValueError("zero step for randrange()")
@@ -517,13 +516,13 @@ _inst: Random = Random()
 def random() -> float:
     return _inst.random()
 
-@overload
+@dispatch
 def seed() -> None:
     # No-arg form: re-seed from OS entropy (matches CPython's seed()
     # default behavior when called without arguments).
     _inst._seed(_os_entropy_uint32())
 
-@overload
+@dispatch
 def seed(n: Int32) -> None:
     # CPython treats negative seeds as their absolute value. For
     # INT32_MIN the mathematical abs doesn't fit in Int32, but
@@ -545,15 +544,15 @@ def choice[T](seq: list[T]) -> T:
 def shuffle[T](seq: list[T]) -> None:
     _inst.shuffle(seq)
 
-@overload
+@dispatch
 def randrange(stop: Int32) -> Int32:
     return _inst.randrange(stop)
 
-@overload
+@dispatch
 def randrange(start: Int32, stop: Int32) -> Int32:
     return _inst.randrange(start, stop)
 
-@overload
+@dispatch
 def randrange(start: Int32, stop: Int32, step: Int32) -> Int32:
     return _inst.randrange(start, stop, step)
 

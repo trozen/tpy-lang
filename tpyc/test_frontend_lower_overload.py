@@ -12,6 +12,7 @@ from . import get_lib_dir
 from .compiler import Compiler
 from .diagnostics import Diagnostic, DiagnosticLevel
 from .frontend_ir.lower import lower_module
+from .parse.nodes import OverloadForm
 from .frontend_ir.nodes import (
     BoolLit, Decorator, FrontendModule, Function, IntLit, NamedType, Param,
     Return, StrLit)
@@ -32,9 +33,9 @@ def _overload_fn(param_type: str, ret: str) -> Function:
 
 
 def test_is_overload_lowers_to_overload_stub():
-    # Two same-named is_overload Functions -> two is_overload_stub TpyFunctions.
-    # Bodied members keep is_stub=False (the body is the impl) and satisfy the
-    # has_implementation gate sema requires for an impl-less overload group.
+    # Two same-named is_overload Functions -> two @dispatch TpyFunctions.
+    # Bodied members keep is_stub=False (the body is the impl), which is the
+    # self-contained shape a @dispatch set requires.
     res = lower_module(
         FrontendModule(qname="m", functions=(
             _overload_fn("Int32", "Int32"),
@@ -44,9 +45,8 @@ def test_is_overload_lowers_to_overload_stub():
     fns = res.module.functions
     assert [f.name for f in fns] == ["pick", "pick"]
     for f in fns:
-        assert f.is_overload_stub
+        assert f.overload_form is OverloadForm.DISPATCH
         assert not f.is_stub
-        assert f.has_implementation
 
 
 def test_native_is_overload_member_keeps_both_stub_flags():

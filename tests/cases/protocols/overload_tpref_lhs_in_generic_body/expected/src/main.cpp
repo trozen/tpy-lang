@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// @overload
+// @dispatch
 // def pick(x: Int32, y: Int32) -> Int32:
 int32_t pick(int32_t x, int32_t y) {
     // return x

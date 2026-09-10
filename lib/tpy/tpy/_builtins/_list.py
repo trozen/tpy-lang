@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Self, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, Own
+from .._typing import Self, Iterator, Iterable
+from .._bootstrap._decorators import readonly, pure, Own, dispatch
 from .._core._types import Int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, Spannable
 from .._core._containers import Span
 from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type
@@ -15,13 +15,13 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @cpp_template("::tpy::construct<std::vector<{T}>>({0})")
     def __init__(self, x: Iterable[Own[T]]) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::__iter__", function=True)
     @pure
     @readonly
     def __iter__(self) -> Iterator[T]: ...
 
-    @overload
+    @dispatch
     @native("tpy::own_iter", function=True)
     def __iter__(self: Own[Self]) -> Iterator[Own[T]]: ...
 
@@ -33,11 +33,11 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @native("push_back")
     def append(self, value: Own[T]) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::pop_back", function=True)
     def pop(self) -> Own[T]: ...
 
-    @overload
+    @dispatch
     @native("tpy::list_pop_at", function=True)
     def pop(self, index: Int32) -> Own[T]: ...
 
@@ -49,34 +49,34 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @readonly
     def unchecked_get(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
     def __getitem__(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
     @readonly
     def __getitem__(self, index: basic_slice) -> Span[T]: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
     @pure
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
-    @overload
+    @dispatch
     @native("tpy::__setitem__", function=True)
     @native_preserves_refs
     def __setitem__(self, index: Int32, value: Own[T]) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::list_set_slice", function=True)
     def __setitem__(self, index: basic_slice, value: Iterable[Own[T]]) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::list_set_stepped_slice", function=True)
     def __setitem__(self, index: slice, value: Iterable[Own[T]]) -> None: ...
 

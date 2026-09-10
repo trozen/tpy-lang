@@ -25,8 +25,8 @@
 # args) is filed in TODO.md as `bidir-hint follow-ups`. Until that lands,
 # the user workaround is to write the inner ctors with explicit type args:
 # `f(Box[Pet](Dog("Rex")), Box[Pet](Dog("Spot")))`.
-from typing import Protocol, overload
-from tpy import dynamic, Own
+from typing import Protocol
+from tpy import dynamic, Own, dispatch
 from tplib import Box
 
 
@@ -47,18 +47,18 @@ class Result:
     pass
 
 
-@overload
+@dispatch
 def f(x: Own[Box[Pet]], y: str) -> Own[Result]:
     return Result()
 
 
-@overload
+@dispatch
 def f(x: Own[Box[Pet]], y: Own[Box[Pet]]) -> Own[Result]:
     return Result()
 
 
 def main() -> None:
-    r: Result = f(Box(Dog("Rex")), Box(Dog("Spot")))  # tpyc: error(/No matching @overload/)
+    r: Result = f(Box(Dog("Rex")), Box(Dog("Spot")))  # tpyc: error(/No matching overload/)
     print(r)
 
 

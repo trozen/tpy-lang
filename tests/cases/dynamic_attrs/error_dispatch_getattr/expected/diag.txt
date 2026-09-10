@@ -1,0 +1,1 @@
+main.py:14: error: __getattr__ cannot be @dispatch

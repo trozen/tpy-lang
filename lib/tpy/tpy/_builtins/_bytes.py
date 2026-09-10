@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Self, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, Own
+from .._typing import Self, Iterator, Iterable
+from .._bootstrap._decorators import readonly, pure, Own, dispatch
 from .._core._types import UInt8, UInt64, Int32, Equatable, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 from tpy import BytesView
@@ -10,26 +10,26 @@ from tpy import BytesView
 @builtin_type("builtins.bytes")
 @native("std::vector<uint8_t>")
 class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
-    @overload
+    @dispatch
     @cpp_template("std::vector<uint8_t>()")
     def __init__(self) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytes) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytearray) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: BytesView) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::construct<std::vector<uint8_t>>({0})")
     def __init__(self, x: Iterable[UInt8]) -> None: ...
     # TODO(hot-path): the Int32 overload below is per-element range-checked.
-    @overload
+    @dispatch
     @native("tpy::bytes_from_int_iterable", function=True)
     def __init__(self, x: Iterable[Int32]) -> None: ...
 
@@ -43,44 +43,44 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def __len__(self) -> Int32: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_getitem", function=True)
     @readonly
     @pure
     def __getitem__(self, index: Int32) -> UInt8: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::bytes_slice({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: basic_slice) -> BytesView: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::bytes_stepped_slice({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: slice) -> bytes: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
     def __contains__(self, value: UInt8) -> bool: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_contains_sub", function=True)
     @readonly
     @pure
     def __contains__(self, value: bytes) -> bool: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_concat", function=True)
     @readonly
     def __add__(self, other: bytes) -> bytes: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_concat", function=True)
     @readonly
     def __add__(self, other: bytearray) -> bytes: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_concat", function=True)
     @readonly
     def __add__(self, other: BytesView) -> bytes: ...
@@ -168,12 +168,12 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def lstrip(self) -> BytesView: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_rstrip_view", function=True)
     @readonly
     @pure
     def rstrip(self) -> BytesView: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_rstrip_chars_view", function=True)
     @readonly
     @pure
@@ -188,27 +188,27 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
 @builtin_type("builtins.bytearray")
 @native("std::vector<uint8_t>")
 class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
-    @overload
+    @dispatch
     @cpp_template("std::vector<uint8_t>()")
     def __init__(self) -> None: ...
     # Concrete overloads first, same rationale as in `bytes` above.
-    @overload
+    @dispatch
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytes) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: BytesView) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytearray) -> None: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
-    @overload
+    @dispatch
     @cpp_template("::tpy::construct<std::vector<uint8_t>>({0})")
     def __init__(self, x: Iterable[UInt8]) -> None: ...
     # TODO(hot-path): the Int32 overload below is per-element range-checked.
-    @overload
+    @dispatch
     @native("tpy::bytes_from_int_iterable", function=True)
     def __init__(self, x: Iterable[Int32]) -> None: ...
 
@@ -222,30 +222,30 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def __len__(self) -> Int32: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_getitem", function=True)
     @readonly
     @pure
     def __getitem__(self, index: Int32) -> UInt8: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::bytes_slice({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: basic_slice) -> BytesView: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::bytes_stepped_slice({self}, {0})")
     @readonly
     @pure
     def __getitem__(self, index: slice) -> bytes: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
     def __contains__(self, value: UInt8) -> bool: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_contains_sub", function=True)
     @readonly
     @pure
@@ -254,15 +254,15 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @native("tpy::bytearray_setitem", function=True)
     def __setitem__(self, index: Int32, value: UInt8) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_concat", function=True)
     @readonly
     def __add__(self, other: bytes) -> Own[bytearray]: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_concat", function=True)
     @readonly
     def __add__(self, other: bytearray) -> Own[bytearray]: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_concat", function=True)
     @readonly
     def __add__(self, other: BytesView) -> Own[bytearray]: ...
@@ -280,18 +280,18 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @native("push_back")
     def append(self, value: UInt8) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::extend", function=True)
     def extend(self, other: Iterable[UInt8]) -> None: ...
     # TODO(hot-path): the Int32 overload below is per-element range-checked.
-    @overload
+    @dispatch
     @native("tpy::bytes_extend_int_iterable", function=True)
     def extend(self, other: Iterable[Int32]) -> None: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytearray_pop", function=True)
     def pop(self) -> UInt8: ...
-    @overload
+    @dispatch
     @native("tpy::bytearray_pop_at", function=True)
     def pop(self, index: Int32) -> UInt8: ...
 
@@ -368,12 +368,12 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def lstrip(self) -> bytearray: ...
 
-    @overload
+    @dispatch
     @native("tpy::bytes_rstrip", function=True)
     @readonly
     @pure
     def rstrip(self) -> bytearray: ...
-    @overload
+    @dispatch
     @native("tpy::bytes_rstrip_chars", function=True)
     @readonly
     @pure

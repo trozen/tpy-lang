@@ -1,14 +1,14 @@
-from typing import Iterator, Iterable, Self, overload
-from tpy import Int32, Own
+from typing import Iterator, Iterable, Self
+from tpy import Int32, Own, dispatch
 class Bag:
     items: list[Int32]
     def __init__(self) -> None:
         self.items = [1, 2]
-    @overload
+    @dispatch
     def __iter__(self) -> Iterator[Int32]:
         for x in self.items:
             yield x
-    @overload
+    @dispatch
     def __iter__(self: Own[Self]) -> Iterator[Own[Int32]]:
         for x in self.items:
             yield x

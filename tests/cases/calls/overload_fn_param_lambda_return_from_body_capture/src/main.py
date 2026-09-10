@@ -3,16 +3,15 @@
 # that the body analysis registered against the enclosing function;
 # otherwise spurious entries would alter codegen for the enclosing main()
 # (e.g. `xs` getting flagged as mutated when it isn't).
-from typing import overload
-from tpy import Fn, Int32
+from tpy import Fn, Int32, dispatch
 
 
-@overload
+@dispatch
 def m[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:
     return Int32(len(xs))
 
 
-@overload
+@dispatch
 def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> Int32:
     return Int32(2 * len(xs))
 

@@ -26,7 +26,7 @@ template<typename T, typename __F0>
   }
 ::tpy::own_return_t<T> reduce(__F0&& func, std::vector<T>& a);
 
-// @overload
+// @dispatch
 // def reduce[T, U](func: Fn[[U, T], U], a: Iterable[T], initial: U) -> Own[U]:
 template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
@@ -50,7 +50,7 @@ template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F
     // return acc
     return std::move((*acc));
 }
-// @overload
+// @dispatch
 // def reduce[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {

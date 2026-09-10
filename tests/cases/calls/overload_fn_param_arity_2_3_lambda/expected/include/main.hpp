@@ -21,7 +21,7 @@ template<typename T, typename __F0>
 ::tpy::val_or_ref_t<T> f(__F0&& g, const std::vector<T>& a);
 void main();
 
-// @overload
+// @dispatch
 // def f[T, U](g: Fn[[U, T], U], a: list[T], init: U) -> U:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
@@ -31,7 +31,7 @@ template<typename T, typename U, typename __F0>
     // return init
     return init;
 }
-// @overload
+// @dispatch
 // def f[T](g: Fn[[T, T], T], a: list[T]) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {

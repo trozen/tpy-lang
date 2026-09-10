@@ -1,1 +1,1 @@
-main.py:61: error: No matching @overload for f(Box[Dog], Box[Dog])
+main.py:61: error: No matching overload for f(Box[Dog], Box[Dog])

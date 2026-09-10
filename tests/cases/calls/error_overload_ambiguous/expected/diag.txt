@@ -1,1 +1,1 @@
-main.py:37: error: Ambiguous overload for 'describe': multiple candidates match equally: describe(Greeter); describe(Farewell)
+main.py:38: error: Ambiguous overload for 'describe': multiple candidates match equally: describe(Greeter); describe(Farewell)

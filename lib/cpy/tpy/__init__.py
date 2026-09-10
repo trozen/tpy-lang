@@ -8,6 +8,9 @@ allowing TurboPython source files to run in CPython and enabling IDE support.
 from __future__ import annotations
 from typing import Generic, TypeVar, Callable, Protocol as _Protocol, runtime_checkable as _runtime_checkable
 import copy as _copy_module
+import inspect as _inspect
+import collections.abc as _collections_abc
+import typing as _typing
 
 # Version/implementation identification lives in `tpy.version` submodule
 # for API parity with the compiled side (see lib/tpy/tpy/version.py):
@@ -556,6 +559,149 @@ class readonly:
 def pure(func):
     """No-op in CPython. The compiler tracks purity metadata at compile time."""
     return func
+
+
+# ---------------------------------------------------------------------------
+# dispatch
+# ---------------------------------------------------------------------------
+
+_dispatch_registry: dict[tuple[str, str], list] = {}
+
+
+def _arity_of(func) -> tuple[int, int]:
+    """Return (min_args, max_args) for a function."""
+    sig = _inspect.signature(func)
+    min_args = 0
+    max_args = 0
+    for p in sig.parameters.values():
+        if p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD):
+            continue
+        max_args += 1
+        if p.default is _inspect.Parameter.empty:
+            min_args += 1
+    return min_args, max_args
+
+
+def _callable_arity_of_annotation(ann) -> int | None:
+    """Parameter count of a `Callable[[T1, ...], R]` / `Fn[...]` annotation,
+    or None when the annotation isn't a parameterised callable. Used to
+    disambiguate Fn-shape overload variants by the supplied callable's
+    arity -- the compiler-side check is arity-aware, so the runtime
+    dispatcher must match.
+    """
+    origin = getattr(ann, "__origin__", None)
+    # Python 3.9+ resolves `Callable[X, R].__origin__` to
+    # `collections.abc.Callable` regardless of whether the source spelled
+    # `typing.Callable` or `collections.abc.Callable`.
+    if origin is not _collections_abc.Callable:
+        return None
+    args_attr = getattr(ann, "__args__", None)
+    if not args_attr or len(args_attr) < 1:
+        return None
+    # Callable[..., R] (open arity) has args = (Ellipsis, R) -- not arity-checkable.
+    if args_attr[0] is Ellipsis:
+        return None
+    return len(args_attr) - 1  # last element is the return type
+
+
+def _callable_arity_of_value(value) -> int | None:
+    """Positional parameter count of a callable value (lambda, def, bound
+    method, callable instance), or None when `inspect.signature` can't
+    introspect it. Companion of `_callable_arity_of_annotation` for
+    arity-based overload dispatch.
+    """
+    try:
+        sig = _inspect.signature(value)
+    except (TypeError, ValueError):
+        return None
+    n = 0
+    for p in sig.parameters.values():
+        if p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD):
+            continue
+        n += 1
+    return n
+
+
+def _type_matches(func, args: tuple) -> bool:
+    """Check if positional args match the function's type annotations."""
+    try:
+        hints = _typing.get_type_hints(func)
+    except Exception:
+        return True  # can't resolve hints -- accept on arity alone
+    params = list(_inspect.signature(func).parameters.keys())
+    for i, arg in enumerate(args):
+        if i >= len(params):
+            break
+        pname = params[i]
+        if pname == "self":
+            continue
+        if pname not in hints:
+            continue
+        ann = hints[pname]
+        if isinstance(ann, type):
+            # A plain int is not an instance of the fixed-int stubs (they
+            # subclass int), but the compiler lets a literal bind to any
+            # fixed-int slot it fits; mirror that. Two same-arity fixed-int
+            # siblings that both fit still go to the first declared, where
+            # the compiler picks the narrowest.
+            if (type(arg) is int and issubclass(ann, int) and ann is not int
+                    and hasattr(ann, "MIN")):
+                if not (ann.MIN <= arg <= ann.MAX):
+                    return False
+                continue
+            if not isinstance(arg, ann):
+                return False
+            continue
+        # Fn[[T1, ...], R] / Callable[[T1, ...], R]: disambiguate by
+        # callable arity. Skip when the annotation has open arity
+        # (Callable[..., R]) or the arg can't be inspected.
+        expected_arity = _callable_arity_of_annotation(ann)
+        if expected_arity is not None:
+            actual_arity = _callable_arity_of_value(arg)
+            if actual_arity is not None and actual_arity != expected_arity:
+                return False
+        # Other complex annotations (unions, generics): skip; isinstance
+        # can't handle them and we'd rather fall through than crash.
+    return True
+
+
+def dispatch(func):
+    """CPython implementation of tpy.dispatch.
+
+    The compiler resolves a @dispatch set statically; here the variants are
+    accumulated by qualified name and each call tries them in declaration
+    order, arity match first, then isinstance on the annotated parameter
+    types. `typing.overload` is left untouched: its stubs-plus-implementation
+    form already runs under stock CPython.
+    """
+    # Keyed by module too: two modules' same-named sets must not merge.
+    key = (func.__module__, func.__qualname__)
+    if key not in _dispatch_registry:
+        _dispatch_registry[key] = []
+    _dispatch_registry[key].append(func)
+    variants = _dispatch_registry[key]
+
+    def dispatcher(*args, **kwargs):
+        n = len(args) + len(kwargs)
+        # Pass 1: arity + type match
+        for variant in variants:
+            lo, hi = _arity_of(variant)
+            if lo <= n <= hi and _type_matches(variant, args):
+                return variant(*args, **kwargs)
+        # Pass 2: arity match only (fallback for complex annotations)
+        for variant in variants:
+            lo, hi = _arity_of(variant)
+            if lo <= n <= hi:
+                return variant(*args, **kwargs)
+        raise TypeError(
+            f"No matching overload for {key[1]} with {n} argument(s)")
+
+    # Preserve metadata for introspection
+    dispatcher.__name__ = func.__name__
+    dispatcher.__qualname__ = func.__qualname__
+    dispatcher.__module__ = func.__module__
+    dispatcher.__dispatch__ = True
+    return dispatcher
 
 
 def error_return(exc_type):

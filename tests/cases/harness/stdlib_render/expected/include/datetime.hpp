@@ -95,39 +95,39 @@ struct timedelta {
     // def __abs__(self) -> timedelta:
     timedelta __abs__() const;
 
-    // @overload
+    // @dispatch
     // def __mul__(self, other: int) -> timedelta:
     timedelta __mul__(const ::tpy::BigInt& other) const;
 
-    // @overload
+    // @dispatch
     // def __mul__(self, other: float) -> timedelta:
     timedelta __mul__(double other) const;
 
-    // @overload
+    // @dispatch
     // def __rmul__(self, other: int) -> timedelta:
     timedelta __rmul__(const ::tpy::BigInt& other) const;
 
-    // @overload
+    // @dispatch
     // def __rmul__(self, other: float) -> timedelta:
     timedelta __rmul__(double other) const;
 
-    // @overload
+    // @dispatch
     // def __floordiv__(self, other: timedelta) -> int:
     ::tpy::BigInt __floordiv__(timedelta other) const;
 
-    // @overload
+    // @dispatch
     // def __floordiv__(self, other: int) -> timedelta:
     timedelta __floordiv__(const ::tpy::BigInt& other) const;
 
-    // @overload
+    // @dispatch
     // def __truediv__(self, other: timedelta) -> float:
     double __truediv__(timedelta other) const;
 
-    // @overload
+    // @dispatch
     // def __truediv__(self, other: int) -> timedelta:
     timedelta __truediv__(const ::tpy::BigInt& other) const;
 
-    // @overload
+    // @dispatch
     // def __truediv__(self, other: float) -> timedelta:
     timedelta __truediv__(double other) const;
 
@@ -481,11 +481,11 @@ struct date {
     // def __add__(self, other: timedelta) -> "date":
     date __add__(timedelta other) const;
 
-    // @overload
+    // @dispatch
     // def __sub__(self, other: "date") -> timedelta:
     timedelta __sub__(date other) const;
 
-    // @overload
+    // @dispatch
     // def __sub__(self, other: timedelta) -> "date":
     date __sub__(timedelta other) const;
 
@@ -882,11 +882,11 @@ struct datetime {
     // def __add__(self, other: timedelta) -> "datetime":
     ::tpystd::datetime::datetime __add__(::tpystd::datetime::timedelta other) const;
 
-    // @overload
+    // @dispatch
     // def __sub__(self, other: "datetime") -> timedelta:
     ::tpystd::datetime::timedelta __sub__(::tpystd::datetime::datetime other) const;
 
-    // @overload
+    // @dispatch
     // def __sub__(self, other: timedelta) -> "datetime":
     ::tpystd::datetime::datetime __sub__(::tpystd::datetime::timedelta other) const;
 
@@ -1003,7 +1003,7 @@ inline timedelta timedelta::__abs__() const {
     return timedelta(::tpy::BigInt(this->days), ::tpy::BigInt(this->seconds), ::tpy::BigInt(this->microseconds));
 }
 
-// @overload
+// @dispatch
 // def __mul__(self, other: int) -> timedelta:
 inline timedelta timedelta::__mul__(const ::tpy::BigInt& other) const {
     // return timedelta(days=self.days * other, seconds=self.seconds * other,
@@ -1011,7 +1011,7 @@ inline timedelta timedelta::__mul__(const ::tpy::BigInt& other) const {
     return timedelta(((::tpy::BigInt(this->days)) * (other)), ((::tpy::BigInt(this->seconds)) * (other)), ((::tpy::BigInt(this->microseconds)) * (other)));
 }
 
-// @overload
+// @dispatch
 // def __mul__(self, other: float) -> timedelta:
 inline timedelta timedelta::__mul__(double other) const {
     // a, b = other.as_integer_ratio()
@@ -1022,7 +1022,7 @@ inline timedelta timedelta::__mul__(double other) const {
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), _divide_and_round(((this->_to_microseconds()) * (a)), b));
 }
 
-// @overload
+// @dispatch
 // def __rmul__(self, other: int) -> timedelta:
 inline timedelta timedelta::__rmul__(const ::tpy::BigInt& other) const {
     // return timedelta(days=self.days * other, seconds=self.seconds * other,
@@ -1030,7 +1030,7 @@ inline timedelta timedelta::__rmul__(const ::tpy::BigInt& other) const {
     return timedelta(((::tpy::BigInt(this->days)) * (other)), ((::tpy::BigInt(this->seconds)) * (other)), ((::tpy::BigInt(this->microseconds)) * (other)));
 }
 
-// @overload
+// @dispatch
 // def __rmul__(self, other: float) -> timedelta:
 inline timedelta timedelta::__rmul__(double other) const {
     // a, b = other.as_integer_ratio()
@@ -1041,35 +1041,35 @@ inline timedelta timedelta::__rmul__(double other) const {
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), _divide_and_round(((this->_to_microseconds()) * (a)), b));
 }
 
-// @overload
+// @dispatch
 // def __floordiv__(self, other: timedelta) -> int:
 inline ::tpy::BigInt timedelta::__floordiv__(timedelta other) const {
     // return self._to_microseconds() // other._to_microseconds()
     return ((this->_to_microseconds()) / (other._to_microseconds()));
 }
 
-// @overload
+// @dispatch
 // def __floordiv__(self, other: int) -> timedelta:
 inline timedelta timedelta::__floordiv__(const ::tpy::BigInt& other) const {
     // return timedelta(microseconds=self._to_microseconds() // other)
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ((this->_to_microseconds()) / (other)));
 }
 
-// @overload
+// @dispatch
 // def __truediv__(self, other: timedelta) -> float:
 inline double timedelta::__truediv__(timedelta other) const {
     // return self._to_microseconds() / other._to_microseconds()
     return (::tpy::truediv(this->_to_microseconds(), other._to_microseconds()));
 }
 
-// @overload
+// @dispatch
 // def __truediv__(self, other: int) -> timedelta:
 inline timedelta timedelta::__truediv__(const ::tpy::BigInt& other) const {
     // return timedelta(microseconds=_divide_and_round(self._to_microseconds(), other))
     return timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), _divide_and_round(this->_to_microseconds(), other));
 }
 
-// @overload
+// @dispatch
 // def __truediv__(self, other: float) -> timedelta:
 inline timedelta timedelta::__truediv__(double other) const {
     // a, b = other.as_integer_ratio()
@@ -1493,14 +1493,14 @@ inline date date::__add__(timedelta other) const {
     return date::fromordinal(o);
 }
 
-// @overload
+// @dispatch
 // def __sub__(self, other: "date") -> timedelta:
 inline timedelta date::__sub__(date other) const {
     // return timedelta(days=self.toordinal() - other.toordinal())
     return timedelta(((this->toordinal()) - (other.toordinal())));
 }
 
-// @overload
+// @dispatch
 // def __sub__(self, other: timedelta) -> "date":
 inline date date::__sub__(timedelta other) const {
     // o = self.toordinal() - other.days
@@ -2059,7 +2059,7 @@ inline bool datetime::__ge__(::tpystd::datetime::datetime other) const {
     return (this->_cmp(other) >= 0);
 }
 
-// @overload
+// @dispatch
 // def __sub__(self, other: "datetime") -> timedelta:
 inline ::tpystd::datetime::timedelta datetime::__sub__(::tpystd::datetime::datetime other) const {
     // # CPython's __sub__ short-circuits `self._tzinfo is other._tzinfo`
@@ -2081,7 +2081,7 @@ inline ::tpystd::datetime::timedelta datetime::__sub__(::tpystd::datetime::datet
     return ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ((this->_utc_us()) - (other._utc_us())));
 }
 
-// @overload
+// @dispatch
 // def __sub__(self, other: timedelta) -> "datetime":
 inline ::tpystd::datetime::datetime datetime::__sub__(::tpystd::datetime::timedelta other) const {
     // return self + (-other)

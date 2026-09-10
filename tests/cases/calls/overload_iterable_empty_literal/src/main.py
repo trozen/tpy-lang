@@ -10,15 +10,16 @@
 # With the fix: type_conforms_to_protocol is pure, and coerced_element_type
 # is pinned only after overload resolution picks a winner (in
 # `_typecheck_call_args` / `_check_and_coerce_args`).
-from typing import Iterable, overload
+from typing import Iterable
+from tpy import dispatch
 
 
-@overload
+@dispatch
 def pick(xs: Iterable[int], y: int) -> str:
     return "int"
 
 
-@overload
+@dispatch
 def pick(xs: Iterable[float], y: float) -> str:
     return "float"
 

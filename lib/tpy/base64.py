@@ -34,8 +34,7 @@
 # fix works -- aim for parity with binascii on 1 MB, superior on small
 # inputs.
 # tpy: cpp_namespace("tpystd::base64")
-from typing import overload
-from tpy import Int32, UInt8
+from tpy import Int32, UInt8, dispatch
 
 _B64_STD: bytes = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 _B64_URL: bytes = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
@@ -161,7 +160,7 @@ def b64encode(data: bytes, altchars: bytes | None = None) -> bytes:
         return _b64_encode(data, _B64_STD)
     return _b64_encode(data, _build_altchars_alphabet(altchars))
 
-@overload
+@dispatch
 def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False) -> bytes:
     c62: Int32 = _CHAR_PLUS
     c63: Int32 = _CHAR_SLASH
@@ -174,29 +173,29 @@ def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False
         return _b64_decode(data, c62, c63)
     return _b64_decode(_filter_b64_input(data, c62, c63), c62, c63)
 
-@overload
+@dispatch
 def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
     return b64decode(data.encode(), altchars, validate)
 
 def standard_b64encode(data: bytes) -> bytes:
     return _b64_encode(data, _B64_STD)
 
-@overload
+@dispatch
 def standard_b64decode(data: bytes) -> bytes:
     return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH)
 
-@overload
+@dispatch
 def standard_b64decode(data: str) -> bytes:
     return standard_b64decode(data.encode())
 
 def urlsafe_b64encode(data: bytes) -> bytes:
     return _b64_encode(data, _B64_URL)
 
-@overload
+@dispatch
 def urlsafe_b64decode(data: bytes) -> bytes:
     return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER)
 
-@overload
+@dispatch
 def urlsafe_b64decode(data: str) -> bytes:
     return urlsafe_b64decode(data.encode())
 
@@ -220,7 +219,7 @@ def _b16_char_to_value(c: Int32, casefold: bool) -> Int32:
         return c - 97 + 10
     raise ValueError("Invalid base16 character")
 
-@overload
+@dispatch
 def b16decode(data: bytes, casefold: bool = False) -> bytes:
     n: Int32 = Int32(len(data))
     if n % 2 != 0:
@@ -234,7 +233,7 @@ def b16decode(data: bytes, casefold: bool = False) -> bytes:
         i += 2
     return bytes(result)
 
-@overload
+@dispatch
 def b16decode(data: str, casefold: bool = False) -> bytes:
     return b16decode(data.encode(), casefold)
 
@@ -333,13 +332,13 @@ def _b32_preprocess(data: bytes, casefold: bool, map01: bytes | None) -> bytes:
         i += 1
     return bytes(buf)
 
-@overload
+@dispatch
 def b32decode(data: bytes, casefold: bool = False, map01: bytes | None = None) -> bytes:
     if casefold or map01 is not None:
         return _b32decode_impl(_b32_preprocess(data, casefold, map01))
     return _b32decode_impl(data)
 
-@overload
+@dispatch
 def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
     return b32decode(data.encode(), casefold, map01)
 

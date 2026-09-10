@@ -1,8 +1,8 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
-from .._typing import overload, Self, Iterator, Iterable
+from .._typing import Self, Iterator, Iterable
 from tpy import Span, Ptr
-from .._bootstrap._decorators import readonly, pure, nocopy, Own
+from .._bootstrap._decorators import readonly, pure, nocopy, Own, dispatch
 from .._bootstrap._extern import native, cpp_template, builtin_type
 from ._types import Int32, Comparable, Deref, Spannable, NativeIterable
 
@@ -10,11 +10,11 @@ from ._types import Int32, Comparable, Deref, Spannable, NativeIterable
 @builtin_type("tpy.Span")
 @native("std::span")
 class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
-    @overload
+    @dispatch
     @cpp_template("{cpp}({0}, static_cast<size_t>({1}))")
     def __init__(self, ptr: Ptr[T], length: Int32) -> None: ...
 
-    @overload
+    @dispatch
     @cpp_template("{cpp}({0})")
     def __init__(self, source: Span[T]) -> None: ...
 
@@ -33,19 +33,19 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def unchecked_get(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
     def __getitem__(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
     @readonly
     def __getitem__(self, index: basic_slice) -> Span[T]: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
     @pure
     @readonly
@@ -87,19 +87,19 @@ class varargs[T](Iterable[T], NativeIterable[T]):
     @readonly
     def unchecked_get(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
     def __getitem__(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
     @readonly
     def __getitem__(self, index: basic_slice) -> varargs[T]: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
     @pure
     @readonly
@@ -124,19 +124,19 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def unchecked_get(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @native("tpy::__getitem__", function=True)
     @pure
     @readonly
     def __getitem__(self, index: Int32) -> T: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
     @readonly
     def __getitem__(self, index: basic_slice) -> Span[T]: ...
 
-    @overload
+    @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
     @pure
     @readonly

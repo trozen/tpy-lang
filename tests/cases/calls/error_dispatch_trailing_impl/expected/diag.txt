@@ -1,0 +1,1 @@
+main.py:16: error: @dispatch variants of 'f' cannot be followed by a trailing implementation: each variant is its own implementation; use @overload stubs if one implementation serves every signature

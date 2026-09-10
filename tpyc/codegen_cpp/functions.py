@@ -936,7 +936,7 @@ class FunctionGenerator:
             return True
         if func.is_stub and not func.is_overload_stub:
             return False
-        # Bodied @overload variants are self-contained (no separate impl);
+        # Bodied @dispatch variants are self-contained (no separate impl);
         # emit a forward decl just like a regular function.
         if func.is_overload_stub and func.is_stub:
             return False
@@ -1010,7 +1010,7 @@ class FunctionGenerator:
             return False
 
         # Bodyless @overload stubs are handled via the implementation function;
-        # bodied @overload stubs (mode b) are self-contained functions.
+        # bodied @dispatch variants are self-contained functions.
         if func.is_overload_stub and func.is_stub:
             return False
 
@@ -1096,7 +1096,7 @@ class FunctionGenerator:
         """Generate a function definition."""
         from ..parse.nodes import FunctionLinkage
         # Bodyless @overload stubs are emitted via the implementation; bodied
-        # @overload variants (mode b) are self-contained and fall through.
+        # @dispatch variants are self-contained and fall through.
         if func.is_overload_stub and func.is_stub:
             return
         # Stubs have no body -- declaration only

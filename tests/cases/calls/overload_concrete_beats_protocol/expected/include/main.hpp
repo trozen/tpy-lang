@@ -49,7 +49,7 @@ inline std::string Dog::name() const {
     // return "Rex"
     return "Rex";
 }
-// @overload
+// @dispatch
 // def describe(x: Animal) -> str:  # tpyc: ok
 template<Animal T_x>
 std::string describe(T_x& x) {

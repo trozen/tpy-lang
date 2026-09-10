@@ -1,1 +1,1 @@
-main.py:20: error: No matching @overload for take(list[Int32])
+main.py:20: error: No matching overload for take(list[Int32])

@@ -23,6 +23,7 @@ from ..frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategor
 from ..parse.nodes import (
     FunctionLinkage,
     ModuleDirectives,
+    OverloadForm,
     RecordLinkage,
     SourceLocation,
     TpyArrayLiteral,
@@ -990,12 +991,12 @@ def _lower_function(
         native_name=native_name,
         native_function=native_function,
         is_stub=is_stub,
-        # An IR overload member mirrors a source `@overload`: sema groups
-        # same-named `is_overload_stub` functions and resolves by arg type.
-        # A bodied member keeps is_stub=False (the body IS its impl); a
-        # native member already set is_stub above. Both satisfy sema's
-        # has_implementation gate for an impl-less group.
-        is_overload_stub=fn.is_overload,
+        # An IR overload member mirrors a source `@dispatch` variant: sema
+        # groups same-named members and resolves by arg type. A bodied member
+        # keeps is_stub=False (the body IS its impl); a native member already
+        # set is_stub above. Either way the member is self-contained, which is
+        # the @dispatch contract.
+        overload_form=OverloadForm.DISPATCH if fn.is_overload else None,
     )
 
 

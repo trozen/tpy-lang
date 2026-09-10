@@ -1,5 +1,5 @@
-# @overload methods with bodies directly (no trailing impl)
-from typing import overload
+# @dispatch methods: each carries its own body, no trailing impl
+from tpy import dispatch
 
 
 class Animal:
@@ -8,11 +8,11 @@ class Animal:
     def __init__(self, name: str) -> None:
         self.name = name
 
-    @overload
+    @dispatch
     def greet(self, x: int) -> str:  # tpyc: ok
         return self.name + " got " + str(x) + " treats"
 
-    @overload
+    @dispatch
     def greet(self, x: str) -> str:  # tpyc: ok
         return self.name + " heard '" + x + "'"
 

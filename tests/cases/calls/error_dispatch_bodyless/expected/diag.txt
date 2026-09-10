@@ -1,0 +1,1 @@
+main.py:7: error: @dispatch 'f' has no body: a @dispatch variant is its own implementation (a body, @native or @cpp_template); use @overload stubs with a trailing implementation instead

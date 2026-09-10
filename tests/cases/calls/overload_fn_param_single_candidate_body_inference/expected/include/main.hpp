@@ -24,7 +24,7 @@ void main();
 // # candidate, we land in Regime B which uses _infer_arg_types ->
 // # _analyze_lambda_with_fn_hint -- preserving body-return-TPR
 // # inference for U.
-// @overload
+// @dispatch
 // def apply[T, U](f: Fn[[T], U], xs: list[T]) -> Int32:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
@@ -34,7 +34,7 @@ int32_t apply(__F0&& f, const std::vector<T>& xs) {
     // return Int32(0)
     return 0;
 }
-// @overload
+// @dispatch
 // def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
 template<typename T>
 ::tpy::val_or_ref_t<T> apply(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {

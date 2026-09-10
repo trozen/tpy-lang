@@ -26,7 +26,7 @@ from ..type_def_registry import is_span, is_varargs, is_spanlike_view
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
-from ..parse.nodes import RecordLinkage
+from ..parse.nodes import RecordLinkage, OverloadForm
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
@@ -1919,19 +1919,12 @@ class SemanticAnalyzer:
                 continue
             stubs = pending_stubs.pop(method.name, None)
             if stubs:
-                self._reject_bodied_overloads_with_impl(
-                    stubs, method, f"{record.name}.{method.name}")
+                self._require_overload_form(
+                    stubs, f"{record.name}.{method.name}", impl=method)
                 self._validate_method_overload_group(method, stubs, record.name)
                 self.overload_groups[id(method)] = stubs
         for name, stubs in pending_stubs.items():
-            # All stubs must be self-contained: each is @native, @cpp_template,
-            # or carries its own body (mode b). Mixed native + bodied groups OK.
-            if all(s.has_implementation for s in stubs):
-                continue
-            raise SemanticError(
-                f"@overload stubs for '{record.name}.{name}' have no implementation method",
-                stubs[0].loc or record.loc,
-            )
+            self._require_overload_form(stubs, f"{record.name}.{name}", impl=None)
 
     def _validate_method_overload_group(
         self, impl: TpyFunction, stubs: list[TpyFunction], record_name: str,
@@ -2141,40 +2134,53 @@ class SemanticAnalyzer:
             # Non-stub function: check if there are pending stubs for this name
             stubs = pending_stubs.pop(func.name, None)
             if stubs:
-                self._reject_bodied_overloads_with_impl(stubs, func, func.name)
+                self._require_overload_form(stubs, func.name, impl=func)
                 self._register_overload_group(func, stubs)
             else:
                 self.registrar.register_function(func)
 
-        # Stubs left without an implementation: each stub must be self-contained
-        # (native, cpp_template, or carries its own body).
+        # A @dispatch set has no trailing implementation to register with;
+        # a @overload set left here is missing its implementation.
         for name, stubs in pending_stubs.items():
-            if all(s.has_implementation for s in stubs):
-                self.registrar.register_overload_group(stubs)
-            else:
-                raise SemanticError(
-                    f"@overload stubs for '{name}' have no implementation function",
-                    stubs[0].loc,
-                )
+            self._require_overload_form(stubs, name, impl=None)
+            self.registrar.register_overload_group(stubs)
 
     @staticmethod
-    def _reject_bodied_overloads_with_impl(
-        stubs: list[TpyFunction], impl: TpyFunction, display_name: str,
+    def _require_overload_form(
+        stubs: list[TpyFunction], display_name: str, impl: TpyFunction | None,
     ) -> None:
-        """Disallow mixing bodied @overload with a trailing implementation.
+        """Check a same-named group against its decorator's contract.
 
-        A bodied @overload variant is itself the implementation of that
-        signature. Pairing it with another trailing impl would make dispatch
-        ambiguous; require the author to pick one mode per group.
+        The parser already validated each def alone (a @overload stub is
+        bodyless, a @dispatch variant is self-contained); the group-level
+        half is that the two decorators never mix under one name, that a
+        @overload set ends in an implementation, and that a @dispatch set
+        does not.
         """
-        for stub in stubs:
-            if stub.is_overload_stub and not stub.is_stub:
+        form = stubs[0].overload_form
+        for stub in stubs[1:]:
+            if stub.overload_form is not form:
                 raise SemanticError(
-                    f"@overload '{display_name}' has a body and cannot be "
-                    f"paired with a trailing implementation; either remove "
-                    f"the body or remove the trailing implementation",
-                    stub.loc or impl.loc,
+                    f"'{display_name}' mixes @overload and @dispatch; a name "
+                    f"is either a set of @overload stubs with one trailing "
+                    f"implementation or a set of @dispatch variants",
+                    stub.loc,
                 )
+        if form is OverloadForm.OVERLOAD and impl is None:
+            raise SemanticError(
+                f"@overload stubs for '{display_name}' have no implementation; "
+                f"add a trailing `def {stubs[0].name}` without @overload, or "
+                f"use @dispatch for variants that are their own implementation",
+                stubs[0].loc,
+            )
+        if form is OverloadForm.DISPATCH and impl is not None:
+            raise SemanticError(
+                f"@dispatch variants of '{display_name}' cannot be followed by "
+                f"a trailing implementation: each variant is its own "
+                f"implementation; use @overload stubs if one implementation "
+                f"serves every signature",
+                impl.loc,
+            )
 
     def _register_overload_group(
         self, impl: TpyFunction, stubs: list[TpyFunction],
@@ -2786,8 +2792,8 @@ class SemanticAnalyzer:
 
         for method in record.methods:
             # Skip bodyless @overload stubs -- their trailing impl is analyzed
-            # instead. Bodied @overload stubs (mode b) need body analysis just
-            # like regular methods.
+            # instead. A bodied @dispatch variant needs body analysis just
+            # like a regular method.
             if method.is_overload_stub and method.is_stub:
                 continue
 

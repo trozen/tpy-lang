@@ -10,12 +10,12 @@
 #
 # Gaps tracked in STDLIB_ROADMAP.md.
 # tpy: cpp_namespace("tpystd::functools")
-from typing import Iterable, overload
-from tpy import Fn, Own, copy
+from typing import Iterable
+from tpy import Fn, Own, copy, dispatch
 from _functools_macros import total_ordering
 
 
-@overload
+@dispatch
 def reduce[T, U](func: Fn[[U, T], U], a: Iterable[T], initial: U) -> Own[U]:
     acc: U = copy(initial)
     for x in a:
@@ -23,7 +23,7 @@ def reduce[T, U](func: Fn[[U, T], U], a: Iterable[T], initial: U) -> Own[U]:
     return acc
 
 
-@overload
+@dispatch
 def reduce[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
     if len(a) == 0:
         raise ValueError("reduce() of empty list with no initial value")
