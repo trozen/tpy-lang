@@ -3702,10 +3702,11 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         elif isinstance(stmt.init, TpyName):
             # A pointer-local source aliases through the deref
             # (`Point& alias = (*p);`) -- the shared pointer-name-source
-            # render, also the erased-@dynamic assign's. The name arm
-            # always yields a THIRName here, so the helper never misses.
+            # render, also the erased-@dynamic assign's. The receiver
+            # producer owns its lvalue spelling and dereference.
             src = _lower_ptr_name_src(stmt.init, lc, declared)
-            assert src is not None
+            if src is None:
+                raise ThirUnsupported(stmt_reject_reason(stmt))
         elif isinstance(stmt.init, TpyCoerce):
             # The deref auto-coercion the gate admitted (`p2: Point = ptr`):
             # `::tpy::deref_check(ptr)` is itself the aliased lvalue, so the
@@ -3737,14 +3738,12 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         src = _lower_expr(stmt.init, lc, declared)
         if (src.form is Form.BORROW and src.result_type == vtype
                 and not lc.resumable_leaf_mode):
-            if (isinstance(src, THIRName) and src.cpp is None
+            if (isinstance(src, THIRSelf) or (
+                    isinstance(src, THIRName) and src.cpp is None
                     and stmt.init.name not in lc.pointers
-                    and stmt.init.name not in lc.prescan.global_slots):
-                # A plain record local/param source: the pointer decl takes
-                # the address of the lvalue (`Point* x = &(a);`) -- the
-                # subscript arm's PTR_ADDR emit over the bare name. A
-                # pointer-local / global-slot / spelled source stays out
-                # (its render is the bare pointer copy, unwitnessed).
+                    and stmt.init.name not in lc.prescan.global_slots)):
+                # The pointer slot addresses the live local, param or receiver.
+                # Other spelled pointer/global sources keep their own admission.
                 needs_rebind = stmt.name in lc.prescan.rvalue_reassigned
                 if needs_rebind:
                     lc.rebind_slot_locals.add(stmt.name)
@@ -4841,7 +4840,7 @@ def _lower_ptr_name_src(init: TpyExpr, lc: _LowerCtx,
     """Lower a NAME source, forcing the deref render for a pointer-local
     (`(*p)` -- pointer names render bare by default, their access riding
     the arrow arms); bare for a non-pointer name. None for a non-name
-    source or a non-name render (those keep their own deref rules)."""
+    source or another render. Receiver lvalues keep the producer's deref."""
     if not isinstance(init, TpyName):
         return None
     # The one decl verdict `_decl_slot_forms` cannot give: the deref is the
@@ -4849,7 +4848,7 @@ def _lower_ptr_name_src(init: TpyExpr, lc: _LowerCtx,
     # callers use it for several decl shapes.
     src = _lower_expr(init, lc, declared,
                       use=_ExprUse(pos=SinkPos.LOCAL_DECL, forms=_ONLY_INDIRECT_READ))
-    return src if isinstance(src, THIRName) else None
+    return src if isinstance(src, (THIRName, THIRSelf)) else None
 
 
 def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
@@ -6691,8 +6690,8 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
     contract. Admitted sources are the proven-lvalue shapes: a
     record-element container subscript (the optptr.subscript guards --
     unproven-Optional / slice / rvalue-container receivers reject, an
-    address into a dying temp would dangle) and an F1-record field source.
-    Everything else keeps the named reject."""
+    address into a dying temp would dangle), a record field, the receiver,
+    or an existing alias/pointer/frame slot. Other sources keep the reject."""
     init = stmt.init
     analyzer = lc.analyzer
     pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -6720,6 +6719,11 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
     elif (isinstance(init, TpyFieldAccess)
             and _f2_reseat_ok(init, declared, analyzer)):
         src = _lower_field_source(init, lc, declared)
+    elif isinstance(init, TpyName) and init.name == lc.self_receiver:
+        # The frame already borrows the live receiver; its local alias
+        # takes the address of that same lvalue across suspension.
+        src = _lower_expr(init, lc, declared,
+                          use=_ExprUse(pos=SinkPos.ALIAS_BIND))
     elif (isinstance(init, TpyName)
             and (init.name in lc.pointers or init.name in lc.frame_slots)
             and init.name not in lc.narrow.narrowed):

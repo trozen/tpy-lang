@@ -1,0 +1,20 @@
+constructor 11
+method 16 16
+readonly 16 16
+readonly_changed 17 17
+closure_try 26
+generic 7 7 28
+reassign 32 23
+ordinary 33 25 25
+generator 34 34
+generator 46 46
+generator_done 56
+generator_rebind 56 56
+generator_rebind 67 67
+readonly_generator 77 77
+readonly_generator 87 87
+async 110 110
+consuming 41 41
+returned 41
+narrowed 51 51
+narrowed_caller 51
