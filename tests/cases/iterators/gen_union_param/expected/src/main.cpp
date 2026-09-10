@@ -77,7 +77,7 @@ void main() {
         }
     }
     // pet: Dog | Cat = Cat("tom")
-    std::variant<Cat, Dog> __slot_1 = Cat("tom");
+    ::tpy::Union<Cat, Dog> __slot_1 = Cat("tom");
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for s in describe(pet):
     {

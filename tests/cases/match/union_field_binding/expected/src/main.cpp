@@ -32,12 +32,12 @@ void describe(const std::variant<Circle*, Rect*> s) {
 // def main() -> None:
 void main() {
     // c: Circle | Rect = Circle(5.0)
-    std::variant<Circle, Rect> __slot_1 = Circle(5.0);
+    ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     // describe(c)
     describe(c);
     // r: Circle | Rect = Rect(3.0, 4.0)
-    std::variant<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
+    ::tpy::Union<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     std::variant<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
     // describe(r)
     describe(r);

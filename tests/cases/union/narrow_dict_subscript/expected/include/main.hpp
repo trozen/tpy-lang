@@ -11,7 +11,7 @@ struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> get_dict();
+::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> get_dict();
 void main();
 
 // class Cell:

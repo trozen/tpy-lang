@@ -52,7 +52,7 @@ void main() {
     // print(scalar_inline(n))
     std::cout << scalar_inline(n) << "\n";
     // x: A | B | None = A()
-    std::variant<std::monostate, A, B> __slot_1 = A();
+    ::tpy::Union<std::monostate, A, B> __slot_1 = A();
     std::variant<std::monostate, A*, B*> x = ::tpy::to_ptr_variant(__slot_1);
     // print(ref_tuple(x))
     std::cout << ref_tuple(x) << "\n";

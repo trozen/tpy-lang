@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Inner:
 struct Inner {
     // pet: Dog | Cat
-    std::variant<Cat, Dog> pet;
+    ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat) -> None:
     explicit Inner(const std::variant<Cat*, Dog*> pet);
@@ -96,7 +96,7 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat) -> None:
-inline Inner::Inner(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+inline Inner::Inner(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, inner: Inner) -> None:
 inline Zoo::Zoo(const Inner& inner) : inner(inner) {}

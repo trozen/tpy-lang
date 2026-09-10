@@ -21,7 +21,7 @@ struct W {
     int32_t tag;
     // # T buried inside a Union -- new walker catches it.
     // via_union: Int32 | T
-    std::variant<int32_t, T> via_union;
+    ::tpy::Union<int32_t, T> via_union;
     // # T buried inside a Callable's param list -- new walker catches it.
     // via_callable: Callable[[T], Int32]
     std::function<int32_t(::tpy::param_val_or_ref_t<T>)> via_callable;

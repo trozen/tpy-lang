@@ -53,14 +53,14 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class H:
 struct H {
     // u: A | B
-    std::variant<A, B> u;
+    ::tpy::Union<A, B> u;
     // n: Int32
     int32_t n;
 
     // # Known sema false positive: the field-consumption check does not
     // # credit copy() at a field store, though the MIL genuinely moves v.
     // def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
-    explicit H(std::variant<A, B>&& v);
+    explicit H(::tpy::Union<A, B>&& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
 
@@ -101,6 +101,6 @@ inline B::B(int32_t y) : y(y) {}
 // # Known sema false positive: the field-consumption check does not
 // # credit copy() at a field store, though the MIL genuinely moves v.
 // def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
-inline H::H(std::variant<A, B>&& v) : u(std::move(v)), n(0) {}
+inline H::H(::tpy::Union<A, B>&& v) : u(std::move(v)), n(0) {}
 void __tpy_init();
 } // namespace tpyapp::main

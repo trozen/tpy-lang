@@ -447,10 +447,9 @@ class TypeResolver:
                 "std::monostate" if is_void_like_type(m) else self.type_to_cpp(m)
                 for m in typ.members
             ]
-            # Mirrors UnionType.to_cpp: a value union is `::tpy::Union`, the
-            # type that owns Python's comparison rule.
-            head = "::tpy::Union" if typ.is_value_type() else "std::variant"
-            return f"{head}<{', '.join(cpp_members)}>"
+            # Mirrors UnionType.to_cpp: the storage form is `::tpy::Union`,
+            # the type that owns Python's comparison rule.
+            return f"::tpy::Union<{', '.join(cpp_members)}>"
         # Resolve PendingViewType to concrete types before codegen
         if isinstance(typ, PendingViewType):
             return self._resolve_pending_view(typ).to_cpp()

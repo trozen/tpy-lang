@@ -53,7 +53,7 @@ inline Circle::Circle(int32_t radius) : radius(radius) {}
 
 // def __init__(self, width: Int32) -> None:
 inline Rect::Rect(int32_t width) : width(width) {}
-using Shape = std::variant<Circle, Rect>;
+using Shape = ::tpy::Union<Circle, Rect>;
 
 void __tpy_init();
 } // namespace tpyapp::main

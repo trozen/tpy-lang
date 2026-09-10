@@ -68,16 +68,16 @@ std::string pick(const std::variant<A*, B*, C*, D*> x) {
 // def main() -> None:
 void main() {
     // a: A | B | C | D = A(1)
-    std::variant<A, B, C, D> __slot_1 = A(::tpy::BigInt(1));
+    ::tpy::Union<A, B, C, D> __slot_1 = A(::tpy::BigInt(1));
     std::variant<A*, B*, C*, D*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: A | B | C | D = B(2)
-    std::variant<A, B, C, D> __slot_2 = B(::tpy::BigInt(2));
+    ::tpy::Union<A, B, C, D> __slot_2 = B(::tpy::BigInt(2));
     std::variant<A*, B*, C*, D*> b = ::tpy::to_ptr_variant(__slot_2);
     // c: A | B | C | D = C(3)
-    std::variant<A, B, C, D> __slot_3 = C(::tpy::BigInt(3));
+    ::tpy::Union<A, B, C, D> __slot_3 = C(::tpy::BigInt(3));
     std::variant<A*, B*, C*, D*> c = ::tpy::to_ptr_variant(__slot_3);
     // d: A | B | C | D = D(4)
-    std::variant<A, B, C, D> __slot_4 = D(::tpy::BigInt(4));
+    ::tpy::Union<A, B, C, D> __slot_4 = D(::tpy::BigInt(4));
     std::variant<A*, B*, C*, D*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(pick(a), value(a))
     std::cout << pick(a) << " " << value(a) << "\n";

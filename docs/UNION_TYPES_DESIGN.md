@@ -37,7 +37,7 @@ def area(s: Shape) -> float:
 | **Phase 6** | Tests | **Done** |
 | **Phase 7** | `A \| B \| None` with `std::monostate`, `is None`/`is not None` on unions | **Done** |
 | **Phase 8** | Type aliases (`Shape = Circle \| Rect`) | **Done** |
-| **Phase 9** | Equality `==`/`!=` (and the ordering ops) on VALUE unions, BY VALUE across alternatives -- owned by `::tpy::Union<...>`, not by the compiler | **Done** |
+| **Phase 9** | Equality `==`/`!=` (and the ordering ops) on a union at a STORAGE position, BY VALUE across alternatives -- owned by `::tpy::Union<...>`, not by the compiler | **Done** |
 | **Phase 10** | Unify `narrowed_types` with `non_none_vars` | **Done** |
 | **Phase 11** | `assert isinstance(x, T)` codegen for unions | **Done** |
 | **Phase 12** | Assignment narrowing: `v: A \| B = Rect(...)` narrows `v` to `Rect` for field/method access | **Done** |
@@ -47,8 +47,9 @@ def area(s: Shape) -> float:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Equality / ordering on value unions | **Done** | Phase 9 above. A value union renders `::tpy::Union<...>`, a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` and every container inherits the rule through its own operator. The leaf is the monomorphic twin's answer per pair; an unorderable pair raises `TypeError` at runtime. See `docs/LANGUAGE_FEATURES.md` under Union/Optional |
+| Equality / ordering at a union STORAGE position | **Done** | Phase 9 above. Every union at a storage position renders `::tpy::Union<...>` -- a value union everywhere, a reference union at a field, a container element, an `Own` slot or a return -- a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` and every container inherits the rule through its own operator. The leaf is the monomorphic twin's answer per pair; an unorderable pair raises `TypeError` at runtime. See `docs/LANGUAGE_FEATURES.md` under Union/Optional |
 | `Equatable` / `Hashable` conformance for a union | Not designed | A union has no equality at the TYPE level, so a union against one of its own members, `in` over `list[union]`, and a union dict key all still reject -- `BUGS.md#value-union-no-equatable-conformance` |
+| Equality / ordering on a BORROWED reference union | Not designed | `==` between two pointer-variant unions is a loud reject, so no answer is observed today. The type is where the operator belongs, along with the identity fallback Python uses for a record that defines no `__eq__` -- representable only at a borrow position, where the pointer IS the object. Queued in `TODO.md` |
 | Deferred union init | Not designed | `x: A \| B` without initializer, assigned in branches |
 | `isinstance(x, (A, B))` tuple form | Design only | Narrow to subset of union |
 | Exhaustiveness checking | Design only | isinstance chains + match/case (B3) |
@@ -61,11 +62,11 @@ def area(s: Shape) -> float:
 ## Known Semantic Gaps
 
 No known semantic gaps. Non-value unions use a two-layer representation:
-- **Storage** (fields, containers, rvalue slots): `std::variant<Dog, Cat>` (value variant)
+- **Storage** (fields, containers, rvalue slots): `::tpy::Union<Dog, Cat>` (value variant -- the type that owns Python's comparison rule, the same one a value union spells)
 - **Reference** (params, returns, locals): `std::variant<Dog*, Cat*>` (pointer variant)
 
 This enables zero-copy returns. Conversion between layers uses `::tpy::to_ptr_variant()`.
-Value-type unions (`Int32 | str`) continue using `std::variant<int32_t, std::string>` everywhere.
+Value-type unions (`Int32 | str`) use `::tpy::Union<int32_t, std::string>` everywhere.
 
 ## Design Principles
 
@@ -106,7 +107,7 @@ class UnionType(TpyType):
 
     def to_cpp(self) -> str:
         inner = ", ".join(m.to_cpp() for m in self.members)
-        return f"std::variant<{inner}>"
+        return f"::tpy::Union<{inner}>"
 
     def is_value_type(self) -> bool:
         return True
@@ -151,7 +152,7 @@ Examples:
 
 Members are sorted by a stable key (e.g., their `__str__()` representation or
 a dedicated `sort_key()` method). This ensures `A | B` and `B | A` produce the
-same `UnionType` and the same C++ `std::variant<A, B>`.
+same `UnionType` and the same C++ `::tpy::Union<A, B>`.
 
 ### is_value_type() rationale
 

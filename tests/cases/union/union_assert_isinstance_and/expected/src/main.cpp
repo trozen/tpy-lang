@@ -16,7 +16,7 @@ int32_t get_positive_radius(const std::variant<Circle*, Rect*> s) {
 // def main() -> None:
 void main() {
     // c: Circle | Rect = Circle(Int32(5))
-    std::variant<Circle, Rect> __slot_1 = Circle(5);
+    ::tpy::Union<Circle, Rect> __slot_1 = Circle(5);
     std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(get_positive_radius(c))
     std::cout << get_positive_radius(c) << "\n";

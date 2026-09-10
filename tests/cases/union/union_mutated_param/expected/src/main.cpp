@@ -46,10 +46,10 @@ std::string read_name(const std::variant<Cat*, Dog*> pet) {
 void test() {
     // # Use union-typed locals so rename gets a direct reference (no auto-wrap copy)
     // c: Cat | Dog = Cat("Whiskers")
-    std::variant<Cat, Dog> __slot_1 = Cat("Whiskers");
+    ::tpy::Union<Cat, Dog> __slot_1 = Cat("Whiskers");
     std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_1);
     // d: Cat | Dog = Dog("Rex")
-    std::variant<Cat, Dog> __slot_2 = Dog("Rex");
+    ::tpy::Union<Cat, Dog> __slot_2 = Dog("Rex");
     std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_2);
     // rename(c, "Fluffy")
     rename(c, "Fluffy");

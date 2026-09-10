@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Holder:
 struct Holder {
     // pet: Dog | Cat
-    std::variant<Cat, Dog> pet;
+    ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self) -> None:
     Holder();

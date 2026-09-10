@@ -20,10 +20,10 @@ void main() {
     Zoo z = Zoo(init_pet, "v1");
     // # Reassign field from a pointer-variant local
     // new_pet: Dog | Cat = Cat("Whiskers")
-    std::variant<Cat, Dog> __slot_1 = Cat("Whiskers");
+    ::tpy::Union<Cat, Dog> __slot_1 = Cat("Whiskers");
     std::variant<Cat*, Dog*> new_pet = ::tpy::to_ptr_variant(__slot_1);
     // z.pet = new_pet  # tpyc: warning(/copies/)
-    z.pet = ::tpy::to_value_variant<std::variant<Cat, Dog>>(new_pet);
+    z.pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(new_pet);
     // p = z.pet
     std::variant<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
     // if isinstance(p, Cat):
@@ -34,7 +34,7 @@ void main() {
     }
     // # Reassign field from a function returning pointer-variant
     // z.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
-    z.pet = ::tpy::to_value_variant<std::variant<Cat, Dog>>(identity(new_pet));
+    z.pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(identity(new_pet));
     // p2 = z.pet
     std::variant<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z.pet);
     // if isinstance(p2, Cat):

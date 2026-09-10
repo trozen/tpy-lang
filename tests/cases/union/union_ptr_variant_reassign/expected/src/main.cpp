@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    std::optional<std::variant<Cat, Dog>> __slot_2;
+    std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     // # Init from concrete rvalue, then reassign to different type
     // pet: Dog | Cat = Dog("Rex")
-    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):
     if (true) {
@@ -38,7 +38,7 @@ void main() {
     }
     // # Reassign from another ptr-variant local
     // other: Dog | Cat = Cat("Luna")
-    std::variant<Cat, Dog> __slot_3 = Cat("Luna");
+    ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
     std::variant<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_3);
     // pet = other
     pet = other;

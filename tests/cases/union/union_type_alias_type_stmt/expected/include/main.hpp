@@ -53,7 +53,7 @@ inline Dog::Dog(int32_t age) : age(age) {}
 
 // def __init__(self, age: Int32) -> None:
 inline Cat::Cat(int32_t age) : age(age) {}
-using Pet = std::variant<Cat, Dog>;
+using Pet = ::tpy::Union<Cat, Dog>;
 
 void __tpy_init();
 } // namespace tpyapp::main

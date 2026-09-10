@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Shelter:
 struct Shelter {
     // pet: Dog | Cat | None
-    std::variant<std::monostate, Cat, Dog> pet;
+    ::tpy::Union<std::monostate, Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat | None) -> None:
     explicit Shelter(const std::variant<std::monostate, Cat*, Dog*> pet);
@@ -72,6 +72,6 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat | None) -> None:
-inline Shelter::Shelter(const std::variant<std::monostate, Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(pet)) {}
+inline Shelter::Shelter(const std::variant<std::monostate, Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(pet)) {}
 void __tpy_init();
 } // namespace tpyapp::main

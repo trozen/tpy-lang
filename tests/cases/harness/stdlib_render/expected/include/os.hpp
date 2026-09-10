@@ -201,8 +201,8 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
     bool topdown;
     std::optional<std::function<void(const ::tpy::OSError&)>> onerror;
     bool followlinks;
-    ::tpy::frame_slot<std::vector<std::variant<_WalkEmit, _WalkExpand>>> bstack;
-    ::tpy::frame_slot<std::variant<_WalkEmit, _WalkExpand>> item;
+    ::tpy::frame_slot<std::vector<::tpy::Union<_WalkEmit, _WalkExpand>>> bstack;
+    ::tpy::frame_slot<::tpy::Union<_WalkEmit, _WalkExpand>> item;
     ::tpy::frame_slot<std::vector<std::string>> bdirs;
     ::tpy::frame_slot<std::vector<std::string>> bfiles;
     std::string bcur;

@@ -27,17 +27,17 @@ double area(const std::variant<Circle*, Rect*, Triangle*> s) {
 // def main() -> None:
 void main() {
     // c: Circle | Rect | Triangle = Circle(5.0)
-    std::variant<Circle, Rect, Triangle> __slot_1 = Circle(5.0);
+    ::tpy::Union<Circle, Rect, Triangle> __slot_1 = Circle(5.0);
     std::variant<Circle*, Rect*, Triangle*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(area(c))
     std::cout << ::tpy::print_float(area(c)) << "\n";
     // r: Circle | Rect | Triangle = Rect(3.0, 4.0)
-    std::variant<Circle, Rect, Triangle> __slot_2 = Rect(3.0, 4.0);
+    ::tpy::Union<Circle, Rect, Triangle> __slot_2 = Rect(3.0, 4.0);
     std::variant<Circle*, Rect*, Triangle*> r = ::tpy::to_ptr_variant(__slot_2);
     // print(area(r))
     std::cout << ::tpy::print_float(area(r)) << "\n";
     // t: Circle | Rect | Triangle = Triangle(6.0, 8.0)
-    std::variant<Circle, Rect, Triangle> __slot_3 = Triangle(6.0, 8.0);
+    ::tpy::Union<Circle, Rect, Triangle> __slot_3 = Triangle(6.0, 8.0);
     std::variant<Circle*, Rect*, Triangle*> t = ::tpy::to_ptr_variant(__slot_3);
     // print(area(t))
     std::cout << ::tpy::print_float(area(t)) << "\n";

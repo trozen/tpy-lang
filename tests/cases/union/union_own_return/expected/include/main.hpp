@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<Cat, Dog> make_dog(std::string_view name, int32_t age);
-std::variant<Cat, Dog> make_cat(std::string_view name, int32_t lives);
+::tpy::Union<Cat, Dog> make_dog(std::string_view name, int32_t age);
+::tpy::Union<Cat, Dog> make_cat(std::string_view name, int32_t lives);
 void main();
 
 // class Dog:

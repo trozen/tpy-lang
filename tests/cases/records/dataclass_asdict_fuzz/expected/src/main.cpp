@@ -31,7 +31,7 @@ void main() {
     // np = NamedPoint("origin", Point(Int32(0), Int32(0)))
     NamedPoint np = NamedPoint("origin", Point(0, 0));
     // print(asdict(np))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, std::variant<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
     // # 5. List of dataclasses
     // poly = Polygon([Point(Int32(0), Int32(0)), Point(Int32(1), Int32(0)), Point(Int32(0), Int32(1))])
     Polygon poly = Polygon({Point(0, 0), Point(1, 0), Point(0, 1)});
@@ -52,7 +52,7 @@ void main() {
     // d = Drawing("sketch", [Point(Int32(1), Int32(2))])
     Drawing d = Drawing("sketch", {Point(1, 2)});
     // print(asdict(d))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", ({
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"title", d.title}, {"shapes", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_1 = d.shapes;
         __result.reserve(static_cast<std::size_t>(__obj_1.size()));
@@ -68,7 +68,7 @@ void main() {
     // w = Wrapper(NamedPoint("deep", Point(Int32(9), Int32(8))))
     Wrapper w = Wrapper(NamedPoint("deep", Point(9, 8)));
     // print(asdict(w))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::variant<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"inner", ::tpy::ordered_map<std::string, std::variant<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, std::variant<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", w.inner.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", w.inner.pos.x}, {"y", w.inner.pos.y}})}}))}})) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>>({{"inner", ::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", w.inner.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", w.inner.pos.x}, {"y", w.inner.pos.y}})}}))}})) << "\n";
     // # 8. Default values
     // m = MaybeNamed("test")
     MaybeNamed m = MaybeNamed("test");
@@ -94,7 +94,7 @@ void main() {
     // ml = MultiList([Point(Int32(1), Int32(2))], ["a", "b"])
     MultiList ml = MultiList({Point(1, 2)}, {"a", "b"});
     // print(asdict(ml))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", ({
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::ordered_map<std::string, int32_t>>, std::vector<std::string>>>({{"points", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_3 = ml.points;
         __result.reserve(static_cast<std::size_t>(__obj_3.size()));

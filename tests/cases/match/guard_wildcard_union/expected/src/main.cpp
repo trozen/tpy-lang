@@ -105,13 +105,13 @@ __match_end_2:;
 // def main() -> None:
 void main() {
     // d1: Dog | Cat = Dog("Rex")
-    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
     // d2: Dog | Cat = Dog("Buddy")
-    std::variant<Cat, Dog> __slot_2 = Dog("Buddy");
+    ::tpy::Union<Cat, Dog> __slot_2 = Dog("Buddy");
     std::variant<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
     // c: Dog | Cat = Cat("Luna")
-    std::variant<Cat, Dog> __slot_3 = Cat("Luna");
+    ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
     std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_3);
     // print(classify(d1, True))
     std::cout << classify(d1, true) << "\n";

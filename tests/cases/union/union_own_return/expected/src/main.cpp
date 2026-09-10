@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def make_dog(name: str, age: Int32) -> Own[Dog | Cat]:
-std::variant<Cat, Dog> make_dog(std::string_view name, int32_t age) {
+::tpy::Union<Cat, Dog> make_dog(std::string_view name, int32_t age) {
     // return Dog(name, age)
     return Dog(name, age);
 }
 
 // def make_cat(name: str, lives: Int32) -> Own[Dog | Cat]:
-std::variant<Cat, Dog> make_cat(std::string_view name, int32_t lives) {
+::tpy::Union<Cat, Dog> make_cat(std::string_view name, int32_t lives) {
     // return Cat(name, lives)
     return Cat(name, lives);
 }
@@ -19,7 +19,7 @@ std::variant<Cat, Dog> make_cat(std::string_view name, int32_t lives) {
 // def main() -> None:
 void main() {
     // pet = make_dog("Rex", 5)
-    std::variant<Cat, Dog> __slot_1 = make_dog("Rex", 5);
+    ::tpy::Union<Cat, Dog> __slot_1 = make_dog("Rex", 5);
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
@@ -28,7 +28,7 @@ void main() {
         std::cout << __pet.name << " " << __pet.age << "\n";
     }
     // pet2 = make_cat("Whiskers", 9)
-    std::variant<Cat, Dog> __slot_2 = make_cat("Whiskers", 9);
+    ::tpy::Union<Cat, Dog> __slot_2 = make_cat("Whiskers", 9);
     std::variant<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_2);
     // if isinstance(pet2, Cat):
     if (std::holds_alternative<Cat*>(pet2)) {

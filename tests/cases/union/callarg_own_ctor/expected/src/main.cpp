@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def consume(v: Own[A | B]) -> Int32:
-int32_t consume(std::variant<A, B>&& v) {
+int32_t consume(::tpy::Union<A, B>&& v) {
     // sink = Sink(v)
     Sink sink = Sink(std::move(v));
     // w = sink.u

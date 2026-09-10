@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class UErr(Exception):
 struct UErr : ::tpy::Exception {
     // payload: A | B
-    std::variant<A, B> payload;
+    ::tpy::Union<A, B> payload;
 
     // def __init__(self, p: A | B) -> None:
     explicit UErr(const std::variant<A*, B*> p);
@@ -76,6 +76,6 @@ inline A::A(const ::tpy::BigInt& x) : x(x) {}
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, p: A | B) -> None:
-inline UErr::UErr(const std::variant<A*, B*> p) : ::tpy::Exception("u"), payload(::tpy::to_value_variant<std::variant<A, B>>(p)) {}
+inline UErr::UErr(const std::variant<A*, B*> p) : ::tpy::Exception("u"), payload(::tpy::to_value_variant<::tpy::Union<A, B>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

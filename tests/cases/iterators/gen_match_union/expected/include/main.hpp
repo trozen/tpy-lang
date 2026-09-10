@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Box:
 struct Box {
     // payload: Dog | Cat
-    std::variant<Cat, Dog> payload;
+    ::tpy::Union<Cat, Dog> payload;
 
     // def __init__(self, p: Dog | Cat) -> None:
     explicit Box(const std::variant<Cat*, Dog*> p);
@@ -106,6 +106,6 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 
 // def __init__(self, p: Dog | Cat) -> None:
-inline Box::Box(const std::variant<Cat*, Dog*> p) : payload(::tpy::to_value_variant<std::variant<Cat, Dog>>(p)) {}
+inline Box::Box(const std::variant<Cat*, Dog*> p) : payload(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

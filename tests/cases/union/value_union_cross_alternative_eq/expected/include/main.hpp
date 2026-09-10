@@ -59,9 +59,9 @@ bool array_eq(const std::array<::tpy::Union<int32_t, double>, 2>& a, const std::
 bool tree_eq(const Tree<::tpy::Union<int32_t, double>>& a, const Tree<::tpy::Union<int32_t, double>>& b);
 bool v_list_eq(const std::vector<V>& xs, const std::vector<V>& ys);
 void drop_last_v(std::vector<V>& xs);
-bool shape_list_eq(const std::vector<std::variant<Circle, Square>>& xs, const std::vector<std::variant<Circle, Square>>& ys);
-bool shape_dict_eq(const ::tpy::ordered_map<std::string, std::variant<Circle, Square>>& a, const ::tpy::ordered_map<std::string, std::variant<Circle, Square>>& b);
-void clear_shapes(std::vector<std::variant<Circle, Square>>& xs);
+bool shape_list_eq(const std::vector<::tpy::Union<Circle, Square>>& xs, const std::vector<::tpy::Union<Circle, Square>>& ys);
+bool shape_dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Union<Circle, Square>>& a, const ::tpy::ordered_map<std::string, ::tpy::Union<Circle, Square>>& b);
+void clear_shapes(std::vector<::tpy::Union<Circle, Square>>& xs);
 bool shape_tree_eq(const std::vector<ShapeTree>& xs, const std::vector<ShapeTree>& ys);
 bool u_lt(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
 bool u_le(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
@@ -439,7 +439,7 @@ inline uint64_t Zone::__hash__() const {
     uint64_t h = ::tpy::__hash__(this->zid);
     return h;
 }
-using Shape = std::variant<Circle, Square>;
+using Shape = ::tpy::Union<Circle, Square>;
 struct ShapeTree {
     using variant_type = ::tpy::Union<Circle, Square, std::vector<ShapeTree>>;
     variant_type value;

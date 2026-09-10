@@ -88,7 +88,7 @@ inline bool Light::__eq__(const Light& other) const {
 inline std::string Light::__repr__() const {
     return std::format("Light(value={})", ::tpy::repr_of(this->value));
 }
-using Item = std::variant<Heavy, Light>;
+using Item = ::tpy::Union<Heavy, Light>;
 
 void __tpy_init();
 } // namespace tpyapp::main

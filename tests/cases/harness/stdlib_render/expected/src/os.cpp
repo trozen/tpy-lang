@@ -61,7 +61,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
             // # children (so it pops last, after the whole subtree), then push the
             // # children (reversed -> they pop in scandir order).
             // bstack: list[_WalkExpand | _WalkEmit] = []
-            bstack.emplace(std::vector<std::variant<_WalkEmit, _WalkExpand>>{});
+            bstack.emplace(std::vector<::tpy::Union<_WalkEmit, _WalkExpand>>{});
             // bstack.append(_WalkExpand(top))
             (*bstack).push_back(_WalkExpand(top));
             __state = S_JOIN_0;

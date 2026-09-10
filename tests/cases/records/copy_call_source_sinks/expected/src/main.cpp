@@ -49,11 +49,11 @@ int32_t qualified_decl(Holder& h) {
 
 // def variant_copy(pick: bool) -> Int32:
 int32_t variant_copy(bool pick) {
-    std::optional<std::variant<Cat, Dog>> __slot_2;
+    std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     // # NOT the copy-construct tail: a ptr-variant union's copy is the
     // # active-member deep copy, its own arm.
     // u: Dog | Cat = Dog(1)
-    std::variant<Cat, Dog> __slot_1 = Dog(1);
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog(1);
     std::variant<Cat*, Dog*> u = ::tpy::to_ptr_variant(__slot_1);
     // if not pick:
     if ((!(pick))) {
@@ -62,7 +62,7 @@ int32_t variant_copy(bool pick) {
         u = ::tpy::to_ptr_variant(*__slot_2);
     }
     // dup = copy(u)
-    std::variant<Cat, Dog> __slot_3 = ::tpy::to_value_variant<std::variant<Cat, Dog>>(u);
+    ::tpy::Union<Cat, Dog> __slot_3 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(u);
     std::variant<Cat*, Dog*> dup = ::tpy::to_ptr_variant(__slot_3);
     // if isinstance(u, Dog):
     if (std::holds_alternative<Dog*>(u)) {

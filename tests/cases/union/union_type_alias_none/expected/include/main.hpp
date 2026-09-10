@@ -53,7 +53,7 @@ inline Circle::Circle(int32_t radius) : radius(radius) {}
 
 // def __init__(self, width: Int32) -> None:
 inline Rect::Rect(int32_t width) : width(width) {}
-using MaybeShape = std::variant<std::monostate, Circle, Rect>;
+using MaybeShape = ::tpy::Union<std::monostate, Circle, Rect>;
 
 void __tpy_init();
 } // namespace tpyapp::main

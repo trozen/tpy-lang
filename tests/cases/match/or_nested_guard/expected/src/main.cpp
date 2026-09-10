@@ -97,13 +97,13 @@ std::string small(const ::tpy::BigInt& n, bool allow) {
 // def main() -> None:
 void main() {
     // d: Dog | Cat | Bird = Dog(1)
-    std::variant<Bird, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(1));
+    ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(1));
     std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat | Bird = Cat(2)
-    std::variant<Bird, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(2));
+    ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(2));
     std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // b: Dog | Cat | Bird = Bird(3)
-    std::variant<Bird, Cat, Dog> __slot_3 = Bird(::tpy::BigInt(3));
+    ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird(::tpy::BigInt(3));
     std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     // print(classify(d, True))
     std::cout << classify(d, true) << "\n";

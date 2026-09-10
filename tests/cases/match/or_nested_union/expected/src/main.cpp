@@ -99,7 +99,7 @@ std::string read(const std::variant<Bird*, Cat*, Dog*> a) {
 // def main() -> None:
 void main() {
     // d: Dog | Cat | Bird = Dog(["x"])
-    std::variant<Bird, Cat, Dog> __slot_1 = Dog({"x"});
+    ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog({"x"});
     std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // print(known(d))
     std::cout << known(d) << "\n";
@@ -108,14 +108,14 @@ void main() {
     // print(read(d))
     std::cout << read(d) << "\n";
     // c: Dog | Cat | Bird = Cat(["p"])
-    std::variant<Bird, Cat, Dog> __slot_2 = Cat({"p"});
+    ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat({"p"});
     std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(tag(c, "q"))
     std::cout << tag(c, "q") << "\n";
     // print(read(c))
     std::cout << read(c) << "\n";
     // b: Dog | Cat | Bird = Bird(["m"])
-    std::variant<Bird, Cat, Dog> __slot_3 = Bird({"m"});
+    ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird({"m"});
     std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     // print(tag(b, "n"))
     std::cout << tag(b, "n") << "\n";

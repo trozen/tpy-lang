@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class Holder:
 struct Holder {
     // u: A | B | None
-    std::variant<std::monostate, A, B> u;
+    ::tpy::Union<std::monostate, A, B> u;
 
     // def __init__(self, u: A | B | None) -> None:
     explicit Holder(const std::variant<std::monostate, A*, B*> u);
@@ -75,6 +75,6 @@ inline A::A(int32_t x) : x(x) {}
 inline B::B(int32_t y) : y(y) {}
 
 // def __init__(self, u: A | B | None) -> None:
-inline Holder::Holder(const std::variant<std::monostate, A*, B*> u) : u(::tpy::to_value_variant<std::variant<std::monostate, A, B>>(u)) {}
+inline Holder::Holder(const std::variant<std::monostate, A*, B*> u) : u(::tpy::to_value_variant<::tpy::Union<std::monostate, A, B>>(u)) {}
 void __tpy_init();
 } // namespace tpyapp::main

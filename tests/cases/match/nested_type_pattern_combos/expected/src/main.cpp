@@ -128,10 +128,10 @@ void double_union(const std::vector<Tagged>& items) {
 void main() {
     // # Case 1
     // a1: Box[Box[str]] | Box[Box[Int32]] = Box(Box("hello"))
-    std::variant<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_1 = Box<Box<std::string>>(Box<std::string>("hello"));
+    ::tpy::Union<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_1 = Box<Box<std::string>>(Box<std::string>("hello"));
     std::variant<Box<Box<int32_t>>*, Box<Box<std::string>>*> a1 = ::tpy::to_ptr_variant(__slot_1);
     // a2: Box[Box[str]] | Box[Box[Int32]] = Box(Box(Int32(42)))
-    std::variant<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_2 = Box<Box<int32_t>>(Box<int32_t>(42));
+    ::tpy::Union<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_2 = Box<Box<int32_t>>(Box<int32_t>(42));
     std::variant<Box<Box<int32_t>>*, Box<Box<std::string>>*> a2 = ::tpy::to_ptr_variant(__slot_2);
     // print(nested_param(a1))
     std::cout << nested_param(a1) << "\n";
@@ -140,14 +140,14 @@ void main() {
     // # Case 2
     // b1: Int32 | Container = Container("world")
     ::tpy::Union<int32_t, std::string> __tmp_1 = "world";
-    std::variant<Container, int32_t> __slot_3 = Container(__tmp_1);
+    ::tpy::Union<Container, int32_t> __slot_3 = Container(__tmp_1);
     std::variant<Container*, int32_t*> b1 = ::tpy::to_ptr_variant(__slot_3);
     // b2: Int32 | Container = Container(Int32(7))
     ::tpy::Union<int32_t, std::string> __tmp_2 = 7;
-    std::variant<Container, int32_t> __slot_4 = Container(__tmp_2);
+    ::tpy::Union<Container, int32_t> __slot_4 = Container(__tmp_2);
     std::variant<Container*, int32_t*> b2 = ::tpy::to_ptr_variant(__slot_4);
     // b3: Int32 | Container = 99
-    std::variant<Container, int32_t> __slot_5 = 99;
+    ::tpy::Union<Container, int32_t> __slot_5 = 99;
     std::variant<Container*, int32_t*> b3 = ::tpy::to_ptr_variant(__slot_5);
     // print(union_subj_union_field(b1))
     std::cout << union_subj_union_field(b1) << "\n";

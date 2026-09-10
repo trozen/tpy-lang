@@ -11,7 +11,7 @@ struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<Bag, ::tpy::BigInt> get(bool flag);
+::tpy::Union<Bag, ::tpy::BigInt> get(bool flag);
 void main();
 
 // class Bag:

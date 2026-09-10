@@ -3577,13 +3577,13 @@ class UnionType(TpyType):
             "std::monostate" if is_void_like_type(m) else m.to_cpp()
             for m in self.members
         ]
-        # A VALUE union spells the TPy type that owns Python's comparison
-        # rule; a reference union's storage form keeps the bare variant,
-        # because that rule (compare by value across alternatives) is not the
-        # one a pointer variant wants, and the two forms convert into each
-        # other through `to_ptr_variant` / `to_value_variant`.
-        head = "::tpy::Union" if self.is_value_type() else "std::variant"
-        return f"{head}<{', '.join(cpp_members)}>"
+        # Every union at a STORAGE position spells the TPy type that owns
+        # Python's comparison rule -- the bare variant compares the
+        # alternative INDEX first, which is wrong for a reference union's
+        # container element just as it is for a value union's. The borrow
+        # form is the pointer variant (`to_cpp_ptr_variant`), which is a
+        # different question and keeps the bare spelling.
+        return f"::tpy::Union<{', '.join(cpp_members)}>"
 
     def has_none_member(self) -> bool:
         return any(is_void_like_type(m) for m in self.members)
@@ -3609,7 +3609,8 @@ class UnionType(TpyType):
         """Whether this union uses pointer-variant repr for params/returns/locals.
 
         True when any non-None member is not a value type (e.g. Dog | Cat with records).
-        Pointer variants use std::variant<Dog*, Cat*> instead of std::variant<Dog, Cat>.
+        Pointer variants use std::variant<Dog*, Cat*> instead of the storage
+        form ::tpy::Union<Dog, Cat>.
         """
         return not self.is_value_type()
 

@@ -32,10 +32,10 @@ int32_t describe(const std::variant<Cat*, Dog*> a) {
 // def main() -> None:
 void main() {
     // d: Dog | Cat = Dog(5)
-    std::variant<Cat, Dog> __slot_1 = Dog(5);
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog(5);
     std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat = Cat(3)
-    std::variant<Cat, Dog> __slot_2 = Cat(3);
+    ::tpy::Union<Cat, Dog> __slot_2 = Cat(3);
     std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(describe(d))
     std::cout << describe(d) << "\n";

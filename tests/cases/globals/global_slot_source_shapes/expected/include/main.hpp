@@ -18,8 +18,8 @@ extern std::vector<int32_t>* ys;
 extern Point* p;
 extern Point* g;
 extern Base* b;
-extern std::variant<Line, Point>* u;
-extern std::variant<int32_t, std::vector<int32_t>>* v;
+extern ::tpy::Union<Line, Point>* u;
+extern ::tpy::Union<int32_t, std::vector<int32_t>>* v;
 extern Point* q;
 inline constexpr std::string_view __name__ = "__main__";
 

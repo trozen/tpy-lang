@@ -16,7 +16,7 @@ int32_t get_radius(const std::variant<Circle*, Rect*> s) {
 // def main() -> None:
 void main() {
     // r: Circle | Rect = Rect(Int32(4))
-    std::variant<Circle, Rect> __slot_1 = Rect(4);
+    ::tpy::Union<Circle, Rect> __slot_1 = Rect(4);
     std::variant<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_1);
     // print(get_radius(r))
     std::cout << get_radius(r) << "\n";

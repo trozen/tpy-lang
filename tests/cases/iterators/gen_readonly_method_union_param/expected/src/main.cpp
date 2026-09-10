@@ -9,7 +9,7 @@ void main() {
     // z = Zoo()
     Zoo z = Zoo();
     // pet: Dog | Cat = Dog()
-    std::variant<Cat, Dog> __slot_1 = Dog();
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for v in z.codes(pet):
     {
@@ -24,7 +24,7 @@ void main() {
         }
     }
     // other: Dog | Cat = Cat()
-    std::variant<Cat, Dog> __slot_2 = Cat();
+    ::tpy::Union<Cat, Dog> __slot_2 = Cat();
     std::variant<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_2);
     // for v in z.codes(other):
     {

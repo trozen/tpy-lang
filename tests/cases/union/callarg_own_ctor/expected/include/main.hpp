@@ -13,7 +13,7 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(std::variant<A, B>&& v);
+int32_t consume(::tpy::Union<A, B>&& v);
 int32_t pick(const ::tpy::Union<int32_t, double>& v);
 void main();
 
@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class Sink:
 struct Sink {
     // u: A | B
-    std::variant<A, B> u;
+    ::tpy::Union<A, B> u;
 
     // def __init__(self, v: Own[A | B]) -> None:
-    explicit Sink(std::variant<A, B>&& v);
+    explicit Sink(::tpy::Union<A, B>&& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
 
@@ -72,6 +72,6 @@ inline A::A(int32_t x) : x(x) {}
 inline B::B(int32_t y) : y(y) {}
 
 // def __init__(self, v: Own[A | B]) -> None:
-inline Sink::Sink(std::variant<A, B>&& v) : u(std::move(v)) {}
+inline Sink::Sink(::tpy::Union<A, B>&& v) : u(std::move(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

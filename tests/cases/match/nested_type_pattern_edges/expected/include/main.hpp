@@ -78,7 +78,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // class Wrapper:
 struct Wrapper {
     // pet: Cat | Dog
-    std::variant<Cat, Dog> pet;
+    ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
     explicit Wrapper(const std::variant<Cat*, Dog*> pet);
@@ -178,7 +178,7 @@ inline std::string Dog::__repr__() const {
 }
 
 // def __init__(self, pet: Cat | Dog) -> None:
-inline Wrapper::Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+inline Wrapper::Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, label: str) -> None:
 inline Tag::Tag(std::string_view label) : label(label) {}

@@ -52,9 +52,9 @@ struct BinOp {
     // op: int  # 1=add, 2=mul
     ::tpy::BigInt op;
     // left: MyWrap[Expr]
-    MyWrap<std::variant<BinOp, Lit>> left;
+    MyWrap<::tpy::Union<BinOp, Lit>> left;
     // right: MyWrap[Expr]
-    MyWrap<std::variant<BinOp, Lit>> right;
+    MyWrap<::tpy::Union<BinOp, Lit>> right;
 
     static constexpr std::string_view __tpy_class_name__ = "__main__.BinOp";
 };
@@ -67,7 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
 
 // def __init__(self, value: int) -> None:
 inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
-using Expr = std::variant<BinOp, Lit>;
+using Expr = ::tpy::Union<BinOp, Lit>;
 
 void __tpy_init();
 } // namespace tpyapp::main

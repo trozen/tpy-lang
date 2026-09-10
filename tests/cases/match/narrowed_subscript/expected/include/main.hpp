@@ -42,8 +42,8 @@ void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& cou
 void list_read(const std::variant<int32_t*, std::vector<int32_t>*> x);
 void dict_read(const std::variant<int32_t*, ::tpy::ordered_map<int32_t, int32_t>*> x);
 void record_read(const std::variant<Indexed*, int32_t*> x);
-std::variant<int32_t, std::vector<uint8_t>> make_buffer();
-std::variant<int32_t, std::vector<int32_t>> make_list();
+::tpy::Union<int32_t, std::vector<uint8_t>> make_buffer();
+::tpy::Union<int32_t, std::vector<int32_t>> make_list();
 void main();
 
 // class Indexed:

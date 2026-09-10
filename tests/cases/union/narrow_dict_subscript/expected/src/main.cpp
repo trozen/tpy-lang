@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def get_dict() -> Own[dict[str, Cell] | int]:
-std::variant<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> get_dict() {
+::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> get_dict() {
     // d: dict[str, Cell] = {}
     ::tpy::ordered_map<std::string, Cell> d = ::tpy::ordered_map<std::string, Cell>();
     // d["a"] = Cell(1)
@@ -17,7 +17,7 @@ std::variant<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> get_dict() {
 // def main() -> None:
 void main() {
     // v = get_dict()
-    std::variant<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> __slot_1 = get_dict();
+    ::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> __slot_1 = get_dict();
     std::variant<::tpy::ordered_map<std::string, Cell>*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, dict):
     if (std::holds_alternative<::tpy::ordered_map<std::string, Cell>*>(v)) {

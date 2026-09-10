@@ -42,7 +42,7 @@ namespace tpyapp::main {
 // def assign_then_check() -> int:
 ::tpy::BigInt assign_then_check() {
     // v: A | B = A(7)
-    std::variant<A, B> __slot_1 = A(::tpy::BigInt(7));
+    ::tpy::Union<A, B> __slot_1 = A(::tpy::BigInt(7));
     std::variant<A*, B*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, A):  # always true after assignment narrowing
     if (true) {

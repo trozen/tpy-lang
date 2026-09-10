@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def poke(xs: list[Dog | Cat]) -> None:
-void poke(std::vector<std::variant<Cat, Dog>>& xs) {
+void poke(std::vector<::tpy::Union<Cat, Dog>>& xs) {
     // match xs[0]:
     auto& __match_subject_1 = ::tpy::__getitem__(xs, 0);
     switch (__match_subject_1.index()) {
@@ -33,7 +33,7 @@ void poke(std::vector<std::variant<Cat, Dog>>& xs) {
 // def main() -> None:
 void main() {
     // poke([Cat(4)])
-    std::vector<std::variant<Cat, Dog>> __tmp_1 = {Cat(4)};
+    std::vector<::tpy::Union<Cat, Dog>> __tmp_1 = {Cat(4)};
     poke(__tmp_1);
 }
 

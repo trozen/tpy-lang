@@ -33,7 +33,7 @@ void main() {
     // f(v)
     f(v);
     // w: int | set[int] = 7
-    std::variant<::tpy::BigInt, ::tpy::ordered_set<::tpy::BigInt>> __slot_1 = 7;
+    ::tpy::Union<::tpy::BigInt, ::tpy::ordered_set<::tpy::BigInt>> __slot_1 = 7;
     std::variant<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> w = ::tpy::to_ptr_variant(__slot_1);
     // f(w)
     f(w);

@@ -9,12 +9,12 @@ void main() {
     // s = Speaker()
     Speaker s = Speaker();
     // d: Dog | Cat = Dog()
-    std::variant<Cat, Dog> __slot_1 = Dog();
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // print(s.voice(d))
     std::cout << s.voice(d) << "\n";
     // c: Dog | Cat = Cat()
-    std::variant<Cat, Dog> __slot_2 = Cat();
+    ::tpy::Union<Cat, Dog> __slot_2 = Cat();
     std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(s.voice(c))
     std::cout << s.voice(c) << "\n";

@@ -64,12 +64,12 @@ void main() {
     // r.h = 20
     r.h = 20;
     // shapes: list[Rect | Circle] = [r, Circle()]
-    std::vector<std::variant<Circle, Rect>> shapes = ::tpy::make_vector<std::variant<Circle, Rect>>(std::move(r), Circle());
+    std::vector<::tpy::Union<Circle, Rect>> shapes = ::tpy::make_vector<::tpy::Union<Circle, Rect>>(std::move(r), Circle());
     // print(len(shapes))
     std::cout << ::tpy::__len__(shapes) << "\n";
     // # Union of records: all rvalues
     // shapes2: list[Rect | Circle] = [Rect(), Circle()]
-    std::vector<std::variant<Circle, Rect>> shapes2 = {Rect(), Circle()};
+    std::vector<::tpy::Union<Circle, Rect>> shapes2 = {Rect(), Circle()};
     // print(len(shapes2))
     std::cout << ::tpy::__len__(shapes2) << "\n";
 }

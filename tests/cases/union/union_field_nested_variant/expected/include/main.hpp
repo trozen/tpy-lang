@@ -58,7 +58,7 @@ struct Cat {
     // name: str
     std::string name;
     // toy: Ball | Mouse
-    std::variant<Ball, Mouse> toy;
+    ::tpy::Union<Ball, Mouse> toy;
 
     // def __init__(self, name: str, toy: Ball | Mouse) -> None:
     explicit Cat(std::string_view name, const std::variant<Ball*, Mouse*> toy);
@@ -89,7 +89,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // class Zoo:
 struct Zoo {
     // animal: Cat | Dog
-    std::variant<Cat, Dog> animal;
+    ::tpy::Union<Cat, Dog> animal;
 
     // def __init__(self, animal: Cat | Dog) -> None:
     explicit Zoo(const std::variant<Cat*, Dog*> animal);
@@ -109,12 +109,12 @@ inline Ball::Ball(std::string_view color) : color(color) {}
 inline Mouse::Mouse(std::string_view size) : size(size) {}
 
 // def __init__(self, name: str, toy: Ball | Mouse) -> None:
-inline Cat::Cat(std::string_view name, const std::variant<Ball*, Mouse*> toy) : name(name), toy(::tpy::to_value_variant<std::variant<Ball, Mouse>>(toy)) {}
+inline Cat::Cat(std::string_view name, const std::variant<Ball*, Mouse*> toy) : name(name), toy(::tpy::to_value_variant<::tpy::Union<Ball, Mouse>>(toy)) {}
 
 // def __init__(self, name: str) -> None:
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, animal: Cat | Dog) -> None:
-inline Zoo::Zoo(const std::variant<Cat*, Dog*> animal) : animal(::tpy::to_value_variant<std::variant<Cat, Dog>>(animal)) {}
+inline Zoo::Zoo(const std::variant<Cat*, Dog*> animal) : animal(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(animal)) {}
 void __tpy_init();
 } // namespace tpyapp::main

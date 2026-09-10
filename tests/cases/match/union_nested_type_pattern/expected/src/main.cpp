@@ -84,10 +84,10 @@ std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x) {
 // def main() -> None:
 void main() {
     // a: Box[str] | Box[Int32] = Box("hello")
-    std::variant<Box<int32_t>, Box<std::string>> __slot_1 = Box<std::string>("hello");
+    ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_1 = Box<std::string>("hello");
     std::variant<Box<int32_t>*, Box<std::string>*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: Box[str] | Box[Int32] = Box(42)
-    std::variant<Box<int32_t>, Box<std::string>> __slot_2 = Box<int32_t>(42);
+    ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_2 = Box<int32_t>(42);
     std::variant<Box<int32_t>*, Box<std::string>*> b = ::tpy::to_ptr_variant(__slot_2);
     // print(unwrap(a))
     std::cout << unwrap(a) << "\n";
@@ -98,10 +98,10 @@ void main() {
     // print(describe(b))
     std::cout << describe(b) << "\n";
     // c: Pair[str] | Pair[Int32] = Pair("abc", "xyz")
-    std::variant<Pair<int32_t>, Pair<std::string>> __slot_3 = Pair<std::string>("abc", "xyz");
+    ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_3 = Pair<std::string>("abc", "xyz");
     std::variant<Pair<int32_t>*, Pair<std::string>*> c = ::tpy::to_ptr_variant(__slot_3);
     // d: Pair[str] | Pair[Int32] = Pair(99, "end")
-    std::variant<Pair<int32_t>, Pair<std::string>> __slot_4 = Pair<int32_t>(99, "end");
+    ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_4 = Pair<int32_t>(99, "end");
     std::variant<Pair<int32_t>*, Pair<std::string>*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(mixed(c))
     std::cout << mixed(c) << "\n";

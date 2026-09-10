@@ -600,7 +600,7 @@ void record_read(const std::variant<Indexed*, int32_t*> x) {
 }
 
 // def make_buffer() -> Own[bytearray | Int32]:
-std::variant<int32_t, std::vector<uint8_t>> make_buffer() {
+::tpy::Union<int32_t, std::vector<uint8_t>> make_buffer() {
     // buffer = bytearray(b"abc")
     std::vector<uint8_t> buffer = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
     // return buffer
@@ -608,7 +608,7 @@ std::variant<int32_t, std::vector<uint8_t>> make_buffer() {
 }
 
 // def make_list() -> Own[list[Int32] | Int32]:
-std::variant<int32_t, std::vector<int32_t>> make_list() {
+::tpy::Union<int32_t, std::vector<int32_t>> make_list() {
     // items: list[Int32] = [10, 20]
     std::vector<int32_t> items = {10, 20};
     // return items
@@ -620,7 +620,7 @@ void main() {
     // text: str | Int32 = "abc"
     ::tpy::Union<int32_t, std::string> text = "abc";
     // buffer = make_buffer()
-    std::variant<int32_t, std::vector<uint8_t>> __slot_1 = make_buffer();
+    ::tpy::Union<int32_t, std::vector<uint8_t>> __slot_1 = make_buffer();
     std::variant<int32_t*, std::vector<uint8_t>*> buffer = ::tpy::to_ptr_variant(__slot_1);
     // index = int("1")
     ::tpy::BigInt index = ::tpy::BigInt::from_str("1");
@@ -685,7 +685,7 @@ void main() {
     // conditional_reads(text, counter)
     conditional_reads(text, counter);
     // items = make_list()
-    std::variant<int32_t, std::vector<int32_t>> __slot_2 = make_list();
+    ::tpy::Union<int32_t, std::vector<int32_t>> __slot_2 = make_list();
     std::variant<int32_t*, std::vector<int32_t>*> items = ::tpy::to_ptr_variant(__slot_2);
     // indexed = Indexed()
     Indexed indexed = Indexed();

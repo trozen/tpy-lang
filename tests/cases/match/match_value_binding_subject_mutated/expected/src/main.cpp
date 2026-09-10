@@ -57,7 +57,7 @@ void field_method(Holder& h) {
 }
 
 // def element_realloc(xs: list[Dog | Cat]) -> None:
-void element_realloc(std::vector<std::variant<Cat, Dog>>& xs) {
+void element_realloc(std::vector<::tpy::Union<Cat, Dog>>& xs) {
     // match xs[0]:
     auto& __match_subject_1 = ::tpy::__getitem__(xs, 0);
     switch (__match_subject_1.index()) {
@@ -91,7 +91,7 @@ void main() {
     Holder __tmp_2 = Holder();
     field_method(__tmp_2);
     // element_realloc([Dog(4)])
-    std::vector<std::variant<Cat, Dog>> __tmp_3 = {Dog(4)};
+    std::vector<::tpy::Union<Cat, Dog>> __tmp_3 = {Dog(4)};
     element_realloc(__tmp_3);
 }
 

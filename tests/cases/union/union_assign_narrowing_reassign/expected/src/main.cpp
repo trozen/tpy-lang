@@ -21,9 +21,9 @@ void check(const std::variant<Circle*, Rect*> s) {
 
 // def main() -> None:
 void main() {
-    std::optional<std::variant<Circle, Rect>> __slot_2;
+    std::optional<::tpy::Union<Circle, Rect>> __slot_2;
     // s: Circle | Rect = Circle(1.0)
-    std::variant<Circle, Rect> __slot_1 = Circle(1.0);
+    ::tpy::Union<Circle, Rect> __slot_1 = Circle(1.0);
     std::variant<Circle*, Rect*> s = ::tpy::to_ptr_variant(__slot_1);
     // print(s.radius)
     std::cout << ::tpy::print_float((*std::get<Circle*>(s)).radius) << "\n";

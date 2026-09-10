@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def get_list() -> Own[list[int] | int]:
-std::variant<::tpy::BigInt, std::vector<::tpy::BigInt>> get_list() {
+::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> get_list() {
     // xs: list[int] = [10, 20]
     std::vector<::tpy::BigInt> xs = {10, 20};
     // return xs
@@ -15,7 +15,7 @@ std::variant<::tpy::BigInt, std::vector<::tpy::BigInt>> get_list() {
 // def main() -> None:
 void main() {
     // w = get_list()
-    std::variant<::tpy::BigInt, std::vector<::tpy::BigInt>> __slot_1 = get_list();
+    ::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> __slot_1 = get_list();
     std::variant<::tpy::BigInt*, std::vector<::tpy::BigInt>*> w = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(w, list):
     if (std::holds_alternative<std::vector<::tpy::BigInt>*>(w)) {

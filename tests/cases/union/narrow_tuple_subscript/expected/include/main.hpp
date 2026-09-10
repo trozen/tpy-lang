@@ -11,7 +11,7 @@ struct Rec;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag);
+::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag);
 void main();
 
 // class Rec:

@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Pen:
 struct Pen {
     // pet: Dog | Cat
-    std::variant<Cat, Dog> pet;
+    ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat) -> None:
     explicit Pen(const std::variant<Cat*, Dog*> pet);
@@ -74,12 +74,12 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat) -> None:
-inline Pen::Pen(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+inline Pen::Pen(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def set_pet(self, pet: Dog | Cat) -> None:
 inline void Pen::set_pet(const std::variant<Cat*, Dog*> pet) {
     // self.pet = pet  # tpyc: warning(/copies/)
-    this->pet = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet);
+    this->pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
 }
 void __tpy_init();
 } // namespace tpyapp::main

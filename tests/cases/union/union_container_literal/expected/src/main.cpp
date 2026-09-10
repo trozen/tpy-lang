@@ -90,7 +90,7 @@ void main() {
     std::vector<::tpy::Union<::tpy::BigInt, std::string>> lst = {1, "hello", 2, "world"};
     // # Dict with union values (user types)
     // pets: dict[str, Dog | Cat] = {"rex": Dog("Rex"), "whiskers": Cat("Whiskers")}
-    ::tpy::ordered_map<std::string, std::variant<Cat, Dog>> pets = ::tpy::ordered_map<std::string, std::variant<Cat, Dog>>({{"rex", Dog("Rex")}, {"whiskers", Cat("Whiskers")}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>> pets = ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>({{"rex", Dog("Rex")}, {"whiskers", Cat("Whiskers")}});
     // pet = pets["rex"]
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(::tpy::__getitem__(pets, "rex"));
     // if isinstance(pet, Dog):
@@ -101,7 +101,7 @@ void main() {
     }
     // # List with union elements (user types)
     // animals: list[Dog | Cat] = [Dog("Buddy"), Cat("Mimi")]
-    std::vector<std::variant<Cat, Dog>> animals = {Dog("Buddy"), Cat("Mimi")};
+    std::vector<::tpy::Union<Cat, Dog>> animals = {Dog("Buddy"), Cat("Mimi")};
     // for a in animals:
     auto& __obj_0 = animals;
     auto __beg_0 = __obj_0.begin();
@@ -175,7 +175,7 @@ void main() {
     }
     // # Container literal inside union value (brace-init needs explicit type)
     // d5: dict[str, list[int] | str] = {"nums": [1, 2, 3], "label": "test"}
-    ::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", "test"}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", "test"}});
     // v3 = d5["label"]
     std::variant<std::vector<::tpy::BigInt>*, std::string*> v3 = ::tpy::to_ptr_variant(::tpy::__getitem__(d5, "label"));
     // if isinstance(v3, str):
@@ -186,7 +186,7 @@ void main() {
     }
     // # List of lists|str
     // mixed: list[list[Int32] | str] = [[10, 20], "hi"]
-    std::vector<std::variant<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
+    std::vector<::tpy::Union<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
     // v4 = mixed[1]
     std::variant<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
     // if isinstance(v4, str):

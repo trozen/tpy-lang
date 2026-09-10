@@ -54,10 +54,10 @@ std::string only_wildcard_covers(const std::variant<std::monostate, Dog*, Fox*> 
 // def main() -> None:
 void main() {
     // d: Dog | Cat | None = Dog(5)
-    std::variant<std::monostate, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(5));
+    ::tpy::Union<std::monostate, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(5));
     std::variant<std::monostate, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat | None = Cat(7)
-    std::variant<std::monostate, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(7));
+    ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(7));
     std::variant<std::monostate, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(feed(d))
     std::cout << feed(d) << "\n";

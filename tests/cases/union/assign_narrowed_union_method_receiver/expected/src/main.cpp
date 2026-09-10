@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // c: Circle | Rect = Circle(5.0)
-    std::variant<Circle, Rect> __slot_1 = Circle(5.0);
+    ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
     std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(c.area())  # the receiver is the assign-narrowed member
     std::cout << ::tpy::print_float((*std::get<Circle*>(c)).area()) << "\n";

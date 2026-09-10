@@ -122,13 +122,13 @@ __match_end_2:;
 // def main() -> None:
 void main() {
     // d: Dog | Cat | Bird = Dog("Rex")
-    std::variant<Bird, Cat, Dog> __slot_1 = Dog("Rex");
+    ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat | Bird = Cat("Luna")
-    std::variant<Bird, Cat, Dog> __slot_2 = Cat("Luna");
+    ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat("Luna");
     std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // b: Dog | Cat | Bird = Bird("Tweety")
-    std::variant<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
+    ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     // print(describe(d, True))
     std::cout << describe(d, true) << "\n";

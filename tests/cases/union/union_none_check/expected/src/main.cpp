@@ -49,10 +49,10 @@ void process(const std::variant<std::monostate, Dog*, int32_t*> v) {
 // def main() -> None:
 void main() {
     // a: Int32 | Dog | None = Int32(42)
-    std::variant<std::monostate, Dog, int32_t> __slot_1 = 42;
+    ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 42;
     std::variant<std::monostate, Dog*, int32_t*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: Int32 | Dog | None = Dog("Rex")
-    std::variant<std::monostate, Dog, int32_t> __slot_2 = Dog("Rex");
+    ::tpy::Union<std::monostate, Dog, int32_t> __slot_2 = Dog("Rex");
     std::variant<std::monostate, Dog*, int32_t*> b = ::tpy::to_ptr_variant(__slot_2);
     // c: Int32 | Dog | None = None
     std::variant<std::monostate, Dog*, int32_t*> c = std::monostate{};

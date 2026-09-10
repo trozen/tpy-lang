@@ -33,7 +33,7 @@ void main() {
     std::cout << ::tpy::TuplePrinter(t) << "\n";
     // # Nested: list in union value
     // d3: dict[str, list[int] | str] = {"nums": [1, 2], "tag": "ok"}
-    ::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::BigInt>, std::string>> d3 = ::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2}}, {"tag", "ok"}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d3 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2}}, {"tag", "ok"}});
     // print(d3)
     std::cout << ::tpy::DictPrinter(d3) << "\n";
     // # Optional list elements
@@ -43,7 +43,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(l3) << "\n";
     // # User records in union
     // d4: dict[str, Pt | str] = {"p": Pt(1, 2), "name": "origin"}
-    ::tpy::ordered_map<std::string, std::variant<Pt, std::string>> d4 = ::tpy::ordered_map<std::string, std::variant<Pt, std::string>>({{"p", Pt(1, 2)}, {"name", "origin"}});
+    ::tpy::ordered_map<std::string, ::tpy::Union<Pt, std::string>> d4 = ::tpy::ordered_map<std::string, ::tpy::Union<Pt, std::string>>({{"p", Pt(1, 2)}, {"name", "origin"}});
     // print(d4)
     std::cout << ::tpy::DictPrinter(d4) << "\n";
     // # List of tuples with union

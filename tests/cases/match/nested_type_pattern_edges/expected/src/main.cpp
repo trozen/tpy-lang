@@ -267,14 +267,14 @@ void main() {
     // # Or-pattern
     // d: Wrapper | Tag = Wrapper(Cat("Luna"))
     Cat __tmp_3 = Cat("Luna");
-    std::variant<Tag, Wrapper> __slot_3 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_3});
+    ::tpy::Union<Tag, Wrapper> __slot_3 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_3});
     std::variant<Tag*, Wrapper*> d = ::tpy::to_ptr_variant(__slot_3);
     // e: Wrapper | Tag = Wrapper(Dog("Rex"))
     Dog __tmp_4 = Dog("Rex");
-    std::variant<Tag, Wrapper> __slot_4 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_4});
+    ::tpy::Union<Tag, Wrapper> __slot_4 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_4});
     std::variant<Tag*, Wrapper*> e = ::tpy::to_ptr_variant(__slot_4);
     // f: Wrapper | Tag = Tag("hello")
-    std::variant<Tag, Wrapper> __slot_5 = Tag("hello");
+    ::tpy::Union<Tag, Wrapper> __slot_5 = Tag("hello");
     std::variant<Tag*, Wrapper*> f = ::tpy::to_ptr_variant(__slot_5);
     // print(or_nested(d))
     std::cout << or_nested(d) << "\n";
@@ -284,10 +284,10 @@ void main() {
     std::cout << or_nested(f) << "\n";
     // # 3-deep
     // g: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box("abc")))
-    std::variant<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_6 = Box<Box<Box<std::string>>>(Box<Box<std::string>>(Box<std::string>("abc")));
+    ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_6 = Box<Box<Box<std::string>>>(Box<Box<std::string>>(Box<std::string>("abc")));
     std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> g = ::tpy::to_ptr_variant(__slot_6);
     // h: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box(Int32(99))))
-    std::variant<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_7 = Box<Box<Box<int32_t>>>(Box<Box<int32_t>>(Box<int32_t>(99)));
+    ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_7 = Box<Box<Box<int32_t>>>(Box<Box<int32_t>>(Box<int32_t>(99)));
     std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> h = ::tpy::to_ptr_variant(__slot_7);
     // print(deep3(g))
     std::cout << deep3(g) << "\n";
@@ -295,10 +295,10 @@ void main() {
     std::cout << deep3(h) << "\n";
     // # Positional
     // i: Box[str] | Box[Int32] = Box("pos")
-    std::variant<Box<int32_t>, Box<std::string>> __slot_8 = Box<std::string>("pos");
+    ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_8 = Box<std::string>("pos");
     std::variant<Box<int32_t>*, Box<std::string>*> i = ::tpy::to_ptr_variant(__slot_8);
     // j: Box[str] | Box[Int32] = Box(Int32(7))
-    std::variant<Box<int32_t>, Box<std::string>> __slot_9 = Box<int32_t>(7);
+    ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_9 = Box<int32_t>(7);
     std::variant<Box<int32_t>*, Box<std::string>*> j = ::tpy::to_ptr_variant(__slot_9);
     // print(positional_nested(i))
     std::cout << positional_nested(i) << "\n";

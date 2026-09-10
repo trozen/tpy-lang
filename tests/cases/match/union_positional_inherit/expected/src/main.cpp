@@ -33,12 +33,12 @@ void describe(const std::variant<Child*, Other*> s) {
 // def main() -> None:
 void main() {
     // obj: Child | Other = Child(1.0, 2.0, 3.0)
-    std::variant<Child, Other> __slot_1 = Child(1.0, 2.0, 3.0);
+    ::tpy::Union<Child, Other> __slot_1 = Child(1.0, 2.0, 3.0);
     std::variant<Child*, Other*> obj = ::tpy::to_ptr_variant(__slot_1);
     // describe(obj)
     describe(obj);
     // o: Child | Other = Other(9.0)
-    std::variant<Child, Other> __slot_2 = Other(9.0);
+    ::tpy::Union<Child, Other> __slot_2 = Other(9.0);
     std::variant<Child*, Other*> o = ::tpy::to_ptr_variant(__slot_2);
     // describe(o)
     describe(o);

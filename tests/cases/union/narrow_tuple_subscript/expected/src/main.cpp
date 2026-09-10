@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pick(flag: bool) -> Own[tuple[str, int] | Rec]:
-std::variant<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag) {
+::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag) {
     // if flag:
     if (flag) {
         // return ("hi", 7)
@@ -18,7 +18,7 @@ std::variant<Rec, std::tuple<std::string, ::tpy::BigInt>> pick(bool flag) {
 // def main() -> None:
 void main() {
     // v = pick(True)
-    std::variant<Rec, std::tuple<std::string, ::tpy::BigInt>> __slot_1 = pick(true);
+    ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> __slot_1 = pick(true);
     std::variant<Rec*, std::tuple<std::string, ::tpy::BigInt>*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, Rec):
     if (std::holds_alternative<Rec*>(v)) {

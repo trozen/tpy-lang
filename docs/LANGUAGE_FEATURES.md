@@ -190,7 +190,7 @@ section is what those terms mean.
 - **Storage form** -- the slot owns its data: class fields, container
   elements (`list[T]` / `dict[K, V]` / `set[T]` / `tuple` slot in a
   field or container), `Own[T]` parameters, function return values.
-  Self-contained values: `T`, `std::optional<T>`, `std::variant<A, B>`,
+  Self-contained values: `T`, `std::optional<T>`, `::tpy::Union<A, B>`,
   `std::tuple<...>`, `std::vector<T>`, `std::string`.
 
 - **Borrow form** -- the slot is borrowed from storage that lives
@@ -215,7 +215,7 @@ between the two forms. The common helpers:
 | Boundary | Storage form | Borrow form | Lift / lower |
 |----------|--------------|-------------|--------------|
 | pointer-repr `T \| None` | `std::optional<T>` | `T*` | `tpy::ptr_to_optional` / `tpy::optional_to_ptr` |
-| pointer-variant `A \| B` (non-value) | `std::variant<A, B>` | `std::variant<A*, B*>` | `tpy::to_ptr_variant` / inverse |
+| pointer-variant `A \| B` (non-value) | `::tpy::Union<A, B>` | `std::variant<A*, B*>` | `tpy::to_ptr_variant` / inverse |
 | `tuple` element-wise (`T \| None` slot -> `std::optional<T>`, plain non-value slot -> `T`) | `std::tuple<std::optional<A>, B, ...>` | `std::tuple<A*, B*, ...>` | `tpy::tuple_to_storage[_move]` / `tpy::tuple_to_pointer` (per-element dest-shape dispatch; mixing both slot kinds is fine) |
 | `str` | `std::string` | `std::string_view` | implicit C++ conversion |
 | `bytes` | `std::vector<uint8_t>` | `std::span<const uint8_t>` | explicit `::tpy::bytes_copy` (span -> vector is not an implicit conversion) |
@@ -395,7 +395,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `SpanIter[T]` | `tpy::SpanIter<T>` |
 | `A \| B` (value types) | `::tpy::Union<A, B>` (a `std::variant` that owns Python's comparison rule -- see Union/Optional) |
 | `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (borrow form -- pointer-variant). Members must render distinct C++ types -- `bytes \| bytearray` and `list[UInt8] \| bytes` both spell `std::vector<uint8_t>` and reject at a located tag (BUGS.md#duplicate-cpp-spelling-union) |
-| `A \| B` (non-value, fields/containers) | `std::variant<A, B>` (storage form -- value-variant) |
+| `A \| B` (non-value, fields/containers) | `::tpy::Union<A, B>` (storage form -- the SAME type a value union spells, so one type owns Python's comparison rule at every owning position) |
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
 | `Ptr[None]` / `Ptr[readonly[None]]` | `void*` / `const void*` (preserves the C/C++ opaque-pointer idiom for `@native` interop, despite `None` lowering to `std::monostate` at other type-argument positions) |
@@ -3545,13 +3545,13 @@ destructuring -- prefer `match` when the subject is not a bare local. `typing.ca
 no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is `Any`.
 
 ### Union/Optional
-- **Working**: Union types `A | B | C` → `std::variant<A, B, C>`
+- **Working**: Union types `A | B | C` → `::tpy::Union<A, B, C>`
   - **Pointer-variant representation**: non-value unions (containing records) use a two-layer representation for zero-copy semantics:
-    - Storage (fields, containers, rvalue slots): `std::variant<Dog, Cat>` (value variant)
+    - Storage (fields, containers, rvalue slots): `::tpy::Union<Dog, Cat>` (value variant -- the TPy type that owns Python's comparison rule)
     - Reference (params, returns, locals): `std::variant<Dog*, Cat*>` (pointer variant, passed by value)
     - Const methods use `std::variant<const Dog*, const Cat*>`
     - Conversion: `::tpy::to_ptr_variant()` / `::tpy::to_const_ptr_variant()` runtime utilities
-    - Value-type unions (`Int32 | str`) continue using `std::variant<...>` everywhere (no pointers)
+    - Value-type unions (`Int32 | str`) use `::tpy::Union<...>` everywhere (no pointers)
   - Two-way, three-way, and n-way unions in annotations (function params, returns, local variables)
   - Canonical member ordering (sorted by type name, `None`/`std::monostate` always first)
   - `A | None` with single non-None type still produces `Optional[T]` (backward compatible)
@@ -3587,8 +3587,8 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Assignment narrowing: `v: A | B = A(...)` narrows `v` to `A` so field access works without isinstance; uses inline `std::get<T>()` at access points (not aliased, so `v` can still be passed to functions expecting the full union)
   - Assignment narrowing is cleared on reassignment (`v = B(...)` clears the `A` narrowing)
   - Value-type semantics: all-value unions (`int | bool`) pass as `const&`; unions with records use pointer-variant `std::variant<T*...>` (by value, zero-copy)
-  - Nullable unions: `A | B | None` maps to `std::variant<A, B, std::monostate>`
-  - **Comparison is BY VALUE, across alternatives** (CPython semantics): `same(a: Int32 | Float64, b: Int32 | Float64)` returning `a == b` answers True for `same(1, 1.0)`. The type carries the rule, not the compiler: a value union renders `::tpy::Union<...>`, a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` at every position. The leaf is the monomorphic twin's answer for that pair -- a mixed-sign integer pair goes through `std::cmp_equal`, an `int` against a float through `static_cast<double>` -- so a union never disagrees with the same comparison written on plain variables. Because the ELEMENT compares correctly, every container does too with no help: `list`, `Array`, `tuple`, nested combinations and `dict` values all answer Python's way through their own standard operators. The recursive-alias wrapper's defaulted `operator==` compares a `::tpy::Union` member and inherits the same rule. An ordering whose alternative pair Python cannot order (`Int32 | str` holding an int against a str) raises `TypeError` at runtime, as CPython does; a pair of one type that defines no equality at all does not compile. At the type level a union still has no `Equatable` / `Hashable` conformance, so a union against one of its own members, `in` over `list[union]`, and a union dict key are all rejected (see `BUGS.md#value-union-no-equatable-conformance`)
+  - Nullable unions: `A | B | None` maps to `::tpy::Union<A, B, std::monostate>` at a storage position, `std::variant<A*, B*, std::monostate>` at a borrow one
+  - **Comparison is BY VALUE, across alternatives** (CPython semantics): `same(a: Int32 | Float64, b: Int32 | Float64)` returning `a == b` answers True for `same(1, 1.0)`. The type carries the rule, not the compiler: every union at a STORAGE position renders `::tpy::Union<...>` -- a value union everywhere, a REFERENCE union at a field, a container element, an `Own` slot or a return -- a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` at every position. The leaf is the monomorphic twin's answer for that pair -- a mixed-sign integer pair goes through `std::cmp_equal`, an `int` against a float through `static_cast<double>` -- so a union never disagrees with the same comparison written on plain variables. Because the ELEMENT compares correctly, every container does too with no help: `list`, `Array`, `tuple`, nested combinations and `dict` values all answer Python's way through their own standard operators. The recursive-alias wrapper's defaulted `operator==` compares a `::tpy::Union` member and inherits the same rule. A REFERENCE union's container compare inherits it too: `list[Dog | Int32 | Float64]` holding 1 equals one holding 1.0, where the bare variant compared the alternative INDEX first and answered False. What a reference union does NOT have is an answer at a BORROW position: `==` between two pointer-variant unions is still a loud reject, and the identity fallback Python uses for a record with no `__eq__` is representable only there (a storage slot holds a COPY, so the slot's address is not the object's) -- such a pack stays a build-time refusal naming the missing `__eq__`. An ordering whose alternative pair Python cannot order (`Int32 | str` holding an int against a str) raises `TypeError` at runtime, as CPython does; a pair of one type that defines no equality at all does not compile. At the type level a union still has no `Equatable` / `Hashable` conformance, so a union against one of its own members, `in` over `list[union]`, and a union dict key are all rejected (see `BUGS.md#value-union-no-equatable-conformance`)
   - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`
   - `is not None` narrows to remaining non-None members; chained isinstance further narrows
   - Field assignment: `obj.field = local` where field is value-variant and local is pointer-variant auto-converts via `::tpy::to_value_variant()` (copies the active member into field storage, emits copy warning). The wrap is gated on the source being structurally a pointer-variant (ptr_variant local, union param, function call returning a non-value union) -- bare alternative sources (constructor `A(1)`, field access of a value-variant field, etc.) construct the value-variant directly and skip the wrap.

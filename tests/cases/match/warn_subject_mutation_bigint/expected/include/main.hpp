@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Small& obj) {
 // class Holder:
 struct Holder {
     // item: Big | Small
-    std::variant<Big, Small> item;
+    ::tpy::Union<Big, Small> item;
 
     // def __init__(self) -> None:
     Holder();

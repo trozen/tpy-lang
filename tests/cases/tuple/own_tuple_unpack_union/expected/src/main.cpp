@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def pair() -> tuple[Own[A | B], Int32]:
-std::tuple<std::variant<A, B>, int32_t> pair() {
+std::tuple<::tpy::Union<A, B>, int32_t> pair() {
     // return (A(42), Int32(99))
-    return std::tuple<std::variant<A, B>, int32_t>{A(42), 99};
+    return std::tuple<::tpy::Union<A, B>, int32_t>{A(42), 99};
 }
 
 // def borrow(u: A | B) -> Int32:

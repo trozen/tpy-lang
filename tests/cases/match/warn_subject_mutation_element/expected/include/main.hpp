@@ -12,7 +12,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void poke(std::vector<std::variant<Cat, Dog>>& xs);
+void poke(std::vector<::tpy::Union<Cat, Dog>>& xs);
 void main();
 
 // class Dog:

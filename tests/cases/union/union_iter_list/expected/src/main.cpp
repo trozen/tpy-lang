@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // pets: list[Dog | Cat] = [Dog("Rex"), Cat("Whiskers"), Dog("Buddy")]
-    std::vector<std::variant<Cat, Dog>> pets = {Dog("Rex"), Cat("Whiskers"), Dog("Buddy")};
+    std::vector<::tpy::Union<Cat, Dog>> pets = {Dog("Rex"), Cat("Whiskers"), Dog("Buddy")};
     // for p in pets:
     auto& __obj_0 = pets;
     auto __beg_0 = __obj_0.begin();

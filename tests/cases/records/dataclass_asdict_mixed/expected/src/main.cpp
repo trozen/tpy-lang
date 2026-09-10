@@ -17,12 +17,12 @@ void main() {
     // np = NamedPoint("origin", Point(Int32(0), Int32(0)))
     NamedPoint np = NamedPoint("origin", Point(0, 0));
     // print(asdict(np))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, std::variant<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"name", np.name}, {"pos", ::tpy::ordered_map<std::string, int32_t>({{"x", np.pos.x}, {"y", np.pos.y}})}}))) << "\n";
     // # List of dataclasses: recursed into list of dicts
     // g = Group("pts", [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))])
     Group g = Group("pts", {Point(1, 2), Point(3, 4)});
     // print(asdict(g))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, std::variant<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"label", g.label}, {"members", ({
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, std::vector<::tpy::ordered_map<std::string, int32_t>>>>({{"label", g.label}, {"members", ({
         std::vector<::tpy::ordered_map<std::string, int32_t>> __result;
         auto& __obj_0 = g.members;
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));

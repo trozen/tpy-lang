@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<::tpy::BigInt, std::vector<::tpy::BigInt>> get_list();
+::tpy::Union<::tpy::BigInt, std::vector<::tpy::BigInt>> get_list();
 void main();
 
 void __tpy_init();

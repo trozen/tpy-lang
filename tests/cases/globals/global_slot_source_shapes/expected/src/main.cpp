@@ -18,9 +18,9 @@ Point* g{};
 Base* b{};
 // # A value-variant slot from a record rvalue and from a list literal.
 // u: Point | Line = Point(5)  # tpyc: ok
-std::variant<Line, Point>* u{};
+::tpy::Union<Line, Point>* u{};
 // v: list[Int32] | Int32 = [6, 7]  # tpyc: ok
-std::variant<int32_t, std::vector<int32_t>>* v{};
+::tpy::Union<int32_t, std::vector<int32_t>>* v{};
 // # A first write allocates a static slot; the later Optional-field write must
 // # point at the OWNER's storage rather than reseat through that slot.
 // q: Point | None = Point(8)  # tpyc: ok
@@ -48,10 +48,10 @@ void __tpy_init() {
     b = &__global_slot_2;
     // # A value-variant slot from a record rvalue and from a list literal.
     // u: Point | Line = Point(5)  # tpyc: ok
-    static std::variant<Line, Point> __global_slot_3 = Point(5);
+    static ::tpy::Union<Line, Point> __global_slot_3 = Point(5);
     u = &__global_slot_3;
     // v: list[Int32] | Int32 = [6, 7]  # tpyc: ok
-    static std::variant<int32_t, std::vector<int32_t>> __global_slot_4 = std::vector<int32_t>{6, 7};
+    static ::tpy::Union<int32_t, std::vector<int32_t>> __global_slot_4 = std::vector<int32_t>{6, 7};
     v = &__global_slot_4;
     // # A first write allocates a static slot; the later Optional-field write must
     // # point at the OWNER's storage rather than reseat through that slot.

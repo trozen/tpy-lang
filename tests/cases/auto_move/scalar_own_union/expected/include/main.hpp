@@ -12,10 +12,10 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t describe(std::variant<A, B>&& u);
-std::variant<A, B> pick(bool flag);
+int32_t describe(::tpy::Union<A, B>&& u);
+::tpy::Union<A, B> pick(bool flag);
 int32_t borrow_union(const std::variant<A*, B*> u);
-int32_t forward_to_borrow(std::variant<A, B>&& u);
+int32_t forward_to_borrow(::tpy::Union<A, B>&& u);
 void test_body_isinstance_narrowing();
 void test_return_into_pointer_variant_receiver();
 void test_forward_to_borrow_slot();

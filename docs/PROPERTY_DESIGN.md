@@ -98,7 +98,7 @@ and all other method infrastructure apply automatically.
 - `_gen_field_access`: if `property_getter_call` is set, delegates to `_gen_method_call`
 - `_gen_assign_code`: if `property_setter_call` is set, delegates to `_gen_method_call`
 - Getter return type: normal `_resolve_return_type` except for Optional/Union
-  pointer-repr types which use storage type (`std::optional<T>&`, `std::variant<A,B>&`)
+  pointer-repr types which use storage type (`std::optional<T>&`, `::tpy::Union<A,B>&`)
 - `@readonly` free functions: `const=True` passed to `_resolve_return_type`
 
 ## C++ Output

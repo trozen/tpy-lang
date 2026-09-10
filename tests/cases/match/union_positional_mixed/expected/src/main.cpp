@@ -33,12 +33,12 @@ void describe(const std::variant<Label*, Point*> s) {
 // def main() -> None:
 void main() {
     // p: Point | Label = Point(1.0, 2.0, 3.0)
-    std::variant<Label, Point> __slot_1 = Point(1.0, 2.0, 3.0);
+    ::tpy::Union<Label, Point> __slot_1 = Point(1.0, 2.0, 3.0);
     std::variant<Label*, Point*> p = ::tpy::to_ptr_variant(__slot_1);
     // describe(p)
     describe(p);
     // la: Point | Label = Label("hello")
-    std::variant<Label, Point> __slot_2 = Label("hello");
+    ::tpy::Union<Label, Point> __slot_2 = Label("hello");
     std::variant<Label*, Point*> la = ::tpy::to_ptr_variant(__slot_2);
     // describe(la)
     describe(la);

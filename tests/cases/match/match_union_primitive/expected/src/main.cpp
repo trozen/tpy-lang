@@ -114,16 +114,16 @@ std::string unbox(const std::variant<Box<std::string>*, int32_t*> x) {
 // def main() -> None:
 void main() {
     // a: Int32 | str | Cat | Dog = 42
-    std::variant<Cat, Dog, int32_t, std::string> __slot_1 = 42;
+    ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_1 = 42;
     std::variant<Cat*, Dog*, int32_t*, std::string*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: Int32 | str | Cat | Dog = "hello"
-    std::variant<Cat, Dog, int32_t, std::string> __slot_2 = "hello";
+    ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_2 = "hello";
     std::variant<Cat*, Dog*, int32_t*, std::string*> b = ::tpy::to_ptr_variant(__slot_2);
     // c: Int32 | str | Cat | Dog = Cat("Whiskers")
-    std::variant<Cat, Dog, int32_t, std::string> __slot_3 = Cat("Whiskers");
+    ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_3 = Cat("Whiskers");
     std::variant<Cat*, Dog*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_3);
     // d: Int32 | str | Cat | Dog = Dog("Rex")
-    std::variant<Cat, Dog, int32_t, std::string> __slot_4 = Dog("Rex");
+    ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_4 = Dog("Rex");
     std::variant<Cat*, Dog*, int32_t*, std::string*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(describe(a))
     std::cout << describe(a) << "\n";
@@ -146,10 +146,10 @@ void main() {
     // print(depth(nested))
     std::cout << depth(nested) << "\n";
     // e: Int32 | Box[str] = 99
-    std::variant<Box<std::string>, int32_t> __slot_5 = 99;
+    ::tpy::Union<Box<std::string>, int32_t> __slot_5 = 99;
     std::variant<Box<std::string>*, int32_t*> e = ::tpy::to_ptr_variant(__slot_5);
     // f: Int32 | Box[str] = Box("hello")
-    std::variant<Box<std::string>, int32_t> __slot_6 = Box<std::string>("hello");
+    ::tpy::Union<Box<std::string>, int32_t> __slot_6 = Box<std::string>("hello");
     std::variant<Box<std::string>*, int32_t*> f = ::tpy::to_ptr_variant(__slot_6);
     // print(unbox(e))
     std::cout << unbox(e) << "\n";

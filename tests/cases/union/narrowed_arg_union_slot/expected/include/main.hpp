@@ -20,7 +20,7 @@ struct VuBox;
 struct VuSink;
 struct Pt;
 
-extern std::variant<A, B>* G;
+extern ::tpy::Union<A, B>* G;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_body;
@@ -46,7 +46,7 @@ __coro_async_match async_match(std::variant<A*, B*> v);
 int32_t inline_(std::variant<A*, B*> v);
 int32_t walrus(std::variant<A*, B*> v);
 int32_t readonly_slot(const std::variant<A*, B*> v);
-int32_t loop_var(const std::vector<std::variant<A, B>>& xs);
+int32_t loop_var(const std::vector<::tpy::Union<A, B>>& xs);
 int32_t ctor_slot(std::variant<A*, B*> v);
 int32_t str_member(const std::variant<A*, std::string*> v);
 int32_t str_total(const std::variant<A*, std::string*> u);

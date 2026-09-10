@@ -53,7 +53,7 @@ __gen_codes codes(std::variant<const Cat*, const Dog*> a) {
 // def main() -> None:
 void main() {
     // pet: Dog | Cat = Dog()
-    std::variant<Cat, Dog> __slot_1 = Dog();
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for v in codes(pet):
     {

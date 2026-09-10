@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class Holder:
 struct Holder {
     // pet: A | B
-    std::variant<A, B> pet;
+    ::tpy::Union<A, B> pet;
 
     // def __init__(self, p: A | B) -> None:
     explicit Holder(const std::variant<A*, B*> p);
@@ -78,6 +78,6 @@ inline A::A(const ::tpy::BigInt& x) : x(x) {}
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, p: A | B) -> None:
-inline Holder::Holder(const std::variant<A*, B*> p) : pet(::tpy::to_value_variant<std::variant<A, B>>(p)) {}
+inline Holder::Holder(const std::variant<A*, B*> p) : pet(::tpy::to_value_variant<::tpy::Union<A, B>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

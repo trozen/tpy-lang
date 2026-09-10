@@ -55,8 +55,8 @@ inline std::ostream& operator<<(std::ostream& os, const Emit& obj) {
 // Generator: run
 struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
     int32_t __state;
-    ::tpy::frame_slot<std::vector<std::variant<Emit, Push>>> work;
-    ::tpy::frame_slot<std::variant<Emit, Push>> t;
+    ::tpy::frame_slot<std::vector<::tpy::Union<Emit, Push>>> work;
+    ::tpy::frame_slot<::tpy::Union<Emit, Push>> t;
     int32_t total;
     ::tpy::BigInt n;
 

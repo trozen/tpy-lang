@@ -51,18 +51,18 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 // class Canvas:
 struct Canvas {
     // _shape: Circle | Square
-    std::variant<Circle, Square> _shape;
+    ::tpy::Union<Circle, Square> _shape;
 
     // def __init__(self, s: Circle | Square) -> None:
     explicit Canvas(const std::variant<Circle*, Square*> s);
 
     // @property
     // def shape(self) -> Circle | Square:
-    std::variant<Circle, Square>& shape();
+    ::tpy::Union<Circle, Square>& shape();
 
     // @property
     // def shape(self) -> Circle | Square:
-    const std::variant<Circle, Square>& shape() const;
+    const ::tpy::Union<Circle, Square>& shape() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Canvas";
 };
 
@@ -79,18 +79,18 @@ inline Circle::Circle(int32_t r) : radius(r) {}
 inline Square::Square(int32_t s) : side(s) {}
 
 // def __init__(self, s: Circle | Square) -> None:
-inline Canvas::Canvas(const std::variant<Circle*, Square*> s) : _shape(::tpy::to_value_variant<std::variant<Circle, Square>>(s)) {}
+inline Canvas::Canvas(const std::variant<Circle*, Square*> s) : _shape(::tpy::to_value_variant<::tpy::Union<Circle, Square>>(s)) {}
 
 // @property
 // def shape(self) -> Circle | Square:
-inline std::variant<Circle, Square>& Canvas::shape() {
+inline ::tpy::Union<Circle, Square>& Canvas::shape() {
     // return self._shape
     return this->_shape;
 }
 
 // @property
 // def shape(self) -> Circle | Square:
-inline const std::variant<Circle, Square>& Canvas::shape() const {
+inline const ::tpy::Union<Circle, Square>& Canvas::shape() const {
     // return self._shape
     return this->_shape;
 }

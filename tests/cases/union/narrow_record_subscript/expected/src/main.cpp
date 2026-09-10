@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def get(flag: bool) -> Own[Bag | int]:
-std::variant<Bag, ::tpy::BigInt> get(bool flag) {
+::tpy::Union<Bag, ::tpy::BigInt> get(bool flag) {
     // if flag:
     if (flag) {
         // return Bag()
@@ -18,7 +18,7 @@ std::variant<Bag, ::tpy::BigInt> get(bool flag) {
 // def main() -> None:
 void main() {
     // v = get(True)
-    std::variant<Bag, ::tpy::BigInt> __slot_1 = get(true);
+    ::tpy::Union<Bag, ::tpy::BigInt> __slot_1 = get(true);
     std::variant<Bag*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, Bag):
     if (std::holds_alternative<Bag*>(v)) {

@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class Holder:
 struct Holder {
     // slot: A | B | None
-    std::variant<std::monostate, A, B> slot;
+    ::tpy::Union<std::monostate, A, B> slot;
 
     // def __init__(self) -> None:
     Holder();

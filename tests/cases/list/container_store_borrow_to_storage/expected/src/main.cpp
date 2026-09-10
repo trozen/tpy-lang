@@ -11,15 +11,15 @@ void store_opt(std::vector<std::optional<A>>& xs, const A* p) {
 }
 
 // def store_union(xs: list[A | B], p: A | B) -> None:
-void store_union(std::vector<std::variant<A, B>>& xs, const std::variant<A*, B*> p) {
+void store_union(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p) {
     // xs[0] = p
-    ::tpy::__setitem__(xs, 0, ::tpy::to_value_variant<std::variant<A, B>>(p));
+    ::tpy::__setitem__(xs, 0, ::tpy::to_value_variant<::tpy::Union<A, B>>(p));
 }
 
 // def append_union(xs: list[A | B], p: A | B) -> None:
-void append_union(std::vector<std::variant<A, B>>& xs, const std::variant<A*, B*> p) {
+void append_union(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p) {
     // xs.append(p)
-    xs.push_back(::tpy::to_value_variant<std::variant<A, B>>(p));
+    xs.push_back(::tpy::to_value_variant<::tpy::Union<A, B>>(p));
 }
 
 // def store_dict(d: dict[str, A | None], p: A | None) -> None:
@@ -29,7 +29,7 @@ void store_dict(::tpy::ordered_map<std::string, std::optional<A>>& d, const A* p
 }
 
 // def store_narrowed(xs: list[A | B], p: A | B) -> None:
-void store_narrowed(std::vector<std::variant<A, B>>& xs, const std::variant<A*, B*> p) {
+void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p) {
     // if isinstance(p, A):
     if (std::holds_alternative<A*>(p)) {
         auto& __p = *std::get<A*>(p);
@@ -51,7 +51,7 @@ void main() {
     // print(head.x if head is not None else -1)   # 5
     std::cout << (((head != nullptr)) ? (head->x) : (::tpy::BigInt(-1))) << "\n";
     // u: list[A | B] = [A(1), B(2)]
-    std::vector<std::variant<A, B>> u = {A(::tpy::BigInt(1)), B(::tpy::BigInt(2))};
+    std::vector<::tpy::Union<A, B>> u = {A(::tpy::BigInt(1)), B(::tpy::BigInt(2))};
     // store_union(u, B(9))
     B __tmp_2 = B(::tpy::BigInt(9));
     store_union(u, std::variant<A*, B*>{&__tmp_2});
@@ -84,7 +84,7 @@ void main() {
     // print(dv.x if dv is not None else -1)        # 11
     std::cout << (((dv != nullptr)) ? (dv->x) : (::tpy::BigInt(-1))) << "\n";
     // nx: list[A | B] = [B(0), B(0)]
-    std::vector<std::variant<A, B>> nx = {B(::tpy::BigInt(0)), B(::tpy::BigInt(0))};
+    std::vector<::tpy::Union<A, B>> nx = {B(::tpy::BigInt(0)), B(::tpy::BigInt(0))};
     // store_narrowed(nx, A(13))
     A __tmp_5 = A(::tpy::BigInt(13));
     store_narrowed(nx, std::variant<A*, B*>{&__tmp_5});

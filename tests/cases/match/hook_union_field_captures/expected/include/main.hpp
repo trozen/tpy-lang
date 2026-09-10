@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // class Holder:
 struct Holder {
     // pet: Cat | Dog
-    std::variant<Cat, Dog> pet;
+    ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
     explicit Holder(const std::variant<Cat*, Dog*> pet);
@@ -247,6 +247,6 @@ inline Cat::Cat(int32_t lives) : lives(lives) {}
 inline Dog::Dog(int32_t lives) : lives(lives) {}
 
 // def __init__(self, pet: Cat | Dog) -> None:
-inline Holder::Holder(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
+inline Holder::Holder(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 void __tpy_init();
 } // namespace tpyapp::main

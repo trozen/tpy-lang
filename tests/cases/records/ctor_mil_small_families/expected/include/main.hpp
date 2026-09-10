@@ -61,11 +61,11 @@ struct H {
     // un: Int32 | Float64 | None
     ::tpy::Union<std::monostate, int32_t, double> un;
     // pu: A | B
-    std::variant<A, B> pu;
+    ::tpy::Union<A, B> pu;
     // pr: A | B
-    std::variant<A, B> pr;
+    ::tpy::Union<A, B> pr;
     // pn: A | B | None
-    std::variant<std::monostate, A, B> pn;
+    ::tpy::Union<std::monostate, A, B> pn;
     // ft: tuple[A, Int32]
     std::tuple<A, int32_t> ft;
     // vt: tuple[Int32, Int32]

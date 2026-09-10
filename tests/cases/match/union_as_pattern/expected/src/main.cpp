@@ -31,10 +31,10 @@ std::string describe(const std::variant<Cat*, Dog*> a) {
 // def main() -> None:
 void main() {
     // d: Dog | Cat = Dog("Rex")
-    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat = Cat("Whiskers")
-    std::variant<Cat, Dog> __slot_2 = Cat("Whiskers");
+    ::tpy::Union<Cat, Dog> __slot_2 = Cat("Whiskers");
     std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(describe(d))
     std::cout << describe(d) << "\n";

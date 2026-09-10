@@ -42,13 +42,13 @@ void main() {
     std::cout << show(body) << "\n";
     // # A METHOD-call rvalue at a bytes member slot.
     // body = "ab".encode()
-    std::variant<std::monostate, std::vector<uint8_t>, ::tpy::ordered_map<std::string, std::string>> __slot_1 = ::tpy::bytes_from_str("ab");
+    ::tpy::Union<std::monostate, std::vector<uint8_t>, ::tpy::ordered_map<std::string, std::string>> __slot_1 = ::tpy::bytes_from_str("ab");
     body = ::tpy::to_ptr_variant(__slot_1);
     // print(show(body))
     std::cout << show(body) << "\n";
     // # A FREE-call rvalue at the same slot.
     // body = make_bytes("cde")
-    std::variant<std::monostate, std::vector<uint8_t>, ::tpy::ordered_map<std::string, std::string>> __slot_2 = make_bytes("cde");
+    ::tpy::Union<std::monostate, std::vector<uint8_t>, ::tpy::ordered_map<std::string, std::string>> __slot_2 = make_bytes("cde");
     body = ::tpy::to_ptr_variant(__slot_2);
     // print(show(body))
     std::cout << show(body) << "\n";
@@ -57,7 +57,7 @@ void main() {
     // # The str member: the variant member spells the owned std::string, so
     // # a view-returning method still copies into the slot.
     // text = make_str("x")
-    std::variant<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_3 = make_str("x");
+    ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_3 = make_str("x");
     text = ::tpy::to_ptr_variant(__slot_3);
     // if isinstance(text, str):
     if (std::holds_alternative<std::string*>(text)) {
@@ -66,7 +66,7 @@ void main() {
         std::cout << ::tpy::__str__(__text) << "\n";
     }
     // text = "hi".upper()
-    std::variant<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_4 = ::tpy::str_upper("hi");
+    ::tpy::Union<std::monostate, ::tpy::ordered_map<std::string, std::string>, std::string> __slot_4 = ::tpy::str_upper("hi");
     text = ::tpy::to_ptr_variant(__slot_4);
     // if isinstance(text, str):
     if (std::holds_alternative<std::string*>(text)) {

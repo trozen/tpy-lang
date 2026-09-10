@@ -31,15 +31,15 @@ std::string describe_zoo(const Zoo& z) {
 // def main() -> None:
 void main() {
     // ball: Ball | Mouse = Ball("red")
-    std::variant<Ball, Mouse> __slot_1 = Ball("red");
+    ::tpy::Union<Ball, Mouse> __slot_1 = Ball("red");
     std::variant<Ball*, Mouse*> ball = ::tpy::to_ptr_variant(__slot_1);
     // cat: Cat | Dog = Cat("Luna", ball)
-    std::variant<Cat, Dog> __slot_2 = Cat("Luna", ball);
+    ::tpy::Union<Cat, Dog> __slot_2 = Cat("Luna", ball);
     std::variant<Cat*, Dog*> cat = ::tpy::to_ptr_variant(__slot_2);
     // z1 = Zoo(cat)
     Zoo z1 = Zoo(cat);
     // dog: Cat | Dog = Dog("Rex")
-    std::variant<Cat, Dog> __slot_3 = Dog("Rex");
+    ::tpy::Union<Cat, Dog> __slot_3 = Dog("Rex");
     std::variant<Cat*, Dog*> dog = ::tpy::to_ptr_variant(__slot_3);
     // z2 = Zoo(dog)
     Zoo z2 = Zoo(dog);

@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::Union<int32_t, std::string> make_iu();
 ::tpy::Union<int32_t, std::string> make_su();
-std::variant<int32_t, Point, std::string> make_3u();
+::tpy::Union<int32_t, Point, std::string> make_3u();
 void main();
 
 // class Point:

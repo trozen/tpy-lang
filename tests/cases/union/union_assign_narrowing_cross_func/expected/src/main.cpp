@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def f() -> None:
 void f() {
     // a: A | B = A(1.0)
-    std::variant<A, B> __slot_1 = A(1.0);
+    ::tpy::Union<A, B> __slot_1 = A(1.0);
     std::variant<A*, B*> a = ::tpy::to_ptr_variant(__slot_1);
     // print(a.x)
     std::cout << ::tpy::print_float((*std::get<A*>(a)).x) << "\n";

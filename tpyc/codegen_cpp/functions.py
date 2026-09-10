@@ -1581,15 +1581,19 @@ class FunctionGenerator:
         elif method.is_property_getter:
             # Property getters return references to fields. For pointer-repr types
             # (Optional[non-value], Union[non-value]), use the storage type
-            # (std::optional<T>&, std::variant<A,B>&) instead of method convention
+            # (std::optional<T>&, ::tpy::Union<A,B>&) instead of method convention
             # (T*, variant<A*,B*>). Other types use normal _resolve_return_type.
             inner = unwrap_ref_type(cpp_return_type)
             if isinstance(inner, OptionalType) and inner.uses_pointer_repr():
                 storage = f"std::optional<{inner.inner.to_cpp()}>"
                 ret_type = f"const {storage}&" if const else f"{storage}&"
             elif self.ctx.is_ptr_variant_union(inner):
-                members_cpp = ", ".join(m.to_cpp() for m in inner.members)
-                ret_type = f"const std::variant<{members_cpp}>&" if const else f"std::variant<{members_cpp}>&"
+                # Read the storage type rather than spelling a head: a
+                # reference to the BASE variant binds to the field and then
+                # compares index-first, silently losing the storage form's
+                # comparison rule at every use of the property.
+                storage = self.types.type_to_cpp(inner)
+                ret_type = f"const {storage}&" if const else f"{storage}&"
             else:
                 ret_type = self._resolve_return_type(cpp_return_type, const=const,
                                                       error_return=method.error_return)

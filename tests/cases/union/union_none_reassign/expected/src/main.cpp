@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_reassign_to_none() -> str:
 std::string test_reassign_to_none() {
     // v: Int32 | Dog | None = Int32(5)
-    std::variant<std::monostate, Dog, int32_t> __slot_1 = 5;
+    ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 5;
     std::variant<std::monostate, Dog*, int32_t*> v = ::tpy::to_ptr_variant(__slot_1);
     // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
@@ -28,7 +28,7 @@ std::string test_init_none_then_assign() {
     // v: Int32 | Dog | None = None
     std::variant<std::monostate, Dog*, int32_t*> v = std::monostate{};
     // v = Int32(42)
-    std::variant<std::monostate, Dog, int32_t> __slot_1 = 42;
+    ::tpy::Union<std::monostate, Dog, int32_t> __slot_1 = 42;
     v = ::tpy::to_ptr_variant(__slot_1);
     // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {

@@ -34,17 +34,17 @@ void describe(const std::variant<Circle*, Rect*, Triangle*> s) {
 // def main() -> None:
 void main() {
     // c: Circle | Rect | Triangle = Circle(1.0)
-    std::variant<Circle, Rect, Triangle> __slot_1 = Circle(1.0);
+    ::tpy::Union<Circle, Rect, Triangle> __slot_1 = Circle(1.0);
     std::variant<Circle*, Rect*, Triangle*> c = ::tpy::to_ptr_variant(__slot_1);
     // describe(c)
     describe(c);
     // r: Circle | Rect | Triangle = Rect(2.0, 3.0)
-    std::variant<Circle, Rect, Triangle> __slot_2 = Rect(2.0, 3.0);
+    ::tpy::Union<Circle, Rect, Triangle> __slot_2 = Rect(2.0, 3.0);
     std::variant<Circle*, Rect*, Triangle*> r = ::tpy::to_ptr_variant(__slot_2);
     // describe(r)
     describe(r);
     // t: Circle | Rect | Triangle = Triangle(4.0)
-    std::variant<Circle, Rect, Triangle> __slot_3 = Triangle(4.0);
+    ::tpy::Union<Circle, Rect, Triangle> __slot_3 = Triangle(4.0);
     std::variant<Circle*, Rect*, Triangle*> t = ::tpy::to_ptr_variant(__slot_3);
     // describe(t)
     describe(t);

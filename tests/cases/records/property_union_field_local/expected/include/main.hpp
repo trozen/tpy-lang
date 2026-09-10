@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // class Holder:
 struct Holder {
     // sub: A | B
-    std::variant<A, B> sub;
+    ::tpy::Union<A, B> sub;
 
     // def __init__(self, sub: A | B) -> None:
     explicit Holder(const std::variant<A*, B*> sub);
@@ -74,7 +74,7 @@ inline A::A(std::optional<std::string_view> target) : target(target ? std::make_
 inline B::B(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
 
 // def __init__(self, sub: A | B) -> None:
-inline Holder::Holder(const std::variant<A*, B*> sub) : sub(::tpy::to_value_variant<std::variant<A, B>>(sub)) {}
+inline Holder::Holder(const std::variant<A*, B*> sub) : sub(::tpy::to_value_variant<::tpy::Union<A, B>>(sub)) {}
 
 // @property
 // def label(self) -> str:

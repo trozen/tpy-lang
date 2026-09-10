@@ -18,9 +18,9 @@ void greet_cat(const Cat& c) {
 
 // def main() -> None:
 void main() {
-    std::optional<std::variant<Cat, Dog>> __slot_2;
+    std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     // pet: Dog | Cat = Dog("Rex")
-    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
+    ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):
     if (true) {

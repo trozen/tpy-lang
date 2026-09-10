@@ -20,10 +20,10 @@ void main() {
     Shelter s = Shelter(init_pet);
     // # Assign from pointer-variant local
     // new_pet: Dog | Cat | None = Cat("Whiskers")
-    std::variant<std::monostate, Cat, Dog> __slot_1 = Cat("Whiskers");
+    ::tpy::Union<std::monostate, Cat, Dog> __slot_1 = Cat("Whiskers");
     std::variant<std::monostate, Cat*, Dog*> new_pet = ::tpy::to_ptr_variant(__slot_1);
     // s.pet = new_pet
-    s.pet = ::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(new_pet);
+    s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(new_pet);
     // p = s.pet
     std::variant<std::monostate, Cat*, Dog*> p = ::tpy::to_ptr_variant(s.pet);
     // if p is not None:
@@ -37,7 +37,7 @@ void main() {
     }
     // # Assign from function returning pointer-variant
     // s.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
-    s.pet = ::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(identity(new_pet));
+    s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(identity(new_pet));
     // p2 = s.pet
     std::variant<std::monostate, Cat*, Dog*> p2 = ::tpy::to_ptr_variant(s.pet);
     // if p2 is not None:
@@ -61,10 +61,10 @@ void main() {
     }
     // # Assign again from pointer-variant local
     // another: Dog | Cat | None = Dog("Buddy")
-    std::variant<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
+    ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
     std::variant<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
     // s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
-    s.pet = ::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(another);
+    s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(another);
     // p4 = s.pet
     std::variant<std::monostate, Cat*, Dog*> p4 = ::tpy::to_ptr_variant(s.pet);
     // if p4 is not None:

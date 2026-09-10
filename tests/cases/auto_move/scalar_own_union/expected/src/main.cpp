@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(u: Own[A | B]) -> Int32:
-int32_t describe(std::variant<A, B>&& u) {
+int32_t describe(::tpy::Union<A, B>&& u) {
     // if isinstance(u, A):
     if (std::holds_alternative<A>(u)) {
         const auto& __u = std::get<A>(u);
@@ -23,7 +23,7 @@ int32_t describe(std::variant<A, B>&& u) {
 }
 
 // def pick(flag: bool) -> Own[A | B]:
-std::variant<A, B> pick(bool flag) {
+::tpy::Union<A, B> pick(bool flag) {
     // if flag:
     if (flag) {
         // return A(7)
@@ -53,7 +53,7 @@ int32_t borrow_union(const std::variant<A*, B*> u) {
 }
 
 // def forward_to_borrow(u: Own[A | B]) -> Int32:
-int32_t forward_to_borrow(std::variant<A, B>&& u) {
+int32_t forward_to_borrow(::tpy::Union<A, B>&& u) {
     // # Forwarding the storage-form variant param into a pointer-variant
     // # slot needs to_ptr_variant; the bare value-variant doesn't convert.
     // return borrow_union(u)

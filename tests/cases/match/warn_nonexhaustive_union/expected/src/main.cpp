@@ -31,7 +31,7 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
 // def main() -> None:
 void main() {
     // d: Dog | Cat | Bird = Dog("Rex")
-    std::variant<Bird, Cat, Dog> __slot_1 = Dog("Rex");
+    ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // print(describe(d))
     std::cout << describe(d) << "\n";

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 // # module-level statement
 // G: A | B = A(200)
-std::variant<A, B>* G{};
+::tpy::Union<A, B>* G{};
 
 // def bump(u: A | B) -> None:
 void bump(std::variant<A*, B*> u) {
@@ -453,7 +453,7 @@ int32_t readonly_slot(const std::variant<A*, B*> v) {
 
 // # loop variable over a list of the union, at a readonly[] slot
 // def loop_var(xs: list[A | B]) -> Int32:
-int32_t loop_var(const std::vector<std::variant<A, B>>& xs) {
+int32_t loop_var(const std::vector<::tpy::Union<A, B>>& xs) {
     // k = 0
     int32_t k = 0;
     // for e in xs:
@@ -742,7 +742,7 @@ int32_t value_union_record(const ::tpy::Union<Pt, double>& v) {
 // def assign_narrowed() -> Int32:
 int32_t assign_narrowed() {
     // x: A | B = A(50)
-    std::variant<A, B> __slot_1 = A(50);
+    ::tpy::Union<A, B> __slot_1 = A(50);
     std::variant<A*, B*> x = ::tpy::to_ptr_variant(__slot_1);
     // bump(x)  # tpyc: ok
     bump(x);
@@ -811,7 +811,7 @@ void main() {
     // # a method's union arg slot has no member lift row, so the method
     // # section's caller passes an already-union name (which renders bare)
     // mv: A | B = A(15)
-    std::variant<A, B> __slot_1 = A(15);
+    ::tpy::Union<A, B> __slot_1 = A(15);
     std::variant<A*, B*> mv = ::tpy::to_ptr_variant(__slot_1);
     // print("method", r.go(mv), peek(mv), r.hits)
     std::cout << "method" << " " << r.go(mv) << " " << peek(::tpy::ptr_variant_to_const<std::variant<const A*, const B*>>(mv)) << " " << r.hits << "\n";
@@ -897,7 +897,7 @@ void main() {
     // print("readonly", readonly_slot(k), k.n)
     std::cout << "readonly" << " " << readonly_slot(std::variant<A*, B*>{&(k)}) << " " << k.n << "\n";
     // xs: list[A | B] = [A(1), A(2)]
-    std::vector<std::variant<A, B>> xs = {A(1), A(2)};
+    std::vector<::tpy::Union<A, B>> xs = {A(1), A(2)};
     // print("loop-var", loop_var(xs))
     std::cout << "loop-var" << " " << loop_var(xs) << "\n";
     // p = A(110)
@@ -997,7 +997,7 @@ void __tpy_init() {
     main();
     // # module-level statement
     // G: A | B = A(200)
-    static std::variant<A, B> __global_slot_1 = A(200);
+    static ::tpy::Union<A, B> __global_slot_1 = A(200);
     G = &__global_slot_1;
     // if isinstance(G, A):
     if (std::holds_alternative<A>((*G))) {

@@ -1132,7 +1132,7 @@ class LocalCppForm(Enum):
         are NOT in `pointer_locals` (their access doesn't route through
         `->`) and may be in `const_storage_form_optional_locals` for
         const-source iteration.
-      * `VALUE_VARIANT` -- `std::variant<A, B>` storage form. `Own[Union nonvalue]`
+      * `VALUE_VARIANT` -- `::tpy::Union<A, B>` storage form. `Own[Union nonvalue]`
         params at the ABI. Lifts via `tpy::to_ptr_variant` when consumed
         as a pointer-variant slot.
       * `PTR_VARIANT` -- `std::variant<T*, ...>` borrow form. Non-value

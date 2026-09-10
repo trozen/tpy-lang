@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def print_copy_param(pet: Dog | Cat) -> None:
 void print_copy_param(const std::variant<Cat*, Dog*> pet) {
     // pet2 = copy(pet)
-    std::variant<Cat, Dog> __slot_1 = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet);
+    ::tpy::Union<Cat, Dog> __slot_1 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
     std::variant<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet2, Dog):
     if (std::holds_alternative<Dog*>(pet2)) {
@@ -32,7 +32,7 @@ void main() {
     // pet: Dog | Cat = d
     std::variant<Cat*, Dog*> pet{&(d)};
     // pet2 = copy(pet)
-    std::variant<Cat, Dog> __slot_1 = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet);
+    ::tpy::Union<Cat, Dog> __slot_1 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
     std::variant<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_1);
     // d.name = "Changed"
     d.name = "Changed";
@@ -48,7 +48,7 @@ void main() {
     // pet3: Dog | Cat = c
     std::variant<Cat*, Dog*> pet3{&(c)};
     // pet4 = copy(pet3)
-    std::variant<Cat, Dog> __slot_2 = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet3);
+    ::tpy::Union<Cat, Dog> __slot_2 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet3);
     std::variant<Cat*, Dog*> pet4 = ::tpy::to_ptr_variant(__slot_2);
     // if isinstance(pet4, Cat):
     if (std::holds_alternative<Cat*>(pet4)) {
@@ -72,7 +72,7 @@ void main() {
     if (true) {
         auto& __pet6 = *std::get<Cat*>(pet6);
         // pet7 = copy(pet6)
-        std::variant<Cat, Dog> __slot_3 = ::tpy::to_value_variant<std::variant<Cat, Dog>>(pet6);
+        ::tpy::Union<Cat, Dog> __slot_3 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet6);
         std::variant<Cat*, Dog*> pet7 = ::tpy::to_ptr_variant(__slot_3);
         // if isinstance(pet7, Cat):
         if (std::holds_alternative<Cat*>(pet7)) {
@@ -83,10 +83,10 @@ void main() {
     }
     // # Copy a nullable union
     // pet8: Dog | Cat | None = Dog("Buddy")
-    std::variant<std::monostate, Cat, Dog> __slot_4 = Dog("Buddy");
+    ::tpy::Union<std::monostate, Cat, Dog> __slot_4 = Dog("Buddy");
     std::variant<std::monostate, Cat*, Dog*> pet8 = ::tpy::to_ptr_variant(__slot_4);
     // pet9 = copy(pet8)
-    std::variant<std::monostate, Cat, Dog> __slot_5 = ::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(pet8);
+    ::tpy::Union<std::monostate, Cat, Dog> __slot_5 = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(pet8);
     std::variant<std::monostate, Cat*, Dog*> pet9 = ::tpy::to_ptr_variant(__slot_5);
     // if pet9 is not None:
     if ((!std::holds_alternative<std::monostate>(pet9))) {

@@ -9,7 +9,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // work: list[Push | Emit] = []
-        work.emplace(std::vector<std::variant<Emit, Push>>{});
+        work.emplace(std::vector<::tpy::Union<Emit, Push>>{});
         // work.append(Emit("ab"))
         (*work).push_back(Emit("ab"));
         // work.append(Push([1, 2, 3]))

@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void field_direct(Holder& h);
 void field_method(Holder& h);
-void element_realloc(std::vector<std::variant<Cat, Dog>>& xs);
+void element_realloc(std::vector<::tpy::Union<Cat, Dog>>& xs);
 void main();
 
 // class Dog:
@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Holder:
 struct Holder {
     // pet: Dog | Cat
-    std::variant<Cat, Dog> pet;
+    ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self) -> None:
     Holder();
