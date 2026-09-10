@@ -3342,10 +3342,12 @@ class CallAnalyzer:
             return
 
         param_map: dict[int, int] = {}
-        # A vararg slot can receive multiple caller args; param_map is single-
-        # valued per callee idx, so additional vararg-arg roots beyond the first
-        # spawn standalone edges (collected here, emitted alongside the main edge).
-        extra_vararg_edges: list[tuple[int, int]] = []
+        # param_map is single-valued per callee idx, but one callee slot can
+        # reach several caller params: a vararg slot receives multiple args,
+        # and a RE-SEATED argument name borrows more than one root. Every
+        # caller param beyond the first spawns a standalone edge (collected
+        # here, emitted alongside the main edge).
+        extra_param_edges: list[tuple[int, int]] = []
         for i, callee_param in enumerate(fi.params):
             if i >= len(expr.args):
                 break
@@ -3369,17 +3371,17 @@ class CallAnalyzer:
                     sub_root = _root_name_of_expr(sub_expr)
                     if sub_root is None:
                         continue
-                    resolved = self.ctx.func.borrow_tracker.effective_storage_through_borrows(sub_root)
-                    if resolved not in name_to_idx or resolved in rebound:
-                        continue
-                    caller_idx = name_to_idx[resolved]
-                    if caller_idx in seen_callers:
-                        continue
-                    seen_callers.add(caller_idx)
-                    if i not in param_map:
-                        param_map[i] = caller_idx
-                    else:
-                        extra_vararg_edges.append((i, caller_idx))
+                    for resolved in self._arg_storage_roots(sub_root):
+                        if resolved not in name_to_idx or resolved in rebound:
+                            continue
+                        caller_idx = name_to_idx[resolved]
+                        if caller_idx in seen_callers:
+                            continue
+                        seen_callers.add(caller_idx)
+                        if i not in param_map:
+                            param_map[i] = caller_idx
+                        else:
+                            extra_param_edges.append((i, caller_idx))
                 continue
             # Skip params with no mutable borrow surface. This catches plain
             # value types and also opts out of Own[T], TypeParamRef, and
@@ -3393,12 +3395,17 @@ class CallAnalyzer:
             if arg_root is None:
                 continue
             # Resolve alias and element borrow chains to find the original param.
-            # 8a.5: effective_storage_through_borrows also follows element/field/ptr
-            # borrows so that mutating a call arg that element-borrows from a param
-            # correctly traces back to the source param.
-            resolved = self.ctx.func.borrow_tracker.effective_storage_through_borrows(arg_root)
-            if resolved in name_to_idx and resolved not in rebound:
-                param_map[i] = name_to_idx[resolved]
+            # 8a.5: the walk also follows element/field/ptr borrows so that
+            # mutating a call arg that element-borrows from a param correctly
+            # traces back to the source param.
+            for resolved in self._arg_storage_roots(arg_root):
+                if resolved not in name_to_idx or resolved in rebound:
+                    continue
+                caller_idx = name_to_idx[resolved]
+                if i not in param_map:
+                    param_map[i] = caller_idx
+                elif param_map[i] != caller_idx:
+                    extra_param_edges.append((i, caller_idx))
         if param_map or receiver_is_self:
             # Edge stores the canonical so Phase 2 reads facts as they evolve.
             callee = fi.root
@@ -3408,13 +3415,19 @@ class CallAnalyzer:
                 MutationCallEdge(callee_fi=callee, param_map=param_map,
                                  receiver_is_self=receiver_is_self)
             )
-        for callee_idx, caller_idx in extra_vararg_edges:
+        for callee_idx, caller_idx in extra_param_edges:
             callee = fi.root
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee,
                                  param_map={callee_idx: caller_idx},
                                  receiver_is_self=False)
             )
+
+    def _arg_storage_roots(self, arg_root: str) -> list[str]:
+        """The caller storages an argument name can reach, for mutation
+        attribution. A re-seated name has several and a mutating callee
+        reaches whichever loan is live, so all of them owe an edge."""
+        return self.ctx.func.borrow_tracker.storage_roots_or_self(arg_root)
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
         """Validate pointer constructor arguments (type match, no void args).

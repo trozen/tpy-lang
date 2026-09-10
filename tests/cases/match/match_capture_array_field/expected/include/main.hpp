@@ -11,6 +11,7 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+void fill(H& h);
 void main();
 
 // class H:

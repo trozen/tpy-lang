@@ -25,7 +25,7 @@ std::string known(const std::variant<Bird*, Cat*, Dog*> a) {
 }
 
 // def tag(a: Dog | Cat | Bird, t: str) -> Int32:
-int32_t tag(const std::variant<Bird*, Cat*, Dog*> a, std::string_view t) {
+int32_t tag(std::variant<Bird*, Cat*, Dog*> a, std::string_view t) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {

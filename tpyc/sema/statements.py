@@ -341,9 +341,13 @@ def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
     Used to recognize a method call receiver whose root is a local alias of
     self-owned storage (e.g. ``frame = self.frame; frame.get().cancel()``)
     so the call's self-mutation flows back through the enclosing method.
+
+    ANY root answers for a re-seated name: the receiver aliases self-owned
+    storage on at least one reaching path, and the verdict only ever ADDS the
+    self-mutation edge, which demotes readonly -- the safe direction.
     """
-    ultimate = borrow_tracker.effective_storage_through_borrows(name)
-    return ultimate == "self" or ultimate.startswith("self.")
+    roots = borrow_tracker.storage_roots_or_self(name)
+    return any(root == "self" or root.startswith("self.") for root in roots)
 
 
 def _is_self_call_deferred(

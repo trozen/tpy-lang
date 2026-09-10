@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Iterator
 
 from ..typesys import (
     TpyType,
-    NominalType, AliasRef, RecursiveAliasInstanceType,
+    NominalType, AliasRef, RecursiveAliasInstanceType, ReadonlyType,
     NoneType, OptionalType, UnionType, PendingStrType, TupleType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers,
@@ -36,7 +36,7 @@ from ..parse.nodes import (
     stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
 )
 from ..value_category import is_rvalue_source
-from .context import record_stmt_borrow_binding
+from .context import record_stmt_borrow_binding, register_capture_alias_borrow
 
 if TYPE_CHECKING:
     from ..typesys import RecordInfo
@@ -75,20 +75,31 @@ def _parts_may_alias(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
     return True
 
 
-def _strip_match_qualifiers(typ: TpyType) -> TpyType:
-    """Drop the qualifier wrappers a match dispatch or comparison sees through.
+def _peel_match_qualifiers(typ: TpyType) -> tuple[TpyType, bool]:
+    """The dispatch type behind `typ`'s qualifier wrappers, and whether any of
+    them was `readonly[...]`.
 
     Every wrapper here renders as the same C++ value (or a reference to it),
     so none of them changes what a pattern tests. Between them the two unwrap
     orders below take any two-wrapper nesting apart in a single pass; the loop
     is what covers a deeper stack, where one pass can leave a layer behind.
+    The readonly flag is reported rather than merely dropped: a capture that
+    aliases readonly storage is readonly too, and the alias is a fresh name
+    that has no other way to learn it.
     """
+    readonly = False
     while True:
+        readonly = readonly or isinstance(typ, ReadonlyType)
         stripped = unwrap_own(
             unwrap_ref_type(unwrap_readonly(unwrap_qualifiers(typ))))
         if stripped == typ:
-            return typ
+            return typ, readonly
         typ = stripped
+
+
+def _strip_match_qualifiers(typ: TpyType) -> TpyType:
+    """Drop the qualifier wrappers a match dispatch or comparison sees through."""
+    return _peel_match_qualifiers(typ)[0]
 
 
 def _matches_every_value(pat: TpyPattern) -> bool:
@@ -137,7 +148,7 @@ class MatchAnalyzer:
         # (`match make_box():` -> `Own[Box[T]]`); the match reads the owned
         # value, so dispatch sees its inner type. Reachable only since
         # expression subjects were allowed (a name local is never Own-typed).
-        effective_type = _strip_match_qualifiers(subject_type)
+        effective_type, subject_readonly = _peel_match_qualifiers(subject_type)
         # Expand recursive union alias placeholder to its underlying
         # UnionType so match dispatch sees the variant arms.
         if isinstance(effective_type, AliasRef):
@@ -195,6 +206,11 @@ class MatchAnalyzer:
         subject_name: str | None = None
         if isinstance(stmt.subject, TpyName):
             subject_name = stmt.subject.name
+            # isinstance narrowing strips ReadonlyType off the expr type while
+            # the scope binding keeps it, so the qualifier peel above can miss
+            # a readonly name reached through an earlier narrowing.
+            subject_readonly = (subject_readonly
+                                or self.ctx.is_readonly_name(subject_name))
 
         # Resumable frame (H1): when a generator/async `match` carries a
         # suspension, its arm bodies become separate states, so pattern
@@ -319,6 +335,16 @@ class MatchAnalyzer:
                         f"subject ('{ty}') but '{name}' already has type "
                         f"'{existing}'; add a 'case None:' arm before it or "
                         f"use a fresh name", case.pattern)
+                # A capture that ALIASES readonly storage is readonly too. The
+                # isinstance twin needs no such step (it narrows the subject's
+                # own binding, which already carries the qualifier); a capture
+                # is a fresh name, and without this the write through it is
+                # accepted by sema and rejected only by the C++ compiler. A
+                # free-copy scalar capture is a durable copy, not an alias, so
+                # it keeps the bare type.
+                if subject_readonly and not self._capture_binds_by_value(ty):
+                    ty = ReadonlyType(ty)
+                    pattern_bindings[name] = ty
                 self.ctx.func.current_scope.define(name, ty)
                 self.ctx.func.nonstmt_bound_names.add(name)
                 self.stmts.init.mark_assigned(name)
@@ -368,19 +394,16 @@ class MatchAnalyzer:
                     facts = {subject_name: narrowed}
                     case.type_facts = self.stmts._filter_union_codegen_facts(facts)
 
-            # Analyze guard expression (pattern bindings are in scope)
-            if case.guard is not None:
-                self.expr.analyze_expr(case.guard)
-
-            for s in case.body:
-                self.stmts.analyze_stmt(s)
-
             # One fact (bind_by_value per capture) drives both codegen's
             # binding form and the dangle warning below, so the two cannot
             # disagree (a scalar is never silently aliased). A free-copy scalar
             # is copied; everything else borrows (copying str/BigInt pessimizes
             # the common path, a view still dangles, a reference type diverges
             # from CPython aliasing). Returns whether any binding aliases.
+            # Runs BEFORE the arm body: the loan registered below has to be in
+            # the borrow graph while the body is walked, or a mutation through
+            # the capture cannot climb back to the subject. Every input is
+            # syntactic (the pattern and an unanalyzed body scan).
             aliasing_bindings, arm_rebinds = self._annotate_capture_bind_modes(
                 case.pattern, pattern_bindings, case.body)
             # A capture the arm REBINDS must be hoisted (see the predecl block
@@ -395,8 +418,13 @@ class MatchAnalyzer:
             # An aliasing capture of an lvalue subject borrows it (pointer form),
             # exactly like `q = subject` -- record the stmt-borrow fact so the
             # branch-decl hoist picks the alias (T*) form rather than copying
-            # into owned std::optional storage. An rvalue subject must own: the
-            # temporary dies at the match block, so a leaked alias would dangle.
+            # into owned std::optional storage, and register the loan itself so
+            # a mutation through the capture climbs the borrow graph back to
+            # the subject (the param's const verdict, the method's is_readonly
+            # verdict and the ptr-variant deep-const verdict all read it). An
+            # rvalue subject must own: the temporary dies at the match block,
+            # so a leaked alias would dangle, and there is no caller storage a
+            # mutation could reach.
             if aliasing_bindings and not is_rvalue_source(self.ctx, stmt.subject):
                 for node in iter_capture_bindings(case.pattern):
                     if not node.bind_by_value:
@@ -404,6 +432,18 @@ class MatchAnalyzer:
                             self.ctx, node.name,
                             pattern_bindings.get(node.name), stmt.subject)
                         self.ctx.func.nonstmt_borrow_bindings.add(node.name)
+                        register_capture_alias_borrow(
+                            self.ctx, node.name, stmt.subject)
+            # Analyze guard expression (pattern bindings are in scope)
+            if case.guard is not None:
+                self.expr.analyze_expr(case.guard)
+
+            for s in case.body:
+                self.stmts.analyze_stmt(s)
+
+            # Stays AFTER the body: the scan reads the arm's cached expression
+            # types to tell an invalidating receiver method from one whose
+            # readonly verdict only settles in Phase 2.
             if (aliasing_bindings
                     and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
                 self._warn_arm_subject_mutation(case, stmt.subject)

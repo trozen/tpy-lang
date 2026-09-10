@@ -191,7 +191,7 @@ int32_t match_arm(std::variant<A*, B*> v) {
 
 // # match arm with an as-capture (the capture is member-typed)
 // def match_capture(v: A | B) -> Int32:
-int32_t match_capture(const std::variant<A*, B*> v) {
+int32_t match_capture(std::variant<A*, B*> v) {
     // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {

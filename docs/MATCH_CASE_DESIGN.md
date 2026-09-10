@@ -450,6 +450,30 @@ is live dangles it and is warned on the visible shapes; the durable fix is a
 compile-time loan check (never a runtime copy) -- see BUGS.md. The examples
 above predate this split and show `auto&` uniformly for brevity.
 
+**Capture mutation and readonly.** An `auto&` capture is an alias of the
+matched storage, so sema registers the loan (`register_capture_alias_borrow`)
+before it walks the arm. A write through the capture -- a field assign, an
+aug-assign, a mutating method call, or handing the capture to a mutating
+callee -- then climbs the borrow graph back to EVERY storage the capture
+borrows, which is what keeps a matched parameter mutable (`Cat&`, not `const
+Cat&`) and demotes an enclosing method's inferred `is_readonly` when the arm
+is its only mutation. Usually there is one such storage. A capture RE-SEATED
+by a nested match holds one loan per subject and the write reaches whichever
+is live, so all of them are credited: a capture bound over `self.<field>` and
+then over a parameter demotes the method AND keeps the parameter mutable,
+and the walk that answers this (`all_storage_through_borrows`) reports the
+full set rather than the nearest root. The `isinstance` spelling of the same
+body needs no such step: it
+narrows the subject's OWN binding, so the mutation is already attributed to
+it. For the same reason a capture of a `readonly[...]` subject binds
+`readonly[...]` too, and the write is rejected at sema rather than by the C++
+compiler. The loan is registered as an OPAQUE borrow, not the subject shape's
+FIELD/ELEMENT: the dangling-binding hazard of a field or element subject is
+owned by the arm-scoped warning described above, and handing the same loan to
+the extent-blind invalidation machinery would report it twice in the arm and
+once more for a legitimate mutation AFTER the match, where the binding is
+dead but the loan is not.
+
 **Capture rebinds.** The `auto&` alias is correct only while the binding NAME
 is read, not re-assigned. If the arm rebinds the name itself -- `for v in xs`,
 `v = ...`, an aug-assign, a walrus, `with ... as v`, an unpack target -- the

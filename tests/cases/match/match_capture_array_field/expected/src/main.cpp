@@ -4,15 +4,11 @@
 namespace tpyapp::main {
 
 
-// def main() -> None:
-void main() {
-    // # A LOCAL subject, not a param: a param subject renders `const H&` and the
-    // # capture's hoisted pointer drops the const
-    // # (BUGS.md#match-capture-mutation-not-credited, which the list field hits
-    // # identically). No `set` leg either: a set FIELD capture rejects at
+// def fill(h: H) -> None:
+void fill(H& h) {
+    // # A PARAM subject: the writes through the captures are what keep `h`
+    // # mutable (`H&`). No `set` leg: a set FIELD capture rejects at
     // # `stmt.match` (BUGS.md#match-capture-set-field).
-    // h = H()
-    H h = H();
     // match h:
     std::array<int32_t, 2>* a;
     ::tpy::ordered_map<std::string, int32_t>* m;
@@ -33,6 +29,14 @@ void main() {
         // m["b"] = 3
         ::tpy::__setitem__((*m), "b", 3);
     }
+}
+
+// def main() -> None:
+void main() {
+    // h = H()
+    H h = H();
+    // fill(h)
+    fill(h);
     // print(h.arr[0], len(h.xs), len(h.d))
     std::cout << ::tpy::__getitem__(h.arr, 0) << " " << ::tpy::__len__(h.xs) << " " << ::tpy::__len__(h.d) << "\n";
 }

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pick(v: Item | Other) -> Int32:
-int32_t pick(const std::variant<Item*, Other*> v) {
+int32_t pick(std::variant<Item*, Other*> v) {
     // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {

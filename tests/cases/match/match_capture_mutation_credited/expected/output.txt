@@ -1,0 +1,21 @@
+free_union: 4
+free_record: 99
+or_sub_capture: 1 x
+optional_subject: 11
+via_callee: 21
+bump: 31
+reseated: 40 57
+reseated_callee: 40 51
+self_and_param_reseat: 1 14
+subscript_subject: 1 5
+positional_sub_capture: 11 12
+union_field_method: 42
+poly_subject: 10
+gen_body: 1
+gen_body after: 61
+async_body: 71
+async_body after: 71
+read_only: 80 80
+rvalue_subject: 91 90
+scalar_capture: 101
+local_subject: 5

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def feed(a: Dog | Cat | None) -> str:
-std::string feed(const std::variant<std::monostate, Cat*, Dog*> a) {
+std::string feed(std::variant<std::monostate, Cat*, Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {

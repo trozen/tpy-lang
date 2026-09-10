@@ -3702,8 +3702,13 @@ class TypeCompatibility:
                         bt.effective_storage(inner.name))):
                 dangles = True
             elif self._borrow_chain_enters_storage(bt, inner.name):
-                src = bt.effective_storage_through_borrows(inner.name)
-                dangles = not self._name_is_param_or_global(_storage_root(src))
+                # EVERY root must be caller-owned: a re-seated name aliases a
+                # function-local on one of its paths and the return would point
+                # into it, so one unsafe root dangles the tuple.
+                srcs = bt.storage_roots_or_self(inner.name)
+                dangles = not all(
+                    self._name_is_param_or_global(_storage_root(src))
+                    for src in srcs)
             else:
                 it = self.ctx.func.loop_var_iterable.get(inner.name)
                 if it is not None:

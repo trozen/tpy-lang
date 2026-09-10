@@ -38,7 +38,7 @@ int32_t with_body(std::variant<A*, B*> v);
 int32_t try_finally(std::variant<A*, B*> v);
 std::expected<int32_t, Err> error_body(std::variant<A*, B*> v);
 int32_t match_arm(std::variant<A*, B*> v);
-int32_t match_capture(const std::variant<A*, B*> v);
+int32_t match_capture(std::variant<A*, B*> v);
 __gen_gen_body gen_body(std::variant<A*, B*> v);
 __gen_gen_match gen_match(std::variant<A*, B*> v);
 __coro_async_body async_body(std::variant<A*, B*> v);

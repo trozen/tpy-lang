@@ -308,13 +308,9 @@ int32_t str_switch_as_capture(std::string_view s) {
 // def poly_as_capture(p: Pet) -> Int32:
 int32_t poly_as_capture(Pet& p) {
     // # `case x as y` on the polymorphic chain: both names alias the SAME
-    // # object, so every mutation through either is visible to the caller.
-    // # The leading `p.bump()` is load-bearing: a mutation made only through a
-    // # match capture is not credited to the parameter, which then emits as
-    // # `const Pet&` and fails the C++ build
-    // # (BUGS.md#match-capture-mutation-not-credited).
-    // p.bump()
-    p.bump();
+    // # object, so every mutation through either is visible to the caller --
+    // # and the arm's writes are the parameter's only mutation, so they are
+    // # also what keeps it emitting as a mutable `Pet&`.
     // match p:
     auto& __match_subject_1 = p;
     // case Dog():
@@ -379,7 +375,7 @@ void main() {
     Cat cat = Cat();
     // print(poly_as_capture(cat))
     std::cout << poly_as_capture(cat) << "\n";
-    // # 6: both captures aliased `cat` rather than copying it.
+    // # 4: both captures aliased `cat` rather than copying it.
     // print(cat.hits)
     std::cout << cat.hits << "\n";
 }

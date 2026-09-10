@@ -397,26 +397,56 @@ class BorrowTracker:
                 return storage
         return None
 
-    def effective_storage_through_borrows(self, name: str) -> str:
-        """Follow ALL borrow chains (ALIAS + ELEMENT + FIELD + PTR) to ultimate storage.
+    def all_storage_through_borrows(self, name: str) -> list[str]:
+        """Every ultimate storage `name` can alias, following ALL borrow chains
+        (ALIAS + ELEMENT + FIELD + PTR + OPAQUE), nearest chain first.
 
-        Unlike effective_storage (ALIAS-only), this traverses the full chain
-        so a write through an element ref can be traced back to its source param.
-        For example: w ALIAS-borrows v, v ELEMENT-borrows items -> returns items.
-        Cycle-safe via visited set.
+        Unlike effective_storage (ALIAS-only), this traverses the full chain,
+        so a write through an element ref traces back to its source param:
+        w ALIAS-borrows v, v ELEMENT-borrows items -> [items].
+
+        A binding usually holds ONE loan and yields one root. A RE-SEATED one
+        holds a loan per source (a `match` capture a nested match rebinds, an
+        alias reassigned from a second container) and a use of it reaches
+        whichever is live, so every consumer that attributes a use back to
+        storage needs all of them, not the one that happens to come first.
+
+        A root is a REACHABLE node that has no source of its own -- the
+        has-sources test must not be filtered by `visited`, or two loan paths
+        converging on one already-expanded node would report the intermediate
+        alias as a root and hand an ALL-roots consumer a name that is not
+        storage at all. `visited` therefore gates only re-expansion.
+
+        Depth-first in loan-registration order, so the head of the list is the
+        nearest chain's root. Empty when `name` borrows nothing, and also when
+        every reachable node sits on a cycle (no node without sources) -- both
+        leave the answer to the caller's `roots_or_self` fallback. Each
+        reachable node is expanded once and an expansion scans the edge set,
+        so O(V*E) in the per-function borrow graph, iterative (no recursion
+        depth tied to chain length).
         """
         visited: set[str] = {name}
-        current = name
-        while True:
-            found = None
-            for storage, borrowers in self.borrows.items():
-                if current in borrowers:
-                    found = storage
-                    break
-            if found is None or found in visited:
-                return current
-            visited.add(found)
-            current = found
+        roots: list[str] = []
+        stack: list[str] = [name]
+        while stack:
+            current = stack.pop()
+            sources = [storage for storage, borrowers in self.borrows.items()
+                       if current in borrowers]
+            if not sources:
+                if current != name:
+                    roots.append(current)
+                continue
+            for src in reversed(sources):
+                if src not in visited:
+                    visited.add(src)
+                    stack.append(src)
+        return roots
+
+    def storage_roots_or_self(self, name: str) -> list[str]:
+        """`all_storage_through_borrows`, falling back to `[name]` when the
+        name borrows nothing (or resolves to nothing) -- so a consumer that
+        must name SOME storage for every binding gets one answer shape."""
+        return self.all_storage_through_borrows(name) or [name]
 
     def freeze(self) -> frozenset[tuple[str, str, BorrowKind]]:
         """Snapshot borrow state as immutable triples for flow analysis."""
@@ -497,16 +527,49 @@ def _select_arm_loans(expr: TpyIfExpr) -> list[tuple[str, BorrowKind]]:
 
 def register_binding_borrow(ctx: 'SemanticContext', name: str,
                             init_expr: TpyExpr) -> None:
-    """Register `name` as a borrower of `init_expr`'s storage root (ELEMENT /
-    FIELD / ALIAS by init shape). Shared by the VarDecl and walrus binding
-    paths.
+    """Register `name` as a borrower of `init_expr`'s storage root, with the
+    kind and the eager-vs-deferred mutation mark taken from the init shape
+    (see `_register_source_borrow`). Shared by the VarDecl and walrus binding
+    paths."""
+    _register_source_borrow(ctx, name, init_expr, kind=None)
+
+
+def register_capture_alias_borrow(ctx: 'SemanticContext', name: str,
+                                  subject_expr: TpyExpr) -> None:
+    """Register a `match`-arm capture as a borrower of the matched storage,
+    for mutation ATTRIBUTION only.
+
+    A write through the capture has to climb back to the subject's root, and
+    `mark_param_mutated`'s climb reads the borrow graph -- so the loan has to
+    be in it, or a mutated param keeps its non-mutating verdict. The kind is
+    forced to OPAQUE rather than taken from the subject shape (FIELD/ELEMENT,
+    which is what the sibling `register_binding_borrow` picks): the
+    dangling-binding hazard of a field/element subject is owned by the
+    arm-scoped `_warn_arm_subject_mutation`, so handing the same loan to the
+    extent-blind invalidation warnings reports the hazard a second time inside
+    the arm and a spurious third time for a legitimate mutation AFTER the
+    match, where the binding is dead but the loan is not (docs/IR_DESIGN.md,
+    extent-scoped loans).
+    """
+    _register_source_borrow(ctx, name, subject_expr, kind=BorrowKind.OPAQUE)
+
+
+def _register_source_borrow(ctx: 'SemanticContext', name: str,
+                            source_expr: TpyExpr,
+                            kind: BorrowKind | None) -> None:
+    """Register `name` as a borrower of `source_expr`'s storage root.
+
+    `kind=None` takes the kind from the init shape (ELEMENT / FIELD / ALIAS)
+    and applies the deferral rule below; a caller that passes a kind forces it
+    and always defers, because it wants the loan recorded without the init
+    shape's invalidation semantics.
 
     A self-assignment (t = t) aliases nothing new; registering it would put
     a self-edge in the borrow graph. A select registers one loan per arm (see
-    `_select_arm_loans`). For the remaining non-simple init shapes (deep
-    chains like `outer.inner[i]`) there is no root to record, so every
-    address-taken root is eagerly marked mutated instead (the binding aliases
-    into them, so they must stay `T&`, not `const T&`).
+    `_select_arm_loans`). For the remaining non-simple shapes (deep chains
+    like `outer.inner[i]`) there is no root to record, so every address-taken
+    root is eagerly marked mutated instead (the binding aliases into them, so
+    they must stay `T&`, not `const T&`).
 
     8a.5: marking the source mutated is DEFERRED until the borrower is
     actually written through for ELEMENT borrows (v = items[i]) and for ALIAS
@@ -517,30 +580,32 @@ def register_binding_borrow(ctx: 'SemanticContext', name: str,
     traces back to an ELEMENT borrow (checked transitively); PTR/ITER borrows
     and field aliases not rooted at an ELEMENT mark immediately.
     """
-    init_unwrapped = (init_expr.expr if isinstance(init_expr, TpyCoerce)
-                      else init_expr)
-    if isinstance(init_unwrapped, TpyIfExpr):
-        bt = ctx.func.borrow_tracker
-        for arm_root, arm_kind in _select_arm_loans(init_unwrapped):
+    unwrapped = (source_expr.expr if isinstance(source_expr, TpyCoerce)
+                 else source_expr)
+    bt = ctx.func.borrow_tracker
+    if isinstance(unwrapped, TpyIfExpr):
+        for arm_root, arm_kind in _select_arm_loans(unwrapped):
             if arm_root != name:
-                bt.add_borrow(arm_root, name, arm_kind)
+                bt.add_borrow(arm_root, name, kind or arm_kind)
         # The arms stay eagerly marked mutated rather than deferred: a select
         # has no single root that a later write through the borrower could
         # re-mark, so the conservative mark is the only one it gets.
-        for alias_root in addr_taken_roots(init_expr):
+        for alias_root in addr_taken_roots(source_expr):
             ctx.mark_param_mutated(alias_root)
         return
-    root = _borrow_storage_root(init_expr)
+    root = _borrow_storage_root(source_expr)
     if root is None:
-        for alias_root in addr_taken_roots(init_expr):
+        for alias_root in addr_taken_roots(source_expr):
             ctx.mark_param_mutated(alias_root)
         return
     if root == name:
         return
-    kind = _borrow_kind_of_init(init_unwrapped)
-    bt = ctx.func.borrow_tracker
-    bt.add_borrow(root, name, kind)
-    if not (kind in (BorrowKind.ELEMENT, BorrowKind.ALIAS)
+    if kind is not None:
+        bt.add_borrow(root, name, kind)
+        return
+    init_kind = _borrow_kind_of_init(unwrapped)
+    bt.add_borrow(root, name, init_kind)
+    if not (init_kind in (BorrowKind.ELEMENT, BorrowKind.ALIAS)
             or bt.is_deferred_borrow(root)):
         ctx.mark_param_mutated(root)
 
@@ -1852,10 +1917,11 @@ class SemanticContext:
         # 8a.5: trace through element/field/ptr borrows to source param.
         # When v = items[i] (deferred) and v is later written through,
         # mark the ultimate storage root (e.g. items) as mutated.
-        # The recursive call terminates because effective_storage_through_borrows
-        # on the ultimate root returns itself (no upstream borrow points to it).
-        ultimate = self.func.borrow_tracker.effective_storage_through_borrows(name)
-        if ultimate != name:
+        # EVERY reachable root, not just the first: a re-seated binding holds
+        # one loan per source and the write reaches whichever is live.
+        # The recursive call terminates because a root has no upstream borrow
+        # pointing to it, so it yields no further sources.
+        for ultimate in self.func.borrow_tracker.all_storage_through_borrows(name):
             self.mark_param_mutated(ultimate, through_field=through_field)
         # A borrow rooted at a field path (`o.items`, registered for `e = o.items[0]`
         # or for an @auto_readonly accessor result `x = o.b.get()`) reaches the
