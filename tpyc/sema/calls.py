@@ -855,6 +855,14 @@ class CallAnalyzer:
         type_subst: dict[str, TpyType] | None = None,
     ) -> None:
         """Attach resolved constructor metadata for readonly/effect checks."""
+        # The one funnel every constructor resolution reaches, and the only
+        # place that sees a generic record's INFERRED args: `Box(1)` binds
+        # `Box[Int32]` here and nowhere else, so a program that only ever
+        # constructs the record would otherwise leave its bodies' owning-slot
+        # copy obligations unanswered (sema/own_copy.py).
+        if type_subst:
+            self.ctx.record_own_copy_instantiation(record, type_subst,
+                                                   is_record=True)
         init_overloads = record.get_method_overloads("__init__")
         if init_overloads:
             ctor = init_overloads[0]
@@ -4606,6 +4614,7 @@ class CallAnalyzer:
                 expr.representational_subst_params = (
                     self.type_ops.compute_representational_subst_params(
                         overload, expr.inferred_type_args))
+                self.ctx.record_own_copy_instantiation(overload.root, type_subst)
                 if isinstance(overload.return_type, UnionType):
                     orig_count = len(overload.return_type.members)
                     resolved_ret = matched.return_type
@@ -5264,6 +5273,7 @@ class CallAnalyzer:
         expr.representational_subst_params = (
             self.type_ops.compute_representational_subst_params(
                 func, expr.inferred_type_args))
+        self.ctx.record_own_copy_instantiation(func.root, type_subst)
 
         # Validate defaults for generic params not covered by explicit args
         self._validate_generic_defaults(expr, func, type_subst)

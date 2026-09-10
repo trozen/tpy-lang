@@ -26,6 +26,7 @@ from ..typesys import (
 from .. import qnames
 from ..value_category import (
     async_result_aliases, peel_value_wrappers, returns_borrow)
+from . import own_copy
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
@@ -102,39 +103,14 @@ def _container_elem_matches(actual_elem: TpyType, expected_elem: TpyType) -> boo
     return actual_elem == check or type_matches_numeric(actual_elem, check)
 
 
-def _contains_ref_type(t: TpyType) -> bool:
-    """True if t or any nested type is or may be a reference type.
-
-    Recurses into inner_types() so that structural types like TupleType
-    (whose is_value_type() is hardcoded True) are checked element by element.
-    TypeParamRef with no ValueType bound is treated as potentially a reference type.
-    """
-    if not t.is_value_type():
-        return True
-    # is_value_type() True -- recurse into inner types to catch e.g. tuple[str, Node]
-    return any(_contains_ref_type(inner) for inner in t.inner_types())
-
-
-def _is_definitely_ref_type(t: TpyType) -> bool:
-    """True if t definitely contains a reference type (no unresolved TypeParamRefs).
-
-    Returns False when the ref-ness depends on a TypeParamRef, in which case
-    the caller should use a "may copy" warning instead of "copies".
-    """
-    if isinstance(t, TypeParamRef):
-        return False  # unknown until instantiated
-    if not t.is_value_type():
-        return True
-    return any(_is_definitely_ref_type(inner) for inner in t.inner_types())
-
-
 def _contains_semantic_ref(t: TpyType) -> bool:
     """True if t contains a RefType wrapper (explicit borrowed reference).
 
-    Unlike _contains_ref_type which checks is_value_type() (structural),
-    this checks for RefType specifically -- the semantic marker that sema
-    inserts for borrowed references. Used to detect iterator-to-container
-    copies where the source is an rvalue but yields borrowed elements.
+    Unlike `own_copy.contains_reference_type`, which asks the structural
+    is_value_type() question, this checks for RefType specifically -- the
+    semantic marker that sema inserts for borrowed references. Used to detect
+    iterator-to-container copies where the source is an rvalue but yields
+    borrowed elements.
     """
     if isinstance(t, RefType):
         return True
@@ -869,7 +845,7 @@ class TypeCompatibility:
                             # RefType in the Own-wrapped element is the proof.
                             has_ref_elements = _contains_semantic_ref(elem_type)
                             if is_lvalue_src or has_ref_elements:
-                                if not _contains_ref_type(elem_type):
+                                if not own_copy.contains_reference_type(elem_type):
                                     continue
                                 display_type = unwrap_ref_type(elem_type)
                                 # Lvalue source (container): suggest copy_iter or copy.
@@ -878,16 +854,15 @@ class TypeCompatibility:
                                     hint = "use copy_iter() to make this explicit (or copy() to copy the entire container)"
                                 else:
                                     hint = "use copy_iter() to make this explicit"
-                                if _is_definitely_ref_type(elem_type):
-                                    self.ctx.warning(
-                                        f"copies {display_type} elements; {hint}",
-                                        source_expr,
-                                    )
-                                else:
-                                    self.ctx.warning(
-                                        f"may copy {display_type} elements if not a value type; {hint}",
-                                        source_expr,
-                                    )
+                                if self.ctx.defer_own_copy_verdict(
+                                        display_type, display_type,
+                                        "owned storage", source_expr,
+                                        kind=own_copy.KIND_ELEMENTS, hint=hint):
+                                    continue
+                                self.ctx.warning(
+                                    f"copies {display_type} elements; {hint}",
+                                    source_expr,
+                                )
                 return None
             if is_protocol_type(expected):
                 return CompatError(
@@ -1083,21 +1058,17 @@ class TypeCompatibility:
                     warned_ptr_repr_tuple = True
                 else:
                     value_type = self._copy_diag_type(self.ctx.get_expr_type(source_expr))
-                    if self.ctx.is_type_non_copyable(expected.wrapped):
-                        verb = "may copy" if isinstance(expected.wrapped, TypeParamRef) else "cannot copy"
+                    deferred = self.ctx.defer_own_copy_verdict(
+                        value_type, expected.wrapped, "owned storage", source_expr)
+                    if not deferred and self.ctx.is_type_non_copyable(expected.wrapped):
                         if value_type == expected.wrapped:
-                            msg = (f"{verb} non-copyable type '{expected.wrapped}' "
+                            msg = (f"cannot copy non-copyable type '{expected.wrapped}' "
                                    f"into owned storage{NOCOPY_REMEDIATION_HINT}")
                         else:
-                            msg = (f"{verb} {value_type} into owned storage of type "
+                            msg = (f"cannot copy {value_type} into owned storage of type "
                                    f"'{expected.wrapped}'; target is non-copyable{NOCOPY_REMEDIATION_HINT}")
                         raise self.ctx.error(msg, source_expr)
-                    if isinstance(expected.wrapped, TypeParamRef):
-                        self.ctx.warning(
-                            f"may copy {value_type} into owned storage if not a value type; use copy() to make this explicit",
-                            source_expr
-                        )
-                    else:
+                    if not deferred:
                         self.ctx.warning(
                             f"copies {value_type} into owned storage; use copy() to make this explicit",
                             source_expr
@@ -2167,16 +2138,10 @@ class TypeCompatibility:
                 # to declare -- the same exemption the insert slot applies.
                 return
             value_type = self._copy_diag_type(self.ctx.get_expr_type(expr))
-            if isinstance(payload, TypeParamRef):
-                # Whether this copies at all is the instantiation's answer,
-                # not the body's, so the text hedges exactly as the sibling
-                # sinks do (BUGS.md#generic-own-slot-copy-verdict-not-reasked).
-                self.ctx.warning(
-                    f"may copy {value_type} into owned storage if not a value "
-                    f"type; use copy() to make this explicit",
-                    expr
-                )
-            else:
+            # Whether this copies at all is the instantiation's answer, not
+            # the body's, so an open payload defers to the discharge.
+            if not self.ctx.defer_own_copy_verdict(
+                    value_type, payload, "owned storage", expr):
                 self.ctx.warning(
                     f"copies {value_type} into owned storage; use copy() to "
                     f"make this explicit",

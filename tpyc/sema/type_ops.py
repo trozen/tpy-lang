@@ -800,6 +800,13 @@ class TypeOperations:
         RecordInfo.type_params + type_args; non-NominalType builtins (
         etc.) use extract_type_params from the module system.
 
+        NOT pure: for a concrete generic record this also RECORDS the
+        instantiation for the owning-slot copy verdict (`sema/own_copy.py`),
+        which is deduped and discharged in
+        `Compiler._finalize_workspace`. Callers that only want the map are
+        unaffected, but a caller that fabricates a record type it does not
+        mean the program to name would surface that record's copy warnings.
+
         Returns:
             Mapping from type parameter names to concrete types or integers.
             For example: {"T": Int32, "N": 8} for Matrix[Int32, 8].
@@ -810,7 +817,15 @@ class TypeOperations:
                 return {}
             if not record_type.type_args:
                 return {}
-            return dict(zip(record_info.type_params, record_type.type_args))
+            subst = dict(zip(record_info.type_params, record_type.type_args))
+            # Naming a generic record at concrete args is what brings its
+            # monomorphic twin into being, whether that happens at a
+            # constructor, a method call, a field access or a
+            # `class Child(Base[X])` header -- so this is where the record's
+            # owning-slot copy obligations are discharged.
+            self.ctx.record_own_copy_instantiation(record_info, subst,
+                                                   is_record=True)
+            return subst
         return builtin_modules.extract_type_params(record_type)
 
     def substitute_types(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
@@ -865,15 +880,7 @@ class TypeOperations:
         Checks current function's type_param_bounds first, then record's.
         Returns None if no bound is declared.
         """
-        # Check current function's type param bounds
-        if (self.ctx.func.current_function and isinstance(self.ctx.func.current_function, TpyFunction)
-                and type_param_name in self.ctx.func.current_function.type_param_bounds):
-            return self.ctx.func.current_function.type_param_bounds[type_param_name]
-        # Check current record's type param bounds (for methods in generic classes)
-        if (self.ctx.record_ctx.type_param_bounds
-                and type_param_name in self.ctx.record_ctx.type_param_bounds):
-            return self.ctx.record_ctx.type_param_bounds[type_param_name]
-        return None
+        return self.ctx.type_param_bound(type_param_name)
 
     def match_type_with_inference(
         self,

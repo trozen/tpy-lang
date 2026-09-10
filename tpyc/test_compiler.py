@@ -8,7 +8,7 @@ from . import get_lib_dir, get_runtime_dir
 from .compiler import Compiler, BuildLayout, CompileError
 from .compilation_context import activate_compiler
 from .codegen_cpp import CodeGenOptions
-from .diagnostics import SemanticError
+from .diagnostics import DiagnosticLevel, SemanticError
 from .frontend_ir import FrontendModule, Import
 from .frontend_plugin import (
     FrontendOutput, FrontendPlugin, FrontendRegistry, WorkspaceContext,
@@ -36,6 +36,209 @@ class TestCompilerFromSource:
         assert len(modules) == 1
         assert modules[0].name == "main"
         assert modules[0].is_entry_point
+
+    def test_dependency_own_copy_verdict_discharged(self, tmp_path):
+        """`from_source` must run the same workspace-wide passes as the file
+        path. A generic defined in a dependency and instantiated by the entry
+        module at a non-copyable type is rejected in the dependency's body;
+        when this path skipped the discharge, the placeholder was withdrawn
+        instead and the copy came back as a C++ build failure.
+        """
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        (lib / "slots.py").write_text(
+            "from tpy import Int32\n"
+            "\n"
+            "\n"
+            "def insert_slot[T](v: T) -> Int32:\n"
+            "    xs: list[T] = []\n"
+            "    xs.append(v)\n"
+            "    return len(xs)\n"
+        )
+        # The slot's source must be a NAME: an rvalue constructs in place and
+        # copies nothing, so it would report nothing on either path.
+        source = (
+            "from tpy import Int32\n"
+            "from slots import insert_slot\n"
+            "\n"
+            "\n"
+            "class Pinned:\n"
+            "    n: Int32\n"
+            "\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "\n"
+            # `__del__` is what deletes the generated copy ctor, which is the
+            # leg that must error. `@nomove` would forbid only the MOVE.
+            "    def __del__(self) -> None:\n"
+            "        self.n = 0\n"
+            "\n"
+            "\n"
+            "def main() -> None:\n"
+            "    p = Pinned(3)\n"
+            "    print(insert_slot(p))\n"
+            "\n"
+            "\n"
+            "main()\n"
+        )
+        compiler = Compiler.from_source(
+            source, lib_dirs=[lib] + _STDLIB_DIRS)
+        modules = compiler.compile()
+        errors = [
+            (m.name, d)
+            for m in modules
+            if m.analyzer is not None
+            for d in m.analyzer.diagnostics
+            if d.level == DiagnosticLevel.ERROR
+        ]
+        # The verdict is reported at the copying line in the DEPENDENCY's body
+        # -- `xs.append(v)`, line 6 of slots.py -- and not at the instantiating
+        # call in the entry module, on either compile path. The owning module
+        # supplies the file name (`loc.file` stays None for a location in the
+        # module being analyzed; `Diagnostic.format` takes it from the caller),
+        # so the module name is asserted alongside the line.
+        located = [
+            (mod, d.loc.file, d.loc.line) for mod, d in errors
+            if "cannot copy non-copyable type 'Pinned' into owned storage"
+            in d.message and d.loc is not None
+        ]
+        assert located == [("slots", None, 6)], [
+            (mod, d.message[:60], d.loc) for mod, d in errors]
+
+    def test_two_noncopyable_instantiations_report_both(self, tmp_path):
+        """One body, two non-copyable instantiations, two located errors on
+        the SAME line -- and the two ways to be non-copyable, `@nocopy` and a
+        `__del__`, side by side. The promotion writes the first verdict over
+        the hedge and inserts a sibling for each further distinct one, so a
+        body copied at two different non-copyable types names both rather than
+        the first. No case can pin this: compilation stops at the first error,
+        so an `error_` case would only ever show one.
+        """
+        lib = tmp_path / "lib"
+        lib.mkdir()
+        (lib / "slots.py").write_text(
+            "from tpy import Int32\n"
+            "\n"
+            "\n"
+            "def insert_slot[T](v: T) -> Int32:\n"
+            "    xs: list[T] = []\n"
+            "    xs.append(v)\n"
+            "    return len(xs)\n"
+        )
+        source = (
+            "from tpy import Int32, nocopy\n"
+            "from slots import insert_slot\n"
+            "\n"
+            "\n"
+            "@nocopy\n"
+            "class DeclaredA:\n"
+            "    n: Int32\n"
+            "\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "\n"
+            "\n"
+            "class DestructorB:\n"
+            "    n: Int32\n"
+            "\n"
+            "    def __init__(self, n: Int32) -> None:\n"
+            "        self.n = n\n"
+            "\n"
+            "    def __del__(self) -> None:\n"
+            "        self.n = 0\n"
+            "\n"
+            "\n"
+            "def main() -> None:\n"
+            "    a = DeclaredA(1)\n"
+            "    b = DestructorB(2)\n"
+            "    print(insert_slot(a), insert_slot(b))\n"
+            "\n"
+            "\n"
+            "main()\n"
+        )
+        compiler = Compiler.from_source(
+            source, lib_dirs=[lib] + _STDLIB_DIRS)
+        modules = compiler.compile()
+        located = sorted(
+            (m.name, d.loc.line, d.message.split("'")[1])
+            for m in modules
+            if m.analyzer is not None
+            for d in m.analyzer.diagnostics
+            if d.level == DiagnosticLevel.ERROR and d.loc is not None
+            and "cannot copy non-copyable type" in d.message
+        )
+        assert located == [
+            ("slots", 6, "DeclaredA"), ("slots", 6, "DestructorB")], located
+
+    def test_value_bound_silencer_reaches_any_nesting_depth(self, tmp_path):
+        """The `T: ValueType` silencer walks the payload to the first
+        reference-typed nominal at ANY depth, not just the outer one. Three
+        payloads under the same bound: `GBox[T] | None` still hedges (the
+        reference nominal is one level in, under the optional), while
+        `tuple[T, Int32] | None` and `tuple[T, tuple[T, Int32]]` stay silent
+        (delegating all the way down, so no struct is ever copied).
+
+        No snapshot case can pin these: every owning sink for a nested
+        payload is a THIR lowering reject today -- `method.arg_shape` at
+        `.append`, `call.generic_arg_slot` at an `Own[T]` argument,
+        `return.slot_type` / `return.tuple_source` at a return,
+        `foreach.elem_family.optional` at a `yield` consumer and
+        `call.ctor_arg.optional` at a field -- so a case would fail to
+        compile rather than report.
+        """
+        source = (
+            "from tpy import Int32, ValueType\n"
+            "\n"
+            "\n"
+            "class GBox[T]:\n"
+            "    item: T\n"
+            "\n"
+            "    def __init__(self, v: T) -> None:\n"
+            "        self.item = v\n"
+            "\n"
+            "\n"
+            "def nested_ref[T: ValueType](v: GBox[T] | None) -> Int32:\n"
+            "    xs: list[GBox[T] | None] = []\n"
+            "    xs.append(v)  # ref\n"
+            "    return len(xs)\n"
+            "\n"
+            "\n"
+            "def nested_val_opt[T: ValueType](v: tuple[T, Int32] | None) -> Int32:\n"
+            "    xs: list[tuple[T, Int32] | None] = []\n"
+            "    xs.append(v)  # val-opt\n"
+            "    return len(xs)\n"
+            "\n"
+            "\n"
+            "def nested_val_tuple[T: ValueType](v: tuple[T, tuple[T, Int32]]) -> Int32:\n"
+            "    xs: list[tuple[T, tuple[T, Int32]]] = []\n"
+            "    xs.append(v)  # val-tuple\n"
+            "    return len(xs)\n"
+            "\n"
+            "\n"
+            "def main() -> None:\n"
+            "    print(nested_ref(GBox(1)), nested_val_opt((2, 3)),\n"
+            "          nested_val_tuple((4, (5, 6))))\n"
+            "\n"
+            "\n"
+            "main()\n"
+        )
+        lines = source.splitlines()
+        ref_line = lines.index("    xs.append(v)  # ref") + 1
+        compiler = Compiler.from_source(source, lib_dirs=list(_STDLIB_DIRS))
+        modules = compiler.compile()
+        slots = [
+            (d.loc.line, d.message)
+            for m in modules
+            if m.analyzer is not None
+            for d in m.analyzer.diagnostics
+            if d.level == DiagnosticLevel.WARNING and d.loc is not None
+            and "into owned storage" in d.message
+        ]
+        assert slots == [(
+            ref_line,
+            "may copy GBox[T] | None into owned storage if not a value type;"
+            " use copy() to make this explicit",
+        )], slots
 
     def test_custom_module_name(self):
         source = 'x: int = 1\nprint(x)'

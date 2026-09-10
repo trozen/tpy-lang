@@ -307,7 +307,7 @@ emit; `copy()` acknowledges it. A **last-use** source instead MOVES into
 the container (matching `.append`/`.insert`), and a fresh rvalue is
 constructed in place -- neither warns, and a `@nocopy` last-use element
 is accepted rather than failing the C++ build. (A generic element type
-stays silent until instantiation, matching `.append`.)
+carries the declaration-time hedge instead, matching `.append`.)
 
 A **value-tuple with reference (pointer-repr) members** warns per such
 member (errors for `@nocopy`), matching the subscript/field-assignment
@@ -1377,10 +1377,53 @@ no callee-body fact enters it.
 A slot whose `Own` payload is still an unresolved type parameter is no
 exception: the copy is the same one the monomorphic twin makes, and `copy()`
 spells it there (its readonly-source admission is what makes that possible).
-The verdict is still HEDGED at such a slot -- `may copy T into owned storage
-if not a value type`, rather than the twin's concrete `copies Cell into owned
-storage` -- because it is taken while `T` is open and not re-asked at the
-instantiation (BUGS.md#generic-own-slot-copy-verdict-not-reasked).
+The body reports it AT ITS OWN LINE, hedged, whatever anything instantiates
+it at:
+
+```
+main.py:11: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+```
+
+This is the **copy contract of a generic body**, and it is deliberately a
+declaration-time diagnostic rather than a per-instantiation one. A library
+author writing `def cycle[T](it: Iterable[T])` has no instantiation to
+consult, and copyable is TPy's default so no bound is ever required to write
+the generic -- so the only place the contract can be stated is the
+declaration. Two things silence it, and only two:
+
+- **`copy()` at the slot** -- the author saying the copy is intended. It
+  compiles at an open `T` (`xs.push_back(T(v))`), and costs nothing at a
+  value instantiation, where `T(v)` is a no-op cast.
+- **a `T: ValueType` bound** -- under it a reference-type copy cannot happen,
+  so there is nothing to warn about.
+
+`T: Copyable` does NOT silence it. Copyable is the default, so that bound
+only rules out a non-copyable instantiation; it does not say a copy was
+intended, and it must not stand in for `copy()`.
+
+Instantiating at a **non-copyable** type -- `@nocopy`, or a record with a
+`__del__` (which deletes the generated struct's copy constructor), or one
+that transitively owns either -- PROMOTES the same line to the error the
+monomorphic twin reports:
+
+```
+main.py:11: error: cannot copy non-copyable type 'Pinned' into owned storage (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
+```
+
+which replaces what used to be forty lines of libstdc++ template spew.
+`@nomove` alone is not such a type: it forbids the implicit *move*, and a
+`@nomove` payload with a usable copy constructor still takes the ordinary
+`copies X into <sink>` warning and is copied.
+
+Every route reaches the promotion -- function call, method call, constructor (including
+inferred type args), a `class Child(Base[Pinned])` header, a chain of generic
+bases, a call from another module, and the `tpyc -c` / stdin / REPL path.
+
+**Accepted divergence from the monomorphic twin.** The twin names the type it
+copies, once per concrete type; the generic hedges once, at its declaration,
+including where the program only ever instantiates it at value types. That
+trade buys the library author a contract they can read without a call site;
+see `docs/PITFALLS.md#generic-equals-monomorphic-twin`.
 
 Generated C++:
 ```cpp
@@ -1459,12 +1502,17 @@ nested: list[tuple[str, tuple[str, Point]]] = []
 d = dict(nested)   # WARNING: copies tuple[str, tuple[str, Point]] elements
 ```
 
-For generic type parameters, a "may copy" warning is emitted since the type is unknown at definition time:
+For generic type parameters the body states the contract at its own line,
+hedged, whatever the instantiations are (see "the copy contract of a generic
+body" above):
 
 ```python
 def build_dict[K, V](pairs: list[tuple[K, V]]) -> None:
     d = dict(pairs)  # WARNING: may copy tuple[K, V] elements if not a value type
 ```
+
+The payload is checked recursively, so `tuple[str, V]` hedges on account of
+`V` even though a tuple is itself a value type.
 
 No warning is emitted for:
 - **Value types** (Int32, bool, str, etc.) -- copy-vs-share is unobservable

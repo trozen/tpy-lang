@@ -5315,20 +5315,20 @@ class StatementAnalyzer:
                     and not self.compat.is_copy_call(stmt.value)):
                 inner = unwrap_qualifiers(value_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
-                if self.ctx.is_type_non_copyable(target_type):
-                    verb = "may copy" if isinstance(inner, TypeParamRef) else "cannot copy"
+                deferred = self.ctx.defer_own_copy_verdict(
+                    inner, target_type, dest, stmt)
+                if not deferred and self.ctx.is_type_non_copyable(target_type):
                     if inner == target_type:
-                        msg = (f"{verb} non-copyable type '{target_type}' into "
+                        msg = (f"cannot copy non-copyable type '{target_type}' into "
                                f"{dest}{NOCOPY_REMEDIATION_HINT}")
                     else:
-                        msg = (f"{verb} {inner} into {dest} of type '{target_type}'; "
+                        msg = (f"cannot copy {inner} into {dest} of type '{target_type}'; "
                                f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
                     raise self.ctx.error(msg, stmt)
-                if isinstance(inner, TypeParamRef):
-                    msg = f"may copy {inner} into {dest} if not a value type; use copy() to make this explicit"
-                else:
-                    msg = f"copies {inner} into {dest}; use copy() to make this explicit"
-                self.ctx.warning(msg, stmt)
+                if not deferred:
+                    self.ctx.warning(
+                        f"copies {inner} into {dest}; use copy() to make this explicit",
+                        stmt)
                 copy_warning_fired = True
             # A tuple is a value type, but storing one whose elements are
             # pointer-repr COPIES each such element into the owned slot
@@ -5573,20 +5573,20 @@ class StatementAnalyzer:
             if stmt.loc is not None and not copy_warning_fired:
                 if self._is_non_owned_var_copy(stmt.value, target_type):
                     dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
-                    if self.ctx.is_type_non_copyable(target_type):
-                        verb = "may copy" if isinstance(target_type, TypeParamRef) else "cannot copy"
+                    deferred = self.ctx.defer_own_copy_verdict(
+                        value_type, target_type, dest, stmt)
+                    if not deferred and self.ctx.is_type_non_copyable(target_type):
                         if value_type == target_type:
-                            msg = (f"{verb} non-copyable type '{target_type}' into "
+                            msg = (f"cannot copy non-copyable type '{target_type}' into "
                                    f"{dest}{NOCOPY_REMEDIATION_HINT}")
                         else:
-                            msg = (f"{verb} {value_type} into {dest} of type '{target_type}'; "
+                            msg = (f"cannot copy {value_type} into {dest} of type '{target_type}'; "
                                    f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
                         raise self.ctx.error(msg, stmt)
-                    if isinstance(target_type, TypeParamRef):
-                        msg = f"may copy {target_type} into {dest} if not a value type; use copy() to make this explicit"
-                    else:
-                        msg = f"copies {value_type} into {dest}; use copy() to make this explicit"
-                    self.ctx.warning(msg, stmt)
+                    if not deferred:
+                        self.ctx.warning(
+                            f"copies {value_type} into {dest}; use copy() to make this explicit",
+                            stmt)
 
         # Scope escape check for assignments to named variables
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():

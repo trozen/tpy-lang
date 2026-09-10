@@ -1,2 +1,2 @@
-main.py:57: warning: copies list[T] into field; use copy() to make this explicit
+main.py:57: warning: may copy list[T] into field if not a value type; use copy() to make this explicit
 main.py:27: warning: Mutation of 'pts' while borrowed ('append' may invalidate references)

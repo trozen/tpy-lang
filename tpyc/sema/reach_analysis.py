@@ -194,6 +194,13 @@ def _iter_typed_children(node) -> list[TpyType]:
             # (the access reaches the enum through the import edge already).
             if k == "enum_member_of":
                 continue
+            # The owning-slot copy obligations a generic body recorded name
+            # the types of the SLOTS it copies into, which the diagnostic
+            # discharge reads -- the module's generated code does not
+            # reference them, so surfacing them here would add includes for
+            # whatever a callee's body happens to store.
+            if k in ("own_copy_obligations", "own_copy_forwards"):
+                continue
             if v is None or isinstance(v, (str, int, float, bool, bytes)):
                 continue
             if isinstance(v, TpyType):

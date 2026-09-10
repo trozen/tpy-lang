@@ -178,8 +178,8 @@ void collect_generic(GHolder<T>& h, std::vector<T>& xs) {
     xs.push_back(h.borrow());
 }
 // # Own[T] return: the same borrow at the return slot, the other owning-slot
-// # form -- and the identical hedged text, since the verdict is the
-// # instantiation's there too.
+// # form -- and the identical hedged text, since the copy contract is the
+// # body's at both.
 // def dup_return[T](h: GHolder[T]) -> Own[T]:
 template<typename T>
 ::tpy::own_return_t<T> dup_return(GHolder<T>& h) {

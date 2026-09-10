@@ -488,6 +488,14 @@ class MethodAnalyzer:
                     expr.args, overloads[idx], type_subst, self.type_ops,
                     lambda msg: self.ctx.error(msg, expr))
 
+        # The one funnel every dispatch path reaches (instance call, generic
+        # method, `super()`), and the only place carrying the class-level
+        # substitution merged with the method-level one -- so it is where a
+        # method body's owning-slot copy obligations are answered.
+        if type_subst and expr.resolved_function_info is not None:
+            self.ctx.record_own_copy_instantiation(
+                expr.resolved_function_info.root, type_subst)
+
         self.calls._check_borrow_arg_conflicts(expr)
         self.calls._check_loop_var_arg_mutation(expr)
         self.calls._record_mutation_call_edges(expr)

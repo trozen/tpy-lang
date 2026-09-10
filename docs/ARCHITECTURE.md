@@ -347,8 +347,42 @@ Top-level analyzers (one module each):
 `init_tracker`, `scope_tracker`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
-`frame_traits`, `context`. Error classes live in
+`frame_traits`, `own_copy`, `context`. Error classes live in
 `tpyc/diagnostics.py` (see "Compilation pipeline").
+
+`own_copy` holds the owning-slot copy contract of a body whose payload is
+still a type parameter. The sinks warn at the body line, hedged, at
+DECLARATION time (a library author has no instantiation to consult), and also
+record the site as an obligation so that a non-copyable instantiation
+(`@nocopy`, or a record with `__del__`) can promote that same
+diagnostic to the located error. A copyable instantiation promotes
+nothing. It is a leaf module (it imports only
+`diagnostics` and `typesys`) so `compatibility`, `statements`,
+`expressions`, `type_ops` and `methods` can all reach it, and it owns
+`contains_reference_type` -- the recursive copy predicate -- so the site that
+records and the pass that answers cannot ask different questions.
+`Compiler._finalize_workspace` drives the discharge for every module before
+any module collapses or withdraws its diagnostics.
+
+It is a third deferral channel beside two that look similar, and the
+difference is what each one defers:
+
+- `FunctionInfo.representational_type_params` (recorded in a body by
+  `compatibility`, discharged by
+  `type_ops.compute_representational_subst_params`) carries a CODEGEN fact
+  stamped onto each call node, so every call site can hold its own answer
+  and nothing already emitted changes.
+- `pending_borrow_checks` / `resolve_pending_borrow_checks` (`calls`) defers
+  a CHECK the analyzer will run itself, once cross-module mutation facts are
+  final.
+- `own_copy` defers a PROMOTION the instantiation supplies to a diagnostic
+  already in the list. The discharge rewrites that diagnostic in place, which
+  is what keeps the line where the body put it: emitting at finalize time
+  instead would move the promoted line to the end of its module's list and
+  reorder the rest.
+
+A further deferred verdict needs no fourth shape -- record the question as an
+obligation, hold its diagnostic, and add a route that discharges it.
 
 `reach_analysis` runs after body analysis as a small post-pass that
 scans the analyzed module for cross-module `NominalType._module_qname`

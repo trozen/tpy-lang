@@ -71,6 +71,16 @@ void main() {
     gh.set_item(Inner());
     // print(gh.item.value)
     std::cout << gh.item.value << "\n";
+    // # A reference instantiation of the generic ctor, so the auto-move rule
+    // # this case is about is exercised at one.
+    // i4 = Inner()
+    Inner i4 = Inner();
+    // i4.value = 40
+    i4.value = 40;
+    // gnl = GenericNotLastUse[Inner](i4)
+    GenericNotLastUse<Inner> gnl = GenericNotLastUse<Inner>(std::move(i4));
+    // print(gnl.item.value)
+    std::cout << gnl.item.value << "\n";
 }
 
 void __tpy_init() {

@@ -917,11 +917,7 @@ class Compiler:
             self._reindex_builtins_post_finalize()
             for name in self.compile_order:
                 self._analyze_bodies(self.modules[name])
-            for name in self.compile_order:
-                analyzer = self.modules[name].analyzer
-                if analyzer is not None:
-                    analyzer.finalize_borrow_checks()
-            self._validate_ext_module_exports()
+            self._finalize_workspace()
             return [self.modules[name] for name in self.compile_order]
 
         # 1. Discover implicit stdlib first so @builtin_decorator schemas
@@ -987,20 +983,36 @@ class Compiler:
         self._reindex_builtins_post_finalize()
         for module_name in self.compile_order:
             self._analyze_bodies(self.modules[module_name])
-        # Workspace-wide borrow-check resolution. Each module's pending
-        # borrow checks are queued during body sema; resolving them
-        # only after every module's propagation has completed
-        # guarantees the resolution reads finalized cross-module
-        # mutation facts regardless of body-sema iteration order.
+        self._finalize_workspace()
+
+        # Return in dependency order
+        return [self.modules[name] for name in self.compile_order]
+
+    def _finalize_workspace(self) -> None:
+        """The post-body workspace passes, shared by both compile paths
+        (the file path and `from_source`: `tpyc -c`, piped stdin, the REPL).
+
+        The order is the content. The owning-slot discharge runs for every
+        module before any module collapses its diagnostics, because a
+        non-copyable instantiation anywhere promotes a warning recorded in
+        one of its dependencies -- so no module may finish its diagnostics
+        until every module's instantiations have been seen. Borrow-check
+        resolution follows because it reads mutation facts that are final
+        only once every module's propagation has run.
+        """
+        # One seen-set across the whole workspace, so a generic imported by
+        # N modules is walked once rather than N times.
+        own_copy_seen: set = set()
+        for module_name in self.compile_order:
+            analyzer = self.modules[module_name].analyzer
+            if analyzer is not None:
+                analyzer.discharge_own_copy_verdicts(own_copy_seen)
         for module_name in self.compile_order:
             analyzer = self.modules[module_name].analyzer
             if analyzer is not None:
                 analyzer.finalize_borrow_checks()
 
         self._validate_ext_module_exports()
-
-        # Return in dependency order
-        return [self.modules[name] for name in self.compile_order]
 
     # Stdlib modules that are always compiled (even without explicit import).
     # These provide protocol definitions used by builtins (e.g. Sized for len()).

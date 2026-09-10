@@ -63,6 +63,11 @@ def main() -> None:
     # Optional field: field-to-field (lvalue)
     h.value = h.value             # tpyc: warning(/copies Point | None into field/)
     h.value = copy(h.value)       # tpyc: ok
+    # `Holder[Point]` keeps a reference instantiation in the case: the hedge
+    # on the body line stands either way, but the non-copyable error leg
+    # needs a route to reach the body through.
+    hp: Holder[Point] = Holder()
+    hp.set_value(p)               # tpyc: ok
     print(r.width)
 
 main()

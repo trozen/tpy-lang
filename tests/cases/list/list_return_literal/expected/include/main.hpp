@@ -25,7 +25,8 @@ std::vector<T> make_empty() {
 // def make_single[T](x: T) -> Own[list[T]]:
 template<typename T>
 std::vector<T> make_single(::tpy::param_val_or_ref_t<T> x) {
-    // return [x]
+    // # The element is an open `T`, so the body states its copy contract here.
+    // return [x]  # tpyc: warning(/may copy T into owned storage/)
     return {x};
 }
 

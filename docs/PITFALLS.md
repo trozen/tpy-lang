@@ -125,14 +125,20 @@ unresolved and not retaken at the instantiation is where the twin drifts.
 spells `const std::string&` (`param_val_or_ref_t<T>` at `std::string`) while the caller's read is
 a `std::string_view`, so the twin `def find(xs: list[str], v: str)` -- whose slot IS the view --
 binds where the generic did not; the call site now materializes an owned copy, a per-call
-allocation the twin does not pay -- a drift of the emitted form, not a fix. Same class, still open: an owning-slot copy in a generic body is
-judged on the open `T` and hedged (`may copy T ... if not a value type`) where the concrete slot
-names the type it copies -- and reports nothing at all when the instantiation's `T` cannot be
-copied; a `T | None` RETURN is committed to `T*` for every instantiation, so returning the body's
+allocation the twin does not pay -- a drift of the emitted form, not a fix. Same class, still
+open: a `T | None` RETURN is committed to `T*` for every instantiation, so returning the body's
 own `T | None` parameter does not compile at a value `T` where the twin's does.
+
+**One ACCEPTED divergence, decided deliberately** -- the owning-slot copy contract
+(`tpyc/sema/own_copy.py`). The twin names the type it copies, once per concrete type; the generic
+warns once at its own line in the hedged form (`may copy T into owned storage if not a value
+type`), including where the program only ever instantiates it at value types, and does not name
+the type at all. That is on purpose: a library author has no instantiation to consult and copyable
+is TPy's default, so the declaration is the only place the contract can be stated. `copy()` and a
+`T: ValueType` bound silence it; a non-copyable instantiation (`@nocopy`, or a record with
+`__del__`) promotes the same line to the twin's error. Do not "fix" this drift back toward
+the twin -- see `docs/LANGUAGE_FEATURES.md`, "the copy contract of a generic body".
 (open: `BUGS.md#generic-str-slot-copies-where-twin-binds-view`,
-`BUGS.md#generic-own-slot-copy-verdict-not-reasked`,
-`BUGS.md#generic-own-copy-nomove-instantiation-cpp-error`,
 `BUGS.md#generic-own-slot-borrow-call-unwarned`,
 `BUGS.md#generic-optional-return-committed-to-pointer`,
 `BUGS.md#simple-generator-captures-open-t-param-by-reference`)

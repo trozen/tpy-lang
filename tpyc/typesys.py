@@ -5645,6 +5645,12 @@ class FunctionInfo:
     # body (e.g. `Ptr[U] -> Ptr[T]` coercion). Codegen reads this at call sites
     # to decide adapter materialization for structural conformers.
     representational_type_params: frozenset[str] = frozenset()
+    # Owning-slot copies in this body whose payload still names a type param,
+    # and the generic callees this body instantiates with such a payload. An
+    # instantiation discharges the first and composes through the second
+    # (sema/own_copy.py).
+    own_copy_obligations: tuple = ()
+    own_copy_forwards: tuple = ()
     # Self-mutation inference (Phase 1 + Phase 2, methods only)
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
     direct_self_mutated: Optional[bool] = None

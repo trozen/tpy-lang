@@ -81,6 +81,7 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
 
 from ..diagnostics import Scope, Diagnostic, SemanticError
 from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
+from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
@@ -265,6 +266,11 @@ class SemanticAnalyzer:
         # Chain: global_ns -> macro_ns -> builtins_ns
         self.ctx.macro_ns = Namespace(parent=self.ctx.builtins_ns)
         self.ctx.global_ns = Namespace(parent=self.ctx.macro_ns)
+
+        # Guards the workspace-wide owning-slot discharge against a second
+        # run (the Compiler drives it; `finalize_borrow_checks` covers
+        # ad-hoc single-analyzer use).
+        self._own_copy_discharged = False
 
         # Layer 1: No dependencies on other analyzers
         self.type_ops = TypeOperations(self.ctx)
@@ -941,6 +947,25 @@ class SemanticAnalyzer:
             self._PHASE_PHASE2_FIXPOINT,
         )
 
+    def discharge_own_copy_verdicts(self, seen: 'set | None' = None) -> None:
+        """Answer every owning-slot copy obligation this module instantiates.
+
+        `Compiler._finalize_workspace` drives this for every module before
+        any module's `finalize_borrow_checks`: an obligation recorded in a
+        dependency is discharged from here, so the dependency must not have
+        collapsed -- or withdrawn -- its diagnostics yet. It passes one
+        workspace-wide `seen` set so a generic several modules instantiate at
+        the same args is walked once. An analyzer used without a Compiler
+        falls back to its own set.
+        """
+        if self._own_copy_discharged:
+            return
+        self._own_copy_discharged = True
+        if seen is None:
+            seen = set()
+        for edge in self.ctx.own_copy_roots:
+            own_copy.discharge_edge(self.ctx, self.type_ops, edge, seen)
+
     def finalize_borrow_checks(self) -> None:
         """Emit / suppress deferred borrow warnings using fully-propagated
         cross-module facts. Compiler runs this once per analyzer in a
@@ -952,6 +977,7 @@ class SemanticAnalyzer:
         byte-identical when body sema runs in reverse-topo order
         (Phase 6 acceptance criterion).
         """
+        self.discharge_own_copy_verdicts()
         self.calls.resolve_pending_borrow_checks()
         self.calls.resolve_pending_match_subject_checks()
         # Last diagnostic-emitting step for this analyzer, so it is where a
@@ -1518,6 +1544,7 @@ class SemanticAnalyzer:
             return
 
         self.ctx.reset_function_tracking()
+        own_copy_mark = self.ctx.own_copy_mark()
 
         self.ctx.func.current_function = func
         # Async def bodies are analyzed normally. The await-expression
@@ -1617,6 +1644,8 @@ class SemanticAnalyzer:
             func_info.direct_mutated_params = direct
             func_info.call_edges = list(self.ctx.func.current_call_edges)
             func_info.representational_type_params = frozenset(self.ctx.func.current_representational_params)
+            (func_info.own_copy_obligations,
+             func_info.own_copy_forwards) = self.ctx.own_copy_drain(own_copy_mark)
             # Set mutated_params to direct facts as initial estimate;
             # Phase 2 propagation will replace with the complete transitive set.
             func_info.mutated_params = direct
@@ -2763,6 +2792,7 @@ class SemanticAnalyzer:
                 continue
 
             self.ctx.reset_function_tracking()
+            own_copy_mark = self.ctx.own_copy_mark()
             self.ctx.func.current_function = method
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = make_ref(self.type_ops.resolve_type(method.return_type))
@@ -2966,6 +2996,8 @@ class SemanticAnalyzer:
                     method_fi.call_edges = list(self.ctx.func.current_call_edges)
                     method_fi.mutated_params = direct
                     method_fi.representational_type_params = frozenset(self.ctx.func.current_representational_params)
+                    (method_fi.own_copy_obligations,
+                     method_fi.own_copy_forwards) = self.ctx.own_copy_drain(own_copy_mark)
                     # Structural mutation facts (append/insert/clear/del/etc.)
                     direct_struct = frozenset(
                         i for i, pname in enumerate(param_list)

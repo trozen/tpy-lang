@@ -1,1 +1,1 @@
-main.py:14: warning: copies Array[T, N] into field; use copy() to make this explicit
+main.py:14: warning: may copy Array[T, N] into field if not a value type; use copy() to make this explicit

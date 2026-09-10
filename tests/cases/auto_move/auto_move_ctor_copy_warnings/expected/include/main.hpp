@@ -100,13 +100,12 @@ template<typename T>
 struct GenericNotLastUse {
     // item: T
     T item;
+    // spare: T
+    T spare;
 
     // def __init__(self, item: Own[T]):
     GenericNotLastUse() = default;
-    explicit GenericNotLastUse(::tpy::own_param_t<T> item) : item(item) {
-        // print(item)
-        std::cout << ::tpy::ValuePrinter(item) << "\n";
-    }
+    explicit GenericNotLastUse(::tpy::own_param_t<T> item) : item(item), spare(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericNotLastUse";
 };
 

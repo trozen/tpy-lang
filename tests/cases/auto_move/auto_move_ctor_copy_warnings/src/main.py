@@ -37,10 +37,11 @@ class GenericHolder[T]:
 
 class GenericNotLastUse[T]:
     item: T
+    spare: T
 
     def __init__(self, item: Own[T]):
-        self.item = item  # tpyc: warning(/may copy.*field/)
-        print(item)
+        self.item = item  # tpyc: warning(/may copy T into field/)
+        self.spare = item
 
 
 class OptHolder:
@@ -102,6 +103,13 @@ def main():
     # Generic set_item with rvalue
     gh.set_item(Inner())
     print(gh.item.value)
+
+    # A reference instantiation of the generic ctor, so the auto-move rule
+    # this case is about is exercised at one.
+    i4 = Inner()
+    i4.value = 40
+    gnl = GenericNotLastUse[Inner](i4)
+    print(gnl.item.value)
 
 
 main()

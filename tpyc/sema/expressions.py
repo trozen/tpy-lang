@@ -2168,9 +2168,8 @@ class ExpressionAnalyzer:
         T -> Own[T] branch (which returns no coercion node -- the warning and
         last-use/copy() suppression are the only effects). A value type,
         rvalue, copy(), or last-use auto-move does not warn. A generic element
-        (TypeParamRef, after stripping the borrow-form RefType) is skipped
-        outright -- the copy verdict isn't knowable until instantiation, so
-        like `.append` it stays silent."""
+        reaches the same path: the verdict is unknowable here, so -- like
+        `.append` -- it is recorded and answered at the instantiation."""
         bare = unwrap_ref_type(unwrap_own(unwrap_readonly(elem_type)))
         # Not gated on has_pointer_repr_element: a literal's members come back
         # Own-wrapped (storage form, not pointer-repr), so the dispatch unwraps
@@ -2178,7 +2177,7 @@ class ExpressionAnalyzer:
         if isinstance(bare, TupleType):
             self.compat.warn_storage_tuple_copy(elem, bare, "owned storage")
             return
-        if bare.is_value_type() or isinstance(bare, TypeParamRef):
+        if bare.is_value_type():
             return
         self.compat.check_type_compatible(
             bare, OwnType(bare), "container literal element",

@@ -157,8 +157,8 @@ void relay_owned(::tpy::own_param_t<T> v, std::vector<T>& xs) {
     // xs.append(v)  # tpyc: ok
     xs.push_back(std::move(v));
 }
-// # inverse: a `T: ValueType` bound settles the verdict the hedge would defer to
-// # the instantiation, so the body stays silent -- the same exemption at the
+// # inverse: a `T: ValueType` bound makes a reference-type copy impossible, so
+// # the declaration-time hedge has nothing to say -- the same exemption at the
 // # RETURN slot that the insert slot applies. It proves the SLOT copies rather
 // # than aliases, not that the copy shares nothing: a value type carrying a
 // # `Ptr` field still hands both copies the same pointee

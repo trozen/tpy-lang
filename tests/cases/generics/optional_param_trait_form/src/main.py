@@ -75,7 +75,7 @@ class Container[T]:
     def __init__(self, val: T | None) -> None:
         # ctor position: the slot lifts into the optional field. The lift is a
         # copy at a reference T -- warned, and identically for the twin below.
-        self._val = val  # tpyc: warning(/copies T \| None into field/)
+        self._val = val  # tpyc: warning(/may copy T \| None into field/)
 
     def probe(self, val: T | None) -> bool:
         # method position: the method mutates nothing, so the const spelling.

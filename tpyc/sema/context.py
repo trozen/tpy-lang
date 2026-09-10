@@ -13,6 +13,8 @@ from typing import Any, Iterator, Literal, TYPE_CHECKING
 
 from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation
+from .. import qnames
+from . import own_copy
 from .value_range import ValueRange
 
 if TYPE_CHECKING:
@@ -1117,6 +1119,22 @@ class SemanticContext:
     # to drive transitive include emission.
     reached: set[str] = field(default_factory=set)
 
+    # --- Owning-slot copy verdicts (sema/own_copy.py) ---
+    # Every obligation this module's bodies recorded, so the ones no
+    # instantiation reached can be dropped once the workspace is analyzed.
+    own_copy_obligations: list = field(default_factory=list)
+    # Instantiations resolved in this module with a fully concrete
+    # substitution -- the roots the discharge walks from.
+    own_copy_roots: list = field(default_factory=list)
+    _own_copy_seen_roots: set = field(default_factory=set)
+    # Generic callees instantiated with a payload that still names a type
+    # param. Both this and `own_copy_obligations` are append-only and sliced
+    # per body at `own_copy_mark` / `own_copy_drain`, rather than held on
+    # `func`: nested-def analysis deep-copies and then discards that state,
+    # which would strand a closure's obligations away from the placeholder
+    # they hold.
+    own_copy_forwards: list = field(default_factory=list)
+
     # --- Final globals ---
     final_globals: set[str] = field(default_factory=set)
     analyzed_finals: set[str] = field(default_factory=set)
@@ -1270,6 +1288,141 @@ class SemanticContext:
     def warning_from_loc(self, message: str, loc: 'SourceLocation | None') -> None:
         """Record a warning diagnostic from a SourceLocation."""
         self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
+
+    def type_param_bound(self, type_param_name: str) -> 'TpyType | None':
+        """The declared bound for a type parameter in the current context.
+
+        The enclosing function's own bounds win over the enclosing record's,
+        so a method that shadows a class param reads its own.
+        """
+        func = self.func.current_function
+        if (func is not None and isinstance(func, TpyFunction)
+                and type_param_name in func.type_param_bounds):
+            return func.type_param_bounds[type_param_name]
+        if (self.record_ctx.type_param_bounds
+                and type_param_name in self.record_ctx.type_param_bounds):
+            return self.record_ctx.type_param_bounds[type_param_name]
+        return None
+
+    def _copy_is_unobservable(self, typ: 'TpyType') -> bool:
+        """Whether a `ValueType` bound settles the copy question for `typ`.
+
+        True only when the payload's reference-ness is DERIVED from its type
+        params and every one of them carries the bound. A payload that is a
+        reference type in its own right -- `list[T]`, `Array[T, N]`, a plain
+        `class GContainer[T]` -- copies a struct at every instantiation, so
+        no bound on `T` silences it; `reference_source_params` returns None
+        for exactly those.
+
+        `T: Copyable` deliberately does NOT silence it either: copyable is
+        TPy's default, so that bound only says the instantiation is not
+        non-copyable (`@nocopy`, or a record with `__del__`) -- it does not
+        say the author meant to copy. Only `copy()` at the site says that.
+
+        Every derived param must carry the bound: `tuple[K, V]` with a
+        value-typed `K` and an unbounded `V` still copies a `V`.
+        """
+        params = own_copy.reference_source_params(typ)
+        if not params:
+            return False
+        for name in params:
+            bound = self.type_param_bound(name)
+            if (not isinstance(bound, NominalType)
+                    or bound.qualified_name() != qnames.VALUE_TYPE):
+                return False
+        return True
+
+    def defer_own_copy_verdict(
+        self, display: 'TpyType', target: 'TpyType', dest: str,
+        node: 'TpyExpr | TpyStmt | None', kind: str = own_copy.KIND_SLOT,
+        hint: str = "",
+    ) -> bool:
+        """Record an owning-slot copy whose payload is still open.
+
+        Returns False -- the sink answers for itself -- when neither the
+        stored value nor the slot names a type parameter. Otherwise the body
+        warns HERE, at declaration time, so a library author reads the copy
+        contract without instantiating anything; the warning stands whatever
+        the instantiations turn out to be, and a non-copyable one (`@nocopy`,
+        or a record with `__del__`) later rewrites this same diagnostic into
+        the located error.
+
+        Returns True without warning under a `T: ValueType` bound, which
+        makes the copy unobservable. `copy()` at the site is the other
+        silencer, and it is handled before the sink is reached.
+        """
+        if not (own_copy.type_has_type_param(target)
+                or own_copy.type_has_type_param(display)):
+            return False
+        # Both sides describe the same copy, so silence needs both to agree
+        # -- a side with no type params has no bound to consult and abstains.
+        open_sides = [t for t in (target, display)
+                      if own_copy.type_has_type_param(t)]
+        if all(self._copy_is_unobservable(t) for t in open_sides):
+            return True
+        diag = Diagnostic(
+            DiagnosticLevel.WARNING,
+            own_copy.hedge_message(display, dest, kind, hint),
+            self._resolve_loc(node))
+        self.diagnostics.append(diag)
+        obligation = own_copy.OwnCopyObligation(
+            display_type=display, target_type=target, dest=dest, kind=kind,
+            hint=hint, diag=diag, diagnostics=self.diagnostics)
+        self.own_copy_obligations.append(obligation)
+        return True
+
+    def record_own_copy_instantiation(
+        self, callee: object, subst: 'dict[str, TpyType | int]',
+        is_record: bool = False,
+    ) -> None:
+        """Note that `callee` (a FunctionInfo, or a RecordInfo when
+        `is_record`) was instantiated under `subst`.
+
+        A substitution that still names a type parameter is the enclosing
+        generic body's to forward: it is re-composed when that body is
+        itself instantiated. A concrete one is a root the discharge starts
+        from.
+        """
+        if not subst:
+            return
+        pairs = tuple(
+            (name, value) for name, value in subst.items()
+            if isinstance(value, TpyType)
+        )
+        if not pairs:
+            return
+        edge = own_copy.OwnCopyEdge(callee, pairs, is_record)
+        if any(own_copy.type_has_type_param(value) for _, value in pairs):
+            self.own_copy_forwards.append(edge)
+            return
+        try:
+            key = (id(callee), pairs, is_record)
+            if key in self._own_copy_seen_roots:
+                return
+            self._own_copy_seen_roots.add(key)
+        except TypeError:
+            # An unhashable type arg cannot be deduped; recording the edge
+            # twice only costs a repeated (idempotent) discharge.
+            pass
+        self.own_copy_roots.append(edge)
+
+    def own_copy_mark(self) -> tuple[int, int]:
+        """Where the body about to be analyzed starts contributing."""
+        return (len(self.own_copy_obligations), len(self.own_copy_forwards))
+
+    def own_copy_drain(self, mark: tuple[int, int]) -> tuple[tuple, tuple]:
+        """The obligations and instantiation forwards the body recorded."""
+        obligations = tuple(self.own_copy_obligations[mark[0]:])
+        seen: set = set()
+        forwards = []
+        for edge in self.own_copy_forwards[mark[1]:]:
+            key = edge.key()
+            if key in seen:
+                continue
+            seen.add(key)
+            forwards.append(edge)
+        forwards = tuple(forwards)
+        return obligations, forwards
 
     def collapse_duplicate_diagnostics(self) -> None:
         """Drop exact repeats, keeping each diagnostic's first occurrence.

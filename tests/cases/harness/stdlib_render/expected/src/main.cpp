@@ -4,6 +4,28 @@
 namespace tpyapp::main {
 
 
+// def _pin_cycle_copy() -> Int32:
+int32_t _pin_cycle_copy() {
+    // total = 0
+    int32_t total = 0;
+    // for c in itertools.islice(itertools.cycle([_Cell(1), _Cell(2)]), 3):
+    {
+        auto __tmp_1 = std::array<_Cell, 2>{_Cell(1), _Cell(2)};
+        auto __tmp_2 = ::tpystd::itertools::cycle<_Cell>(__tmp_1);
+        auto __src_0 = ::tpystd::itertools::islice<_Cell>(__tmp_2, 3);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& c = ::tpy::unwrap_ref(*__r_1);
+        // total += c.n
+        total = ::tpy::add_check<int32_t>(total, c.n);
+        }
+    }
+    // return total
+    return total;
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

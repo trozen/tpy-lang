@@ -50,6 +50,13 @@ void main() {
     h.value = h.value;
     // h.value = copy(h.value)       # tpyc: ok
     h.value = h.value;
+    // # `Holder[Point]` keeps a reference instantiation in the case: the hedge
+    // # on the body line stands either way, but the non-copyable error leg
+    // # needs a route to reach the body through.
+    // hp: Holder[Point] = Holder()
+    Holder<Point> hp = Holder<Point>();
+    // hp.set_value(p)               # tpyc: ok
+    hp.set_value(p);
     // print(r.width)
     std::cout << r.width << "\n";
 }

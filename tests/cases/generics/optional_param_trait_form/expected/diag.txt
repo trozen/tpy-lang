@@ -1,2 +1,2 @@
-main.py:78: warning: copies T | None into field; use copy() to make this explicit
+main.py:78: warning: may copy T | None into field if not a value type; use copy() to make this explicit
 main.py:105: warning: copies Cell | None into field; use copy() to make this explicit

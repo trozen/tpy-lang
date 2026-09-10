@@ -318,9 +318,9 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
     # instantiation, and a value at the rest. `is_rvalue_source` answers the
     # C++ RENDER question and reads the unresolved parameter as a value, which
     # is the twin's verdict only for the value-typed half -- so at an owning
-    # slot the source counts as borrowed. What the slot then REPORTS is still
-    # hedged on the open payload rather than re-asked at the instantiation
-    # (BUGS.md#generic-own-slot-copy-verdict-not-reasked).
+    # slot the source counts as borrowed. What the slot then REPORTS is
+    # decided per instantiation (sema/own_copy.py), so the value-typed half
+    # costs no diagnostic.
     if _returns_open_type_param(link[0]):
         return True
     return not is_rvalue_source(analyzer, inner)

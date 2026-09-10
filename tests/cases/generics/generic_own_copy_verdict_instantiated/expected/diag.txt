@@ -1,0 +1,36 @@
+gencontainer.py:8: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:61: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:64: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:71: warning: copies Cell into field; use copy() to make this explicit
+main.py:74: warning: copies Cell into field; use copy() to make this explicit
+main.py:177: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:198: warning: may copy T | None into field if not a value type; use copy() to make this explicit
+main.py:229: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:263: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:37: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:43: warning: copies Cell into owned storage; use copy() to make this explicit
+main.py:49: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:53: warning: copies Cell into owned storage; use copy() to make this explicit
+main.py:81: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:88: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:95: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:110: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:128: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:136: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:138: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:147: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:157: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:164: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:234: warning: may copy GBox[T] into owned storage if not a value type; use copy() to make this explicit
+main.py:240: warning: copies GBox[Int32] into owned storage; use copy() to make this explicit
+main.py:275: warning: may copy tuple[str, T] elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:280: warning: copies tuple[str, Cell] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:286: warning: may copy T elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:291: warning: may copy T elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:296: warning: may copy T elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:306: warning: copies Cell into owned storage; use copy() to make this explicit
+main.py:312: warning: may copy T into container if not a value type; use copy() to make this explicit
+main.py:317: warning: copies Cell into container; use copy() to make this explicit
+main.py:326: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:334: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:342: warning: may copy T into owned storage if not a value type; use copy() to make this explicit

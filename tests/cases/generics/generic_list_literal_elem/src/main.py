@@ -14,14 +14,15 @@ class Cell:
         self.n = n
 
 
-# The consume warning is spurious -- a container-literal element is not one of
-# the consumption shapes sema counts, though the move does happen.
-def wrap[T](a: Own[T]) -> Own[list[T]]:  # tpyc: warning(/never consumed/)
+def wrap[T](a: Own[T]) -> Own[list[T]]:  # tpyc: ok
     return [a]      # tpyc: ok -- the moved element
 
 
+# Two elements, both copied from the same name, so the declaration-time copy
+# contract is stated once per element.
 def twice[T](a: T) -> Own[list[T]]:
-    return [a, a]   # tpyc: ok -- a copyable `T` element renders bare
+    # tpyc: warning(/may copy T into owned storage/) warning(/may copy T into owned storage/)
+    return [a, a]   # a copyable `T` element renders bare
 
 
 def main() -> None:

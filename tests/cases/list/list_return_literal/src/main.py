@@ -8,7 +8,8 @@ def make_empty[T]() -> Own[list[T]]:
 
 
 def make_single[T](x: T) -> Own[list[T]]:
-    return [x]
+    # The element is an open `T`, so the body states its copy contract here.
+    return [x]  # tpyc: warning(/may copy T into owned storage/)
 
 
 def make_list(x: Int32) -> Own[list[Int32]]:

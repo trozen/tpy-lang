@@ -1,5 +1,5 @@
 main.py:24: warning: copies Inner into field; use copy() to make this explicit
-main.py:42: warning: may copy T into field if not a value type; use copy() to make this explicit
-main.py:53: warning: copies Inner into field; use copy() to make this explicit
-main.py:66: warning: copies Inner into field; use copy() to make this explicit
-main.py:75: warning: copies Inner into container; use copy() to make this explicit
+main.py:43: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:54: warning: copies Inner into field; use copy() to make this explicit
+main.py:67: warning: copies Inner into field; use copy() to make this explicit
+main.py:76: warning: copies Inner into container; use copy() to make this explicit

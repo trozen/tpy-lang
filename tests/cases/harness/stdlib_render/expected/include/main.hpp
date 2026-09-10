@@ -68,7 +68,30 @@
 
 namespace tpyapp::main {
 
+struct _Cell;
+
 inline constexpr std::string_view __name__ = "__main__";
 
+int32_t _pin_cycle_copy();
+
+// class _Cell:
+struct _Cell {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self, n: Int32) -> None:
+    _Cell() = default;
+    explicit _Cell(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__._Cell";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const _Cell& obj) {
+    ::tpy::print_object_default(os, "_Cell", obj);
+    return os;
+}
+
+
+// def __init__(self, n: Int32) -> None:
+inline _Cell::_Cell(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main
