@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Neg& obj) {
 }
 
 struct Value {
-    using variant_type = std::variant<Neg, ::tpy::BigInt, std::string>;
+    using variant_type = ::tpy::Union<Neg, ::tpy::BigInt, std::string>;
     variant_type value;
 
     Value() = default;

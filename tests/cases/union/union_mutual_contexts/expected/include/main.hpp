@@ -92,7 +92,7 @@ inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box
 // def __init__(self, inner: Own[Box[Value]]) -> None:
 inline Neg::Neg(::tpystd::tplib::box::Box<Value>&& inner) : inner(std::move(inner)) {}
 struct Expr {
-    using variant_type = std::variant<BinOp, Lit>;
+    using variant_type = ::tpy::Union<BinOp, Lit>;
     variant_type value;
 
     Expr() = default;
@@ -108,7 +108,7 @@ struct Expr {
     }
 };
 struct Tree {
-    using variant_type = std::variant<::tpy::BigInt, std::vector<Tree>>;
+    using variant_type = ::tpy::Union<::tpy::BigInt, std::vector<Tree>>;
     variant_type value;
 
     Tree() = default;
@@ -124,7 +124,7 @@ struct Tree {
     }
 };
 struct Value {
-    using variant_type = std::variant<Neg, ::tpy::BigInt, std::string>;
+    using variant_type = ::tpy::Union<Neg, ::tpy::BigInt, std::string>;
     variant_type value;
 
     Value() = default;

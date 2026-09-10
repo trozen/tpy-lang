@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 // def __init__(self, value: int) -> None:
 inline Leaf::Leaf(const ::tpy::BigInt& value) : value(value) {}
 struct Tree {
-    using variant_type = std::variant<Leaf, std::vector<Tree>>;
+    using variant_type = ::tpy::Union<Leaf, std::vector<Tree>>;
     variant_type value;
 
     Tree() = default;

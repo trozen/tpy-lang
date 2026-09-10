@@ -53,7 +53,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_loop::__next__() {
 
 
 // def loop(a: int | str) -> Iterator[str]:
-__gen_loop loop(std::variant<::tpy::BigInt, std::string> a) {
+__gen_loop loop(::tpy::Union<::tpy::BigInt, std::string> a) {
     return __gen_loop(a);
 }
 
@@ -86,7 +86,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_checked::__next__() {
 
 
 // def checked(a: int | str) -> Iterator[str]:
-__gen_checked checked(std::variant<::tpy::BigInt, std::string> a) {
+__gen_checked checked(::tpy::Union<::tpy::BigInt, std::string> a) {
     return __gen_checked(a);
 }
 
@@ -94,7 +94,7 @@ __gen_checked checked(std::variant<::tpy::BigInt, std::string> a) {
 void main() {
     // for s in loop(5):
     {
-        std::variant<::tpy::BigInt, std::string> __tmp_1 = 5;
+        ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = 5;
         auto __src_0 = loop(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -107,7 +107,7 @@ void main() {
     }
     // for s in checked(7):
     {
-        std::variant<::tpy::BigInt, std::string> __tmp_2 = 7;
+        ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = 7;
         auto __src_2 = checked(__tmp_2);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {

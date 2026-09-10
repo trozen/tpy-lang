@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def make_iu() -> Int32 | str:
-std::variant<int32_t, std::string> make_iu() {
+::tpy::Union<int32_t, std::string> make_iu() {
     // return Int32(42)
     return 42;
 }
 
 // def make_su() -> Int32 | str:
-std::variant<int32_t, std::string> make_su() {
+::tpy::Union<int32_t, std::string> make_su() {
     // return "hello"
     return "hello";
 }
@@ -25,9 +25,9 @@ std::variant<int32_t, Point, std::string> make_3u() {
 // def main() -> None:
 void main() {
     // a = make_iu()
-    std::variant<int32_t, std::string> a = make_iu();
+    ::tpy::Union<int32_t, std::string> a = make_iu();
     // b = make_su()
-    std::variant<int32_t, std::string> b = make_su();
+    ::tpy::Union<int32_t, std::string> b = make_su();
     // c = make_3u()
     std::variant<int32_t, Point, std::string> __slot_1 = make_3u();
     std::variant<int32_t*, Point*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);

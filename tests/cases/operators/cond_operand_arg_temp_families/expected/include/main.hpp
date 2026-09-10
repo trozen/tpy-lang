@@ -73,7 +73,7 @@ void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = std::variant<T, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<T, std::vector<Tree<T>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;
@@ -353,7 +353,7 @@ inline const Point& Ref::__deref__() const {
     return this->_target;
 }
 struct Value {
-    using variant_type = std::variant<Neg, ::tpy::BigInt, std::vector<Value>>;
+    using variant_type = ::tpy::Union<Neg, ::tpy::BigInt, std::vector<Value>>;
     variant_type value;
 
     Value() = default;

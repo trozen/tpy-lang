@@ -16,17 +16,17 @@ struct Guard;
 struct Err;
 struct Counter;
 
-extern std::variant<int32_t, std::string> global_text;
+extern ::tpy::Union<int32_t, std::string> global_text;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_generate;
 struct __coro_async_read;
 
-void string_reads(const std::variant<int32_t, std::string>& x, const ::tpy::BigInt& index);
+void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigInt& index);
 void bytes_reads(const std::variant<Indexed*, std::vector<uint8_t>*> x, const ::tpy::BigInt& index);
-void bytes_value_union(const std::variant<int32_t, std::vector<uint8_t>>& x);
+void bytes_value_union(const ::tpy::Union<int32_t, std::vector<uint8_t>>& x);
 void bytearray_reads(const std::variant<int32_t*, std::vector<uint8_t>*> x, const ::tpy::BigInt& index);
-void capture_reads(const std::variant<int32_t, std::string>& x, bool allowed);
+void capture_reads(const ::tpy::Union<int32_t, std::string>& x, bool allowed);
 template<typename T>
 void generic_read(::tpy::param_val_or_ref_t<T> marker);
 void monomorphic_read(int32_t marker);
@@ -34,11 +34,11 @@ void tuple_reads(const std::variant<int32_t*, std::vector<uint8_t>*> x);
 __gen_generate generate(std::variant<int32_t*, std::vector<uint8_t>*> x);
 __coro_async_read async_read(std::variant<int32_t*, std::vector<uint8_t>*> x);
 void comprehension(const std::variant<int32_t*, std::vector<uint8_t>*> x);
-std::variant<int32_t, std::string> union_text(bool choose_text);
+::tpy::Union<int32_t, std::string> union_text(bool choose_text);
 void closure(bool choose_text);
-void cleanup_reads(const std::variant<int32_t, std::string>& x);
+void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x);
 std::expected<int32_t, Err> error_read(const std::variant<int32_t*, std::vector<uint8_t>*> x);
-void conditional_reads(const std::variant<int32_t, std::string>& x, Counter& counter);
+void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& counter);
 void list_read(const std::variant<int32_t*, std::vector<int32_t>*> x);
 void dict_read(const std::variant<int32_t*, ::tpy::ordered_map<int32_t, int32_t>*> x);
 void record_read(const std::variant<Indexed*, int32_t*> x);
@@ -72,11 +72,11 @@ struct Reader {
     // # Constructor: the indexed scalar is consumed by a field store.
     // def __init__(self, x: str | Int32) -> None:
     Reader() = default;
-    explicit Reader(const std::variant<int32_t, std::string>& x);
+    explicit Reader(const ::tpy::Union<int32_t, std::string>& x);
 
     // # Method: readonly receiver inference must not affect scalar indexing.
     // def read(self, x: str | Int32) -> str:
-    std::string read(const std::variant<int32_t, std::string>& x) const;
+    std::string read(const ::tpy::Union<int32_t, std::string>& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Reader";
 };
 
@@ -195,7 +195,7 @@ inline int32_t Indexed::__getitem__(int32_t index) const {
 
 // # Constructor: the indexed scalar is consumed by a field store.
 // def __init__(self, x: str | Int32) -> None:
-inline Reader::Reader(const std::variant<int32_t, std::string>& x) : value("") {
+inline Reader::Reader(const ::tpy::Union<int32_t, std::string>& x) : value("") {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -216,7 +216,7 @@ inline Reader::Reader(const std::variant<int32_t, std::string>& x) : value("") {
 
 // # Method: readonly receiver inference must not affect scalar indexing.
 // def read(self, x: str | Int32) -> str:
-inline std::string Reader::read(const std::variant<int32_t, std::string>& x) const {
+inline std::string Reader::read(const ::tpy::Union<int32_t, std::string>& x) const {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -262,7 +262,7 @@ inline int32_t Counter::index() {
 template<typename T>
 void generic_read(::tpy::param_val_or_ref_t<T> marker) {
     // x = union_text(True)
-    std::variant<int32_t, std::string> x = union_text(true);
+    ::tpy::Union<int32_t, std::string> x = union_text(true);
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {

@@ -11,12 +11,12 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t leaf_count(const Tree<std::variant<int32_t, std::string>>& t);
+int32_t leaf_count(const Tree<::tpy::Union<int32_t, std::string>>& t);
 void main();
 
 template<typename T>
 struct Tree {
-    using variant_type = std::variant<T, std::vector<Tree<T>>>;
+    using variant_type = ::tpy::Union<T, std::vector<Tree<T>>>;
     variant_type value;
 
     Tree() requires std::default_initializable<variant_type> = default;

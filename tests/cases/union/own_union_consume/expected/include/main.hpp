@@ -16,7 +16,7 @@ Json build_arr();
 void main();
 
 struct Json {
-    using variant_type = std::variant<std::monostate, bool, ::tpy::ordered_map<std::string, Json>, ::tpy::BigInt, std::vector<Json>, std::string>;
+    using variant_type = ::tpy::Union<std::monostate, bool, ::tpy::ordered_map<std::string, Json>, ::tpy::BigInt, std::vector<Json>, std::string>;
     variant_type value;
 
     Json() = default;

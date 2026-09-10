@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
 // def __init__(self, value: int) -> None:
 inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 struct Expr {
-    using variant_type = std::variant<BinOp, Lit>;
+    using variant_type = ::tpy::Union<BinOp, Lit>;
     variant_type value;
 
     Expr() = default;

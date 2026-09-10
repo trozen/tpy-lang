@@ -14,7 +14,7 @@ struct Dog;
 inline constexpr std::string_view __name__ = "__main__";
 
 int64_t offset_of(std::optional<Fixed> tz);
-int64_t kind_of(const std::variant<std::monostate, Fixed, Wide>& z);
+int64_t kind_of(const ::tpy::Union<std::monostate, Fixed, Wide>& z);
 int64_t barks_of(const Dog* d = nullptr);
 void main();
 

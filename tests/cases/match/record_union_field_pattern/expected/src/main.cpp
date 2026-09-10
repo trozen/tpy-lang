@@ -112,13 +112,13 @@ void main() {
     // print(is_cat(w2))
     std::cout << is_cat(w2) << "\n";
     // t1 = Tagged("s", "hello")
-    std::variant<int32_t, std::string> __tmp_3 = "hello";
+    ::tpy::Union<int32_t, std::string> __tmp_3 = "hello";
     Tagged t1 = Tagged("s", __tmp_3);
     // t2 = Tagged("n", Int32(42))
-    std::variant<int32_t, std::string> __tmp_4 = 42;
+    ::tpy::Union<int32_t, std::string> __tmp_4 = 42;
     Tagged t2 = Tagged("n", __tmp_4);
     // t3 = Tagged("x", "other")
-    std::variant<int32_t, std::string> __tmp_5 = "other";
+    ::tpy::Union<int32_t, std::string> __tmp_5 = "other";
     Tagged t3 = Tagged("x", __tmp_5);
     // print(show_tagged(t1))
     std::cout << show_tagged(t1) << "\n";

@@ -1,7 +1,9 @@
-# A value union renders as std::variant; the None-carrying one adds the
-# monostate member. The compares stay within ONE alternative on purpose: a
-# cross-alternative compare (`same(1, 1.0)`) is False here and True in Python,
-# BUGS.md#value-union-eq-compares-alternative-index.
+# A value union renders as ::tpy::Union (a std::variant that owns Python's
+# comparison rule); the None-carrying one adds the monostate member. The
+# compares stay within ONE alternative: the cross-alternative answers are
+# `tests/cases/union/value_union_cross_alternative_eq`, so what this case pins
+# is the RENDER -- the bare `(a == b)` on the TPy type, not a helper call and
+# not the variant's own index-first operator.
 from tpy import Float64, Int32
 
 

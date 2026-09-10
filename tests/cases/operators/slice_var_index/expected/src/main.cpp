@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def with_basic_slice(items: list[Int32], index: Int32 | basic_slice) -> Int32:
-int32_t with_basic_slice(std::vector<int32_t>& items, const std::variant<int32_t, ::tpy::BasicSlice>& index) {
+int32_t with_basic_slice(std::vector<int32_t>& items, const ::tpy::Union<int32_t, ::tpy::BasicSlice>& index) {
     // items.append(0)  # force mutable param
     items.push_back(0);
     // items.pop()

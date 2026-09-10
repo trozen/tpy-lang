@@ -10,7 +10,7 @@ void main() {
     // p = Person("Alice", Int32(30))
     Person p = Person("Alice", 30);
     // print(asdict(p))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, int32_t>>(::tpy::ordered_map<std::string, std::variant<std::string, int32_t>>({{"name", p.name}, {"age", p.age}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", p.name}, {"age", p.age}}))) << "\n";
     // print(astuple(p))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{p.name, p.age}) << "\n";
     // # Mixed with nested dataclass

@@ -10,13 +10,13 @@ void main() {
     ::tpystd::datetime::timezone ist = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(5)), "IST");
     // # Aware timestamps: pure UTC math, zone-independent.
     // print(datetime(2021, 3, 5, 14, 30, 15, 500000, tzinfo=ist).timestamp())
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ist;
     std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(500000), __tmp_1).timestamp()) << "\n";
     // print(datetime(1970, 1, 1, tzinfo=UTC).timestamp())
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::UTC;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::UTC;
     std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(1970), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2).timestamp()) << "\n";
     // print(datetime(1969, 12, 31, 23, 59, 59, 250000, tzinfo=UTC).timestamp())
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = ::tpystd::datetime::UTC;
     std::cout << ::tpy::print_float(::tpystd::datetime::datetime(::tpy::BigInt(1969), ::tpy::BigInt(12), ::tpy::BigInt(31), ::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(250000), __tmp_3).timestamp()) << "\n";
     // # Naive timestamps = local wall clock in the pinned zone.
     // print(datetime(2021, 1, 15, 12, 0).timestamp())
@@ -35,13 +35,13 @@ void main() {
     // # astimezone: aware->aware, aware->local, naive->fixed, naive->local
     // # (naive input converts, it does NOT raise -- unlike comparison).
     // aware = datetime(2021, 3, 5, 14, 30, 15, 500000, tzinfo=ist)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ist;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ist;
     ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(15), ::tpy::BigInt(500000), __tmp_4);
     // print(aware.astimezone(UTC))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::UTC;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ::tpystd::datetime::UTC;
     std::cout << aware.astimezone(__tmp_5) << "\n";
     // print(aware.astimezone(timezone(timedelta(hours=-8))))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-8)));
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(-8)));
     std::cout << aware.astimezone(__tmp_6) << "\n";
     // print(aware.astimezone())
     std::cout << aware.astimezone() << "\n";
@@ -50,7 +50,7 @@ void main() {
     // n = datetime(2021, 7, 15, 12, 0)
     ::tpystd::datetime::datetime n = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0));
     // print(n.astimezone(UTC))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = ::tpystd::datetime::UTC;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = ::tpystd::datetime::UTC;
     std::cout << n.astimezone(__tmp_7) << "\n";
     // print(repr(n.astimezone()))
     std::cout << ::tpy::repr_of(n.astimezone()) << "\n";
@@ -61,8 +61,8 @@ void main() {
     // print(w.astimezone().timestamp() == w.timestamp())
     std::cout << ::tpy::print_bool((w.astimezone().timestamp() == w.timestamp())) << "\n";
     // print(w.astimezone(UTC).astimezone().replace(tzinfo=None) == w)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = ::tpystd::datetime::UTC;
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = ::tpystd::datetime::UTC;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
     std::cout << ::tpy::print_bool(((w.astimezone(__tmp_8).astimezone().replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_9)) == (w))) << "\n";
 }
 

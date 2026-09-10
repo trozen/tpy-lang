@@ -12,8 +12,8 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string scalar_tuple(const std::variant<std::monostate, ::tpy::BigInt, std::string>& v);
-std::string scalar_inline(const std::variant<std::monostate, ::tpy::BigInt, std::string>& v);
+std::string scalar_tuple(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
+std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
 std::string ref_tuple(const std::variant<std::monostate, A*, B*> v);
 void main();
 

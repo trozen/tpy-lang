@@ -16,7 +16,7 @@ int64_t offset_of(std::optional<Fixed> tz) {
 }
 
 // def kind_of(z: "Fixed | Wide | None" = None) -> Int64:
-int64_t kind_of(const std::variant<std::monostate, Fixed, Wide>& z) {
+int64_t kind_of(const ::tpy::Union<std::monostate, Fixed, Wide>& z) {
     // if z is None:
     if ((std::holds_alternative<std::monostate>(z))) {
         // return -1
@@ -51,13 +51,13 @@ void main() {
     // print(offset_of(Fixed(7)))
     std::cout << offset_of(Fixed(7)) << "\n";
     // print(kind_of())
-    std::variant<std::monostate, Fixed, Wide> __tmp_1 = std::monostate{};
+    ::tpy::Union<std::monostate, Fixed, Wide> __tmp_1 = std::monostate{};
     std::cout << kind_of(__tmp_1) << "\n";
     // print(kind_of(Fixed(3)))
-    std::variant<std::monostate, Fixed, Wide> __tmp_2 = Fixed(3);
+    ::tpy::Union<std::monostate, Fixed, Wide> __tmp_2 = Fixed(3);
     std::cout << kind_of(__tmp_2) << "\n";
     // print(kind_of(Wide(88)))
-    std::variant<std::monostate, Fixed, Wide> __tmp_3 = Wide(88);
+    ::tpy::Union<std::monostate, Fixed, Wide> __tmp_3 = Wide(88);
     std::cout << kind_of(__tmp_3) << "\n";
     // print(barks_of())
     std::cout << barks_of() << "\n";

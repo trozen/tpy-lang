@@ -24,7 +24,7 @@ D again(const std::vector<D>& xs) {
 }
 
 // def widen(a: D, b: D) -> D | E:
-std::variant<D, E> widen(D a, D b) {
+::tpy::Union<D, E> widen(D a, D b) {
     // # The same lvalue ternary at a value-VARIANT return slot.
     // return a if a.n >= b.n else b  # tpyc: ok
     return (((a.n >= b.n)) ? (a) : (b));
@@ -60,7 +60,7 @@ void main() {
     // print(got.n, first(xs).n)
     std::cout << got.n << " " << first(xs).n << "\n";
     // w = widen(lo, hi)
-    std::variant<D, E> w = widen(lo, hi);
+    ::tpy::Union<D, E> w = widen(lo, hi);
     // if isinstance(w, D):
     if (std::holds_alternative<D>(w)) {
         auto& __w = std::get<D>(w);

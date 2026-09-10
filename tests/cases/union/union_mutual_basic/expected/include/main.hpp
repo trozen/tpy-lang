@@ -93,7 +93,7 @@ inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op,
 // def __init__(self, expr: Own[Box[Expr]]) -> None:
 inline ExprBox::ExprBox(::tpystd::tplib::box::Box<Expr>&& expr) : expr(std::move(expr)) {}
 struct Expr {
-    using variant_type = std::variant<BinOp, Lit>;
+    using variant_type = ::tpy::Union<BinOp, Lit>;
     variant_type value;
 
     Expr() = default;

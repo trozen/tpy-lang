@@ -9,10 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show_num(const std::variant<bool, ::tpy::BigInt>& x);
+void show_num(const ::tpy::Union<bool, ::tpy::BigInt>& x);
 void main();
 
-using Num = std::variant<bool, ::tpy::BigInt>;
+using Num = ::tpy::Union<bool, ::tpy::BigInt>;
 
 void __tpy_init();
 } // namespace tpyapp::main

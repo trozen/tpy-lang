@@ -57,7 +57,7 @@ inline std::string Leaf::__repr__() const {
     return std::format("Leaf(value={})", ::tpy::repr_of(this->value));
 }
 struct IntTree {
-    using variant_type = std::variant<::tpy::BigInt, std::vector<IntTree>>;
+    using variant_type = ::tpy::Union<::tpy::BigInt, std::vector<IntTree>>;
     variant_type value;
 
     IntTree() = default;
@@ -73,7 +73,7 @@ struct IntTree {
     }
 };
 struct JsonValue {
-    using variant_type = std::variant<::tpy::ordered_map<std::string, JsonValue>, ::tpy::BigInt, std::string>;
+    using variant_type = ::tpy::Union<::tpy::ordered_map<std::string, JsonValue>, ::tpy::BigInt, std::string>;
     variant_type value;
 
     JsonValue() = default;
@@ -89,7 +89,7 @@ struct JsonValue {
     }
 };
 struct Tree {
-    using variant_type = std::variant<Leaf, std::vector<Tree>>;
+    using variant_type = ::tpy::Union<Leaf, std::vector<Tree>>;
     variant_type value;
 
     Tree() = default;

@@ -361,7 +361,7 @@ time time::fromisoformat(std::string_view time_string) {
 // minute: int = 0, second: int = 0, microsecond: int = 0,
 // tzinfo: timezone | ZoneInfo | None = None,
 // fold: int = 0) -> None:
-datetime::datetime(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day, const ::tpy::BigInt& hour, const ::tpy::BigInt& minute, const ::tpy::BigInt& second, const ::tpy::BigInt& microsecond, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo, const ::tpy::BigInt& fold) {
+datetime::datetime(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day, const ::tpy::BigInt& hour, const ::tpy::BigInt& minute, const ::tpy::BigInt& second, const ::tpy::BigInt& microsecond, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo, const ::tpy::BigInt& fold) {
     // _check_date_fields(year, month, day)
     _check_date_fields(year, month, day);
     // _check_time_fields(hour, minute, second, microsecond)
@@ -423,7 +423,7 @@ datetime::datetime(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const 
 
 // @property
 // def tzinfo(self) -> timezone | ZoneInfo | None:
-std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> datetime::tzinfo() const {
+::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> datetime::tzinfo() const {
     // k = self._tz_kind()
     ::tpy::BigInt k = this->_tz_kind();
     // if k == 0:
@@ -480,7 +480,7 @@ std::optional<std::string> datetime::tzname() const {
 // microsecond: int | None = None,
 // tzinfo: timezone | ZoneInfo | bool | None = True,
 // fold: int | None = None) -> "datetime":
-::tpystd::datetime::datetime datetime::replace(std::optional<::tpy::BigInt> year, std::optional<::tpy::BigInt> month, std::optional<::tpy::BigInt> day, std::optional<::tpy::BigInt> hour, std::optional<::tpy::BigInt> minute, std::optional<::tpy::BigInt> second, std::optional<::tpy::BigInt> microsecond, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>& tzinfo, std::optional<::tpy::BigInt> fold) const {
+::tpystd::datetime::datetime datetime::replace(std::optional<::tpy::BigInt> year, std::optional<::tpy::BigInt> month, std::optional<::tpy::BigInt> day, std::optional<::tpy::BigInt> hour, std::optional<::tpy::BigInt> minute, std::optional<::tpy::BigInt> second, std::optional<::tpy::BigInt> microsecond, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>& tzinfo, std::optional<::tpy::BigInt> fold) const {
     // # CPython's own sentinel: tzinfo defaults to True (keep current);
     // # passing a tz sets it, passing None drops it. A record value
     // # cannot be a TPy param default, so the bool arm IS the omitted
@@ -502,7 +502,7 @@ std::optional<std::string> datetime::tzname() const {
     // f = fold if fold is not None else int(self.fold)
     ::tpy::BigInt f = (((fold.has_value())) ? ((*fold)) : (::tpy::BigInt(static_cast<int64_t>(this->fold()))));
     // tz: timezone | ZoneInfo | None = None
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = std::monostate{};
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = std::monostate{};
     // if isinstance(tzinfo, bool):
     if (std::holds_alternative<bool>(tzinfo)) {
         const auto& __tzinfo = std::get<bool>(tzinfo);
@@ -532,7 +532,7 @@ std::optional<std::string> datetime::tzname() const {
 
 // def astimezone(self,
 // tz: timezone | ZoneInfo | None = None) -> "datetime":
-::tpystd::datetime::datetime datetime::astimezone(const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) const {
+::tpystd::datetime::datetime datetime::astimezone(const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) const {
     // # A naive value is interpreted as system-local wall-clock time
     // # (CPython: astimezone does NOT raise on naive input -- unlike
     // # the mixing rules for comparison/subtraction).
@@ -561,7 +561,7 @@ std::optional<std::string> datetime::tzname() const {
     std::string name = ::tpy::stdlib::datetime::local_zone_abbrev((u_s).to_fixed_check<int64_t>());
     // return datetime._from_epoch_us(
     // utc_us, False, timezone(timedelta(seconds=off), name))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), off), name);
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), off), name);
     return datetime::_from_epoch_us(utc_us, false, __tmp_2);
 }
 
@@ -584,7 +584,7 @@ std::optional<std::string> datetime::tzname() const {
     // # Annotated as the ctor's full union: a timezone | None value does
     // # not coerce into the wider param union (BUGS.md).
     // tz: timezone | ZoneInfo | None = None
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = std::monostate{};
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = std::monostate{};
     // if has_tz:
     if (has_tz) {
         // delta = timedelta(microseconds=off_us)
@@ -643,7 +643,7 @@ std::optional<std::string> datetime::tzname() const {
     // us: int = 0
     ::tpy::BigInt us = ::tpy::BigInt(0);
     // tz: timezone | ZoneInfo | None = None
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = std::monostate{};
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = std::monostate{};
     // if len(tstr) > 0:
     if ((::tpy::__len__(tstr) > 0)) {
         // try:
@@ -680,7 +680,7 @@ std::optional<std::string> datetime::tzname() const {
 // @staticmethod
 // def _from_epoch_us(us: int, use_local: bool,
 // tz: timezone | ZoneInfo | None = None) -> "datetime":
-::tpystd::datetime::datetime datetime::_from_epoch_us(const ::tpy::BigInt& __param_us, bool use_local, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
+::tpystd::datetime::datetime datetime::_from_epoch_us(const ::tpy::BigInt& __param_us, bool use_local, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
     ::tpy::BigInt us = __param_us;
     // # Civil datetime from epoch microseconds, shifted by the tz offset
     // # at that instant (aware result) or the OS tz database's local UTC
@@ -823,7 +823,7 @@ std::string datetime::__repr__() const {
         s += ", fold=1";
     }
     // tz = self.tzinfo
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = this->tzinfo();
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = this->tzinfo();
     // if tz is not None:
     if ((!std::holds_alternative<std::monostate>(tz))) {
         // s = s + f", tzinfo={repr(tz)}"

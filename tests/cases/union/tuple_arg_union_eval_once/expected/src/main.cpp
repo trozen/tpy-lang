@@ -38,21 +38,21 @@ Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
 void main() {
     // # Rvalue Box(mk(...)) element in a borrow-slot tuple: inner mk() once.
     // print(take((Box(mk("fixed", 3)), 5)))
-    std::variant<std::monostate, Fixed, Zone> __tmp_1 = mk("fixed", ::tpy::BigInt(3));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = mk("fixed", ::tpy::BigInt(3));
     std::cout << take(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_1), 5})) << "\n";
     // # Two rvalue-into-borrow elements: each inner call once.
     // print(take2((Box(mk("a", 4)), Box(mk("b", 6)))))
-    std::variant<std::monostate, Fixed, Zone> __tmp_2 = mk("a", ::tpy::BigInt(4));
-    std::variant<std::monostate, Fixed, Zone> __tmp_3 = mk("b", ::tpy::BigInt(6));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = mk("a", ::tpy::BigInt(4));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = mk("b", ::tpy::BigInt(6));
     std::cout << take2(::tpy::tuple_value_to_borrow<std::tuple<Box*, Box*>>(std::tuple<Box, Box>{Box(__tmp_2), Box(__tmp_3)})) << "\n";
     // # Rvalue into an Optional-borrow slot (tuple[Box | None, ...]): exercises
     // # the elem_target.inner unwrap; inner mk() once.
     // print(take_opt((Box(mk("opt", 8)), 4)))
-    std::variant<std::monostate, Fixed, Zone> __tmp_4 = mk("opt", ::tpy::BigInt(8));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = mk("opt", ::tpy::BigInt(8));
     std::cout << take_opt(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_4), 4})) << "\n";
     // # Zone arm through the same shape (no mk print): value flows correctly.
     // print(take((Box(Zone(7)), 2)))
-    std::variant<std::monostate, Fixed, Zone> __tmp_5 = Zone(7);
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_5 = Zone(7);
     std::cout << take(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_5), 2})) << "\n";
 }
 

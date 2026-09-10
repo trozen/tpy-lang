@@ -7,12 +7,12 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // secure = _ssl_context_for(True)
-    std::variant<bool, std::string> __tmp_1 = true;
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::ssl::SSLContext secure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_1);
     // print(secure.verify_mode == ssl.CERT_REQUIRED, secure.check_hostname)
     std::cout << ::tpy::print_bool((secure.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(secure.check_hostname) << "\n";
     // insecure = _ssl_context_for(False)
-    std::variant<bool, std::string> __tmp_2 = false;
+    ::tpy::Union<bool, std::string> __tmp_2 = false;
     ::tpystd::ssl::SSLContext insecure = ::tpystd::tplib::requests::_ssl_context_for(__tmp_2);
     // print(insecure.verify_mode == ssl.CERT_NONE, insecure.check_hostname)
     std::cout << ::tpy::print_bool((insecure.verify_mode == ::tpystd::ssl::CERT_NONE)) << " " << ::tpy::print_bool(insecure.check_hostname) << "\n";

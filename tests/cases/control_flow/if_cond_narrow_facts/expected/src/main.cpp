@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def then_side(u: A | B, flag: bool) -> Int32:
-int32_t then_side(const std::variant<A, B>& u, bool flag) {
+int32_t then_side(const ::tpy::Union<A, B>& u, bool flag) {
     // # A negated OR chain: the THEN branch knows u is B.
     // if not (isinstance(u, A) or flag):
     if ((!((std::holds_alternative<A>(u) || flag)))) {
@@ -18,7 +18,7 @@ int32_t then_side(const std::variant<A, B>& u, bool flag) {
 }
 
 // def else_side(u: A | B, flag: bool) -> Int32:
-int32_t else_side(const std::variant<A, B>& u, bool flag) {
+int32_t else_side(const ::tpy::Union<A, B>& u, bool flag) {
     // # The complement lands on the ELSE branch, which knows u is A.
     // if not isinstance(u, A) or flag:
     if (((!(std::holds_alternative<A>(u))) || flag)) {
@@ -33,7 +33,7 @@ int32_t else_side(const std::variant<A, B>& u, bool flag) {
 }
 
 // def unread_subject(u: A | B, flag: bool) -> Int32:
-int32_t unread_subject(const std::variant<A, B>& u, bool flag) {
+int32_t unread_subject(const ::tpy::Union<A, B>& u, bool flag) {
     // # The narrowed branch never reads the subject, so its alias goes unused --
     // # the build must stay warning-clean.
     // if not isinstance(u, A) or flag:
@@ -69,19 +69,19 @@ int32_t ref_union(std::variant<Leaf*, Node*> u, bool flag) {
 // def main() -> None:
 void main() {
     // print(then_side(B(3), False))
-    std::variant<A, B> __tmp_1 = B(3);
+    ::tpy::Union<A, B> __tmp_1 = B(3);
     std::cout << then_side(__tmp_1, false) << "\n";
     // print(then_side(A(3), False))
-    std::variant<A, B> __tmp_2 = A(3);
+    ::tpy::Union<A, B> __tmp_2 = A(3);
     std::cout << then_side(__tmp_2, false) << "\n";
     // print(else_side(A(4), False))
-    std::variant<A, B> __tmp_3 = A(4);
+    ::tpy::Union<A, B> __tmp_3 = A(4);
     std::cout << else_side(__tmp_3, false) << "\n";
     // print(else_side(A(4), True))
-    std::variant<A, B> __tmp_4 = A(4);
+    ::tpy::Union<A, B> __tmp_4 = A(4);
     std::cout << else_side(__tmp_4, true) << "\n";
     // print(unread_subject(A(1), False))
-    std::variant<A, B> __tmp_5 = A(1);
+    ::tpy::Union<A, B> __tmp_5 = A(1);
     std::cout << unread_subject(__tmp_5, false) << "\n";
     // n = Node(1)
     Node n = Node(1);

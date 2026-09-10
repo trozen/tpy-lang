@@ -1,0 +1,41 @@
+module True
+free_fn True
+ctor True
+method True
+generator True
+with True
+closure True
+try True
+error_return True
+match True
+async True
+family Int32|Float64 True True
+family Int32|Int64 True True
+family bool|Int32 True True
+family UInt8|Int32 True True
+family UInt32|Int32 True True
+family int|Float64 True True
+ne False
+readonly True
+same alternative True False
+list True
+list after append 2 False
+list of tuple True
+dict True
+array True
+alias True
+nongeneric alias True False
+nongeneric alias after pop 0 False
+record union True False
+record union after clear 0 False
+record union dict True False
+record alias True False
+lt False True
+le True
+gt True
+ge True
+nan le False False
+nan ge False False
+value record lt TypeError
+unorderable TypeError TypeError TypeError TypeError
+str_int_eq False True True

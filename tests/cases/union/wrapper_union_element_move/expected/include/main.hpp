@@ -16,7 +16,7 @@ int32_t store(::tpy::ordered_map<std::string, JV>& d, std::vector<JV>& src);
 void main();
 
 struct JV {
-    using variant_type = std::variant<std::monostate, ::tpy::BigInt, std::vector<JV>, std::string>;
+    using variant_type = ::tpy::Union<std::monostate, ::tpy::BigInt, std::vector<JV>, std::string>;
     variant_type value;
 
     JV() = default;

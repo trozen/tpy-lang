@@ -52,18 +52,18 @@ int32_t str_member(const std::variant<A*, std::string*> v);
 int32_t str_total(const std::variant<A*, std::string*> u);
 std::variant<A*, B*> pick_isinstance(std::variant<A*, B*> v);
 std::variant<A*, B*> pick_match(std::variant<A*, B*> v);
-int32_t value_union(const std::variant<int32_t, double>& v);
-int32_t value_union_match(const std::variant<int32_t, double>& v);
-int32_t vu_total(const std::variant<int32_t, double>& u);
-int32_t vu_peek(const std::variant<int32_t, double>& u);
-int32_t value_union_method(const std::variant<int32_t, double>& v, VuBox& box);
-int32_t value_union_ctor(const std::variant<int32_t, double>& v);
-int32_t value_union_comp(const std::variant<int32_t, double>& v);
-int32_t value_union_readonly(const std::variant<int32_t, double>& v);
-::tpy::BigInt big_total(const std::variant<double, ::tpy::BigInt>& u);
-::tpy::BigInt value_union_big(const std::variant<double, ::tpy::BigInt>& v);
-int32_t pt_total(const std::variant<Pt, double>& u);
-int32_t value_union_record(const std::variant<Pt, double>& v);
+int32_t value_union(const ::tpy::Union<int32_t, double>& v);
+int32_t value_union_match(const ::tpy::Union<int32_t, double>& v);
+int32_t vu_total(const ::tpy::Union<int32_t, double>& u);
+int32_t vu_peek(const ::tpy::Union<int32_t, double>& u);
+int32_t value_union_method(const ::tpy::Union<int32_t, double>& v, VuBox& box);
+int32_t value_union_ctor(const ::tpy::Union<int32_t, double>& v);
+int32_t value_union_comp(const ::tpy::Union<int32_t, double>& v);
+int32_t value_union_readonly(const ::tpy::Union<int32_t, double>& v);
+::tpy::BigInt big_total(const ::tpy::Union<double, ::tpy::BigInt>& u);
+::tpy::BigInt value_union_big(const ::tpy::Union<double, ::tpy::BigInt>& v);
+int32_t pt_total(const ::tpy::Union<Pt, double>& u);
+int32_t value_union_record(const ::tpy::Union<Pt, double>& v);
 int32_t assign_narrowed();
 __coro_async_main async_main();
 void main();
@@ -180,7 +180,7 @@ struct VuBox {
     explicit VuBox(int32_t base);
 
     // def go(self, u: Int32 | Float64) -> Int32:
-    int32_t go(const std::variant<int32_t, double>& u) const;
+    int32_t go(const ::tpy::Union<int32_t, double>& u) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.VuBox";
 };
 
@@ -196,7 +196,7 @@ struct VuSink {
 
     // def __init__(self, u: Int32 | Float64) -> None:
     VuSink() = default;
-    explicit VuSink(const std::variant<int32_t, double>& u);
+    explicit VuSink(const ::tpy::Union<int32_t, double>& u);
     static constexpr std::string_view __tpy_class_name__ = "__main__.VuSink";
 };
 
@@ -417,7 +417,7 @@ inline int32_t Relay::go(std::variant<A*, B*> v) {
 inline VuBox::VuBox(int32_t base) : base(base) {}
 
 // def go(self, u: Int32 | Float64) -> Int32:
-inline int32_t VuBox::go(const std::variant<int32_t, double>& u) const {
+inline int32_t VuBox::go(const ::tpy::Union<int32_t, double>& u) const {
     // if isinstance(u, Int32):
     if (std::holds_alternative<int32_t>(u)) {
         const auto& __u = std::get<int32_t>(u);
@@ -430,7 +430,7 @@ inline int32_t VuBox::go(const std::variant<int32_t, double>& u) const {
 }
 
 // def __init__(self, u: Int32 | Float64) -> None:
-inline VuSink::VuSink(const std::variant<int32_t, double>& u) : k(vu_total(u)) {}
+inline VuSink::VuSink(const ::tpy::Union<int32_t, double>& u) : k(vu_total(u)) {}
 
 // def __init__(self, x: Int32) -> None:
 inline Pt::Pt(int32_t x) : x(x) {}

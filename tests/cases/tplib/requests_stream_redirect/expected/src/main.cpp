@@ -36,7 +36,7 @@ void main() {
     // s._redirect_connections = [Box(h1)]
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     // r = s.get("http://api.test/v1/data", stream=True)
-    std::variant<bool, std::string> __tmp_1 = true;
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/data", nullptr, nullptr, std::nullopt, true, __tmp_1, nullptr, true);
     // print("final status:", r.status_code)
     std::cout << "final status:" << " " << r.status_code << "\n";

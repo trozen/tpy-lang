@@ -10,10 +10,10 @@ void main() {
     ::tpystd::datetime::ZoneInfo waw = ::tpystd::datetime::ZoneInfo("Europe/Warsaw");
     // # Constructor never auto-detects fold; fold=1 must be explicit.
     // fold_wall = datetime(2023, 10, 29, 2, 30, tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime fold_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
     // fold_wall1 = fold_wall.replace(fold=1)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_2 = true;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_2 = true;
     ::tpystd::datetime::datetime fold_wall1 = fold_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_2, 1);
     // print(fold_wall.fold, fold_wall1.fold)
     std::cout << fold_wall.fold() << " " << fold_wall1.fold() << "\n";
@@ -24,10 +24,10 @@ void main() {
     // print(fold_wall.timestamp(), fold_wall1.timestamp())
     std::cout << ::tpy::print_float(fold_wall.timestamp()) << " " << ::tpy::print_float(fold_wall1.timestamp()) << "\n";
     // gap_wall = datetime(2023, 3, 26, 2, 30, tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime gap_wall = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3);
     // gap_wall1 = gap_wall.replace(fold=1)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_4 = true;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_4 = true;
     ::tpystd::datetime::datetime gap_wall1 = gap_wall.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_4, 1);
     // print(gap_wall.utcoffset(), gap_wall.dst(), gap_wall.tzname())
     std::cout << ::tpy::print_optional_val(gap_wall.utcoffset()) << " " << ::tpy::print_optional_val(gap_wall.dst()) << " " << ::tpy::print_optional_val(gap_wall.tzname()) << "\n";
@@ -48,7 +48,7 @@ void main() {
     // naive = datetime(2023, 10, 29, 2, 30)
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30));
     // naive1 = naive.replace(fold=1)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = true;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_5 = true;
     ::tpystd::datetime::datetime naive1 = naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_5, 1);
     // print(naive == naive1, hash(naive) == hash(naive1))
     std::cout << ::tpy::print_bool(((naive) == (naive1))) << " " << ::tpy::print_bool((::tpy::__hash__(naive) == ::tpy::__hash__(naive1))) << "\n";
@@ -58,10 +58,10 @@ void main() {
     // # timestamp at both fold values.
     // fixed = datetime(2023, 10, 29, 2, 30,
     // tzinfo=timezone(timedelta(hours=2)))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime fixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_6);
     // fixed1 = fixed.replace(fold=1)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = true;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_7 = true;
     ::tpystd::datetime::datetime fixed1 = fixed.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_7, 1);
     // print(fixed.utcoffset() == fixed1.utcoffset(),
     // fixed.dst() is None and fixed1.dst() is None,
@@ -72,7 +72,7 @@ void main() {
     std::cout << ::tpy::repr_of(fixed1) << "\n";
     // # replace(tzinfo=<ZoneInfo>) attaches the zone (and keeps fold here).
     // rezoned = fixed1.replace(tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_8 = waw;
     ::tpystd::datetime::datetime rezoned = fixed1.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_8);
     // print(rezoned, rezoned.fold)
     std::cout << rezoned << " " << rezoned.fold() << "\n";
@@ -81,7 +81,7 @@ void main() {
     {
         try {
             // datetime(2023, 1, 1, fold=2)
-            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
+            ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = std::monostate{};
             ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(1), ::tpy::BigInt(1), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9, ::tpy::BigInt(2));
             // print("no-raise")
             std::cout << "no-raise" << "\n";
@@ -94,7 +94,7 @@ void main() {
     {
         try {
             // naive.replace(fold=-1)
-            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_10 = true;
+            ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_10 = true;
             naive.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_10, -1);
             // print("no-raise")
             std::cout << "no-raise" << "\n";

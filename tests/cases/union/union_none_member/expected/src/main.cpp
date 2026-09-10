@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def accept(x: Int32 | str | None) -> None:
-void accept(const std::variant<std::monostate, int32_t, std::string>& x) {
+void accept(const ::tpy::Union<std::monostate, int32_t, std::string>& x) {
     // pass
 }
 
 // def test() -> None:
 void test() {
     // a: Int32 | str | None = Int32(42)
-    std::variant<std::monostate, int32_t, std::string> a = 42;
+    ::tpy::Union<std::monostate, int32_t, std::string> a = 42;
     // b: Int32 | str | None = "hello"
-    std::variant<std::monostate, int32_t, std::string> b = "hello";
+    ::tpy::Union<std::monostate, int32_t, std::string> b = "hello";
     // accept(a)
     accept(a);
     // accept(b)

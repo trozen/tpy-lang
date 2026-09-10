@@ -19,9 +19,9 @@ struct __gen_kill;
 
 __gen_voices voices(std::variant<Cat*, Dog*> a);
 __gen_capture capture(std::variant<Cat*, Dog*> a);
-__gen_guarded guarded(std::variant<::tpy::BigInt, std::string> a, bool allow);
-std::variant<::tpy::BigInt, std::string> remake();
-__gen_kill kill(std::variant<::tpy::BigInt, std::string> a);
+__gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow);
+::tpy::Union<::tpy::BigInt, std::string> remake();
+__gen_kill kill(::tpy::Union<::tpy::BigInt, std::string> a);
 void main();
 
 // class Dog:
@@ -106,7 +106,7 @@ struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string>
 // Generator: guarded
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string> {
     int32_t __state;
-    std::variant<::tpy::BigInt, std::string> a;
+    ::tpy::Union<::tpy::BigInt, std::string> a;
     bool allow;
 
     enum : int32_t {
@@ -118,7 +118,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string>
         S_DONE = 5,
     };
 
-    __gen_guarded(std::variant<::tpy::BigInt, std::string> a_, bool allow_)
+    __gen_guarded(::tpy::Union<::tpy::BigInt, std::string> a_, bool allow_)
         : __state(S_INITIAL), a(std::move(a_)), allow(std::move(allow_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
@@ -132,7 +132,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string>
 // Generator: kill
 struct __gen_kill : public ::tpy::next_iter_mixin<__gen_kill, std::string> {
     int32_t __state;
-    std::variant<::tpy::BigInt, std::string> a;
+    ::tpy::Union<::tpy::BigInt, std::string> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -146,7 +146,7 @@ struct __gen_kill : public ::tpy::next_iter_mixin<__gen_kill, std::string> {
         S_DONE = 8,
     };
 
-    __gen_kill(std::variant<::tpy::BigInt, std::string> a_)
+    __gen_kill(::tpy::Union<::tpy::BigInt, std::string> a_)
         : __state(S_INITIAL), a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();

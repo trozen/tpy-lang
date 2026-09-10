@@ -231,7 +231,7 @@ chains with negative narrowing), `assert isinstance`, while-loop narrowing, assi
 narrowing, type aliases, `A | B | None` with `std::monostate`. Maps to `std::variant`.
 See `docs/UNION_TYPES_DESIGN.md` for full phase list and future extensions.
 
-Remaining extensions (not blocking "Done" status): equality on unions, `isinstance(x, (A, B))`
+Remaining extensions (not blocking "Done" status): `Equatable`/`Hashable` CONFORMANCE for unions (the comparison itself is done -- a value union renders `::tpy::Union<...>` and compares by value across alternatives; what is missing is the type-level conformance, so a union against one of its own members, `in` over `list[union]` and a union dict key still reject -- `BUGS.md#value-union-no-equatable-conformance`), `isinstance(x, (A, B))`
 tuple form, common-method dispatch, generic unions, recursive unions. Match/case and
 exhaustiveness checking are tracked separately (B3).
 

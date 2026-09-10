@@ -45,7 +45,7 @@ inline int32_t Counter::take(const Expr& e) const {
     return depth(e);
 }
 struct Expr {
-    using variant_type = std::variant<int32_t, std::vector<Expr>>;
+    using variant_type = ::tpy::Union<int32_t, std::vector<Expr>>;
     variant_type value;
 
     Expr() = default;

@@ -20,7 +20,7 @@ std::string describe(const Tree* t);
 void main();
 
 struct Tree {
-    using variant_type = std::variant<::tpy::BigInt, std::vector<Tree>>;
+    using variant_type = ::tpy::Union<::tpy::BigInt, std::vector<Tree>>;
     variant_type value;
 
     Tree() = default;

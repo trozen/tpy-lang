@@ -16,7 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 D pick(D a, D b);
 D first(const std::vector<D>& xs);
 D again(const std::vector<D>& xs);
-std::variant<D, E> widen(D a, D b);
+::tpy::Union<D, E> widen(D a, D b);
 void main();
 
 // @dataclass(frozen=True)

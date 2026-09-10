@@ -12,12 +12,12 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void process_dict(const ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>& d);
-void process_list(const std::vector<std::variant<int32_t, std::string>>& items);
-void consume_dict(::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>&& d);
-void consume_list(std::vector<std::variant<int32_t, std::string>>&& items);
-::tpy::ordered_map<std::string, std::variant<int32_t, std::string>> make_dict();
-std::vector<std::variant<int32_t, std::string>> make_list();
+void process_dict(const ::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>& d);
+void process_list(const std::vector<::tpy::Union<int32_t, std::string>>& items);
+void consume_dict(::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>>&& d);
+void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items);
+::tpy::ordered_map<std::string, ::tpy::Union<int32_t, std::string>> make_dict();
+std::vector<::tpy::Union<int32_t, std::string>> make_list();
 void main();
 
 // class Dog:

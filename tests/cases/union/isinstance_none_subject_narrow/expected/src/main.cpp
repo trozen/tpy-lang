@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def scalar_tuple(v: int | str | None) -> str:
-std::string scalar_tuple(const std::variant<std::monostate, ::tpy::BigInt, std::string>& v) {
+std::string scalar_tuple(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v) {
     // if isinstance(v, (int, str)):
     if ((std::holds_alternative<::tpy::BigInt>(v) || std::holds_alternative<std::string>(v))) {
         // return "present"
@@ -16,7 +16,7 @@ std::string scalar_tuple(const std::variant<std::monostate, ::tpy::BigInt, std::
 }
 
 // def scalar_inline(v: int | str | None) -> str:
-std::string scalar_inline(const std::variant<std::monostate, ::tpy::BigInt, std::string>& v) {
+std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v) {
     // if isinstance(v, int | str):
     if ((std::holds_alternative<::tpy::BigInt>(v) || std::holds_alternative<std::string>(v))) {
         // return "present"
@@ -40,13 +40,13 @@ std::string ref_tuple(const std::variant<std::monostate, A*, B*> v) {
 // def main() -> None:
 void main() {
     // a: int | str | None = 5
-    std::variant<std::monostate, ::tpy::BigInt, std::string> a = 5;
+    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> a = 5;
     // print(scalar_tuple(a))
     std::cout << scalar_tuple(a) << "\n";
     // print(scalar_inline(a))
     std::cout << scalar_inline(a) << "\n";
     // n: int | str | None = None
-    std::variant<std::monostate, ::tpy::BigInt, std::string> n = std::monostate{};
+    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> n = std::monostate{};
     // print(scalar_tuple(n))
     std::cout << scalar_tuple(n) << "\n";
     // print(scalar_inline(n))

@@ -22,7 +22,7 @@ struct A {
     // x: Int32
     int32_t x;
     // u: Int32 | Float64
-    std::variant<int32_t, double> u;
+    ::tpy::Union<int32_t, double> u;
 
     // def __init__(self, x: Int32) -> None:
     explicit A(int32_t x);
@@ -30,7 +30,7 @@ struct A {
     // # Discriminates on Float64 (== float under CPython) so a plain-int
     // # argument narrows the same way on both runtimes.
     // def tag(self, v: Int32 | Float64) -> Int32:
-    int32_t tag(const std::variant<int32_t, double>& v) const;
+    int32_t tag(const ::tpy::Union<int32_t, double>& v) const;
 
     // def helper(self) -> Int32:
     int32_t helper() const;
@@ -65,7 +65,7 @@ inline A::A(int32_t x) : x(x), u(0) {}
 // # Discriminates on Float64 (== float under CPython) so a plain-int
 // # argument narrows the same way on both runtimes.
 // def tag(self, v: Int32 | Float64) -> Int32:
-inline int32_t A::tag(const std::variant<int32_t, double>& v) const {
+inline int32_t A::tag(const ::tpy::Union<int32_t, double>& v) const {
     // if isinstance(v, Float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);

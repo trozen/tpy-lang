@@ -47,6 +47,13 @@
 // BigInt arbitrary precision (depends on core, fixed_int, type_traits)
 #include "bigint.hpp"
 
+// Value unions: `::tpy::Union<Ts...>`, a std::variant that owns Python's
+// comparison rule (and the leaf it visits down to). Pulls core, bigint and
+// type_name in itself (type_name is self-contained: it only needs core, and
+// forward-declares BigInt), so it does not wait for the type_name.hpp line
+// further down.
+#include "union_type.hpp"
+
 // Builtin function helpers (depends on core, fixed_int, bigint)
 #include "builtins.hpp"
 

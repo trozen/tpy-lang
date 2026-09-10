@@ -24,7 +24,7 @@ std::vector<uint8_t> _send(const ::tpy::ordered_map<std::string, std::string>* h
     // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     // r = s.get("http://api.test/x", None, headers, None, True, True, cookies)
-    std::variant<bool, std::string> __tmp_1 = true;
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/x", nullptr, headers, std::nullopt, true, __tmp_1, cookies);
     // print(r.status_code)
     std::cout << r.status_code << "\n";

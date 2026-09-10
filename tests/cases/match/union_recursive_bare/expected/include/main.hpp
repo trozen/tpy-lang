@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
 // def __init__(self, v: Int32) -> None:
 inline Leaf::Leaf(int32_t v) : v(v) {}
 struct Tree {
-    using variant_type = std::variant<Leaf, std::vector<Tree>>;
+    using variant_type = ::tpy::Union<Leaf, std::vector<Tree>>;
     variant_type value;
 
     Tree() = default;

@@ -57,9 +57,9 @@ struct H {
     // ox: Int32 | None
     std::optional<int32_t> ox;
     // vu: Int32 | Float64
-    std::variant<int32_t, double> vu;
+    ::tpy::Union<int32_t, double> vu;
     // un: Int32 | Float64 | None
-    std::variant<std::monostate, int32_t, double> un;
+    ::tpy::Union<std::monostate, int32_t, double> un;
     // pu: A | B
     std::variant<A, B> pu;
     // pr: A | B

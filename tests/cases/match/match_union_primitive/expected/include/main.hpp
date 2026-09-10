@@ -76,7 +76,7 @@ inline Cat::Cat(std::string_view name) : name(name) {}
 // def __init__(self, name: str) -> None:
 inline Dog::Dog(std::string_view name) : name(name) {}
 struct Tree {
-    using variant_type = std::variant<int32_t, std::vector<Tree>>;
+    using variant_type = ::tpy::Union<int32_t, std::vector<Tree>>;
     variant_type value;
 
     Tree() = default;

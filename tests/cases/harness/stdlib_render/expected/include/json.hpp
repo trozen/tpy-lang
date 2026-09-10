@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const JSONDecodeError& obj) {
 }
 
 struct JsonValue {
-    using variant_type = std::variant<std::monostate, bool, ::tpy::ordered_map<std::string, JsonValue>, double, ::tpy::BigInt, std::vector<JsonValue>, std::string>;
+    using variant_type = ::tpy::Union<std::monostate, bool, ::tpy::ordered_map<std::string, JsonValue>, double, ::tpy::BigInt, std::vector<JsonValue>, std::string>;
     variant_type value;
 
     JsonValue() = default;

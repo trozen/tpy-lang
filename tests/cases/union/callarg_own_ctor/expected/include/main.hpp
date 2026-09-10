@@ -14,7 +14,7 @@ struct Sink;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t consume(std::variant<A, B>&& v);
-int32_t pick(const std::variant<int32_t, double>& v);
+int32_t pick(const ::tpy::Union<int32_t, double>& v);
 void main();
 
 // class A:

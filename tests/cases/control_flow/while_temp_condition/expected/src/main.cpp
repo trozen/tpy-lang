@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # Discriminates on Float64 (== float under CPython) so an int arg narrows
 // # identically on both runtimes.
 // def take_vu(v: Int32 | Float64) -> Int32:
-int32_t take_vu(const std::variant<int32_t, double>& v) {
+int32_t take_vu(const ::tpy::Union<int32_t, double>& v) {
     // if isinstance(v, Float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
@@ -45,7 +45,7 @@ int32_t countdown(int32_t total) {
     int32_t it = 0;
     // while take_vu(total) > 0:
     while (true) {
-        std::variant<int32_t, double> __tmp_1 = total;
+        ::tpy::Union<int32_t, double> __tmp_1 = total;
         if (!((take_vu(__tmp_1) > 0))) break;
         // total -= 1
         total = ::tpy::sub_check<int32_t>(total, 1);

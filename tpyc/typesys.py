@@ -3577,7 +3577,13 @@ class UnionType(TpyType):
             "std::monostate" if is_void_like_type(m) else m.to_cpp()
             for m in self.members
         ]
-        return f"std::variant<{', '.join(cpp_members)}>"
+        # A VALUE union spells the TPy type that owns Python's comparison
+        # rule; a reference union's storage form keeps the bare variant,
+        # because that rule (compare by value across alternatives) is not the
+        # one a pointer variant wants, and the two forms convert into each
+        # other through `to_ptr_variant` / `to_value_variant`.
+        head = "::tpy::Union" if self.is_value_type() else "std::variant"
+        return f"{head}<{', '.join(cpp_members)}>"
 
     def has_none_member(self) -> bool:
         return any(is_void_like_type(m) for m in self.members)

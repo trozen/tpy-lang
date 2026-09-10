@@ -19,7 +19,7 @@ void lines_chunked() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/log", True)
-    std::variant<bool, std::string> __tmp_1 = true;
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log", __tmp_1);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
@@ -29,7 +29,7 @@ void lines_chunked() {
     // b"8\r\nalpha\nbe\r\n8\r\nta\ngamma\r\n0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n8\r\nalpha\nbe\r\n8\r\nta\ngamma\r\n0\r\n\r\n", 78));
     // r = s.get("http://api.test/log", stream=True)
-    std::variant<bool, std::string> __tmp_2 = true;
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/log", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
     // for line in r.iter_lines():
     {
@@ -62,7 +62,7 @@ void lines_trailing_newline() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/log2", True)
-    std::variant<bool, std::string> __tmp_3 = true;
+    ::tpy::Union<bool, std::string> __tmp_3 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log2", __tmp_3);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
@@ -70,7 +70,7 @@ void lines_trailing_newline() {
     // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 8\r\n\r\none\ntwo\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 8\r\n\r\none\ntwo\n", 46));
     // r = s.get("http://api.test/log2", stream=True)
-    std::variant<bool, std::string> __tmp_4 = true;
+    ::tpy::Union<bool, std::string> __tmp_4 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/log2", nullptr, nullptr, std::nullopt, true, __tmp_4, nullptr, true);
     // lines: list[str] = []
     std::vector<std::string> lines = std::vector<std::string>{};
@@ -117,7 +117,7 @@ void lines_crlf() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/log3", True)
-    std::variant<bool, std::string> __tmp_5 = true;
+    ::tpy::Union<bool, std::string> __tmp_5 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/log3", __tmp_5);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
@@ -128,7 +128,7 @@ void lines_crlf() {
     // b"alpha\r\nbeta\r\ngamma\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\nalpha\r\nbeta\r\ngamma\r\n", 59));
     // r = s.get("http://api.test/log3", stream=True)
-    std::variant<bool, std::string> __tmp_6 = true;
+    ::tpy::Union<bool, std::string> __tmp_6 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/log3", nullptr, nullptr, std::nullopt, true, __tmp_6, nullptr, true);
     // for line in r.iter_lines():
     {

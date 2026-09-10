@@ -101,7 +101,7 @@ __coro_async_ops async_ops(::tpy::BigInt a, ::tpy::BigInt b) {
 }
 
 // def wrappers(value: int | None, variant: int | str, pair: tuple[int, int]) -> None:
-void wrappers(std::optional<::tpy::BigInt> value, const std::variant<::tpy::BigInt, std::string>& variant, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair) {
+void wrappers(std::optional<::tpy::BigInt> value, const ::tpy::Union<::tpy::BigInt, std::string>& variant, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair) {
     // # Optional: operate on the extracted scalar after narrowing.
     // if value is not None:
     if ((value.has_value())) {
@@ -325,10 +325,10 @@ void main() {
     // print("generic twin", compare(low, high), generic_compare(low, high))  # tpyc: ok
     std::cout << "generic twin" << " " << ::tpy::print_bool(compare(low, high)) << " " << ::tpy::print_bool(generic_compare<::tpy::BigInt>(low, high)) << "\n";
     // wrappers(-17, high, (-17, 3))
-    std::variant<::tpy::BigInt, std::string> __tmp_1 = high;
+    ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = high;
     wrappers(-17, __tmp_1, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(-17), ::tpy::BigInt(3)});
     // wrappers(None, "inverse", (17, 3))
-    std::variant<::tpy::BigInt, std::string> __tmp_2 = "inverse";
+    ::tpy::Union<::tpy::BigInt, std::string> __tmp_2 = "inverse";
     wrappers(std::nullopt, __tmp_2, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(17), ::tpy::BigInt(3)});
     // # Generator and async bodies execute both sides of their resume boundary.
     // for value in generated(-17, 3):

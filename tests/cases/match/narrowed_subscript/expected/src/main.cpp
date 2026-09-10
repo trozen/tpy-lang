@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 // # Module-level storage has a distinct lowering route from function locals.
 // global_text = union_text(True)
-std::variant<int32_t, std::string> global_text;
+::tpy::Union<int32_t, std::string> global_text;
 
 // # Free functions: original subjects, isinstance twins, and runtime BigInt indices.
 // def string_reads(x: str | Int32, index: int) -> None:
-void string_reads(const std::variant<int32_t, std::string>& x, const ::tpy::BigInt& index) {
+void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigInt& index) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -98,7 +98,7 @@ void bytes_reads(const std::variant<Indexed*, std::vector<uint8_t>*> x, const ::
 
 // # BUGS.md#bytes-value-union-boundary-rejects blocks callers; this body still builds.
 // def bytes_value_union(x: bytes | Int32) -> None:
-void bytes_value_union(const std::variant<int32_t, std::vector<uint8_t>>& x) {
+void bytes_value_union(const ::tpy::Union<int32_t, std::vector<uint8_t>>& x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -166,7 +166,7 @@ void bytearray_reads(const std::variant<int32_t*, std::vector<uint8_t>*> x, cons
 
 // # As-captures and guarded arms use different narrowing producers.
 // def capture_reads(x: str | Int32, allowed: bool) -> None:
-void capture_reads(const std::variant<int32_t, std::string>& x, bool allowed) {
+void capture_reads(const ::tpy::Union<int32_t, std::string>& x, bool allowed) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -204,7 +204,7 @@ __match_end_2:;
 // def monomorphic_read(marker: Int32) -> None:
 void monomorphic_read(int32_t marker) {
     // x = union_text(True)
-    std::variant<int32_t, std::string> x = union_text(true);
+    ::tpy::Union<int32_t, std::string> x = union_text(true);
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -380,7 +380,7 @@ void comprehension(const std::variant<int32_t*, std::vector<uint8_t>*> x) {
 }
 
 // def union_text(choose_text: bool) -> str | Int32:
-std::variant<int32_t, std::string> union_text(bool choose_text) {
+::tpy::Union<int32_t, std::string> union_text(bool choose_text) {
     // if choose_text:
     if (choose_text) {
         // return "abc"
@@ -397,7 +397,7 @@ void closure(bool choose_text) {
     // def read() -> None:
     auto read = [&choose_text]() {
         // y = union_text(choose_text)
-        std::variant<int32_t, std::string> y = union_text(choose_text);
+        ::tpy::Union<int32_t, std::string> y = union_text(choose_text);
         // match y:
         auto& __match_subject_1 = y;
         switch (__match_subject_1.index()) {
@@ -421,7 +421,7 @@ void closure(bool choose_text) {
 
 // # Context-manager, try and finally bodies preserve the extraction alias.
 // def cleanup_reads(x: str | Int32) -> None:
-void cleanup_reads(const std::variant<int32_t, std::string>& x) {
+void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -493,7 +493,7 @@ std::expected<int32_t, Err> error_read(const std::variant<int32_t*, std::vector<
 
 // # Conditional operands: skipped reads cannot throw or evaluate their index.
 // def conditional_reads(x: str | Int32, counter: Counter) -> None:
-void conditional_reads(const std::variant<int32_t, std::string>& x, Counter& counter) {
+void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& counter) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -618,7 +618,7 @@ std::variant<int32_t, std::vector<int32_t>> make_list() {
 // def main() -> None:
 void main() {
     // text: str | Int32 = "abc"
-    std::variant<int32_t, std::string> text = "abc";
+    ::tpy::Union<int32_t, std::string> text = "abc";
     // buffer = make_buffer()
     std::variant<int32_t, std::vector<uint8_t>> __slot_1 = make_buffer();
     std::variant<int32_t*, std::vector<uint8_t>*> buffer = ::tpy::to_ptr_variant(__slot_1);

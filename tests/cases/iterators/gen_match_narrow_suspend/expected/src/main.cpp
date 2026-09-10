@@ -184,12 +184,12 @@ __match_end_2:;
 
 
 // def guarded(a: int | str, allow: bool) -> Iterator[str]:
-__gen_guarded guarded(std::variant<::tpy::BigInt, std::string> a, bool allow) {
+__gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow) {
     return __gen_guarded(a, allow);
 }
 
 // def remake() -> int | str:
-std::variant<::tpy::BigInt, std::string> remake() {
+::tpy::Union<::tpy::BigInt, std::string> remake() {
     // return "z"
     return "z";
 }
@@ -277,7 +277,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
 
 
 // def kill(a: int | str) -> Iterator[str]:
-__gen_kill kill(std::variant<::tpy::BigInt, std::string> a) {
+__gen_kill kill(::tpy::Union<::tpy::BigInt, std::string> a) {
     return __gen_kill(a);
 }
 
@@ -324,7 +324,7 @@ void main() {
     }
     // for s in guarded(42, True):
     {
-        std::variant<::tpy::BigInt, std::string> __tmp_4 = 42;
+        ::tpy::Union<::tpy::BigInt, std::string> __tmp_4 = 42;
         auto __src_6 = guarded(__tmp_4, true);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
@@ -337,7 +337,7 @@ void main() {
     }
     // for s in guarded(3, False):
     {
-        std::variant<::tpy::BigInt, std::string> __tmp_5 = 3;
+        ::tpy::Union<::tpy::BigInt, std::string> __tmp_5 = 3;
         auto __src_8 = guarded(__tmp_5, false);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
@@ -350,7 +350,7 @@ void main() {
     }
     // for s in kill(5):
     {
-        std::variant<::tpy::BigInt, std::string> __tmp_6 = 5;
+        ::tpy::Union<::tpy::BigInt, std::string> __tmp_6 = 5;
         auto __src_10 = kill(__tmp_6);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {

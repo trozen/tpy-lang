@@ -24,7 +24,7 @@ void main() {
     // # aware datetime: time() drops the tzinfo (naive result)
     // aware = datetime(2026, 1, 2, 8, 15, 0, 0,
     // tzinfo=timezone(timedelta(hours=2)))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime aware = ::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(8), ::tpy::BigInt(15), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
     // at = aware.time()
     ::tpystd::datetime::time at = aware.time();

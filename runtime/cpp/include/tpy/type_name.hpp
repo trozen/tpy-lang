@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <typeinfo>
 #include <variant>
 
@@ -69,6 +70,7 @@ TPY_TYPE_NAME_(uint64_t,        "UInt64");
 TPY_TYPE_NAME_(float,           "Float32");
 TPY_TYPE_NAME_(double,          "Float64");
 TPY_TYPE_NAME_(std::string,     "str");
+TPY_TYPE_NAME_(std::string_view, "StrView");
 TPY_TYPE_NAME_(std::nullptr_t,  "None");
 TPY_TYPE_NAME_(std::monostate,  "None");
 

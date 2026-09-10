@@ -73,9 +73,11 @@ class TestMakeUnion:
         assert isinstance(result, VoidType)
 
     def test_to_cpp(self):
+        # A VALUE union spells the TPy type that owns Python's comparison
+        # rule; the bare variant is the reference-union storage form.
         result = make_union(INT32, STR)
         assert isinstance(result, UnionType)
-        assert "std::variant<" in result.to_cpp()
+        assert "::tpy::Union<" in result.to_cpp()
 
     def test_to_cpp_with_none(self):
         result = make_union(INT32, STR, VOID)

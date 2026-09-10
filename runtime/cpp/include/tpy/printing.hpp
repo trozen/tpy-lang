@@ -28,6 +28,7 @@
 namespace tpy {
 
 // Forward declarations for nested container printing
+template<class... Ts> struct Union;
 template<typename T> class ordered_set;
 template<typename K, typename V> class ordered_map;
 
@@ -65,6 +66,17 @@ void print_element(std::ostream& os, const ordered_map<K, V>& elem);
 struct Any;
 namespace detail {
 void print_element(std::ostream& os, const ::tpy::Any& a);
+
+// The value-union row, for the same two-phase-lookup reason as Any above:
+// `print_element`'s generic below is UNCONSTRAINED, so a `tpy::Union` (which
+// derives from std::variant rather than being one) matches it exactly and
+// routes to repr_of, which has no std::vector overload -- a build failure for
+// any union with a container alternative. The recursion inside
+// `print_list_contents` is an unqualified call from tpy::detail, and ADL on
+// `tpy::Union` associates tpy, not tpy::detail, so this row must be declared
+// HERE and before the generic.
+template <typename... Ts>
+void print_element(std::ostream& os, const ::tpy::Union<Ts...>& elem);
 
 // Container element printing goes through tpy::repr_of so containers emit
 // the repr form (Python: `print([rec])` uses __repr__, not __str__).
@@ -161,6 +173,30 @@ void print_list_contents(std::ostream& os, Iter begin, Iter end) {
         print_element(os, *it);
     }
     os << ']';
+}
+
+// A Union prints as its active alternative, found by the same index dispatch
+// its comparisons use (value_compare.hpp): a visit -- even over one operand --
+// calls through a table of function pointers the optimiser is not obliged to
+// fold, and this chain is plain `if` tests with a direct call at each leaf. An
+// operand that is valueless by exception matches no index and falls off the
+// end of the chain, which throws `std::bad_variant_access`.
+template <std::size_t I, typename... Ts>
+void print_union_alternative(std::ostream& os, const ::tpy::Union<Ts...>& elem) {
+    if constexpr (I == sizeof...(Ts)) {
+        throw std::bad_variant_access{};
+    } else {
+        if (elem.index() == I) {
+            print_element(os, *std::get_if<I>(&elem));
+            return;
+        }
+        print_union_alternative<I + 1>(os, elem);
+    }
+}
+
+template <typename... Ts>
+void print_element(std::ostream& os, const ::tpy::Union<Ts...>& elem) {
+    print_union_alternative<0>(os, elem);
 }
 
 // Definitions for variant/optional/monostate (after all other print_element

@@ -16,7 +16,7 @@ V make_dict();
 std::string kind(const V& v);
 
 struct V {
-    using variant_type = std::variant<std::monostate, bool, ::tpy::ordered_map<std::string, V>, ::tpy::BigInt, std::vector<V>, std::string>;
+    using variant_type = ::tpy::Union<std::monostate, bool, ::tpy::ordered_map<std::string, V>, ::tpy::BigInt, std::vector<V>, std::string>;
     variant_type value;
 
     V() = default;

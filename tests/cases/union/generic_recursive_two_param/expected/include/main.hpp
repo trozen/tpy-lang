@@ -17,7 +17,7 @@ void main();
 
 template<typename K, typename V>
 struct DictTree {
-    using variant_type = std::variant<V, ::tpy::ordered_map<K, DictTree<K, V>>>;
+    using variant_type = ::tpy::Union<V, ::tpy::ordered_map<K, DictTree<K, V>>>;
     variant_type value;
 
     DictTree() requires std::default_initializable<variant_type> = default;

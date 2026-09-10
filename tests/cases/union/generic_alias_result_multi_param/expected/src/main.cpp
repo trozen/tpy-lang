@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def parse_int(s: str) -> Result[Int32, str]:
-std::variant<int32_t, std::string> parse_int(std::string_view s) {
+::tpy::Union<int32_t, std::string> parse_int(std::string_view s) {
     // if s == "42":
     if ((s == "42")) {
         // return Int32(42)
@@ -18,7 +18,7 @@ std::variant<int32_t, std::string> parse_int(std::string_view s) {
 // def main() -> None:
 void main() {
     // r = parse_int("42")  # tpyc: type(/Int32 \| str/)
-    std::variant<int32_t, std::string> r = parse_int("42");
+    ::tpy::Union<int32_t, std::string> r = parse_int("42");
     // if isinstance(r, Int32):
     if (std::holds_alternative<int32_t>(r)) {
         auto& __r = std::get<int32_t>(r);
@@ -31,7 +31,7 @@ void main() {
         std::cout << ::tpy::__str__(__r) << "\n";
     }
     // r2 = parse_int("oops")  # tpyc: type(/Int32 \| str/)
-    std::variant<int32_t, std::string> r2 = parse_int("oops");
+    ::tpy::Union<int32_t, std::string> r2 = parse_int("oops");
     // if isinstance(r2, Int32):
     if (std::holds_alternative<int32_t>(r2)) {
         auto& __r2 = std::get<int32_t>(r2);

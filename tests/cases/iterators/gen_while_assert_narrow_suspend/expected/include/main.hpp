@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_loop;
 struct __gen_checked;
 
-__gen_loop loop(std::variant<::tpy::BigInt, std::string> a);
-__gen_checked checked(std::variant<::tpy::BigInt, std::string> a);
+__gen_loop loop(::tpy::Union<::tpy::BigInt, std::string> a);
+__gen_checked checked(::tpy::Union<::tpy::BigInt, std::string> a);
 void main();
 
 // Generator: loop
 struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
     int32_t __state;
-    std::variant<::tpy::BigInt, std::string> a;
+    ::tpy::Union<::tpy::BigInt, std::string> a;
     int32_t count;
 
     enum : int32_t {
@@ -31,7 +31,7 @@ struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
         S_DONE = 5,
     };
 
-    __gen_loop(std::variant<::tpy::BigInt, std::string> a_)
+    __gen_loop(::tpy::Union<::tpy::BigInt, std::string> a_)
         : __state(S_INITIAL), a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
@@ -45,7 +45,7 @@ struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
 // Generator: checked
 struct __gen_checked : public ::tpy::next_iter_mixin<__gen_checked, std::string> {
     int32_t __state;
-    std::variant<::tpy::BigInt, std::string> a;
+    ::tpy::Union<::tpy::BigInt, std::string> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -54,7 +54,7 @@ struct __gen_checked : public ::tpy::next_iter_mixin<__gen_checked, std::string>
         S_DONE = 3,
     };
 
-    __gen_checked(std::variant<::tpy::BigInt, std::string> a_)
+    __gen_checked(::tpy::Union<::tpy::BigInt, std::string> a_)
         : __state(S_INITIAL), a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();

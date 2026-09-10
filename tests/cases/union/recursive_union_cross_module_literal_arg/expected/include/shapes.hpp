@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "shapes";
 int32_t int_leaves(const Shape& s);
 
 struct Shape {
-    using variant_type = std::variant<int32_t, std::vector<Shape>, std::string>;
+    using variant_type = ::tpy::Union<int32_t, std::vector<Shape>, std::string>;
     variant_type value;
 
     Shape() = default;

@@ -129,10 +129,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 // class FloatHolder:
 struct FloatHolder {
     // value: float | str
-    std::variant<double, std::string> value;
+    ::tpy::Union<double, std::string> value;
 
     // def __init__(self, value: float | str) -> None:
-    explicit FloatHolder(const std::variant<double, std::string>& value);
+    explicit FloatHolder(const ::tpy::Union<double, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.FloatHolder";
 };
 
@@ -144,10 +144,10 @@ inline std::ostream& operator<<(std::ostream& os, const FloatHolder& obj) {
 // class BoolHolder:
 struct BoolHolder {
     // value: bool | str
-    std::variant<bool, std::string> value;
+    ::tpy::Union<bool, std::string> value;
 
     // def __init__(self, value: bool | str) -> None:
-    explicit BoolHolder(const std::variant<bool, std::string>& value);
+    explicit BoolHolder(const ::tpy::Union<bool, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.BoolHolder";
 };
 
@@ -184,9 +184,9 @@ inline Wrapper::Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_valu
 inline Tag::Tag(std::string_view label) : label(label) {}
 
 // def __init__(self, value: float | str) -> None:
-inline FloatHolder::FloatHolder(const std::variant<double, std::string>& value) : value(value) {}
+inline FloatHolder::FloatHolder(const ::tpy::Union<double, std::string>& value) : value(value) {}
 
 // def __init__(self, value: bool | str) -> None:
-inline BoolHolder::BoolHolder(const std::variant<bool, std::string>& value) : value(value) {}
+inline BoolHolder::BoolHolder(const ::tpy::Union<bool, std::string>& value) : value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

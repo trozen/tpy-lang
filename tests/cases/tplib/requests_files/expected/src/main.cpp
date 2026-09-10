@@ -24,7 +24,7 @@ void send(std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map
     // s._connection = Box(conn)
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     // r = s.post("http://api.test/upload", data, files=files)
-    std::variant<bool, std::string> __tmp_1 = true;
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/upload", data, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_1, nullptr, &(files));
     // print(r.status_code)
     std::cout << r.status_code << "\n";
@@ -67,7 +67,7 @@ void send_redirect(::tpy::ordered_map<std::string, ::tpystd::tplib::requests::Fi
     // s._redirect_connections = [Box(h1)]
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     // r = s.post("http://api.test/submit", None, files=files)
-    std::variant<bool, std::string> __tmp_2 = true;
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, &(files));
     // print(r.status_code, r.url)
     std::cout << r.status_code << " " << r.url << "\n";

@@ -1,0 +1,2 @@
+main.py:119: warning: comparison between signed and unsigned integer types ('UInt8' and 'Int32'); cast one operand to make the type intent explicit
+main.py:128: warning: comparison between signed and unsigned integer types ('UInt32' and 'Int32'); cast one operand to make the type intent explicit

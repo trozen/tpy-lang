@@ -8,10 +8,10 @@ namespace tpyapp::main {
 int32_t use(A& a, int32_t k, double f) {
     // # Each scalar argument hoists its own variant temp.
     // r = a.tag(k)
-    std::variant<int32_t, double> __tmp_1 = k;
+    ::tpy::Union<int32_t, double> __tmp_1 = k;
     int32_t r = a.tag(__tmp_1);
     // r = a.tag(f)
-    std::variant<int32_t, double> __tmp_2 = f;
+    ::tpy::Union<int32_t, double> __tmp_2 = f;
     r = a.tag(__tmp_2);
     // return r
     return r;
@@ -20,7 +20,7 @@ int32_t use(A& a, int32_t k, double f) {
 // def use_inherited(c: Child, k: Int32) -> Int32:
 int32_t use_inherited(Child& c, int32_t k) {
     // return c.tag(k)
-    std::variant<int32_t, double> __tmp_3 = k;
+    ::tpy::Union<int32_t, double> __tmp_3 = k;
     return c.tag(__tmp_3);
 }
 

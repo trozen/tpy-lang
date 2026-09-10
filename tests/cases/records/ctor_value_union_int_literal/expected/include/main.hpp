@@ -18,7 +18,7 @@ void main();
 // class Holder:
 struct Holder {
     // u: int | float
-    std::variant<double, ::tpy::BigInt> u;
+    ::tpy::Union<double, ::tpy::BigInt> u;
 
     // def __init__(self) -> None:
     Holder();

@@ -25,27 +25,27 @@ void main() {
     // # METHOD-call argument whose inner ctor takes a value-union param: the
     // # inner mk() side effect must fire once.
     // print(b.eat(Box(mk("method", 3))))
-    std::variant<std::monostate, Fixed, Zone> __tmp_1 = mk("method", ::tpy::BigInt(3));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = mk("method", ::tpy::BigInt(3));
     std::cout << b.eat(Box(__tmp_1)) << "\n";
     // # FREE-function argument: the path that was already single.
     // print(free_eat(Box(mk("free", 4))))
-    std::variant<std::monostate, Fixed, Zone> __tmp_2 = mk("free", ::tpy::BigInt(4));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = mk("free", ::tpy::BigInt(4));
     Box __tmp_3 = Box(__tmp_2);
     std::cout << free_eat(__tmp_3) << "\n";
     // # Direct union arg to a method (Box param is the union): once.
     // print(b.eat(Box(mk("direct", 5))))
-    std::variant<std::monostate, Fixed, Zone> __tmp_4 = mk("direct", ::tpy::BigInt(5));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = mk("direct", ::tpy::BigInt(5));
     std::cout << b.eat(Box(__tmp_4)) << "\n";
     // # Zone arm through the same method-arg shape: once.
     // print(b.eat(Box(Zone(9))))
-    std::variant<std::monostate, Fixed, Zone> __tmp_5 = Zone(9);
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_5 = Zone(9);
     std::cout << b.eat(Box(__tmp_5)) << "\n";
     // # cpp_template-backed method (list.append): the other regenerating
     // # branch. The Box(mk(...)) element's inner mk() must fire once.
     // xs: list[Box] = []
     std::vector<Box> xs = std::vector<Box>{};
     // xs.append(Box(mk("append", 8)))
-    std::variant<std::monostate, Fixed, Zone> __tmp_6 = mk("append", ::tpy::BigInt(8));
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_6 = mk("append", ::tpy::BigInt(8));
     xs.push_back(Box(__tmp_6));
     // print(len(xs), int(xs[0].v))
     std::cout << ::tpy::__len__(xs) << " " << ::tpy::BigInt(static_cast<int64_t>(::tpy::__getitem__(xs, 0).v)) << "\n";

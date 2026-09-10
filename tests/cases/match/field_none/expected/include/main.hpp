@@ -21,10 +21,10 @@ struct W {
     // opt: "str | None"
     std::optional<std::string> opt;
     // uni: "int | str | None"
-    std::variant<std::monostate, ::tpy::BigInt, std::string> uni;
+    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> uni;
 
     // def __init__(self, opt: "str | None", uni: "int | str | None") -> None:
-    explicit W(std::optional<std::string_view> opt, const std::variant<std::monostate, ::tpy::BigInt, std::string>& uni);
+    explicit W(std::optional<std::string_view> opt, const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& uni);
     static constexpr std::string_view __tpy_class_name__ = "__main__.W";
 };
 
@@ -35,6 +35,6 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
 
 
 // def __init__(self, opt: "str | None", uni: "int | str | None") -> None:
-inline W::W(std::optional<std::string_view> opt, const std::variant<std::monostate, ::tpy::BigInt, std::string>& uni) : opt(opt ? std::make_optional(std::string(*opt)) : std::nullopt), uni(uni) {}
+inline W::W(std::optional<std::string_view> opt, const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& uni) : opt(opt ? std::make_optional(std::string(*opt)) : std::nullopt), uni(uni) {}
 void __tpy_init();
 } // namespace tpyapp::main

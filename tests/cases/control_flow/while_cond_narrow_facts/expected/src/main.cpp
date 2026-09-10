@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def and_not(u: A | B, flag: bool) -> Int32:
-int32_t and_not(const std::variant<A, B>& u, bool flag) {
+int32_t and_not(const ::tpy::Union<A, B>& u, bool flag) {
     // t = 0
     int32_t t = 0;
     // # Negated isinstance under `and`: the body knows u is A.
@@ -22,7 +22,7 @@ int32_t and_not(const std::variant<A, B>& u, bool flag) {
 }
 
 // def not_or(u: A | B, flag: bool) -> Int32:
-int32_t not_or(const std::variant<A, B>& u, bool flag) {
+int32_t not_or(const ::tpy::Union<A, B>& u, bool flag) {
     // t = 0
     int32_t t = 0;
     // # A negated OR chain leaves the same single fact: the body knows u is B.
@@ -64,13 +64,13 @@ int32_t ref_union(std::variant<Leaf*, Node*> u, bool flag) {
 // def main() -> None:
 void main() {
     // print(and_not(A(3), True))
-    std::variant<A, B> __tmp_1 = A(3);
+    ::tpy::Union<A, B> __tmp_1 = A(3);
     std::cout << and_not(__tmp_1, true) << "\n";
     // print(and_not(B(4), True))
-    std::variant<A, B> __tmp_2 = B(4);
+    ::tpy::Union<A, B> __tmp_2 = B(4);
     std::cout << and_not(__tmp_2, true) << "\n";
     // print(not_or(B(7), False))
-    std::variant<A, B> __tmp_3 = B(7);
+    ::tpy::Union<A, B> __tmp_3 = B(7);
     std::cout << not_or(__tmp_3, false) << "\n";
     // n = Node(1)
     Node n = Node(1);

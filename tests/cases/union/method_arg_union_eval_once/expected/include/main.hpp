@@ -107,7 +107,7 @@ struct Box {
     int32_t v;
 
     // def __init__(self, tz: Fixed | Zone | None = None) -> None:
-    explicit Box(const std::variant<std::monostate, Fixed, Zone>& tz = {});
+    explicit Box(const ::tpy::Union<std::monostate, Fixed, Zone>& tz = {});
 
     // def eat(self, other: "Box") -> int:
     ::tpy::BigInt eat(const Box& other) const;
@@ -151,7 +151,7 @@ inline uint64_t Zone::__hash__() const {
 }
 
 // def __init__(self, tz: Fixed | Zone | None = None) -> None:
-inline Box::Box(const std::variant<std::monostate, Fixed, Zone>& tz) {
+inline Box::Box(const ::tpy::Union<std::monostate, Fixed, Zone>& tz) {
     // if tz is None:
     if ((std::holds_alternative<std::monostate>(tz))) {
         // self.v = 0

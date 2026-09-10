@@ -16,7 +16,7 @@ int32_t count(const Expr& e);
 void main();
 
 struct Expr {
-    using variant_type = std::variant<::tpy::BigInt, std::vector<Expr>>;
+    using variant_type = ::tpy::Union<::tpy::BigInt, std::vector<Expr>>;
     variant_type value;
 
     Expr() = default;

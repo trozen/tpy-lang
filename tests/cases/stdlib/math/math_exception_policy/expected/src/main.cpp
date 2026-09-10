@@ -624,7 +624,7 @@ double optional_root(std::optional<double> x) {
 }
 
 // def union_root(x: float | str) -> float:
-double union_root(const std::variant<double, std::string>& x) {
+double union_root(const ::tpy::Union<double, std::string>& x) {
     // if isinstance(x, float):
     if (std::holds_alternative<double>(x)) {
         const auto& __x = std::get<double>(x);
@@ -983,9 +983,9 @@ void positions() {
     if (!(((optional_root(4.0) == 2.0) && (optional_root(std::nullopt) == 0.0)))) ::tpy::raise_assertion_error();
     // # Prebuilt unions avoid BUGS.md#assert-value-union-argument-temp.
     // positive_union: float | str = 9.0  # tpyc: ok
-    std::variant<double, std::string> positive_union = 9.0;
+    ::tpy::Union<double, std::string> positive_union = 9.0;
     // skipped_union: float | str = "skip"  # tpyc: ok
-    std::variant<double, std::string> skipped_union = "skip";
+    ::tpy::Union<double, std::string> skipped_union = "skip";
     // assert union_root(positive_union) == 3.0  # tpyc: ok
     if (!((union_root(positive_union) == 3.0))) ::tpy::raise_assertion_error();
     // assert union_root(skipped_union) == 0.0  # tpyc: ok
@@ -1007,7 +1007,7 @@ void positions() {
             }
         }
         // scalar_union: float | str = x  # tpyc: ok
-        std::variant<double, std::string> scalar_union = x;
+        ::tpy::Union<double, std::string> scalar_union = x;
         // try:
         {
             try {

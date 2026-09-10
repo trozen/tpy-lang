@@ -73,10 +73,10 @@ struct Tagged {
     // tag: str
     std::string tag;
     // value: str | Int32
-    std::variant<int32_t, std::string> value;
+    ::tpy::Union<int32_t, std::string> value;
 
     // def __init__(self, tag: str, value: str | Int32) -> None:
-    explicit Tagged(std::string_view tag, const std::variant<int32_t, std::string>& value);
+    explicit Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -96,6 +96,6 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 inline Wrapper::Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)) {}
 
 // def __init__(self, tag: str, value: str | Int32) -> None:
-inline Tagged::Tagged(std::string_view tag, const std::variant<int32_t, std::string>& value) : tag(tag), value(value) {}
+inline Tagged::Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value) : tag(tag), value(value) {}
 void __tpy_init();
 } // namespace tpyapp::main

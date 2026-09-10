@@ -139,11 +139,11 @@ void main() {
     std::cout << nested_param(a2) << "\n";
     // # Case 2
     // b1: Int32 | Container = Container("world")
-    std::variant<int32_t, std::string> __tmp_1 = "world";
+    ::tpy::Union<int32_t, std::string> __tmp_1 = "world";
     std::variant<Container, int32_t> __slot_3 = Container(__tmp_1);
     std::variant<Container*, int32_t*> b1 = ::tpy::to_ptr_variant(__slot_3);
     // b2: Int32 | Container = Container(Int32(7))
-    std::variant<int32_t, std::string> __tmp_2 = 7;
+    ::tpy::Union<int32_t, std::string> __tmp_2 = 7;
     std::variant<Container, int32_t> __slot_4 = Container(__tmp_2);
     std::variant<Container*, int32_t*> b2 = ::tpy::to_ptr_variant(__slot_4);
     // b3: Int32 | Container = 99
@@ -172,9 +172,9 @@ void main() {
     // Tagged("n", Int32(5)),
     // Tagged("?", "x"),
     // ]
-    std::variant<int32_t, std::string> __tmp_5 = "hi";
-    std::variant<int32_t, std::string> __tmp_6 = 5;
-    std::variant<int32_t, std::string> __tmp_7 = "x";
+    ::tpy::Union<int32_t, std::string> __tmp_5 = "hi";
+    ::tpy::Union<int32_t, std::string> __tmp_6 = 5;
+    ::tpy::Union<int32_t, std::string> __tmp_7 = "x";
     std::vector<Tagged> items = {Tagged("s", __tmp_5), Tagged("n", __tmp_6), Tagged("?", __tmp_7)};
     // double_union(items)
     double_union(items);

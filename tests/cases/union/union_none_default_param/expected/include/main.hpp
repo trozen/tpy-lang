@@ -140,10 +140,10 @@ struct Holder {
     int32_t kind;
 
     // def __init__(self, tz: Fixed | Zone | None = None) -> None:
-    explicit Holder(const std::variant<std::monostate, Fixed, Zone>& tz = {});
+    explicit Holder(const ::tpy::Union<std::monostate, Fixed, Zone>& tz = {});
 
     // def describe(self, tz: Fixed | Zone | None = None) -> str:
-    std::string describe(const std::variant<std::monostate, Fixed, Zone>& tz = {}) const;
+    std::string describe(const ::tpy::Union<std::monostate, Fixed, Zone>& tz = {}) const;
 
     // def opt(self, tz: Fixed | None = None) -> str:
     std::string opt(std::optional<Fixed> tz = std::nullopt) const;
@@ -193,7 +193,7 @@ inline Dog::Dog(const ::tpy::BigInt& barks) : barks(barks) {}
 inline Cat::Cat(const ::tpy::BigInt& meows) : meows(meows) {}
 
 // def __init__(self, tz: Fixed | Zone | None = None) -> None:
-inline Holder::Holder(const std::variant<std::monostate, Fixed, Zone>& tz) {
+inline Holder::Holder(const ::tpy::Union<std::monostate, Fixed, Zone>& tz) {
     // k = 0
     int32_t k = 0;
     // if tz is not None:
@@ -215,7 +215,7 @@ inline Holder::Holder(const std::variant<std::monostate, Fixed, Zone>& tz) {
 }
 
 // def describe(self, tz: Fixed | Zone | None = None) -> str:
-inline std::string Holder::describe(const std::variant<std::monostate, Fixed, Zone>& tz) const {
+inline std::string Holder::describe(const ::tpy::Union<std::monostate, Fixed, Zone>& tz) const {
     // if tz is None:
     if ((std::holds_alternative<std::monostate>(tz))) {
         // return "none"

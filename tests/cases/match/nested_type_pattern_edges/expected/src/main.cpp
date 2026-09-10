@@ -328,23 +328,23 @@ void main() {
     std::cout << guard_combo(__tmp_14) << "\n";
     // # Primitive types: float, bool
     // print(check_float(FloatHolder(3.14)))
-    std::variant<double, std::string> __tmp_15 = 3.14;
+    ::tpy::Union<double, std::string> __tmp_15 = 3.14;
     FloatHolder __tmp_16 = FloatHolder(__tmp_15);
     std::cout << check_float(__tmp_16) << "\n";
     // print(check_float(FloatHolder("pi")))
-    std::variant<double, std::string> __tmp_17 = "pi";
+    ::tpy::Union<double, std::string> __tmp_17 = "pi";
     FloatHolder __tmp_18 = FloatHolder(__tmp_17);
     std::cout << check_float(__tmp_18) << "\n";
     // print(check_bool(BoolHolder(True)))
-    std::variant<bool, std::string> __tmp_19 = true;
+    ::tpy::Union<bool, std::string> __tmp_19 = true;
     BoolHolder __tmp_20 = BoolHolder(__tmp_19);
     std::cout << check_bool(__tmp_20) << "\n";
     // print(check_bool(BoolHolder(False)))
-    std::variant<bool, std::string> __tmp_21 = false;
+    ::tpy::Union<bool, std::string> __tmp_21 = false;
     BoolHolder __tmp_22 = BoolHolder(__tmp_21);
     std::cout << check_bool(__tmp_22) << "\n";
     // print(check_bool(BoolHolder("yes")))
-    std::variant<bool, std::string> __tmp_23 = "yes";
+    ::tpy::Union<bool, std::string> __tmp_23 = "yes";
     BoolHolder __tmp_24 = BoolHolder(__tmp_23);
     std::cout << check_bool(__tmp_24) << "\n";
 }

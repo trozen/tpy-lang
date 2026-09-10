@@ -29,7 +29,7 @@ bool generic_compare(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T
 std::expected<::tpy::BigInt, InvalidOperand> checked_floor(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 __gen_generated generated(::tpy::BigInt a, ::tpy::BigInt b);
 __coro_async_ops async_ops(::tpy::BigInt a, ::tpy::BigInt b);
-void wrappers(std::optional<::tpy::BigInt> value, const std::variant<::tpy::BigInt, std::string>& variant, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair);
+void wrappers(std::optional<::tpy::BigInt> value, const ::tpy::Union<::tpy::BigInt, std::string>& variant, const std::tuple<::tpy::BigInt, ::tpy::BigInt>& pair);
 void operators(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 void exceptions(const ::tpy::BigInt& a, const ::tpy::BigInt& zero, const ::tpy::BigInt& negative);
 void main();

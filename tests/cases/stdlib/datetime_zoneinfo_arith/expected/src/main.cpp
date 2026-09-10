@@ -12,7 +12,7 @@ void main() {
     ::tpystd::datetime::ZoneInfo ny = ::tpystd::datetime::ZoneInfo("America/New_York");
     // # Across the spring-forward edge: wall +2h, elapsed only 1h.
     // before = datetime(2023, 3, 26, 1, 30, tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime before = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(3), ::tpy::BigInt(26), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
     // after = before + timedelta(hours=2)
     ::tpystd::datetime::datetime after = ((before) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2))));
@@ -30,7 +30,7 @@ void main() {
     // # Arithmetic from a fold=1 value drops fold to 0 on the result
     // # (CPython constructs the sum without propagating fold).
     // folded = datetime(2023, 10, 29, 2, 30, fold=1, tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime folded = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(2), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2, ::tpy::BigInt(1));
     // moved = folded + timedelta(hours=1)
     ::tpystd::datetime::datetime moved = ((folded) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1))));
@@ -40,35 +40,35 @@ void main() {
     std::cout << ((folded) - (::tpystd::datetime::timedelta(::tpy::BigInt(0)))).fold() << "\n";
     // # Cross-zone subtraction and equality are instant-based.
     // w = datetime(2023, 7, 15, 12, 0, tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime w = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3);
     // n = datetime(2023, 7, 15, 12, 0, tzinfo=ny)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ny;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ny;
     ::tpystd::datetime::datetime n = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4);
     // print(w - n)
     std::cout << ((w) - (n)) << "\n";
     // print(w == n, w < n)
     std::cout << ::tpy::print_bool(((w) == (n))) << " " << ::tpy::print_bool(((w) < (n))) << "\n";
     // print(w == datetime(2023, 7, 15, 6, 0, tzinfo=ny))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ny;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_5 = ny;
     std::cout << ::tpy::print_bool(((w) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(6), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_5)))) << "\n";
     // # Fixed-offset vs ZoneInfo mixing: same instant compares equal.
     // rey = ZoneInfo("Atlantic/Reykjavik")
     ::tpystd::datetime::ZoneInfo rey = ::tpystd::datetime::ZoneInfo("Atlantic/Reykjavik");
     // print(datetime(2023, 7, 15, 12, 0, tzinfo=UTC)
     // == datetime(2023, 7, 15, 12, 0, tzinfo=rey))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::UTC;
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = rey;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_6 = ::tpystd::datetime::UTC;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_7 = rey;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_6)) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_7)))) << "\n";
     // fixed2 = timezone(timedelta(hours=2))
     ::tpystd::datetime::timezone fixed2 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     // print(datetime(2023, 7, 15, 12, 0, tzinfo=fixed2)
     // == datetime(2023, 7, 15, 12, 0, tzinfo=waw))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = fixed2;
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_8 = fixed2;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_9 = waw;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_8)) == (::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_9)))) << "\n";
     // print(datetime(2023, 7, 15, 12, 0, tzinfo=fixed2) - w)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = fixed2;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_10 = fixed2;
     std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_10)) - (w)) << "\n";
     // # Naive/aware mixing stays a runtime TypeError for ordering/subtraction
     // # and False for ==, with the zoneinfo kind too.

@@ -67,7 +67,7 @@ inline Lit::Lit(const ::tpy::BigInt& value) : value(value) {}
 // def __init__(self, left: Own[Box[Expr]], op: str, right: Own[Box[Expr]]) -> None:
 inline BinOp::BinOp(::tpystd::tplib::box::Box<Expr>&& left, std::string_view op, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), op(op), right(std::move(right)) {}
 struct Expr {
-    using variant_type = std::variant<BinOp, Lit>;
+    using variant_type = ::tpy::Union<BinOp, Lit>;
     variant_type value;
 
     Expr() = default;

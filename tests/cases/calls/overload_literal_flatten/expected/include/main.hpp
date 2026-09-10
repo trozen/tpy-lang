@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t get_field__lit_age(std::string_view name);
 std::string get_field__lit_name(std::string_view name);
-std::variant<int32_t, std::string> get_field(std::string_view name);
+::tpy::Union<int32_t, std::string> get_field(std::string_view name);
 void main();
 
 // # --- Method flattening ---
@@ -44,7 +44,7 @@ struct Record {
 
     // @overload
     // def get(self, key: str) -> Int32 | str: ...
-    std::variant<int32_t, std::string> get(std::string_view key) const {
+    ::tpy::Union<int32_t, std::string> get(std::string_view key) const {
         // if key == "age":
         if ((key == "age")) {
             // return self.data_age

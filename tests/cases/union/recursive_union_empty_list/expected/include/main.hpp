@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 struct V {
-    using variant_type = std::variant<int32_t, std::vector<V>>;
+    using variant_type = ::tpy::Union<int32_t, std::vector<V>>;
     variant_type value;
 
     V() = default;

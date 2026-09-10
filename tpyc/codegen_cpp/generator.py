@@ -2172,7 +2172,7 @@ class CodeGenerator:
 
         Non-generic (`type JsonValue = ... | list[JsonValue]`):
           struct JsonValue {
-              using variant_type = std::variant<...>;
+              using variant_type = ::tpy::Union<...>;
               variant_type value;
               JsonValue() = default;
               template<typename T> requires ... JsonValue(T&& v) : value(...) {}
@@ -2185,12 +2185,29 @@ class CodeGenerator:
         loses just that member (clean error at the use site) rather than an
         ill-formed struct. The forwarding ctor's template param uses a
         sentinel name that cannot collide with a user type param.
+
+        `operator==` is defaulted at both shapes and compares the
+        `variant_type` member, which is `::tpy::Union` -- the type that owns
+        Python's by-value comparison across alternatives. An alias whose leaf
+        type has no equality of its own does NOT get a clean use-site error
+        from that: `std::variant`'s own `operator==` is not SFINAE-friendly
+        (libstdc++ hard-errors inside `<variant>`, and both toolchains report
+        `std::equality_comparable` as true for such a variant), so the
+        defaulted operator here is neither deleted nor located. That gap is
+        `BUGS.md#container-compare-record-without-eq`; it predates the
+        `::tpy::Union` spelling and is unchanged by it.
         """
         cpp_members = [
             "std::monostate" if is_void_like_type(m) else self.types.type_to_cpp(m)
             for m in typ.members
         ]
-        variant_type = f"std::variant<{', '.join(cpp_members)}>"
+        # `::tpy::Union` regardless of the alias's OVERALL value-ness: the
+        # wrapper struct IS the storage form, so its numeric alternatives have
+        # to compare by value even when the alias as a whole is not a value
+        # type (`type V = int | float | str | list[V]` -- the list member
+        # makes it non-value, and `[1] == [1.0]` through it must still be
+        # True).
+        variant_type = f"::tpy::Union<{', '.join(cpp_members)}>"
         if type_params:
             header = self.protocols.gen_record_template_header(
                 type_params, {}, type_param_kinds or [])

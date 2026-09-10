@@ -19,14 +19,14 @@ void stream_content_length() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/big", True)
-    std::variant<bool, std::string> __tmp_1 = true;
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/big", __tmp_1);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 16\r\n\r\n0123456789ABCDEF")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 16\r\n\r\n0123456789ABCDEF", 55));
     // r = s.get("http://api.test/big", stream=True)
-    std::variant<bool, std::string> __tmp_2 = true;
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/big", nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, true);
     // print("status:", r.status_code)
     std::cout << "status:" << " " << r.status_code << "\n";
@@ -70,7 +70,7 @@ void stream_chunked() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/chunked", True)
-    std::variant<bool, std::string> __tmp_3 = true;
+    ::tpy::Union<bool, std::string> __tmp_3 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/chunked", __tmp_3);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
@@ -79,7 +79,7 @@ void stream_chunked() {
     // b"5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n6\r\n world\r\n0\r\n\r\n", 73));
     // r = s.get("http://api.test/chunked", stream=True)
-    std::variant<bool, std::string> __tmp_4 = true;
+    ::tpy::Union<bool, std::string> __tmp_4 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/chunked", nullptr, nullptr, std::nullopt, true, __tmp_4, nullptr, true);
     // got = bytearray()
     std::vector<uint8_t> got = std::vector<uint8_t>();
@@ -116,14 +116,14 @@ void stream_raw() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/raw", True)
-    std::variant<bool, std::string> __tmp_5 = true;
+    ::tpy::Union<bool, std::string> __tmp_5 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/raw", __tmp_5);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
     // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nraw payload")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 11\r\n\r\nraw payload", 50));
     // r = s.get("http://api.test/raw", stream=True)
-    std::variant<bool, std::string> __tmp_6 = true;
+    ::tpy::Union<bool, std::string> __tmp_6 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/raw", nullptr, nullptr, std::nullopt, true, __tmp_6, nullptr, true);
     // raw = r.raw
     ::tpystd::http::client::HTTPResponse* raw = ::tpy::optional_to_ptr(r.raw());
@@ -155,7 +155,7 @@ void stream_context_manager() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/ctx", True)
-    std::variant<bool, std::string> __tmp_7 = true;
+    ::tpy::Union<bool, std::string> __tmp_7 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/ctx", __tmp_7);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
@@ -165,7 +165,7 @@ void stream_context_manager() {
     // # miscompiles when a union-typed default arg (verify) needs a temp in the
     // # with-header (BUGS.md).
     // r = s.get("http://api.test/ctx", stream=True)
-    std::variant<bool, std::string> __tmp_8 = true;
+    ::tpy::Union<bool, std::string> __tmp_8 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/ctx", nullptr, nullptr, std::nullopt, true, __tmp_8, nullptr, true);
     // # got declared outside the with-block: a with-block-scoped bytearray is
     // # stored optional-form and rejects +=, same shape as a try-scoped local.
@@ -221,7 +221,7 @@ void stream_empty_body() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/empty", True)
-    std::variant<bool, std::string> __tmp_9 = true;
+    ::tpy::Union<bool, std::string> __tmp_9 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/empty", __tmp_9);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
@@ -230,7 +230,7 @@ void stream_empty_body() {
     // b.sendall(b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n", 46));
     // r = s.get("http://api.test/empty", stream=True)
-    std::variant<bool, std::string> __tmp_10 = true;
+    ::tpy::Union<bool, std::string> __tmp_10 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/empty", nullptr, nullptr, std::nullopt, true, __tmp_10, nullptr, true);
     // chunks = 0
     int32_t chunks = 0;
@@ -267,7 +267,7 @@ void non_streamed_iter_content() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/full", True)
-    std::variant<bool, std::string> __tmp_11 = true;
+    ::tpy::Union<bool, std::string> __tmp_11 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/full", __tmp_11);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));

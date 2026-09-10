@@ -21,7 +21,7 @@ std::string eval_expr(const Expr& e);
 void main();
 
 struct Expr {
-    using variant_type = std::variant<int32_t, std::vector<Expr>, std::string>;
+    using variant_type = ::tpy::Union<int32_t, std::vector<Expr>, std::string>;
     variant_type value;
 
     Expr() = default;
@@ -37,7 +37,7 @@ struct Expr {
     }
 };
 struct Tree {
-    using variant_type = std::variant<int32_t, std::vector<Tree>>;
+    using variant_type = ::tpy::Union<int32_t, std::vector<Tree>>;
     variant_type value;
 
     Tree() = default;

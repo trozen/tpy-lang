@@ -11,7 +11,7 @@ struct Pack;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t take_vu(const std::variant<int32_t, double>& v);
+int32_t take_vu(const ::tpy::Union<int32_t, double>& v);
 ::tpy::BigInt eat(std::vector<::tpy::BigInt>& xs);
 ::tpy::BigInt head(const std::vector<::tpy::BigInt>& xs);
 int32_t countdown(int32_t total);

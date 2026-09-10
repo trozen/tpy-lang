@@ -37,7 +37,7 @@ __coro_async_position async_position();
 void closure_position(double x);
 std::expected<double, MarkerError> error_return_root(double x);
 double optional_root(std::optional<double> x);
-double union_root(const std::variant<double, std::string>& x);
+double union_root(const ::tpy::Union<double, std::string>& x);
 template<typename T>
 double generic_root(::tpy::param_val_or_ref_t<T> tag, double x);
 double mono_root(const ::tpy::BigInt& tag, double x);

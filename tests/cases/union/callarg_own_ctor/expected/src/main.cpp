@@ -25,7 +25,7 @@ int32_t consume(std::variant<A, B>&& v) {
 // # arg narrows identically on both runtimes (isinstance(3, Int32) would be
 // # False under CPython, where the literal is a plain int).
 // def pick(v: Int32 | Float64) -> Int32:
-int32_t pick(const std::variant<int32_t, double>& v) {
+int32_t pick(const ::tpy::Union<int32_t, double>& v) {
     // if isinstance(v, Float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);

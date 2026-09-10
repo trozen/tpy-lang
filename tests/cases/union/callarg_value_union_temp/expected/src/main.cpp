@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # Discriminates on Float64 (== float under CPython) so an int arg narrows
 // # identically on both runtimes.
 // def take_vu(v: Int32 | Float64) -> Int32:
-int32_t take_vu(const std::variant<int32_t, double>& v) {
+int32_t take_vu(const ::tpy::Union<int32_t, double>& v) {
     // if isinstance(v, Float64):
     if (std::holds_alternative<double>(v)) {
         const auto& __v = std::get<double>(v);
@@ -20,7 +20,7 @@ int32_t take_vu(const std::variant<int32_t, double>& v) {
 }
 
 // def two(a: Int32 | Float64, b: Int32 | Float64) -> Int32:
-int32_t two(const std::variant<int32_t, double>& a, const std::variant<int32_t, double>& b) {
+int32_t two(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b) {
     // return take_vu(a) + take_vu(b)
     return (::tpy::add_check<int32_t>(take_vu(a), take_vu(b)));
 }
@@ -28,7 +28,7 @@ int32_t two(const std::variant<int32_t, double>& a, const std::variant<int32_t, 
 // def use_decl(k: Int32) -> Int32:
 int32_t use_decl(int32_t k) {
     // r = take_vu(k)
-    std::variant<int32_t, double> __tmp_1 = k;
+    ::tpy::Union<int32_t, double> __tmp_1 = k;
     int32_t r = take_vu(__tmp_1);
     // return r
     return r;
@@ -39,7 +39,7 @@ int32_t use_reassign(int32_t k) {
     // r = 0
     int32_t r = 0;
     // r = take_vu(k + 2)
-    std::variant<int32_t, double> __tmp_2 = (::tpy::add_check<int32_t>(k, 2));
+    ::tpy::Union<int32_t, double> __tmp_2 = (::tpy::add_check<int32_t>(k, 2));
     r = take_vu(__tmp_2);
     // return r
     return r;
@@ -48,7 +48,7 @@ int32_t use_reassign(int32_t k) {
 // def use_stmt(k: Int32) -> Int32:
 int32_t use_stmt(int32_t k) {
     // take_vu(k)  # discarded result; the temp still evaluates
-    std::variant<int32_t, double> __tmp_3 = k;
+    ::tpy::Union<int32_t, double> __tmp_3 = k;
     take_vu(__tmp_3);
     // return k
     return k;
@@ -57,15 +57,15 @@ int32_t use_stmt(int32_t k) {
 // def use_two(k: Int32, f: Float64) -> Int32:
 int32_t use_two(int32_t k, double f) {
     // return two(k, f)
-    std::variant<int32_t, double> __tmp_4 = k;
-    std::variant<int32_t, double> __tmp_5 = f;
+    ::tpy::Union<int32_t, double> __tmp_4 = k;
+    ::tpy::Union<int32_t, double> __tmp_5 = f;
     return two(__tmp_4, __tmp_5);
 }
 
 // def use_float() -> Int32:
 int32_t use_float() {
     // return take_vu(2.5)
-    std::variant<int32_t, double> __tmp_6 = 2.5;
+    ::tpy::Union<int32_t, double> __tmp_6 = 2.5;
     return take_vu(__tmp_6);
 }
 

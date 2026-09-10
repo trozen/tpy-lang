@@ -68,7 +68,7 @@ struct Either {
     explicit Either(int32_t n);
 
     // def __enter__(self) -> Int32 | StrView:
-    std::variant<int32_t, std::string_view> __enter__() const;
+    ::tpy::Union<int32_t, std::string_view> __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
     void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
@@ -112,7 +112,7 @@ inline void Blob::__exit__(std::monostate et, const ::tpy::BaseException* ev, st
 inline Either::Either(int32_t n) : n(n) {}
 
 // def __enter__(self) -> Int32 | StrView:
-inline std::variant<int32_t, std::string_view> Either::__enter__() const {
+inline ::tpy::Union<int32_t, std::string_view> Either::__enter__() const {
     // if self.n > 0:
     if ((this->n > 0)) {
         // return self.n

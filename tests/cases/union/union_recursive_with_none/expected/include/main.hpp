@@ -15,12 +15,12 @@ std::string kind(const V& v);
 V make_dict();
 bool is_null(const V& v);
 std::string kind_after_null_guard(const V& v);
-std::string flat_kind(const std::variant<std::monostate, ::tpy::BigInt, std::string>& v);
+std::string flat_kind(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
 std::string kind_guarded(const V& v);
 void main();
 
 struct V {
-    using variant_type = std::variant<std::monostate, bool, ::tpy::ordered_map<std::string, V>, ::tpy::BigInt, std::vector<V>, std::string>;
+    using variant_type = ::tpy::Union<std::monostate, bool, ::tpy::ordered_map<std::string, V>, ::tpy::BigInt, std::vector<V>, std::string>;
     variant_type value;
 
     V() = default;
@@ -35,7 +35,7 @@ struct V {
         return os;
     }
 };
-using W = std::variant<std::monostate, ::tpy::BigInt, std::string>;
+using W = ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>;
 
 void __tpy_init();
 } // namespace tpyapp::main

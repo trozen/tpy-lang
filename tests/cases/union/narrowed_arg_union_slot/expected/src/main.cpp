@@ -560,7 +560,7 @@ std::variant<A*, B*> pick_match(std::variant<A*, B*> v) {
 // # Inline narrowing is lost: BUGS.md#inline-narrowed-value-union-arg-rejects.
 // # str aliases are views, unlike owned members: BUGS.md#value-union-str-view-insert.
 // def value_union(v: Int32 | Float64) -> Int32:
-int32_t value_union(const std::variant<int32_t, double>& v) {
+int32_t value_union(const ::tpy::Union<int32_t, double>& v) {
     // if isinstance(v, Int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
@@ -574,7 +574,7 @@ int32_t value_union(const std::variant<int32_t, double>& v) {
 
 // # value union, match arm
 // def value_union_match(v: Int32 | Float64) -> Int32:
-int32_t value_union_match(const std::variant<int32_t, double>& v) {
+int32_t value_union_match(const ::tpy::Union<int32_t, double>& v) {
     // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
@@ -596,7 +596,7 @@ int32_t value_union_match(const std::variant<int32_t, double>& v) {
 }
 
 // def vu_total(u: Int32 | Float64) -> Int32:
-int32_t vu_total(const std::variant<int32_t, double>& u) {
+int32_t vu_total(const ::tpy::Union<int32_t, double>& u) {
     // if isinstance(u, Int32):
     if (std::holds_alternative<int32_t>(u)) {
         const auto& __u = std::get<int32_t>(u);
@@ -609,7 +609,7 @@ int32_t vu_total(const std::variant<int32_t, double>& u) {
 }
 
 // def vu_peek(u: readonly[Int32 | Float64]) -> Int32:
-int32_t vu_peek(const std::variant<int32_t, double>& u) {
+int32_t vu_peek(const ::tpy::Union<int32_t, double>& u) {
     // if isinstance(u, Int32):
     if (std::holds_alternative<int32_t>(u)) {
         const auto& __u = std::get<int32_t>(u);
@@ -623,7 +623,7 @@ int32_t vu_peek(const std::variant<int32_t, double>& u) {
 
 // # value union at a METHOD slot
 // def value_union_method(v: Int32 | Float64, box: VuBox) -> Int32:
-int32_t value_union_method(const std::variant<int32_t, double>& v, VuBox& box) {
+int32_t value_union_method(const ::tpy::Union<int32_t, double>& v, VuBox& box) {
     // if isinstance(v, Int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
@@ -637,7 +637,7 @@ int32_t value_union_method(const std::variant<int32_t, double>& v, VuBox& box) {
 
 // # value union at a CTOR slot
 // def value_union_ctor(v: Int32 | Float64) -> Int32:
-int32_t value_union_ctor(const std::variant<int32_t, double>& v) {
+int32_t value_union_ctor(const ::tpy::Union<int32_t, double>& v) {
     // if isinstance(v, Int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
@@ -652,7 +652,7 @@ int32_t value_union_ctor(const std::variant<int32_t, double>& v) {
 // # value union at a comprehension element (a position with no flush slot, so
 // # the temp row could never have served it)
 // def value_union_comp(v: Int32 | Float64) -> Int32:
-int32_t value_union_comp(const std::variant<int32_t, double>& v) {
+int32_t value_union_comp(const ::tpy::Union<int32_t, double>& v) {
     // if isinstance(v, Int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
@@ -671,7 +671,7 @@ int32_t value_union_comp(const std::variant<int32_t, double>& v) {
 
 // # value union at a readonly[...] slot
 // def value_union_readonly(v: Int32 | Float64) -> Int32:
-int32_t value_union_readonly(const std::variant<int32_t, double>& v) {
+int32_t value_union_readonly(const ::tpy::Union<int32_t, double>& v) {
     // if isinstance(v, Int32):
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
@@ -684,7 +684,7 @@ int32_t value_union_readonly(const std::variant<int32_t, double>& v) {
 }
 
 // def big_total(u: int | Float64) -> int:
-::tpy::BigInt big_total(const std::variant<double, ::tpy::BigInt>& u) {
+::tpy::BigInt big_total(const ::tpy::Union<double, ::tpy::BigInt>& u) {
     // if isinstance(u, int):
     if (std::holds_alternative<::tpy::BigInt>(u)) {
         const auto& __u = std::get<::tpy::BigInt>(u);
@@ -698,7 +698,7 @@ int32_t value_union_readonly(const std::variant<int32_t, double>& v) {
 
 // # value union with a BigInt member, narrowed to the BigInt
 // def value_union_big(v: int | Float64) -> int:
-::tpy::BigInt value_union_big(const std::variant<double, ::tpy::BigInt>& v) {
+::tpy::BigInt value_union_big(const ::tpy::Union<double, ::tpy::BigInt>& v) {
     // if isinstance(v, int):
     if (std::holds_alternative<::tpy::BigInt>(v)) {
         const auto& __v = std::get<::tpy::BigInt>(v);
@@ -711,7 +711,7 @@ int32_t value_union_readonly(const std::variant<int32_t, double>& v) {
 }
 
 // def pt_total(u: Pt | Float64) -> Int32:
-int32_t pt_total(const std::variant<Pt, double>& u) {
+int32_t pt_total(const ::tpy::Union<Pt, double>& u) {
     // if isinstance(u, Pt):
     if (std::holds_alternative<Pt>(u)) {
         const auto& __u = std::get<Pt>(u);
@@ -725,7 +725,7 @@ int32_t pt_total(const std::variant<Pt, double>& u) {
 
 // # value union with a ValueType-RECORD member, narrowed to the record
 // def value_union_record(v: Pt | Float64) -> Int32:
-int32_t value_union_record(const std::variant<Pt, double>& v) {
+int32_t value_union_record(const ::tpy::Union<Pt, double>& v) {
     // if isinstance(v, Pt):
     if (std::holds_alternative<Pt>(v)) {
         const auto& __v = std::get<Pt>(v);
@@ -939,44 +939,44 @@ void main() {
     // vv = Int32(180)
     int32_t vv = 180;
     // print("value-union", value_union(vv), vu_total(vv))
-    std::variant<int32_t, double> __tmp_1 = vv;
-    std::variant<int32_t, double> __tmp_2 = vv;
+    ::tpy::Union<int32_t, double> __tmp_1 = vv;
+    ::tpy::Union<int32_t, double> __tmp_2 = vv;
     std::cout << "value-union" << " " << value_union(__tmp_1) << " " << vu_total(__tmp_2) << "\n";
     // print("value-union-match", value_union_match(vv), vu_total(vv))
-    std::variant<int32_t, double> __tmp_3 = vv;
-    std::variant<int32_t, double> __tmp_4 = vv;
+    ::tpy::Union<int32_t, double> __tmp_3 = vv;
+    ::tpy::Union<int32_t, double> __tmp_4 = vv;
     std::cout << "value-union-match" << " " << value_union_match(__tmp_3) << " " << vu_total(__tmp_4) << "\n";
     // box = VuBox(1)
     VuBox box = VuBox(1);
     // print("value-union-method", value_union_method(vv, box), box.go(vv))
-    std::variant<int32_t, double> __tmp_5 = vv;
-    std::variant<int32_t, double> __tmp_6 = vv;
+    ::tpy::Union<int32_t, double> __tmp_5 = vv;
+    ::tpy::Union<int32_t, double> __tmp_6 = vv;
     std::cout << "value-union-method" << " " << value_union_method(__tmp_5, box) << " " << box.go(__tmp_6) << "\n";
     // print("value-union-ctor", value_union_ctor(vv), VuSink(vv).k)
-    std::variant<int32_t, double> __tmp_7 = vv;
-    std::variant<int32_t, double> __tmp_8 = vv;
+    ::tpy::Union<int32_t, double> __tmp_7 = vv;
+    ::tpy::Union<int32_t, double> __tmp_8 = vv;
     std::cout << "value-union-ctor" << " " << value_union_ctor(__tmp_7) << " " << VuSink(__tmp_8).k << "\n";
     // print("value-union-comp", value_union_comp(vv), vu_total(vv))
-    std::variant<int32_t, double> __tmp_9 = vv;
-    std::variant<int32_t, double> __tmp_10 = vv;
+    ::tpy::Union<int32_t, double> __tmp_9 = vv;
+    ::tpy::Union<int32_t, double> __tmp_10 = vv;
     std::cout << "value-union-comp" << " " << value_union_comp(__tmp_9) << " " << vu_total(__tmp_10) << "\n";
     // print("value-union-readonly", value_union_readonly(vv), vu_peek(vv))
-    std::variant<int32_t, double> __tmp_11 = vv;
-    std::variant<int32_t, double> __tmp_12 = vv;
+    ::tpy::Union<int32_t, double> __tmp_11 = vv;
+    ::tpy::Union<int32_t, double> __tmp_12 = vv;
     std::cout << "value-union-readonly" << " " << value_union_readonly(__tmp_11) << " " << vu_peek(__tmp_12) << "\n";
     // # annotated because a bare literal types as Int32: the twin must be the
     // # union's exact BigInt member to take the variant-temp row
     // bb: int = 190
     ::tpy::BigInt bb = ::tpy::BigInt(190);
     // print("value-union-big", value_union_big(bb), big_total(bb))
-    std::variant<double, ::tpy::BigInt> __tmp_13 = bb;
-    std::variant<double, ::tpy::BigInt> __tmp_14 = bb;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_13 = bb;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_14 = bb;
     std::cout << "value-union-big" << " " << value_union_big(__tmp_13) << " " << big_total(__tmp_14) << "\n";
     // pp = Pt(3)
     Pt pp = Pt(3);
     // print("value-union-record", value_union_record(pp), pt_total(pp))
-    std::variant<Pt, double> __tmp_15 = pp;
-    std::variant<Pt, double> __tmp_16 = pp;
+    ::tpy::Union<Pt, double> __tmp_15 = pp;
+    ::tpy::Union<Pt, double> __tmp_16 = pp;
     std::cout << "value-union-record" << " " << value_union_record(__tmp_15) << " " << pt_total(__tmp_16) << "\n";
     // print("assign-narrowed", assign_narrowed())
     std::cout << "assign-narrowed" << " " << assign_narrowed() << "\n";

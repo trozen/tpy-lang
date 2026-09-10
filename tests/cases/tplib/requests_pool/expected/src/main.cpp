@@ -19,7 +19,7 @@ void pooled_reuse() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/v1/a", True)
-    std::variant<bool, std::string> __tmp_1 = true;
+    ::tpy::Union<bool, std::string> __tmp_1 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/v1/a", __tmp_1);
     // print("key:", key)
     std::cout << "key:" << " " << key << "\n";
@@ -67,13 +67,13 @@ void pooled_reuse() {
 void pool_key_shapes() {
     // # https default port + verify variants get distinct keys.
     // print(requests._pool_key("https://api.test/x", True))
-    std::variant<bool, std::string> __tmp_2 = true;
+    ::tpy::Union<bool, std::string> __tmp_2 = true;
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_2) << "\n";
     // print(requests._pool_key("https://api.test:8443/x", False))
-    std::variant<bool, std::string> __tmp_3 = false;
+    ::tpy::Union<bool, std::string> __tmp_3 = false;
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test:8443/x", __tmp_3) << "\n";
     // print(requests._pool_key("https://api.test/x", "/etc/ca.pem"))
-    std::variant<bool, std::string> __tmp_4 = "/etc/ca.pem";
+    ::tpy::Union<bool, std::string> __tmp_4 = "/etc/ca.pem";
     std::cout << ::tpystd::tplib::requests::_pool_key("https://api.test/x", __tmp_4) << "\n";
 }
 
@@ -97,7 +97,7 @@ void failed_request_drops_entry() {
     // conn.sock = a
     conn.sock = std::move(a);
     // key = requests._pool_key("http://api.test/x", True)
-    std::variant<bool, std::string> __tmp_5 = true;
+    ::tpy::Union<bool, std::string> __tmp_5 = true;
     std::string key = ::tpystd::tplib::requests::_pool_key("http://api.test/x", __tmp_5);
     // s._pool[key] = Box(conn)
     ::tpy::__setitem__(s._pool, key, ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn)));
@@ -135,7 +135,7 @@ void exit_closes_pool() {
         // conn.sock = a
         conn->sock = std::move(a);
         // s._pool[requests._pool_key("http://api.test/", True)] = Box(conn)
-        std::variant<bool, std::string> __tmp_6 = true;
+        ::tpy::Union<bool, std::string> __tmp_6 = true;
         ::tpy::__setitem__(s._pool, ::tpystd::tplib::requests::_pool_key("http://api.test/", __tmp_6), ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move((*conn))));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {

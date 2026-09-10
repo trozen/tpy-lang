@@ -20,7 +20,7 @@ std::string kind(const V& v);
 void main();
 
 struct V {
-    using variant_type = std::variant<std::monostate, bool, ::tpy::ordered_map<std::string, V>, double, ::tpy::BigInt, std::vector<V>, std::string>;
+    using variant_type = ::tpy::Union<std::monostate, bool, ::tpy::ordered_map<std::string, V>, double, ::tpy::BigInt, std::vector<V>, std::string>;
     variant_type value;
 
     V() = default;

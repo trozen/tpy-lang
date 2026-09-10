@@ -712,7 +712,7 @@ struct datetime {
     // tzinfo: timezone | ZoneInfo | None = None,
     // fold: int = 0) -> None:
     datetime() = default;
-    explicit datetime(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day, const ::tpy::BigInt& hour = ::tpy::BigInt(0), const ::tpy::BigInt& minute = ::tpy::BigInt(0), const ::tpy::BigInt& second = ::tpy::BigInt(0), const ::tpy::BigInt& microsecond = ::tpy::BigInt(0), const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo = {}, const ::tpy::BigInt& fold = ::tpy::BigInt(0));
+    explicit datetime(const ::tpy::BigInt& year, const ::tpy::BigInt& month, const ::tpy::BigInt& day, const ::tpy::BigInt& hour = ::tpy::BigInt(0), const ::tpy::BigInt& minute = ::tpy::BigInt(0), const ::tpy::BigInt& second = ::tpy::BigInt(0), const ::tpy::BigInt& microsecond = ::tpy::BigInt(0), const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo = {}, const ::tpy::BigInt& fold = ::tpy::BigInt(0));
 
     // def _tz_kind(self) -> int:
     ::tpy::BigInt _tz_kind() const;
@@ -757,7 +757,7 @@ struct datetime {
 
     // @property
     // def tzinfo(self) -> timezone | ZoneInfo | None:
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tzinfo() const;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tzinfo() const;
 
     // def _epoch_us(self) -> int:
     ::tpy::BigInt _epoch_us() const;
@@ -783,7 +783,7 @@ struct datetime {
     // microsecond: int | None = None,
     // tzinfo: timezone | ZoneInfo | bool | None = True,
     // fold: int | None = None) -> "datetime":
-    ::tpystd::datetime::datetime replace(std::optional<::tpy::BigInt> year = std::nullopt, std::optional<::tpy::BigInt> month = std::nullopt, std::optional<::tpy::BigInt> day = std::nullopt, std::optional<::tpy::BigInt> hour = std::nullopt, std::optional<::tpy::BigInt> minute = std::nullopt, std::optional<::tpy::BigInt> second = std::nullopt, std::optional<::tpy::BigInt> microsecond = std::nullopt, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>& tzinfo = true, std::optional<::tpy::BigInt> fold = std::nullopt) const;
+    ::tpystd::datetime::datetime replace(std::optional<::tpy::BigInt> year = std::nullopt, std::optional<::tpy::BigInt> month = std::nullopt, std::optional<::tpy::BigInt> day = std::nullopt, std::optional<::tpy::BigInt> hour = std::nullopt, std::optional<::tpy::BigInt> minute = std::nullopt, std::optional<::tpy::BigInt> second = std::nullopt, std::optional<::tpy::BigInt> microsecond = std::nullopt, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone>& tzinfo = true, std::optional<::tpy::BigInt> fold = std::nullopt) const;
 
     // def _mktime_s(self, fold: int) -> int:
     ::tpy::BigInt _mktime_s(const ::tpy::BigInt& fold) const;
@@ -793,7 +793,7 @@ struct datetime {
 
     // def astimezone(self,
     // tz: timezone | ZoneInfo | None = None) -> "datetime":
-    ::tpystd::datetime::datetime astimezone(const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {}) const;
+    ::tpystd::datetime::datetime astimezone(const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {}) const;
 
     // @staticmethod
     // def strptime(date_string: str, format: str) -> "datetime":
@@ -806,17 +806,17 @@ struct datetime {
     // @staticmethod
     // def combine(d: date, t: time,
     // tzinfo: timezone | ZoneInfo | None = None) -> "datetime":
-    static ::tpystd::datetime::datetime combine(::tpystd::datetime::date d, ::tpystd::datetime::time t, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo = {});
+    static ::tpystd::datetime::datetime combine(::tpystd::datetime::date d, ::tpystd::datetime::time t, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo = {});
 
     // @staticmethod
     // def _from_epoch_us(us: int, use_local: bool,
     // tz: timezone | ZoneInfo | None = None) -> "datetime":
-    static ::tpystd::datetime::datetime _from_epoch_us(const ::tpy::BigInt& __param_us, bool use_local, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {});
+    static ::tpystd::datetime::datetime _from_epoch_us(const ::tpy::BigInt& __param_us, bool use_local, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {});
 
     // @staticmethod
     // def fromtimestamp(t: float,
     // tz: timezone | ZoneInfo | None = None) -> "datetime":
-    static ::tpystd::datetime::datetime fromtimestamp(double t, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {});
+    static ::tpystd::datetime::datetime fromtimestamp(double t, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {});
 
     // @staticmethod
     // def utcfromtimestamp(t: float) -> "datetime":
@@ -824,7 +824,7 @@ struct datetime {
 
     // @staticmethod
     // def now(tz: timezone | ZoneInfo | None = None) -> "datetime":
-    static ::tpystd::datetime::datetime now(const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {});
+    static ::tpystd::datetime::datetime now(const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz = {});
 
     // @staticmethod
     // def utcnow() -> "datetime":
@@ -1186,7 +1186,7 @@ inline std::optional<timedelta> timezone::dst(std::optional<datetime> dt) const 
 // def fromutc(self, dt: "datetime") -> "datetime":
 inline datetime timezone::fromutc(datetime dt) const {
     // tz = dt.tzinfo
-    std::variant<std::monostate, ZoneInfo, timezone> tz = dt.tzinfo();
+    ::tpy::Union<std::monostate, ZoneInfo, timezone> tz = dt.tzinfo();
     // if not isinstance(tz, timezone) or tz != self:
     if (((!(std::holds_alternative<timezone>(tz))) || (std::get<timezone>(tz) != (*this)))) {
         // raise ValueError("fromutc: dt.tzinfo is not self")
@@ -1301,7 +1301,7 @@ inline datetime ZoneInfo::fromutc(datetime dt) const {
     // # with PEP 495 fold set on the second pass of a repeated wall
     // # time (the _from_epoch_us derivation).
     // tz = dt.tzinfo
-    std::variant<std::monostate, ZoneInfo, timezone> tz = dt.tzinfo();
+    ::tpy::Union<std::monostate, ZoneInfo, timezone> tz = dt.tzinfo();
     // if not isinstance(tz, ZoneInfo) or tz != self:
     if (((!(std::holds_alternative<ZoneInfo>(tz))) || (std::get<ZoneInfo>(tz) != (*this)))) {
         // raise ValueError("fromutc: dt.tzinfo is not self")
@@ -1309,7 +1309,7 @@ inline datetime ZoneInfo::fromutc(datetime dt) const {
     }
     auto& __tz = std::get<ZoneInfo>(tz);
     // return datetime._from_epoch_us(dt._epoch_us(), False, self)
-    std::variant<std::monostate, ZoneInfo, timezone> __tmp_1 = (*this);
+    ::tpy::Union<std::monostate, ZoneInfo, timezone> __tmp_1 = (*this);
     return datetime::_from_epoch_us(dt._epoch_us(), false, __tmp_1);
 }
 
@@ -1896,7 +1896,7 @@ inline double datetime::timestamp() const {
 // @staticmethod
 // def combine(d: date, t: time,
 // tzinfo: timezone | ZoneInfo | None = None) -> "datetime":
-inline ::tpystd::datetime::datetime datetime::combine(::tpystd::datetime::date d, ::tpystd::datetime::time t, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo) {
+inline ::tpystd::datetime::datetime datetime::combine(::tpystd::datetime::date d, ::tpystd::datetime::time t, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tzinfo) {
     // return datetime(int(d.year), int(d.month), int(d.day), int(t.hour),
     // int(t.minute), int(t.second), int(t.microsecond),
     // tzinfo)
@@ -1906,7 +1906,7 @@ inline ::tpystd::datetime::datetime datetime::combine(::tpystd::datetime::date d
 // @staticmethod
 // def fromtimestamp(t: float,
 // tz: timezone | ZoneInfo | None = None) -> "datetime":
-inline ::tpystd::datetime::datetime datetime::fromtimestamp(double t, const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
+inline ::tpystd::datetime::datetime datetime::fromtimestamp(double t, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
     // return datetime._from_epoch_us(_timestamp_to_us(t), tz is None, tz)
     return datetime::_from_epoch_us(_timestamp_to_us(t), (std::holds_alternative<std::monostate>(tz)), tz);
 }
@@ -1920,7 +1920,7 @@ inline ::tpystd::datetime::datetime datetime::utcfromtimestamp(double t) {
 
 // @staticmethod
 // def now(tz: timezone | ZoneInfo | None = None) -> "datetime":
-inline ::tpystd::datetime::datetime datetime::now(const std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
+inline ::tpystd::datetime::datetime datetime::now(const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
     // return datetime._from_epoch_us(int(_time.time_ns()) // 1000,
     // tz is None, tz)
     return datetime::_from_epoch_us(((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::time::time_ns()))) / (::tpy::BigInt(1000))), (std::holds_alternative<std::monostate>(tz)), tz);

@@ -17,7 +17,7 @@ void main() {
     // person = Person("Alice", Int32(30))
     Person person = Person("Alice", 30);
     // print(asdict(person))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, int32_t>>(::tpy::ordered_map<std::string, std::variant<std::string, int32_t>>({{"name", person.name}, {"age", person.age}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", person.name}, {"age", person.age}}))) << "\n";
     // print(astuple(person))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::string, int32_t>{person.name, person.age}) << "\n";
     // # 3. Nested dataclass (homogeneous)
@@ -73,7 +73,7 @@ void main() {
     // m = MaybeNamed("test")
     MaybeNamed m = MaybeNamed("test");
     // print(asdict(m))
-    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::variant<std::string, int32_t>>(::tpy::ordered_map<std::string, std::variant<std::string, int32_t>>({{"name", m.name}, {"value", m.value}}))) << "\n";
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>(::tpy::ordered_map<std::string, ::tpy::Union<std::string, int32_t>>({{"name", m.name}, {"value", m.value}}))) << "\n";
     // # 9. Empty list
     // c = Container([])
     Container c = Container(std::vector<Point>{});

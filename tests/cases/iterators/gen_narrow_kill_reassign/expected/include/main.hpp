@@ -11,14 +11,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
-std::tuple<std::variant<::tpy::BigInt, std::string>, ::tpy::BigInt> remake();
-__gen_gen gen(std::variant<::tpy::BigInt, std::string> a);
+std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt> remake();
+__gen_gen gen(::tpy::Union<::tpy::BigInt, std::string> a);
 void main();
 
 // Generator: gen
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     int32_t __state;
-    std::variant<::tpy::BigInt, std::string> a;
+    ::tpy::Union<::tpy::BigInt, std::string> a;
     ::tpy::BigInt n;
 
     enum : int32_t {
@@ -32,7 +32,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
         S_DONE = 7,
     };
 
-    __gen_gen(std::variant<::tpy::BigInt, std::string> a_)
+    __gen_gen(::tpy::Union<::tpy::BigInt, std::string> a_)
         : __state(S_INITIAL), a(std::move(a_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();

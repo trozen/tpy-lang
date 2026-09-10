@@ -37,7 +37,7 @@ def area(s: Shape) -> float:
 | **Phase 6** | Tests | **Done** |
 | **Phase 7** | `A \| B \| None` with `std::monostate`, `is None`/`is not None` on unions | **Done** |
 | **Phase 8** | Type aliases (`Shape = Circle \| Rect`) | **Done** |
-| **Phase 9** | Equality `==`/`!=` on unions (if all members support it) | Not designed |
+| **Phase 9** | Equality `==`/`!=` (and the ordering ops) on VALUE unions, BY VALUE across alternatives -- owned by `::tpy::Union<...>`, not by the compiler | **Done** |
 | **Phase 10** | Unify `narrowed_types` with `non_none_vars` | **Done** |
 | **Phase 11** | `assert isinstance(x, T)` codegen for unions | **Done** |
 | **Phase 12** | Assignment narrowing: `v: A \| B = Rect(...)` narrows `v` to `Rect` for field/method access | **Done** |
@@ -47,7 +47,8 @@ def area(s: Shape) -> float:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Equality `==`/`!=` on unions | Not designed | Phase 9 above; requires all members to support it |
+| Equality / ordering on value unions | **Done** | Phase 9 above. A value union renders `::tpy::Union<...>`, a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` and every container inherits the rule through its own operator. The leaf is the monomorphic twin's answer per pair; an unorderable pair raises `TypeError` at runtime. See `docs/LANGUAGE_FEATURES.md` under Union/Optional |
+| `Equatable` / `Hashable` conformance for a union | Not designed | A union has no equality at the TYPE level, so a union against one of its own members, `in` over `list[union]`, and a union dict key all still reject -- `BUGS.md#value-union-no-equatable-conformance` |
 | Deferred union init | Not designed | `x: A \| B` without initializer, assigned in branches |
 | `isinstance(x, (A, B))` tuple form | Design only | Narrow to subset of union |
 | Exhaustiveness checking | Design only | isinstance chains + match/case (B3) |

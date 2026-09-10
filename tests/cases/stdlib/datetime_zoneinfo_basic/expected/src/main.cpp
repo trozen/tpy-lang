@@ -17,10 +17,10 @@ void main() {
     // print(waw.utcoffset(None), waw.tzname(None), waw.dst(None))
     std::cout << ::tpy::print_optional_val(waw.utcoffset(std::nullopt)) << " " << ::tpy::print_optional_val(waw.tzname(std::nullopt)) << " " << ::tpy::print_optional_val(waw.dst(std::nullopt)) << "\n";
     // winter = datetime(2023, 1, 15, 12, 0, tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime winter = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(1), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1);
     // summer = datetime(2023, 7, 15, 12, 0, tzinfo=waw)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime summer = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2);
     // print(winter.utcoffset(), winter.tzname(), winter.dst())
     std::cout << ::tpy::print_optional_val(winter.utcoffset()) << " " << ::tpy::print_optional_val(winter.tzname()) << " " << ::tpy::print_optional_val(winter.dst()) << "\n";
@@ -38,13 +38,13 @@ void main() {
     // rey = ZoneInfo("Atlantic/Reykjavik")
     ::tpystd::datetime::ZoneInfo rey = ::tpystd::datetime::ZoneInfo("Atlantic/Reykjavik");
     // at = datetime(2023, 7, 1, 8, 0, tzinfo=rey)
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = rey;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = rey;
     ::tpystd::datetime::datetime at = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(1), ::tpy::BigInt(8), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3);
     // print(at.utcoffset(), at.tzname(), at.dst())
     std::cout << ::tpy::print_optional_val(at.utcoffset()) << " " << ::tpy::print_optional_val(at.tzname()) << " " << ::tpy::print_optional_val(at.dst()) << "\n";
     // # The .tzinfo property reconstructs an equal ZoneInfo value.
     // tz = summer.tzinfo
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = summer.tzinfo();
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz = summer.tzinfo();
     // print(tz is not None and isinstance(tz, ZoneInfo) and tz == waw)
     std::cout << ::tpy::print_bool((((!std::holds_alternative<std::monostate>(tz)) && std::holds_alternative<::tpystd::datetime::ZoneInfo>(tz)) && ((std::get<::tpystd::datetime::ZoneInfo>(tz)) == (waw)))) << "\n";
     // if tz is not None:
@@ -54,10 +54,10 @@ void main() {
     }
     // # Fixed-offset timezone stays distinct from ZoneInfo in the union.
     // mixed = datetime(2023, 7, 15, 12, 0, tzinfo=timezone(timedelta(hours=2)))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)));
     ::tpystd::datetime::datetime mixed = ::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(12), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4);
     // tz2 = mixed.tzinfo
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz2 = mixed.tzinfo();
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> tz2 = mixed.tzinfo();
     // print(tz2 is not None and isinstance(tz2, timezone))
     std::cout << ::tpy::print_bool(((!std::holds_alternative<std::monostate>(tz2)) && std::holds_alternative<::tpystd::datetime::timezone>(tz2))) << "\n";
 }

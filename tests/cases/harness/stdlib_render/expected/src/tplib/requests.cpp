@@ -54,7 +54,7 @@ std::tuple<bool, double> _parse_http_date(std::string_view raw) {
             }
         }
         // return (True, dt.replace(tzinfo=UTC).timestamp())
-        std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::UTC;
+        ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, bool, ::tpystd::datetime::timezone> __tmp_1 = ::tpystd::datetime::UTC;
         return std::tuple<bool, double>{true, dt.replace(std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, std::nullopt, __tmp_1).timestamp()};
     }
     // return (False, 0.0)
@@ -627,7 +627,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
 }
 
 // def _ssl_context_for(verify: bool | str) -> Own[ssl.SSLContext]:
-::tpystd::ssl::SSLContext _ssl_context_for(const std::variant<bool, std::string>& verify) {
+::tpystd::ssl::SSLContext _ssl_context_for(const ::tpy::Union<bool, std::string>& verify) {
     // # verify=True -> verified default context; verify="<path>" -> trust that CA
     // # file; verify=False -> disable verification (check_hostname must be cleared
     // # before CERT_NONE, or the context rejects the combination, as in CPython).
@@ -655,7 +655,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
 
 // def _connect(url: str, timeout: float | None = None,
 // verify: bool | str = True) -> Own[Box[_Connection]]:
-::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> _connect(std::string_view url, std::optional<double> timeout, const std::variant<bool, std::string>& verify) {
+::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> _connect(std::string_view url, std::optional<double> timeout, const ::tpy::Union<bool, std::string>& verify) {
     // parts = urlsplit(url)
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
     // host = parts.hostname
@@ -694,7 +694,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
 }
 
 // def _pool_key(url: str, verify: bool | str) -> str:
-std::string _pool_key(std::string_view url, const std::variant<bool, std::string>& verify) {
+std::string _pool_key(std::string_view url, const ::tpy::Union<bool, std::string>& verify) {
     // # One pooled connection per (scheme, host, port) -- plus the TLS trust
     // # selection, so reusing a socket never silently changes what a request
     // # trusts (a different `verify` gets its own connection).
@@ -751,7 +751,7 @@ std::string _pool_key(std::string_view url, const std::variant<bool, std::string
 // files: dict[str, FileField] | None = None,
 // stream: bool = False
 // ) -> Own[Response]:
-Response request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
+Response request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
     // # A fresh Session per call, like CPython requests' module-level API (its
     // # pool dies with the call too; same-host redirect hops still reuse the
     // # pooled connection within the call). Routing through Session keeps the
@@ -772,7 +772,7 @@ Response request(std::string_view method, std::string_view url, const ::tpy::ord
 // verify: bool | str = True,
 // cookies: dict[str, str] | None = None,
 // stream: bool = False) -> Own[Response]:
-Response get(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
+Response get(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
     // return request("GET", url, params, None, None, headers, auth, timeout,
     // allow_redirects, verify, cookies, None, stream)
     return request("GET", url, params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, headers, auth, timeout, allow_redirects, verify, cookies, nullptr, stream);
@@ -786,7 +786,7 @@ Response get(std::string_view url, const ::tpy::ordered_map<std::string, std::st
 // verify: bool | str = True,
 // cookies: dict[str, str] | None = None,
 // stream: bool = False) -> Own[Response]:
-Response head(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
+Response head(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
     // return request("HEAD", url, params, None, None, headers, auth, timeout,
     // allow_redirects, verify, cookies, None, stream)
     return request("HEAD", url, params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, headers, auth, timeout, allow_redirects, verify, cookies, nullptr, stream);
@@ -804,7 +804,7 @@ Response head(std::string_view url, const ::tpy::ordered_map<std::string, std::s
 // files: dict[str, FileField] | None = None,
 // stream: bool = False
 // ) -> Own[Response]:
-Response post(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
+Response post(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
     // return request("POST", url, params, data, json, headers, auth, timeout,
     // allow_redirects, verify, cookies, files, stream)
     return request("POST", url, params, data, json, headers, auth, timeout, allow_redirects, verify, cookies, files, stream);
@@ -822,7 +822,7 @@ Response post(std::string_view url, std::variant<std::monostate, std::vector<uin
 // files: dict[str, FileField] | None = None,
 // stream: bool = False
 // ) -> Own[Response]:
-Response put(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
+Response put(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
     // return request("PUT", url, params, data, json, headers, auth, timeout,
     // allow_redirects, verify, cookies, files, stream)
     return request("PUT", url, params, data, json, headers, auth, timeout, allow_redirects, verify, cookies, files, stream);
@@ -840,7 +840,7 @@ Response put(std::string_view url, std::variant<std::monostate, std::vector<uint
 // files: dict[str, FileField] | None = None,
 // stream: bool = False
 // ) -> Own[Response]:
-Response patch(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
+Response patch(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
     // return request("PATCH", url, params, data, json, headers, auth, timeout,
     // allow_redirects, verify, cookies, files, stream)
     return request("PATCH", url, params, data, json, headers, auth, timeout, allow_redirects, verify, cookies, files, stream);
@@ -854,7 +854,7 @@ Response patch(std::string_view url, std::variant<std::monostate, std::vector<ui
 // verify: bool | str = True,
 // cookies: dict[str, str] | None = None,
 // stream: bool = False) -> Own[Response]:
-Response delete_(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
+Response delete_(std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, bool stream) {
     // return request("DELETE", url, params, None, None, headers, auth, timeout,
     // allow_redirects, verify, cookies, None, stream)
     return request("DELETE", url, params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, headers, auth, timeout, allow_redirects, verify, cookies, nullptr, stream);
@@ -1379,7 +1379,7 @@ Session::Session() : headers(::tpy::ordered_map<std::string, std::string>()), pa
 // verify: bool | str = True,
 // stream: bool = False,
 // follow: bool = False) -> Own[Response]:
-Response Session::_send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, CookieJar& send_cookies, const std::variant<bool, std::string>& verify, bool stream, bool follow) {
+Response Session::_send_for_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, int32_t hop, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify, bool stream, bool follow) {
     // # A streamed response (resp._raw is not None) is never pooled: its socket
     // # is mid-body, so reuse would interleave a new request into the unread
     // # stream. The connection Box is dropped instead (RAII closes its fd; the
@@ -1464,7 +1464,7 @@ Response Session::_send_for_hop(std::string_view method, std::string_view url, c
 // hop: Int32, follow: bool, send_cookies: CookieJar,
 // verify: bool | str = True,
 // stream: bool = False) -> Own[Response]:
-Response Session::_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, std::vector<Response>&& history, int32_t hop, bool follow, CookieJar& send_cookies, const std::variant<bool, std::string>& verify, bool stream) {
+Response Session::_hop(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, ::tpy::ordered_map<std::string, std::string>& headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, std::vector<Response>&& history, int32_t hop, bool follow, CookieJar& send_cookies, const ::tpy::Union<bool, std::string>& verify, bool stream) {
     // # One request, then (when following) recurse on a 3xx Location. Recursion
     // # rather than a loop so each `return resp` is a straight-line last use --
     // # a loop-carried Own local trips the borrow checker's return guard.
@@ -1565,7 +1565,7 @@ Response Session::_hop(std::string_view method, std::string_view url, const ::tp
 // files: dict[str, FileField] | None = None,
 // stream: bool = False
 // ) -> Own[Response]:
-Response Session::request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const std::variant<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
+Response Session::request(std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout, bool allow_redirects, const ::tpy::Union<bool, std::string>& verify, const ::tpy::ordered_map<std::string, std::string>* cookies, const ::tpy::ordered_map<std::string, FileField>* files, bool stream) {
     // merged_headers = self._merge_headers(headers)
     ::tpy::ordered_map<std::string, std::string> merged_headers = this->_merge_headers(headers);
     // merged_params = self._merge_params(params)

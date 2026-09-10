@@ -56,10 +56,10 @@ void main() {
     // # UTC 00:30 and 01:30 on 2023-10-29 are the two passes of the
     // # repeated wall time 02:30 in Warsaw.
     // r0 = waw.fromutc(datetime(2023, 10, 29, 0, 30, tzinfo=waw))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_1 = waw;
     ::tpystd::datetime::datetime r0 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_1));
     // r1 = waw.fromutc(datetime(2023, 10, 29, 1, 30, tzinfo=waw))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_2 = waw;
     ::tpystd::datetime::datetime r1 = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(1), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_2));
     // print(r0, r0.fold)
     std::cout << r0 << " " << r0.fold() << "\n";
@@ -69,7 +69,7 @@ void main() {
     std::cout << ::tpy::print_float(((r1.timestamp()) - (r0.timestamp()))) << "\n";
     // # Outside any transition: plain shift, fold 0.
     // plain = waw.fromutc(datetime(2023, 7, 15, 10, 0, tzinfo=waw))
-    std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
+    ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_3 = waw;
     ::tpystd::datetime::datetime plain = waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(7), ::tpy::BigInt(15), ::tpy::BigInt(10), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_3));
     // print(plain, plain.fold)
     std::cout << plain << " " << plain.fold() << "\n";
@@ -91,7 +91,7 @@ void main() {
         try {
             // waw.fromutc(datetime(2023, 10, 29, 0, 30,
             // tzinfo=ZoneInfo("America/New_York")))
-            std::variant<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::ZoneInfo("America/New_York");
+            ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone> __tmp_4 = ::tpystd::datetime::ZoneInfo("America/New_York");
             waw.fromutc(::tpystd::datetime::datetime(::tpy::BigInt(2023), ::tpy::BigInt(10), ::tpy::BigInt(29), ::tpy::BigInt(0), ::tpy::BigInt(30), ::tpy::BigInt(0), ::tpy::BigInt(0), __tmp_4));
             // print("no-raise")
             std::cout << "no-raise" << "\n";

@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def remake() -> tuple[int | str, int]:
-std::tuple<std::variant<::tpy::BigInt, std::string>, ::tpy::BigInt> remake() {
+std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt> remake() {
     // return ("hello", 9)
-    return std::tuple<std::variant<::tpy::BigInt, std::string>, ::tpy::BigInt>{"hello", ::tpy::BigInt(9)};
+    return std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt>{"hello", ::tpy::BigInt(9)};
 }
 
 // def gen(a: int | str) -> Iterator[str]:
@@ -73,7 +73,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(a: int | str) -> Iterator[str]:
-__gen_gen gen(std::variant<::tpy::BigInt, std::string> a) {
+__gen_gen gen(::tpy::Union<::tpy::BigInt, std::string> a) {
     return __gen_gen(a);
 }
 
@@ -81,7 +81,7 @@ __gen_gen gen(std::variant<::tpy::BigInt, std::string> a) {
 void main() {
     // for s in gen(5):
     {
-        std::variant<::tpy::BigInt, std::string> __tmp_1 = 5;
+        ::tpy::Union<::tpy::BigInt, std::string> __tmp_1 = 5;
         auto __src_0 = gen(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {

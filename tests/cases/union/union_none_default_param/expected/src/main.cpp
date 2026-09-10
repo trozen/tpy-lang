@@ -27,18 +27,18 @@ std::string pointer_arm(std::variant<std::monostate, Cat*, Dog*> pet) {
 // def main() -> None:
 void main() {
     // print(Holder().kind, Holder(Fixed(60)).kind, Holder(Zone(2)).kind)
-    std::variant<std::monostate, Fixed, Zone> __tmp_1 = Fixed(60);
-    std::variant<std::monostate, Fixed, Zone> __tmp_2 = Zone(2);
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = Fixed(60);
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = Zone(2);
     std::cout << Holder().kind << " " << Holder(__tmp_1).kind << " " << Holder(__tmp_2).kind << "\n";
     // h = Holder()
     Holder h = Holder();
     // print(h.describe())
     std::cout << h.describe() << "\n";
     // print(h.describe(Fixed(60)))
-    std::variant<std::monostate, Fixed, Zone> __tmp_3 = Fixed(60);
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = Fixed(60);
     std::cout << h.describe(__tmp_3) << "\n";
     // print(h.describe(Zone(7)))
-    std::variant<std::monostate, Fixed, Zone> __tmp_4 = Zone(7);
+    ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = Zone(7);
     std::cout << h.describe(__tmp_4) << "\n";
     // print(h.opt())
     std::cout << h.opt() << "\n";

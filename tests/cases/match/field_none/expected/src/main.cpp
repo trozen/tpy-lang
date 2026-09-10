@@ -27,15 +27,15 @@ std::string describe(const W& w) {
 // def main() -> None:
 void main() {
     // print(describe(W(None, 1)))
-    std::variant<std::monostate, ::tpy::BigInt, std::string> __tmp_1 = 1;
+    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> __tmp_1 = 1;
     W __tmp_2 = W(std::nullopt, __tmp_1);
     std::cout << describe(__tmp_2) << "\n";
     // print(describe(W("x", None)))
-    std::variant<std::monostate, ::tpy::BigInt, std::string> __tmp_3 = std::monostate{};
+    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> __tmp_3 = std::monostate{};
     W __tmp_4 = W("x", __tmp_3);
     std::cout << describe(__tmp_4) << "\n";
     // print(describe(W("x", 1)))
-    std::variant<std::monostate, ::tpy::BigInt, std::string> __tmp_5 = 1;
+    ::tpy::Union<std::monostate, ::tpy::BigInt, std::string> __tmp_5 = 1;
     W __tmp_6 = W("x", __tmp_5);
     std::cout << describe(__tmp_6) << "\n";
 }
