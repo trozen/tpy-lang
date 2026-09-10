@@ -66,7 +66,7 @@ struct Cat {
     explicit Cat(std::string_view n);
 
     // def name(self) -> String:
-    std::string name() const;
+    ::tpy::String name() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cat";
 };
 
@@ -147,7 +147,7 @@ inline std::string_view Dog::name() const {
 inline Cat::Cat(std::string_view n) : _name(n) {}
 
 // def name(self) -> String:
-inline std::string Cat::name() const {
+inline ::tpy::String Cat::name() const {
     // return self._name
     return this->_name;
 }

@@ -16,7 +16,7 @@ void main();
 // class H:
 struct H {
     // buf: bytearray
-    std::vector<uint8_t> buf;
+    ::tpy::ByteArray buf;
     // xs: list[Int32]
     std::vector<int32_t> xs;
 
@@ -24,7 +24,7 @@ struct H {
     H();
 
     // def view(self) -> bytearray:
-    std::vector<uint8_t>& view();
+    ::tpy::ByteArray& view();
 
     // def nums(self) -> list[Int32]:
     std::vector<int32_t>& nums();
@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 
 
 // def __init__(self) -> None:
-inline H::H() : buf(::tpy::bytes_copy(::tpy::bytes_literal("ab", 2))), xs(std::vector<int32_t>{1, 2}) {}
+inline H::H() : buf(::tpy::ByteArray(::tpy::bytes_literal("ab", 2))), xs(std::vector<int32_t>{1, 2}) {}
 
 // def view(self) -> bytearray:
-inline std::vector<uint8_t>& H::view() {
+inline ::tpy::ByteArray& H::view() {
     // return self.buf  # tpyc: ok
     return this->buf;
 }

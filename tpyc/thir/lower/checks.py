@@ -107,7 +107,6 @@ from ...type_def_registry import (
     is_fixed_int_type,
     is_dict_view,
     is_float32_type,
-    has_view_param_form,
     is_list,
     is_set,
     is_span,
@@ -745,7 +744,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         if bt is None or not is_bytes_type(bt):
             return note_detail("container_lit.elem.bytes") if note else False
         if not threaded and not isinstance(e, TpyBytesLiteral):
-            # Mirrors the un-threaded str rule: the `::tpy::bytes_copy` wrap
+            # Mirrors the un-threaded str rule: the `::tpy::Bytes` wrap
             # fires only at threaded positions (a bytes literal renders its
             # owned form target-free, so it stays admitted).
             return note_detail("container_lit.nested_view") if note else False
@@ -2232,13 +2231,13 @@ def _bytearray_value_slot_init(init: 'TpyExpr | None',
                                vtype: 'TpyType | None', analyzer) -> bool:
     """A `bytearray` VALUE decl slot for a `bytesview_to_bytearray`-coerced
     view source: the materialize copy,
-    `std::vector<uint8_t> ba = ::tpy::bytes_copy(<view>);`. NAME inits never
-    reach the value ladder (the alias cascade binds them REF_ALIAS), and the
-    bytes-param IDENTITY coercion keeps rejecting -- see BUGS.md -- so the
-    coerce leg routes only through the materialize disposition. The owned
-    dunder RVALUE (`bb = ba + b"cd"`) is the shared all-rvalue container
-    select's (`_container_rvalue_select`), which renders the same fresh
-    vector into the same slot."""
+    `::tpy::ByteArray ba = ::tpy::ByteArray(<view>);`. NAME inits never
+    reach the value ladder (the alias cascade binds them REF_ALIAS), and a
+    `bytes` source at this slot is a sema error (it would alias under CPython
+    and copy here), so the coerce leg routes only through the materialize
+    disposition. The owned dunder RVALUE (`bb = ba + b"cd"`) is the shared
+    all-rvalue container select's (`_container_rvalue_select`), which renders
+    the same fresh buffer into the same slot."""
     t = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype)))
          if vtype is not None else None)
     if t is None or not _bytes_family_ref(t) or init is None:
@@ -2246,8 +2245,8 @@ def _bytearray_value_slot_init(init: 'TpyExpr | None',
     if (isinstance(init, TpyCoerce)
             and init.coercion.name == "bytesview_to_bytearray"
             # The designated chokepoint answers "does this coerce
-            # materialize" -- and keeps the wrong-code identity coercion
-            # (bytes_to_bytearray -> "identity") out by construction.
+            # materialize", so a future non-materializing bytearray coerce
+            # cannot reach this render by accident.
             and _coerce_disposition(init) == "materialize"):
         return bool(_witness("decl.bytearray_view_copy"))
     return False
@@ -2776,22 +2775,22 @@ def _bytes_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     """The bytes twin of `_str_field_write_ok`: an owned `bytes` field write
     `recv.field = <bytes literal | bytes name>` off an F1-record receiver.
     Unlike str, `std::vector<uint8_t>` has no span ctor, so a view (span)
-    source copies via the S6 `::tpy::bytes_copy(...)` STORAGE convert (the
+    source copies via the S6 `::tpy::Bytes(...)` STORAGE convert (the
     lowering picks it off the source form) -- an owned source (bytes literal /
     owned local) lands bare. `bytearray` (a reference type) is excluded by
     `is_bytes_type`. A NAME declared `bytes | None` and narrowed to `bytes`
     here joins the plain name row: its deref is a view either way, so it
-    takes the same `bytes_copy` convert -- never a move, which is what keeps
+    takes the same `Bytes(x)` convert -- never a move, which is what keeps
     the str twin of this row OUT of `_str_field_write_ok`. A bytes SLICE
     source (`self.b = x[1:3]`) mirrors the str slice row, but lands on the
     OTHER side of the split the str docstring names: the sema coerce carries
     no materialization for bytes, so the view-form slice takes this family's
-    ordinary `bytes_copy` STORAGE convert.
+    ordinary `Bytes(x)` STORAGE convert.
 
     A bytes BINOP (`self.buf = self.buf + chunk`) and a bytes-returning CALL
     both land on the same rule as every other source here: the family's
     verdict is read off the lowered source's FORM, so an owned concat rvalue
-    assigns bare and a view-returning call takes the `bytes_copy` convert. The
+    assigns bare and a view-returning call takes the `Bytes(x)` convert. The
     two shapes need no row of their own beyond admission."""
     if not _field_receiver_or_unbound_self_ok(stmt.target, declared, analyzer):
         return False
@@ -3230,7 +3229,7 @@ def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
             or _value_opt_scalar(elem_t, analyzer) is not None
             # An owned-bytes element/value slot (`out["k"] = a` on
             # `dict[str, bytes]`): the view-form source takes the S6
-            # `::tpy::bytes_copy(...)` materialize, the bytes twin of the
+            # `::tpy::Bytes(...)` materialize, the bytes twin of the
             # owned-str `std::string(v)` chokepoint in the value tail.
             or _resolved_bytes_value(elem_t, analyzer) is not None
             # A value-repr Optional[str/bytes] value slot (`out["k"] = a`
@@ -7602,37 +7601,6 @@ def _bytes_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
             and _own_viewfam_param(locals_.get(src.name)) is None)
 
 
-def _viewfam_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
-                              param_names: 'set[str] | frozenset[str]',
-                              analyzer) -> bool:
-    """Either view family's BORROW-form source -- the union of
-    `_str_view_form_source` and `_bytes_view_form_source`, for the sinks that
-    care only that the read is a view and not which family's."""
-    return (_str_view_form_source(a, locals_, param_names, analyzer)
-            or _bytes_view_form_source(a, locals_, param_names, analyzer))
-
-
-def _generic_slot_view_form_arg(a: TpyExpr, resolved: 'TpyType | None',
-                                locals_: dict[str, TpyType],
-                                param_names: 'set[str] | frozenset[str]',
-                                analyzer) -> bool:
-    """A VIEW-form source at a generic `T` slot the instantiation resolves to
-    an OWNING view-family type (`has_view_param_form`): the C++ slot is
-    spelled off the storage type (`param_val_or_ref_t<std::string>` ->
-    `const std::string&`, a readonly method's `const T&`,
-    `param_val_or_ref_t<std::vector<uint8_t>>` -> a mutable ref), so the
-    view does not bind and the argument owes an owned materialization.
-
-    The concrete twin has no such gap -- a `str` param IS `std::string_view`
-    -- which is why the slot's genericity, not the family, is the key."""
-    # Through the pending-view resolver: an inference-pending slot has no
-    # C++ spelling yet, and only the two view families can answer at all.
-    rv = _resolved_viewfam_value(resolved, analyzer)
-    if rv is None or not has_view_param_form(rv):
-        return False
-    return _viewfam_view_form_source(a, locals_, param_names, analyzer)
-
-
 def _borrowing_frame_callee(fi) -> bool:
     """Does this callee's FRAME borrow an argument slot past the statement,
     so a prvalue bound only for the full expression dangles on resume?
@@ -7651,20 +7619,41 @@ def _borrowing_frame_callee(fi) -> bool:
     finalized during codegen (`_prescan_for_src_embedding` may force a
     simple generator resumable). So every generator factory is treated as
     borrowing, which costs a resumable one a temp it does not need --
-    TODO.md carries that residue and the two ways to remove it."""
-    return bool(fi is not None and getattr(fi, "is_generator", False))
+    TODO.md carries that residue and the two ways to remove it.
+
+    The fact is the CALLEE's, so it must not depend on how the call was
+    resolved. `is_generator` answers for a plain or generic callee; an
+    @overload-ed one carries False on every per-signature fi while the IMPL is
+    the generator, and there the DECLARED `typing.Iterator` return answers --
+    sema forbids that return on a non-generator plain-TPy function, so nothing
+    else can wear it. `@native` / `@cpp_template` callees are excluded: their
+    `Iterator[T]` returns are C++ combinator objects (map / zip / filter /
+    iter), not frames. Same rule and the same exclusions as
+    `_genfac_like_call`, one level down (an fi, not a call), so the two cannot
+    drift."""
+    if fi is None:
+        return False
+    if getattr(fi, "is_generator", False):
+        return True
+    if (getattr(fi, "native_function", False)
+            or getattr(fi, "cpp_template", None)
+            or getattr(fi, "is_stub", False)):
+        return False
+    rt = getattr(fi, "return_type", None)
+    if not isinstance(rt, TpyType):
+        return False
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    return (isinstance(rt, NominalType) and rt.is_protocol
+            and rt.qualified_name() == "typing.Iterator")
 
 
 class _GenericArgSlot(NamedTuple):
     """What a bare-`T` argument slot owes, answered once from the (source,
     resolved slot, callee) triple.
 
-    `slot` is the peeled resolved type a temp would declare, `materialize`
-    whether the source is a view at a slot spelled off the storage type (so
-    the temp's init is the owned copy, not a binding aid), and `needs_temp`
+    `slot` is the peeled resolved type a temp would declare and `needs_temp`
     whether anything is owed at all."""
     slot: TpyType
-    materialize: bool
     needs_temp: bool
 
 
@@ -7688,13 +7677,15 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
     rvalue at all. Deciding on the OPEN T instead makes every instantiation
     pay the reference-typed one's temp.
 
-    Two things still owe a temp at a value-typed instantiation. The owned
-    materialization (`materialize`): a view-form source at a slot spelled
-    off the storage type is a COPY the render cannot drop, not a binding
-    aid. And a callee whose frame BORROWS the slot
-    (`_borrowing_frame_callee`), where the temp is what keeps the borrowed
-    object alive -- the same rule `_container_call_temp_arg` applies at
-    concrete readonly-ref slots.
+    ONE thing still owes a temp at a value-typed instantiation: a callee whose
+    frame BORROWS the slot (`_borrowing_frame_callee`), where the temp is what
+    keeps the borrowed object alive -- the same rule
+    `_container_call_temp_arg` applies at concrete readonly-ref slots. A
+    view-form source owes nothing at ANY `T` slot: each of the four str/bytes
+    types has its own C++ type, so `param_val_or_ref_t<T>` resolves to the same
+    view the monomorphic twin's slot spells, and a const slot spells
+    `readonly_form_t<T>`, which is that form const-qualified only where it is a
+    mutable reference.
 
     The verdict used to be re-asked as two separate predicates at each
     seam, which is how they could drift. Each seam still owns what is
@@ -7708,11 +7699,8 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
     slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
     if contains_type_param(slot):
         return None
-    materialize = _generic_slot_view_form_arg(a, slot, locals_ or {},
-                                             param_names, analyzer)
     return _GenericArgSlot(
-        slot, materialize,
-        materialize or borrowing_frame or not slot.is_value_type())
+        slot, borrowing_frame or not slot.is_value_type())
 
 
 def _str_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
@@ -7787,14 +7775,17 @@ def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
                           analyzer) -> bool:
     """The bytes twin of `_str_owned_slot_arg`, VIEW-form sources only (the
     literal face is its own row): a span-form source at an `Own[bytes]`
-    container element slot materializes `::tpy::bytes_copy(x)` via the S6
+    container element slot materializes `::tpy::Bytes(x)` via the S6
     view->owned THIRFormConvert. Three faces: a bytes PARAM name (the
     signature spells `std::span<const uint8_t>`, so its read is BORROW --
     including a narrowed `bytes | None` param whose deref reads `(*b)`), a
     `BytesView`-resolved local, and a SLICE rvalue arriving under the sema
     `bytesview_to_bytes` coerce (the coerce IS that copy; the render arm
     peels it and wraps the view slice). An owned bytes LOCAL is STORAGE and
-    keeps riding the copy+move-temp cascade."""
+    keeps riding the copy+move-temp cascade.
+
+    A `bytearray` source is NOT one of them: an owning `bytes` sink handed a
+    bytearray is refused in sema, which asks for the explicit `bytes(...)`."""
     w = _plain_own_slot(ptype)
     if w is None or not is_bytes_type(unwrap_readonly(w)):
         return False
@@ -7834,7 +7825,7 @@ def _bytes_owned_call_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
                                  analyzer) -> bool:
     """An owned-bytes CALL rvalue at an `Own[bytes]` slot binds BARE
     (`self._chunks.append(bytes(initial))` ->
-    `push_back(::tpy::bytes_copy((*initial)))`): a prvalue has nothing to
+    `push_back(::tpy::Bytes((*initial)))`): a prvalue has nothing to
     move from and needs no conversion, so the Own cascade emits
     no temp -- the rvalue face of `_bytes_owned_name_arg`. A VIEW-returning
     callee is excluded: that source still owes the view->owned materialize,
@@ -9092,7 +9083,7 @@ def _container_field_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
         return False
     # Same reference-container family on both sides -- the TypeDef identity,
     # because it is the family that fixes the C++ spelling the bare member
-    # read has to bind (`bytes(self.buffer)` -> `bytes_copy(this->buffer)`).
+    # read has to bind (`bytes(self.buffer)` -> `Bytes(this->buffer)`).
     # `bytearray` is NOT paired with `bytes`: that crossing is the view
     # coerce, which arrives as its own node.
     ok = (_f1_container_ref(ftu) and _f1_container_ref(pt)
@@ -11830,16 +11821,9 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
                 and _witness("call.generic_open_slot_lambda")):
             return True
         return note_detail("call.generic_arg_slot")
-    # A VIEW-form source at a slot resolved to an OWNING view-family type
-    # hoists the materialized owned temp, AHEAD of every pass-through row
-    # below: those bind an lvalue of the slot's own C++ type, which a view is
-    # not. Keyed on the readonly-aware slot shape, so `readonly[T]` -- whose
-    # C++ is the same `const T&` binding -- takes it too.
     gslot = _generic_arg_slot(
         a, ptype, resolved, locals_, req.param_names, analyzer,
         borrowing_frame=_borrowing_frame_callee(req.overload))
-    if gslot is not None and gslot.materialize:
-        return temps_ok or note_detail("call.generic_arg_shape")
     if isinstance(ptype, TypeParamRef):
         # A row hoisting a temp is flush-gated; one whose INSTANTIATED slot
         # binds the rvalue outright renders inline, so it needs no flush
@@ -11878,12 +11862,15 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
                 # below already reaches through `_shared_pass_through_arg`.
                 or _value_tuple_pass_through_arg(a, resolved, locals_,
                                                  analyzer)
-                # A str-slice NAME into a str-resolved T slot passes bare
-                # (`get_length<std::string_view>(msg)`); the pending-aware
-                # classifier resolves an inference-pending slot form.
-                or (_resolved_str_value(resolved, analyzer) is not None
-                    and _resolved_str_value(analyzer.get_expr_type(a),
-                                            analyzer) is not None)
+                # A view-family NAME into a slot resolved into the same
+                # family passes bare (`get_length<std::string_view>(msg)`,
+                # `has_item<::tpy::Bytes>(keys, k)`): the slot resolves to the
+                # twin's own parameter form, which the name's read already is.
+                # The pending-aware classifier resolves an inference-pending
+                # slot form.
+                or (_resolved_viewfam_value(resolved, analyzer) is not None
+                    and _resolved_viewfam_value(analyzer.get_expr_type(a),
+                                                analyzer) is not None)
                 # A NESTED value-tuple NAME (`less(a, b)` on
                 # `((1, 2), "x")` at a bounded T): the recursive value
                 # family binds the ref slot bare like the flat row.
@@ -11895,16 +11882,17 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
                     is not None
                     and _witness("call.generic_nested_tuple_name"))):
             return True
-        # Rvalue sources at a str-resolved slot (a str literal / by-value str
-        # call) and `None` into a `std::monostate` slot: both instantiations
-        # are value-typed, so the slot is `const T&` and the rvalue renders
-        # inline -- `_rvalue_ok` re-asks per instantiation and flush-gates
-        # only where a temp is still owed. Record rvalues stay out (a
-        # covariant upcast declares that temp with the CHILD type, a render
-        # this row does not build).
+        # Rvalue sources at a view-family-resolved slot (a str / bytes literal
+        # or a by-value call of either family) and `None` into a
+        # `std::monostate` slot: those instantiations are value-typed, so the
+        # slot is the twin's own parameter form and the rvalue renders inline
+        # -- `_rvalue_ok` re-asks per instantiation and flush-gates only where
+        # a temp is still owed. Record rvalues stay out (a covariant upcast
+        # declares that temp with the CHILD type, a render this row does not
+        # build).
         lit = _peel_coerce(a)
-        if _resolved_str_value(resolved, analyzer) is not None and (
-                isinstance(lit, TpyStrLiteral)
+        if _resolved_viewfam_value(resolved, analyzer) is not None and (
+                isinstance(lit, (TpyStrLiteral, TpyBytesLiteral))
                 or (isinstance(lit, (TpyCall, TpyMethodCall))
                     and is_rvalue_source(analyzer, lit))):
             return _rvalue_ok()
@@ -11993,7 +11981,7 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("native_own_scalar_lvalue", _r_native_own_scalar_lvalue),
         _ArgRow("native_iterable_container", _r_native_iterable_container),
         # A container FIELD read binding a plain container ref slot
-        # (`bytes(self.buffer)` -> `::tpy::bytes_copy(this->buffer)`): the
+        # (`bytes(self.buffer)` -> `::tpy::Bytes(this->buffer)`): the
         # member read binds the slot bare, exactly as the bare-NAME twin
         # already in the shared row. Same cell the marker families carry.
         _ArgRow("container_field_pass", _r_container_field_pass),
@@ -12104,7 +12092,7 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
                 face="arg.bytes_view_literal"),
         # ... and its VIEW-form sibling (the S6 witness arrived):
         # a bytes param / narrowed deref / view slice at the same slot
-        # takes the `::tpy::bytes_copy(x)` materialize convert.
+        # takes the `::tpy::Bytes(x)` materialize convert.
         _ArgRow("bytes_owned_slot", _r_bytes_owned_slot),
         # ... and the OWNED-form source at the same slot, which needs no
         # convert and no copy temp: the cpp_template callee binds the
@@ -12685,7 +12673,7 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # The S1/S6 view->owned convert rows, free-call twins of the
         # method ladder's: a VIEW-form str/bytes source at an `Own[str]`
         # / `Own[bytes]` slot materializes the inline owned copy
-        # (`take(std::string(x))` / `take_bytes(::tpy::bytes_copy(y))`)
+        # (`take(std::string(x))` / `take_bytes(::tpy::Bytes(y))`)
         # -- the view->owned convert, which runs BEFORE the
         # move/copy-temp cascade, so these rows sit above it too.
         _ArgRow("str_owned_slot", _r_str_owned_slot),
@@ -14132,6 +14120,53 @@ def _tparam_name_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
         au = unwrap_readonly(au.wrapped)
     return isinstance(au, TypeParamRef) and au.name == pt.name
 
+def _open_tparam_param_read(a: TpyExpr, locals_: 'dict[str, TpyType] | None',
+                            param_names: 'AbstractSet[str]') -> bool:
+    """A bare-`T` value read from a PARAMETER of the enclosing generic body.
+
+    Such a param is spelled `param_val_or_ref_t<T>`, so at an instantiation
+    whose parameter form is a distinct view over its storage form the read is
+    NOT the storage form a `T` sink spells -- unlike a `T` LOCAL, which is
+    declared as the storage form and needs no construction. An `Own[T]` param
+    is out too: `own_param_t<T>` already IS the storage form."""
+    if not isinstance(a, TpyName) or a.name == "self":
+        return False
+    if a.name not in param_names:
+        return False
+    at = (locals_ or {}).get(a.name)
+    if not isinstance(at, TpyType):
+        return False
+    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
+    return isinstance(au, TypeParamRef)
+
+
+def _open_tparam_storage_slot(slot: 'TpyType | None') -> 'TypeParamRef | None':
+    """The bare `T` behind a `T`-STORAGE slot, or None.
+
+    A BARE `T` parameter is deliberately not one: that slot is
+    `param_val_or_ref_t<T>`, the instantiation's own parameter form, which the
+    caller's read already is -- forwarding a `T` param into another generic's
+    `T` slot needs no construction, and constructing there would hand a prvalue
+    to a `T&` slot at a reference instantiation. `own_only=False` is for the
+    RETURN slot, whose `val_or_ref_t<T>` spelling IS the storage form."""
+    if not isinstance(slot, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    if not isinstance(u, OwnType):
+        return None
+    u = unwrap_readonly(u.wrapped)
+    return u if isinstance(u, TypeParamRef) else None
+
+
+def _open_tparam_return_slot(slot: 'TpyType | None') -> 'TypeParamRef | None':
+    """The bare `T` behind a `val_or_ref_t<T>` RETURN slot, or None. `Own[T]`
+    is excluded by the caller: `own_return_t<T>` is already the storage form."""
+    if not isinstance(slot, TpyType):
+        return None
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    return u if isinstance(u, TypeParamRef) else None
+
+
 def _none_unit_arg(a: TpyExpr, ptype: 'TpyType | None') -> 'NoneType | None':
     """A `None` literal into a unit slot (`Own[None]` / bare `None` -- a
     generic call's substituted T=None param): renders the bare
@@ -14200,11 +14235,8 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
     value-type resolution passes bare through the scalar rows instead, and
     a still-open T (a generic body's own T) stays out.
 
-    ONE value-typed resolution still hoists: an OWNING view-family type
-    (`has_view_param_form`) fed a view-form source. There the slot is
-    spelled off the storage type while the source renders as the view, so
-    the pass-through rows' lvalue bind does not exist. Both halves are
-    `_generic_arg_slot`, the verdict the free-callee seam takes too."""
+    `_generic_arg_slot` is the verdict, the same one the free-callee seam
+    takes."""
     if method_fi is None or idx >= len(method_fi.params):
         return None
     g = _generic_arg_slot(a, method_fi.params[idx].type, ptype, locals_,

@@ -27,9 +27,9 @@ std::array<int32_t, 2> make_pair() {
 }
 
 // def make_blob() -> Own[bytearray]:
-std::vector<uint8_t> make_blob() {
+::tpy::ByteArray make_blob() {
     // return bytearray(b"abc")
-    return ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    return ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
 }
 
 // def make_tags() -> Own[set[Int32]]:
@@ -77,11 +77,11 @@ void main() {
     // print(pairs["p"][0], pairs["p"][1])
     std::cout << ::tpy::__getitem__(::tpy::__getitem__(pairs, "p"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(pairs, "p"), 1) << "\n";
     // blobs: dict[str, bytearray] = {}
-    ::tpy::ordered_map<std::string, std::vector<uint8_t>> blobs = ::tpy::ordered_map<std::string, std::vector<uint8_t>>();
+    ::tpy::ordered_map<std::string, ::tpy::ByteArray> blobs = ::tpy::ordered_map<std::string, ::tpy::ByteArray>();
     // blobs["b"] = make_blob()     # tpyc: ok -- a bytearray-valued slot
     ::tpy::__setitem__(blobs, "b", make_blob());
     // owned = bytearray(b"de")
-    std::vector<uint8_t> owned = ::tpy::bytes_copy(::tpy::bytes_literal("de", 2));
+    ::tpy::ByteArray owned = ::tpy::ByteArray(::tpy::bytes_literal("de", 2));
     // blobs["n"] = owned           # tpyc: ok -- the NAME source, moved at last use
     ::tpy::__setitem__(blobs, "n", std::move(owned));
     // tags: dict[str, set[Int32]] = {}

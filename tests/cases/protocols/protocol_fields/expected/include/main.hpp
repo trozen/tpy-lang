@@ -137,7 +137,7 @@ struct Wrapper {
 
     // def __init__(self, val: T):
     Wrapper() = default;
-    explicit Wrapper(const T& val) : inner(val) {}
+    explicit Wrapper(::tpy::readonly_form_t<T> val) : inner(val) {}
 
     // def get_inner_value(self) -> Int32:
     int32_t get_inner_value() const {

@@ -1,6 +1,6 @@
 # Value-repr Optional[bytes] routed through THIR (the bytes twin of Optional[str]):
 # the None-test and the return sinks (None -> nullopt, bytes-literal -> owned,
-# param -> the view->owned bytes_copy shim). Truthiness/print stay AST (BUGS.md).
+# param -> the view->owned `bytes` constructor). Truthiness/print stay AST (BUGS.md).
 
 
 def is_absent(b: bytes | None) -> bool:

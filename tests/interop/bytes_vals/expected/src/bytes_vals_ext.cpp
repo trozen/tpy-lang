@@ -11,7 +11,7 @@ PyObject *bytes_vals__echo_pywrap(PyObject *self, PyObject *args, PyObject *kwar
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:echo", __kwlist, &a0)) return nullptr;
     try {
-        std::vector<uint8_t> __p0 = ::tpy::interop::from_py<std::vector<uint8_t>>(a0);
+        ::tpy::Bytes __p0 = ::tpy::interop::from_py<::tpy::Bytes>(a0);
         return ::tpy::interop::to_py(::tpyapp::bytes_vals::echo(__p0));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -41,8 +41,8 @@ PyObject *bytes_vals__cat_pywrap(PyObject *self, PyObject *args, PyObject *kwarg
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:cat", __kwlist, &a0, &a1)) return nullptr;
     try {
-        std::vector<uint8_t> __p0 = ::tpy::interop::from_py<std::vector<uint8_t>>(a0);
-        std::vector<uint8_t> __p1 = ::tpy::interop::from_py<std::vector<uint8_t>>(a1);
+        ::tpy::Bytes __p0 = ::tpy::interop::from_py<::tpy::Bytes>(a0);
+        ::tpy::Bytes __p1 = ::tpy::interop::from_py<::tpy::Bytes>(a1);
         return ::tpy::interop::to_py(::tpyapp::bytes_vals::cat(__p0, __p1));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);
@@ -59,7 +59,7 @@ PyObject *bytes_vals__shout_pywrap(PyObject *self, PyObject *args, PyObject *kwa
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:shout", __kwlist, &a0)) return nullptr;
     try {
-        std::vector<uint8_t> __p0 = ::tpy::interop::from_py<std::vector<uint8_t>>(a0);
+        ::tpy::Bytes __p0 = ::tpy::interop::from_py<::tpy::Bytes>(a0);
         return ::tpy::interop::to_py(::tpyapp::bytes_vals::shout(__p0));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);

@@ -42,7 +42,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(const T& value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
@@ -66,7 +66,7 @@ struct Box : Animal {
 
     // def __init__(self, name: str, value: T) -> None:
     Box() = default;
-    explicit Box(std::string_view name, const T& value) : value(value) {
+    explicit Box(std::string_view name, ::tpy::readonly_form_t<T> value) : value(value) {
         // self.name = name
         this->name = name;
     }
@@ -93,7 +93,7 @@ struct Wrapper : Container<int32_t> {
 
     // def __init__(self, value: Int32, extra: U) -> None:
     Wrapper() = default;
-    explicit Wrapper(int32_t value, const U& extra) : extra(extra) {
+    explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra) : extra(extra) {
         // self.value = value
         this->value = value;
     }

@@ -29,9 +29,9 @@ bool is_empty(std::span<const uint8_t> data) {
 }
 
 // def copy_bytes(data: bytes) -> bytes:
-std::vector<uint8_t> copy_bytes(std::span<const uint8_t> data) {
+::tpy::Bytes copy_bytes(std::span<const uint8_t> data) {
     // return bytes(data)
-    return ::tpy::bytes_copy(data);
+    return ::tpy::Bytes(data);
 }
 
 // def main() -> None:
@@ -47,7 +47,7 @@ void main() {
     // print(is_empty(b""))
     std::cout << ::tpy::print_bool(is_empty(std::span<const uint8_t>{})) << "\n";
     // copied = copy_bytes(b)
-    std::vector<uint8_t> copied = copy_bytes(b);
+    ::tpy::Bytes copied = copy_bytes(b);
     // print(copied)
     std::cout << ::tpy::BytesPrinter(copied) << "\n";
     // print(copied == b)

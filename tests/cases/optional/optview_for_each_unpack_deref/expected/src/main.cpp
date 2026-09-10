@@ -11,7 +11,7 @@ int32_t sink(std::optional<std::string_view> v) {
 }
 
 // def use(rows: list[tuple[bytes | None, str | None]]) -> Int32:
-int32_t use(const std::vector<std::tuple<std::optional<std::vector<uint8_t>>, std::optional<std::string>>>& rows) {
+int32_t use(const std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>& rows) {
     // n = 0
     int32_t n = 0;
     // for body, ctype in rows:  # the unpacked optional-view elements
@@ -22,7 +22,7 @@ int32_t use(const std::vector<std::tuple<std::optional<std::vector<uint8_t>>, st
         auto&& __for_tup_0 = *__beg_0;
         // for body, ctype in rows:  # the unpacked optional-view elements
         const auto& __tup_1 = __for_tup_0;
-        std::optional<std::vector<uint8_t>> body = std::get<0>(__tup_1);
+        std::optional<::tpy::Bytes> body = std::get<0>(__tup_1);
         std::optional<std::string> ctype = std::get<1>(__tup_1);
         // if ctype is not None:
         if ((ctype.has_value())) {
@@ -39,7 +39,7 @@ int32_t use(const std::vector<std::tuple<std::optional<std::vector<uint8_t>>, st
 // def main() -> None:
 void main() {
     // rows: list[tuple[bytes | None, str | None]] = []
-    std::vector<std::tuple<std::optional<std::vector<uint8_t>>, std::optional<std::string>>> rows = std::vector<std::tuple<std::optional<std::vector<uint8_t>>, std::optional<std::string>>>{};
+    std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>> rows = std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>{};
     // print(use(rows))
     std::cout << use(rows) << "\n";
 }

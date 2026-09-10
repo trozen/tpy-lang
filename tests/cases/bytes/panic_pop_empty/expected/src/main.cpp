@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // ba = bytearray()
-    std::vector<uint8_t> ba = std::vector<uint8_t>();
+    ::tpy::ByteArray ba = ::tpy::ByteArray();
     // ba.pop()
     ::tpy::bytearray_pop(ba);
 }

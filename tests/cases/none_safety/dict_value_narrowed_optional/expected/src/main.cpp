@@ -27,11 +27,11 @@ void store_str(std::optional<std::string_view> a) {
 // def store_bytes(a: bytes | None) -> None:
 void store_bytes(std::optional<std::span<const uint8_t>> a) {
     // out: dict[str, bytes] = {}
-    ::tpy::ordered_map<std::string, std::vector<uint8_t>> out = ::tpy::ordered_map<std::string, std::vector<uint8_t>>();
+    ::tpy::ordered_map<std::string, ::tpy::Bytes> out = ::tpy::ordered_map<std::string, ::tpy::Bytes>();
     // if a is not None:
     if ((a.has_value())) {
         // out["k"] = a
-        ::tpy::__setitem__(out, "k", ::tpy::bytes_copy((*a)));
+        ::tpy::__setitem__(out, "k", ::tpy::Bytes((*a)));
     }
     // print(len(out), len(out["k"]) if a is not None else 0)
     std::cout << ::tpy::__len__(out) << " " << (((a.has_value())) ? (::tpy::__len__(::tpy::__getitem__(out, "k"))) : (0)) << "\n";

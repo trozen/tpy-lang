@@ -393,7 +393,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # Own[Optional[..]] ctor slot: the
                                     # inline move materialization
     "arg.own_bytes_slot",           # view-form bytes at Own[bytes] elem slot
-                                    # -> `::tpy::bytes_copy(x)`
+                                    # -> `::tpy::Bytes(x)`
     "call.isinstance_static_value", # tparam isinstance trait disjunction at
                                     # a value position
     "call.isinstance_union_value",  # union-subject holds_alternative chain
@@ -716,9 +716,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # trailing default args (defaults ride the
                                     # emitted C++ signature)
     # Ctor MIL view-family field inits (lowering; the per-family renders --
-    # bare str/StrView source vs the bytes view->owned bytes_copy convert).
+    # bare str/StrView source vs the bytes view->owned `Bytes(x)` convert).
     "mil.str_field",                # str/StrView field: bare source render
-    "mil.bytes_field",              # bytes field: bytes_copy wrap / owned bare
+    "mil.bytes_field",              # bytes field: `Bytes(x)` wrap / owned bare
     # Ctor MIL container-field inits (lowering; the shared container-literal
     # machinery at the target-threaded MIL cell, plus the bare
     # container-param copy / Own-param move name row).
@@ -804,7 +804,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "field_write.bytes_narrowed_opt",  # bytes field <- a NAME declared
                                     # `bytes | None`, narrowed here
     "field_write.bytes_slice",      # `self.b = x[1:3]` -- a bytes SLICE value
-                                    # (classifier row; shared bytes_copy emit)
+                                    # (classifier row; shared `Bytes(x)` emit)
     "field_write.bytes_binop",      # `self.b = self.b + c` -- the owned
                                     # concat rvalue (classifier row)
     "field_write.bytes_call",       # `self.b = bytes(...)` -- a bytes-typed
@@ -813,7 +813,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # type param) <- borrow `T*` local
     "field_write.str",
     # Owned bytes FIELD write from a name/literal: a view source copies via
-    # `::tpy::bytes_copy(...)`; an owned source lands bare.
+    # `::tpy::Bytes(...)`; an owned source lands bare.
     "field_write.bytes",
     # Value-storage Optional[record] FIELD write (`std::optional<inner>`) from
     # a record NAME: the bare copy `recv.opt = p;` (optional::operator=) or
@@ -1404,7 +1404,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.tuple_elem",      # `[(1, 2), ...]` -> spelled std::tuple elems
     "containerlit.container_elem",  # nested list element `[[1, 2], [3]]`
     "containerlit.record_elem",     # `[P(1), p]` -- ctor rvalues / record names
-    "containerlit.bytes_elem",      # `[b"a", v]` -- owned render / bytes_copy
+    "containerlit.bytes_elem",      # `[b"a", v]` -- owned render / `Bytes(x)`
     # A list/dict literal at a recursive-union WRAPPER decl slot: the
     # non-generic `AliasRef` form and its generic alias-INSTANCE sibling.
     "decl.ru_wrapper_literal",
@@ -1939,7 +1939,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # the bytes family, spelled at the family's owned type.
     "call.copy_viewfam",
     # ... and the correction inside it: an owned-resolved bytes source that
-    # RENDERS as a span (a `bytes` param) -> `::tpy::bytes_copy(b)`, since
+    # RENDERS as a span (a `bytes` param) -> `::tpy::Bytes(b)`, since
     # the owned vector has no span ctor.
     "call.copy_bytes_view_source",
     # `copy(big)` of a scalar NAME -> `::tpy::BigInt(big)` (the same
@@ -2375,6 +2375,16 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.bitwise",
     "binop.container_eq",           # same-type container ==/!= -> the bare
                                     # operator (the @dataclass __eq__ chain)
+    "containerlit.open_tparam_elem",  # a `T` PARAM at a `T` element slot ->
+                                    # `::tpy::param_to_storage<T>(v)`
+    "arg.open_tparam_storage",      # a `T` PARAM at an `Own[T]` element slot
+                                    # -> `::tpy::param_to_storage<T>(v)`
+    "return.open_tparam_param",     # `return v` of a `T` PARAM at a
+                                    # `val_or_ref_t<T>` return ->
+                                    # `::tpy::param_to_return<T>(v)`
+    "binop.open_tparam_eq",         # `x == v` between two open `T` values ->
+                                    # `::tpy::eq`, form-neutral across the
+                                    # instantiation's param/storage spellings
     # A both-literal int binop folded in the target-less BigInt context
     # (`2**63 - 1` -> the folded BigInt-targeted literal render).
     "binop.literal_fold",
@@ -2785,7 +2795,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # element -> the nullopt STORAGE store
     "setitem.optview_whole",        # whole Optional[str/bytes] value store
     "setitem.record_tuple_call",    # record-tuple call value: tuple_to_storage
-    "setitem.bytes_owned_copy",     # view-form bytes source -> bytes_copy(...)
+    "setitem.bytes_owned_copy",     # view-form bytes source -> Bytes(...)
     "setitem.unit_none",            # `d[k] = None` at a unit value slot
                                     # -> the monostate STORAGE literal
     "ctor.protocol_union_arg",      # record/container NAME into an
@@ -3178,7 +3188,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the plain VALUE position
     "decl.none_unit_slot",          # None-annotated decl: monostate copy
     "decl.bytearray_view_copy",     # bytearray slot from a coerced view:
-                                    # the materialize bytes_copy
+                                    # the materialize `Bytes(x)`
     "field.none_unit_write",        # NoneType field write: bare assign
     "mil.none_unit",                # ctor MIL None field: slot(monostate{})
     "top_level.global_no_init",     # annotation-only global: emits nothing

@@ -46,7 +46,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__::__next
 
 
 // def __iter__(self) -> Iterator[bytes]:
-std::expected<std::vector<uint8_t>, ::tpy::StopIteration> __gen_BytesIO___iter__::__next__() {
+std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_0;
@@ -81,7 +81,7 @@ std::expected<std::vector<uint8_t>, ::tpy::StopIteration> __gen_BytesIO___iter__
 
 
 // def __iter__(self) -> Iterator[bytes]:
-std::expected<std::vector<uint8_t>, ::tpy::StopIteration> __gen_BufferedReader___iter__::__next__() {
+std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BufferedReader___iter__::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_0;
@@ -338,7 +338,7 @@ int32_t BytesIO::write(std::span<const uint8_t> data) {
     // # Param `data: bytes` arrives as std::span<const uint8_t>; chunks list
     // # stores owned bytes, so wrap with `bytes(...)` to materialize.
     // owned: bytes = bytes(data)
-    std::vector<uint8_t> owned = ::tpy::bytes_copy(data);
+    ::tpy::Bytes owned = ::tpy::Bytes(data);
     // if self._pos == self._total:
     if ((this->_pos == this->_total)) {
         // self._chunks.append(owned)
@@ -353,18 +353,18 @@ int32_t BytesIO::write(std::span<const uint8_t> data) {
     // self._collapse()
     this->_collapse();
     // buf: bytes = self._chunks[0]
-    std::vector<uint8_t> buf = ::tpy::__getitem__(this->_chunks, 0);
+    ::tpy::Bytes buf = ::tpy::__getitem__(this->_chunks, 0);
     // end: Int32 = self._pos + n
     int32_t end = (::tpy::add_check<int32_t>(this->_pos, n));
     // # bytes slicing: basic_slice returns BytesView; concat needs bytes.
     // # Wrap each slice with bytes(...) so '+' resolves to bytes+bytes.
     // prefix: bytes = bytes(buf[:self._pos])
-    std::vector<uint8_t> prefix = ::tpy::bytes_copy(::tpy::bytes_slice(buf, ::tpy::BasicSlice{std::nullopt, this->_pos}));
+    ::tpy::Bytes prefix = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{std::nullopt, this->_pos}));
     // if end < Int32(len(buf)):
-    std::vector<uint8_t> new_buf;
+    ::tpy::Bytes new_buf;
     if ((end < ::tpy::__len__(buf))) {
         // tail: bytes = bytes(buf[end:])
-        std::vector<uint8_t> tail = ::tpy::bytes_copy(::tpy::bytes_slice(buf, ::tpy::BasicSlice{end, std::nullopt}));
+        ::tpy::Bytes tail = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{end, std::nullopt}));
         // new_buf: bytes = prefix + owned + tail
         new_buf = (::tpy::bytes_concat((::tpy::bytes_concat(prefix, owned)), tail));
     // else:
@@ -383,22 +383,22 @@ int32_t BytesIO::write(std::span<const uint8_t> data) {
 }
 
 // def read(self, size: Int32 = -1) -> bytes:
-std::vector<uint8_t> BytesIO::read(int32_t size) {
+::tpy::Bytes BytesIO::read(int32_t size) {
     // self._check_open()
     this->_check_open();
     // if self._pos >= self._total or size == 0:
     if (((this->_pos >= this->_total) || (size == 0))) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // self._collapse()
     this->_collapse();
     // # `_total - _pos` instead of `_pos + size` avoids Int32 overflow.
     // if size < 0 or size >= self._total - self._pos:
-    std::vector<uint8_t> out;
+    ::tpy::Bytes out;
     if (((size < 0) || (size >= (::tpy::sub_check<int32_t>(this->_total, this->_pos))))) {
         // out: bytes = bytes(self._chunks[0][self._pos:])
-        out = ::tpy::bytes_copy(::tpy::bytes_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{this->_pos, std::nullopt}));
+        out = ::tpy::Bytes(::tpy::bytes_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{this->_pos, std::nullopt}));
         // self._pos = self._total
         this->_pos = this->_total;
     // else:
@@ -406,7 +406,7 @@ std::vector<uint8_t> BytesIO::read(int32_t size) {
         // stop: Int32 = self._pos + size
         int32_t stop = (::tpy::add_check<int32_t>(this->_pos, size));
         // out = bytes(self._chunks[0][self._pos:stop])
-        out = ::tpy::bytes_copy(::tpy::bytes_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{this->_pos, stop}));
+        out = ::tpy::Bytes(::tpy::bytes_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{this->_pos, stop}));
         // self._pos = stop
         this->_pos = stop;
     }
@@ -415,25 +415,25 @@ std::vector<uint8_t> BytesIO::read(int32_t size) {
 }
 
 // def readline(self) -> bytes:
-std::vector<uint8_t> BytesIO::readline() {
+::tpy::Bytes BytesIO::readline() {
     // self._check_open()
     this->_check_open();
     // if self._pos >= self._total:
     if ((this->_pos >= this->_total)) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // self._collapse()
     this->_collapse();
     // buf: bytes = self._chunks[0]
-    std::vector<uint8_t> buf = ::tpy::__getitem__(this->_chunks, 0);
+    ::tpy::Bytes buf = ::tpy::__getitem__(this->_chunks, 0);
     // # Same start-arg gap as str.find: search the suffix and adjust.
     // suffix: bytes = bytes(buf[self._pos:])
-    std::vector<uint8_t> suffix = ::tpy::bytes_copy(::tpy::bytes_slice(buf, ::tpy::BasicSlice{this->_pos, std::nullopt}));
+    ::tpy::Bytes suffix = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{this->_pos, std::nullopt}));
     // rel: Int32 = suffix.find(b"\n")
     int32_t rel = ::tpy::bytes_find(suffix, ::tpy::bytes_literal("\n", 1));
     // if rel < 0:
-    std::vector<uint8_t> out;
+    ::tpy::Bytes out;
     if ((rel < 0)) {
         // out: bytes = suffix
         out = suffix;
@@ -444,7 +444,7 @@ std::vector<uint8_t> BytesIO::readline() {
         // stop: Int32 = self._pos + rel + 1
         int32_t stop = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->_pos, rel)), 1));
         // out = bytes(buf[self._pos:stop])
-        out = ::tpy::bytes_copy(::tpy::bytes_slice(buf, ::tpy::BasicSlice{this->_pos, stop}));
+        out = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{this->_pos, stop}));
         // self._pos = stop
         this->_pos = stop;
     }
@@ -507,11 +507,11 @@ int32_t BytesIO::truncate(int32_t size) {
     // if n == 0:
     if ((n == 0)) {
         // self._chunks = []
-        this->_chunks = std::vector<std::vector<uint8_t>>{};
+        this->_chunks = std::vector<::tpy::Bytes>{};
     // else:
     } else {
         // self._chunks = [bytes(self._chunks[0][:n])]
-        this->_chunks = {::tpy::bytes_copy(::tpy::bytes_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{std::nullopt, n}))};
+        this->_chunks = {::tpy::Bytes(::tpy::bytes_slice(::tpy::__getitem__(this->_chunks, 0), ::tpy::BasicSlice{std::nullopt, n}))};
     }
     // self._total = n
     this->_total = n;
@@ -525,7 +525,7 @@ int32_t BytesIO::truncate(int32_t size) {
 }
 
 // def read(self, size: Int32 = -1) -> bytes:
-std::vector<uint8_t> BufferedReader::read(int32_t size) {
+::tpy::Bytes BufferedReader::read(int32_t size) {
     // self._check_open()
     this->_check_open();
     // if size < 0:
@@ -550,7 +550,7 @@ std::vector<uint8_t> BufferedReader::read(int32_t size) {
 }
 
 // def readline(self, size: Int32 = -1) -> bytes:
-std::vector<uint8_t> BufferedReader::readline(int32_t size) {
+::tpy::Bytes BufferedReader::readline(int32_t size) {
     // self._check_open()
     this->_check_open();
     // idx = self._buf.find(b"\n")

@@ -123,17 +123,17 @@ The class-level `@native(name)` is enough for both `MyClass(args)` (call form) a
 **Factory-style constructors (`@native("factory", function=True)` on `__init__`).** When the Python class type doesn't have a directly-callable C++ constructor and instances are produced by a free-function factory, declare each constructor stub with its own `@native(..., function=True)`. The `function=True` flag tells codegen to emit a free-function call (`factory(args)`) instead of treating the name as a class type:
 
 ```python
-# `bytes(...)` lowers to a factory call rather than vector construction
-@native("std::vector<uint8_t>")
+# a size argument has no matching buffer constructor, so it names a factory
+@native("::tpy::Bytes")
 class bytes:
-    @native("tpy::bytes_copy", function=True)
-    def __init__(self, x: bytes) -> None: ...
-
     @native("tpy::bytes_from_size", function=True)
     def __init__(self, n: Int32) -> None: ...
+
+    @native("tpy::bytes_from_int_iterable", function=True)
+    def __init__(self, x: Iterable[Int32]) -> None: ...
 ```
 
-Generated code: `bytes(other)` -> `tpy::bytes_copy(other)`, `bytes(10)` -> `tpy::bytes_from_size(10)`. Multiple `__init__` overloads each pick their own factory. Reach for this when the class's natural C++ constructor doesn't exist or doesn't match Python's call shape; otherwise the bare class-level `@native` is sufficient.
+Generated code: `bytes(10)` -> `tpy::bytes_from_size(10)`. Multiple `__init__` overloads each pick their own factory. Reach for this when the class's natural C++ constructor doesn't exist or doesn't match Python's call shape; otherwise the bare class-level `@native` is sufficient.
 
 **Per-field rename (`native_field`).** When the external C/C++ field name differs from the Python name (e.g. C struct `sin_family`/`sin_port` conventions, or C++ `m_x` member-prefix conventions), use `native_field("cpp_name")` in the field's default-value slot:
 

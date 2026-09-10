@@ -46,7 +46,7 @@ struct Holder {
 
     // def __init__(self, value: T) -> None:
     Holder() = default;
-    explicit Holder(const T& value) : value(value) {}
+    explicit Holder(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def dup(self) -> T:
     ::tpy::val_or_cref_t<T> dup() const {

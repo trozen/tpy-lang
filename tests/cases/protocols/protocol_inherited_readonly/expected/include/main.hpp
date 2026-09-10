@@ -28,7 +28,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<Child T_x>
 int32_t read_via_child(const T_x& x);
 template<Child T>
-int32_t read_via_bound(const T& x);
+int32_t read_via_bound(::tpy::readonly_form_t<T> x);
 
 // class Impl:
 struct Impl {
@@ -78,7 +78,7 @@ int32_t read_via_child(const T_x& x) {
 }
 // def read_via_bound[T: Child](x: readonly[T]) -> Int32:
 template<Child T>
-int32_t read_via_bound(const T& x) {
+int32_t read_via_bound(::tpy::readonly_form_t<T> x) {
     // return x.read()
     return x.read();
 }

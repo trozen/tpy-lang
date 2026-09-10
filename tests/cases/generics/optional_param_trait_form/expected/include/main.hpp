@@ -417,7 +417,7 @@ template<typename T>
     // if val is None:
     if ((!::tpy::opt_has_value(val))) {
         // return fallback
-        return fallback;
+        return ::tpy::param_to_return<T>(fallback);
     }
     // return val  # tpyc: ok
     return (*val);

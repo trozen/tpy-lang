@@ -32,8 +32,8 @@ struct __coro_client_role {
     int32_t port;
     ::tpy::frame_slot<::tpystd::asyncio::StreamReader> reader;
     ::tpy::frame_slot<::tpystd::asyncio::StreamWriter> writer;
-    std::vector<uint8_t> first;
-    std::vector<uint8_t> second;
+    ::tpy::Bytes first;
+    ::tpy::Bytes second;
     ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
     std::optional<::tpystd::asyncio::__coro_open_connection> __sub_0;
     std::optional<::tpystd::asyncio::__coro_StreamReader_readuntil> __sub_1;

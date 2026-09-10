@@ -52,7 +52,7 @@ struct RWView {
 
     // def __init__(self, src: W) -> None:
     RWView() = default;
-    explicit RWView(const W& src) : _src(&src) {}
+    explicit RWView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 
     // def read(self) -> Int32:
     int32_t read() const {
@@ -78,7 +78,7 @@ struct ROView {
 
     // def __init__(self, src: readonly[W]) -> None:
     ROView() = default;
-    explicit ROView(const W& src) : _src(&src) {}
+    explicit ROView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 
     // def read(self) -> Int32:
     int32_t read() const {

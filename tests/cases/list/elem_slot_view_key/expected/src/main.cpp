@@ -54,7 +54,7 @@ void remove_owned_local(std::vector<std::string>& xs) {
     // # An owned local is the element's own form and passes bare -- the same
     // # runtime overload takes it, so both spellings reach one comparison.
     // owned = "a" + "b"
-    std::string owned = (::tpy::str_concat("a", "b"));
+    ::tpy::String owned = (::tpy::str_concat("a", "b"));
     // xs.remove(owned)  # tpyc: ok
     ::tpy::list_remove(xs, owned);
 }
@@ -79,7 +79,7 @@ void remove_element_read(std::vector<std::string>& xs) {
 }
 
 // def drop_bytes_literal(bs: list[bytes]) -> None:
-void drop_bytes_literal(std::vector<std::vector<uint8_t>>& bs) {
+void drop_bytes_literal(std::vector<::tpy::Bytes>& bs) {
     // # A bytes literal is a static span; the runtime compares it byte-wise
     // # against the owned `std::vector<uint8_t>` elements.
     // bs.remove(b"b")  # tpyc: ok
@@ -87,13 +87,13 @@ void drop_bytes_literal(std::vector<std::vector<uint8_t>>& bs) {
 }
 
 // def drop_bytes_param(bs: list[bytes], k: bytes) -> None:
-void drop_bytes_param(std::vector<std::vector<uint8_t>>& bs, std::span<const uint8_t> k) {
+void drop_bytes_param(std::vector<::tpy::Bytes>& bs, std::span<const uint8_t> k) {
     // bs.remove(k)  # tpyc: ok
     ::tpy::list_remove(bs, k);
 }
 
 // def empty_keys(xs: list[str], bs: list[bytes], k: str, bk: bytes) -> None:
-void empty_keys(std::vector<std::string>& xs, std::vector<std::vector<uint8_t>>& bs, std::string_view k, std::span<const uint8_t> bk) {
+void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, std::span<const uint8_t> bk) {
     // # An EMPTY key: the comparison is a size check before any data read,
     // # which matters for bytes -- an empty span may carry a null pointer.
     // print(xs.count(k), xs.index(k), bs.count(bk), bs.index(bk))
@@ -155,7 +155,7 @@ void main() {
     // print(find(ws, "b"), tally(ws, "a"))
     std::cout << find(ws, "b") << " " << tally(ws, "a") << "\n";
     // bs = [b"a", b"b", b"c"]
-    std::vector<std::vector<uint8_t>> bs = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
+    std::vector<::tpy::Bytes> bs = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1), ::tpy::bytes_literal_owned("c", 1)};
     // drop_bytes_literal(bs)
     drop_bytes_literal(bs);
     // print(len(bs))
@@ -166,7 +166,7 @@ void main() {
     std::cout << ::tpy::__len__(bs) << " " << ::tpy::BytesPrinter(::tpy::__getitem__(bs, 0)) << "\n";
     // empty_keys(["", "a"], [b"", b"a"], "", b"")
     std::vector<std::string> __tmp_1 = {"", "a"};
-    std::vector<std::vector<uint8_t>> __tmp_2 = {std::vector<uint8_t>{}, ::tpy::bytes_literal_owned("a", 1)};
+    std::vector<::tpy::Bytes> __tmp_2 = {::tpy::Bytes{}, ::tpy::bytes_literal_owned("a", 1)};
     empty_keys(__tmp_1, __tmp_2, "", std::span<const uint8_t>{});
     // print(key_len("abcd"))
     std::cout << key_len("abcd") << "\n";

@@ -118,7 +118,7 @@ std::vector<::tpy::BigInt> flatten(const ::tpy::ordered_map<std::string, std::ve
     return out;
 }
 
-std::vector<::tpy::BigInt> byte_lengths(const std::vector<std::vector<uint8_t>>& chunks) {
+std::vector<::tpy::BigInt> byte_lengths(const std::vector<::tpy::Bytes>& chunks) {
     std::vector<::tpy::BigInt> out = std::vector<::tpy::BigInt>{};
     auto& __obj_0 = chunks;
     auto __beg_0 = __obj_0.begin();

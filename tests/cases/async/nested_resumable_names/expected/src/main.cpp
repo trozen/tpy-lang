@@ -143,7 +143,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         std::cout << "generic:" << " " << __await_lift_2 << "\n";
         // # Generic nested class: concrete owner arguments survive frame qualification.
         // box = Outer.Box(7)
-        box.emplace(Outer::Box(7));
+        box.emplace(Outer::Box<int32_t>(7));
         // boxed = box.get()  # tpyc: ok
         boxed.emplace((*box).get());
         // box.value = 8

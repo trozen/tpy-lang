@@ -379,7 +379,7 @@ void socket::sendall(std::span<const uint8_t> data) const {
 }
 
 // def recv(self, bufsize: Int32) -> bytes:
-std::vector<uint8_t> socket::recv(int32_t bufsize) const {
+::tpy::Bytes socket::recv(int32_t bufsize) const {
     // if bufsize < Int32(0):
     if ((bufsize < 0)) {
         // # Matches CPython's sock.recv(n): negative size is an error, not
@@ -390,7 +390,7 @@ std::vector<uint8_t> socket::recv(int32_t bufsize) const {
     // if bufsize == Int32(0):
     if ((bufsize == 0)) {
         // return bytes()
-        return std::vector<uint8_t>();
+        return ::tpy::Bytes();
     }
     // buf = UninitHeapStorage[UInt8](UInt32.trunc(bufsize))
     ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(bufsize));

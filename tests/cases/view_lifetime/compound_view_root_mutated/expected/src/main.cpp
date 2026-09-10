@@ -62,9 +62,9 @@ std::string field_arm(Rec& r, const Rec& t, bool cond) {
 }
 
 // def bytes_ternary(c: list[bytes], d: list[bytes], cond: bool) -> int:
-::tpy::BigInt bytes_ternary(std::vector<std::vector<uint8_t>>& c, const std::vector<std::vector<uint8_t>>& d, bool cond) {
+::tpy::BigInt bytes_ternary(std::vector<::tpy::Bytes>& c, const std::vector<::tpy::Bytes>& d, bool cond) {
     // x = c[0] if cond else d[0]  # tpyc: type(bytes)
-    std::vector<uint8_t> x = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
+    ::tpy::Bytes x = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
     // c.append(b"padding long enough to force the backing vector to reallocate")
     c.push_back(::tpy::bytes_literal_owned("padding long enough to force the backing vector to reallocate", 61));
     // return len(x)
@@ -95,8 +95,8 @@ void main() {
     Rec __tmp_14 = Rec("theta");
     std::cout << field_arm(__tmp_13, __tmp_14, true) << "\n";
     // print(bytes_ternary([b"abcd"], [b"ef"], True))
-    std::vector<std::vector<uint8_t>> __tmp_15 = {::tpy::bytes_literal_owned("abcd", 4)};
-    std::vector<std::vector<uint8_t>> __tmp_16 = {::tpy::bytes_literal_owned("ef", 2)};
+    std::vector<::tpy::Bytes> __tmp_15 = {::tpy::bytes_literal_owned("abcd", 4)};
+    std::vector<::tpy::Bytes> __tmp_16 = {::tpy::bytes_literal_owned("ef", 2)};
     std::cout << bytes_ternary(__tmp_15, __tmp_16, true) << "\n";
 }
 

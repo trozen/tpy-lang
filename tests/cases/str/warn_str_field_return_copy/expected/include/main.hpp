@@ -36,7 +36,7 @@ struct Item {
 
     // # No warning: -> String is explicit owned
     // def get_label(self) -> String:
-    std::string get_label() const;
+    ::tpy::String get_label() const;
 
     // # No warning: dunder method
     // def __str__(self) -> str:
@@ -69,7 +69,7 @@ inline std::string_view Item::get_desc() const {
 
 // # No warning: -> String is explicit owned
 // def get_label(self) -> String:
-inline std::string Item::get_label() const {
+inline ::tpy::String Item::get_label() const {
     // return self.label
     return this->label;
 }

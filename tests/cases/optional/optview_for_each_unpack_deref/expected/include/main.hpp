@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t sink(std::optional<std::string_view> v);
-int32_t use(const std::vector<std::tuple<std::optional<std::vector<uint8_t>>, std::optional<std::string>>>& rows);
+int32_t use(const std::vector<std::tuple<std::optional<::tpy::Bytes>, std::optional<std::string>>>& rows);
 void main();
 
 void __tpy_init();

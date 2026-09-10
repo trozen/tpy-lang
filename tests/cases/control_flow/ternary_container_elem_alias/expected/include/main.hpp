@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void pick(::tpy::ordered_map<std::string, std::vector<uint8_t>>& d, bool cond);
+void pick(::tpy::ordered_map<std::string, ::tpy::ByteArray>& d, bool cond);
 void main();
 
 void __tpy_init();

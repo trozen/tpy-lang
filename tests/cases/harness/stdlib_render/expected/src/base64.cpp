@@ -4,13 +4,13 @@
 namespace tpystd::base64 {
 
 // _B64_STD: bytes = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-std::vector<uint8_t> _B64_STD;
+::tpy::Bytes _B64_STD;
 // _B64_URL: bytes = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-std::vector<uint8_t> _B64_URL;
+::tpy::Bytes _B64_URL;
 // _B32_ALPHA: bytes = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
-std::vector<uint8_t> _B32_ALPHA;
+::tpy::Bytes _B32_ALPHA;
 // _B16_ALPHA: bytes = b"0123456789ABCDEF"
-std::vector<uint8_t> _B16_ALPHA;
+::tpy::Bytes _B16_ALPHA;
 // _PAD: Int32 = 61  # '='
 int32_t _PAD{};
 // _CHAR_PLUS: Int32 = 43
@@ -27,11 +27,11 @@ int32_t _NEWLINE{};
 int32_t _MIME_LINE{};
 
 // def _b64_encode(data: bytes, alphabet: bytes) -> bytes:
-std::vector<uint8_t> _b64_encode(std::span<const uint8_t> data, std::span<const uint8_t> alphabet) {
+::tpy::Bytes _b64_encode(std::span<const uint8_t> data, std::span<const uint8_t> alphabet) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i + 3 <= n:
@@ -83,7 +83,7 @@ std::vector<uint8_t> _b64_encode(std::span<const uint8_t> data, std::span<const 
         result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // def _b64_char_to_value(c: Int32, c62: Int32, c63: Int32) -> Int32:
@@ -118,7 +118,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 }
 
 // def _b64_decode(data: bytes, c62: Int32, c63: Int32) -> bytes:
-std::vector<uint8_t> _b64_decode(std::span<const uint8_t> data, int32_t c62, int32_t c63) {
+::tpy::Bytes _b64_decode(std::span<const uint8_t> data, int32_t c62, int32_t c63) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 4 != 0:
@@ -127,7 +127,7 @@ std::vector<uint8_t> _b64_decode(std::span<const uint8_t> data, int32_t c62, int
         throw ::tpy::ValueError("Invalid base64-encoded data length");
     }
     // result: bytearray = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i < n:
@@ -183,18 +183,18 @@ std::vector<uint8_t> _b64_decode(std::span<const uint8_t> data, int32_t c62, int
         i = ::tpy::add_check<int32_t>(i, 4);
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // def _build_altchars_alphabet(altchars: bytes) -> bytes:
-std::vector<uint8_t> _build_altchars_alphabet(std::span<const uint8_t> altchars) {
+::tpy::Bytes _build_altchars_alphabet(std::span<const uint8_t> altchars) {
     // if len(altchars) != 2:
     if ((::tpy::__len__(altchars) != 2)) {
         // raise ValueError("altchars must be 2 bytes")
         throw ::tpy::ValueError("altchars must be 2 bytes");
     }
     // buf: bytearray = bytearray()
-    std::vector<uint8_t> buf = std::vector<uint8_t>();
+    ::tpy::ByteArray buf = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i < 62:
@@ -209,15 +209,15 @@ std::vector<uint8_t> _build_altchars_alphabet(std::span<const uint8_t> altchars)
     // buf.append(altchars[1])
     buf.push_back(::tpy::bytes_getitem(altchars, 1));
     // return bytes(buf)
-    return ::tpy::bytes_copy(buf);
+    return ::tpy::Bytes(buf);
 }
 
 // def _filter_b64_input(data: bytes, c62: Int32, c63: Int32) -> bytes:
-std::vector<uint8_t> _filter_b64_input(std::span<const uint8_t> data, int32_t c62, int32_t c63) {
+::tpy::Bytes _filter_b64_input(std::span<const uint8_t> data, int32_t c62, int32_t c63) {
     // # CPython's validate=False default silently drops non-alphabet chars
     // # (matching RFC 4648's MIME-mode leniency). Keep padding chars.
     // buf: bytearray = bytearray()
-    std::vector<uint8_t> buf = std::vector<uint8_t>();
+    ::tpy::ByteArray buf = ::tpy::ByteArray();
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // i: Int32 = 0
@@ -254,11 +254,11 @@ std::vector<uint8_t> _filter_b64_input(std::span<const uint8_t> data, int32_t c6
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     // return bytes(buf)
-    return ::tpy::bytes_copy(buf);
+    return ::tpy::Bytes(buf);
 }
 
 // def b64encode(data: bytes, altchars: bytes | None = None) -> bytes:
-std::vector<uint8_t> b64encode(std::span<const uint8_t> data, std::optional<std::span<const uint8_t>> altchars) {
+::tpy::Bytes b64encode(std::span<const uint8_t> data, std::optional<std::span<const uint8_t>> altchars) {
     // if altchars is None:
     if ((!altchars.has_value())) {
         // return _b64_encode(data, _B64_STD)
@@ -270,7 +270,7 @@ std::vector<uint8_t> b64encode(std::span<const uint8_t> data, std::optional<std:
 
 // @dispatch
 // def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False) -> bytes:
-std::vector<uint8_t> b64decode(std::span<const uint8_t> data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
+::tpy::Bytes b64decode(std::span<const uint8_t> data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
     // c62: Int32 = _CHAR_PLUS
     int32_t c62 = _CHAR_PLUS;
     // c63: Int32 = _CHAR_SLASH
@@ -298,57 +298,57 @@ std::vector<uint8_t> b64decode(std::span<const uint8_t> data, std::optional<std:
 
 // @dispatch
 // def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
-std::vector<uint8_t> b64decode(std::string_view data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
+::tpy::Bytes b64decode(std::string_view data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
     // return b64decode(data.encode(), altchars, validate)
-    return b64decode(::tpy::bytes_from_str(data), altchars ? std::make_optional(::tpy::bytes_copy(*altchars)) : std::nullopt, validate);
+    return b64decode(::tpy::bytes_from_str(data), altchars ? std::make_optional(::tpy::Bytes(*altchars)) : std::nullopt, validate);
 }
 
 // def standard_b64encode(data: bytes) -> bytes:
-std::vector<uint8_t> standard_b64encode(std::span<const uint8_t> data) {
+::tpy::Bytes standard_b64encode(std::span<const uint8_t> data) {
     // return _b64_encode(data, _B64_STD)
     return _b64_encode(data, _B64_STD);
 }
 
 // @dispatch
 // def standard_b64decode(data: bytes) -> bytes:
-std::vector<uint8_t> standard_b64decode(std::span<const uint8_t> data) {
+::tpy::Bytes standard_b64decode(std::span<const uint8_t> data) {
     // return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH)
     return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH);
 }
 
 // @dispatch
 // def standard_b64decode(data: str) -> bytes:
-std::vector<uint8_t> standard_b64decode(std::string_view data) {
+::tpy::Bytes standard_b64decode(std::string_view data) {
     // return standard_b64decode(data.encode())
     return standard_b64decode(::tpy::bytes_from_str(data));
 }
 
 // def urlsafe_b64encode(data: bytes) -> bytes:
-std::vector<uint8_t> urlsafe_b64encode(std::span<const uint8_t> data) {
+::tpy::Bytes urlsafe_b64encode(std::span<const uint8_t> data) {
     // return _b64_encode(data, _B64_URL)
     return _b64_encode(data, _B64_URL);
 }
 
 // @dispatch
 // def urlsafe_b64decode(data: bytes) -> bytes:
-std::vector<uint8_t> urlsafe_b64decode(std::span<const uint8_t> data) {
+::tpy::Bytes urlsafe_b64decode(std::span<const uint8_t> data) {
     // return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER)
     return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER);
 }
 
 // @dispatch
 // def urlsafe_b64decode(data: str) -> bytes:
-std::vector<uint8_t> urlsafe_b64decode(std::string_view data) {
+::tpy::Bytes urlsafe_b64decode(std::string_view data) {
     // return urlsafe_b64decode(data.encode())
     return urlsafe_b64decode(::tpy::bytes_from_str(data));
 }
 
 // def b16encode(data: bytes) -> bytes:
-std::vector<uint8_t> b16encode(std::span<const uint8_t> data) {
+::tpy::Bytes b16encode(std::span<const uint8_t> data) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i < n:
@@ -363,7 +363,7 @@ std::vector<uint8_t> b16encode(std::span<const uint8_t> data) {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // def _b16_char_to_value(c: Int32, casefold: bool) -> Int32:
@@ -389,7 +389,7 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
 
 // @dispatch
 // def b16decode(data: bytes, casefold: bool = False) -> bytes:
-std::vector<uint8_t> b16decode(std::span<const uint8_t> data, bool casefold) {
+::tpy::Bytes b16decode(std::span<const uint8_t> data, bool casefold) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 2 != 0:
@@ -398,7 +398,7 @@ std::vector<uint8_t> b16decode(std::span<const uint8_t> data, bool casefold) {
         throw ::tpy::ValueError("Invalid base16-encoded data length");
     }
     // result: bytearray = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i < n:
@@ -413,23 +413,23 @@ std::vector<uint8_t> b16decode(std::span<const uint8_t> data, bool casefold) {
         i = ::tpy::add_check<int32_t>(i, 2);
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // @dispatch
 // def b16decode(data: str, casefold: bool = False) -> bytes:
-std::vector<uint8_t> b16decode(std::string_view data, bool casefold) {
+::tpy::Bytes b16decode(std::string_view data, bool casefold) {
     // return b16decode(data.encode(), casefold)
     return b16decode(::tpy::bytes_from_str(data), casefold);
 }
 
 // def b32encode(data: bytes) -> bytes:
-std::vector<uint8_t> b32encode(std::span<const uint8_t> data) {
+::tpy::Bytes b32encode(std::span<const uint8_t> data) {
     // # 5 input bytes (40 bits) -> 8 output chars (5 bits each).
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i + 5 <= n:
@@ -512,7 +512,7 @@ std::vector<uint8_t> b32encode(std::span<const uint8_t> data) {
             // result.append(UInt8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
             // return bytes(result)
-            return ::tpy::bytes_copy(result);
+            return ::tpy::Bytes(result);
         }
         // result.append(_B32_ALPHA[(t1 >> 1) & 0x1F])
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::rshift_check<int32_t>(t1, 1)) & 31))));
@@ -529,7 +529,7 @@ std::vector<uint8_t> b32encode(std::span<const uint8_t> data) {
             // result.append(UInt8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
             // return bytes(result)
-            return ::tpy::bytes_copy(result);
+            return ::tpy::Bytes(result);
         }
         // result.append(_B32_ALPHA[((t2 & 0x0F) << 1) | (t3 >> 7)])
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::lshift_check<int32_t>((static_cast<int32_t>(t2 & 15)), 1)) | (::tpy::rshift_check<int32_t>(t3, 7))))));
@@ -542,7 +542,7 @@ std::vector<uint8_t> b32encode(std::span<const uint8_t> data) {
             // result.append(UInt8(_PAD))
             result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
             // return bytes(result)
-            return ::tpy::bytes_copy(result);
+            return ::tpy::Bytes(result);
         }
         // result.append(_B32_ALPHA[(t3 >> 2) & 0x1F])
         result.push_back(::tpy::bytes_getitem(_B32_ALPHA, (static_cast<int32_t>((::tpy::rshift_check<int32_t>(t3, 2)) & 31))));
@@ -552,7 +552,7 @@ std::vector<uint8_t> b32encode(std::span<const uint8_t> data) {
         result.push_back(::tpy::int_cast_check<uint8_t>(_PAD));
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // def _b32_char_to_value(c: Int32) -> Int32:
@@ -572,11 +572,11 @@ int32_t _b32_char_to_value(int32_t c) {
 }
 
 // def _b32_preprocess(data: bytes, casefold: bool, map01: bytes | None) -> bytes:
-std::vector<uint8_t> _b32_preprocess(std::span<const uint8_t> data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
+::tpy::Bytes _b32_preprocess(std::span<const uint8_t> data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // buf: bytearray = bytearray()
-    std::vector<uint8_t> buf = std::vector<uint8_t>();
+    ::tpy::ByteArray buf = ::tpy::ByteArray();
     // map_target: Int32 = 0
     int32_t map_target = 0;
     // if map01 is not None:
@@ -620,16 +620,16 @@ std::vector<uint8_t> _b32_preprocess(std::span<const uint8_t> data, bool casefol
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     // return bytes(buf)
-    return ::tpy::bytes_copy(buf);
+    return ::tpy::Bytes(buf);
 }
 
 // @dispatch
 // def b32decode(data: bytes, casefold: bool = False, map01: bytes | None = None) -> bytes:
-std::vector<uint8_t> b32decode(std::span<const uint8_t> data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
+::tpy::Bytes b32decode(std::span<const uint8_t> data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
     // if casefold or map01 is not None:
     if ((casefold || (map01.has_value()))) {
         // return _b32decode_impl(_b32_preprocess(data, casefold, map01))
-        return _b32decode_impl(_b32_preprocess(data, casefold, map01 ? std::make_optional(::tpy::bytes_copy(*map01)) : std::nullopt));
+        return _b32decode_impl(_b32_preprocess(data, casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt));
     }
     // return _b32decode_impl(data)
     return _b32decode_impl(data);
@@ -637,13 +637,13 @@ std::vector<uint8_t> b32decode(std::span<const uint8_t> data, bool casefold, std
 
 // @dispatch
 // def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
-std::vector<uint8_t> b32decode(std::string_view data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
+::tpy::Bytes b32decode(std::string_view data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
     // return b32decode(data.encode(), casefold, map01)
-    return b32decode(::tpy::bytes_from_str(data), casefold, map01 ? std::make_optional(::tpy::bytes_copy(*map01)) : std::nullopt);
+    return b32decode(::tpy::bytes_from_str(data), casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt);
 }
 
 // def _b32decode_impl(data: bytes) -> bytes:
-std::vector<uint8_t> _b32decode_impl(std::span<const uint8_t> data) {
+::tpy::Bytes _b32decode_impl(std::span<const uint8_t> data) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 8 != 0:
@@ -652,7 +652,7 @@ std::vector<uint8_t> _b32decode_impl(std::span<const uint8_t> data) {
         throw ::tpy::ValueError("Invalid base32-encoded data length");
     }
     // result: bytearray = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i < n:
@@ -733,19 +733,19 @@ std::vector<uint8_t> _b32decode_impl(std::span<const uint8_t> data) {
         i = ::tpy::add_check<int32_t>(i, 8);
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // def encodebytes(data: bytes) -> bytes:
-std::vector<uint8_t> encodebytes(std::span<const uint8_t> data) {
+::tpy::Bytes encodebytes(std::span<const uint8_t> data) {
     // # MIME-style: standard base64 with a newline every 76 output chars and
     // # a trailing newline. For empty input, returns b'' (no newline).
     // encoded: bytes = _b64_encode(data, _B64_STD)
-    std::vector<uint8_t> encoded = _b64_encode(data, _B64_STD);
+    ::tpy::Bytes encoded = _b64_encode(data, _B64_STD);
     // n: Int32 = Int32(len(encoded))
     int32_t n = ::tpy::__len__(encoded);
     // result: bytearray = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // while i < n:
@@ -765,11 +765,11 @@ std::vector<uint8_t> encodebytes(std::span<const uint8_t> data) {
         result.push_back(::tpy::int_cast_check<uint8_t>(_NEWLINE));
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // def decodebytes(data: bytes) -> bytes:
-std::vector<uint8_t> decodebytes(std::span<const uint8_t> data) {
+::tpy::Bytes decodebytes(std::span<const uint8_t> data) {
     // # MIME-style: tolerate newlines and whitespace in input.
     // return b64decode(data)
     return b64decode(data);

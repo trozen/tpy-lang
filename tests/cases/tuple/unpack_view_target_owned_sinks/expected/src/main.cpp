@@ -21,43 +21,43 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 }
 
 // def first_bytes(src: tuple[bytes, bytes]) -> bytes:
-std::vector<uint8_t> first_bytes(const std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>& src) {
+::tpy::Bytes first_bytes(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
     // x, y = src
     const auto& __tup_1 = src;
     std::span<const uint8_t> x = std::get<0>(__tup_1);
     std::span<const uint8_t> y = std::get<1>(__tup_1);
     // return x
-    return ::tpy::bytes_copy(x);
+    return ::tpy::Bytes(x);
 }
 
 // def take_bytes(b: Own[bytes]) -> int:
-::tpy::BigInt take_bytes(std::vector<uint8_t> b) {
+::tpy::BigInt take_bytes(::tpy::Bytes b) {
     // return len(b)
     return ::tpy::BigInt(::tpy::__len__(b));
 }
 
 // def bytes_elements(src: tuple[bytes, bytes]) -> int:
-::tpy::BigInt bytes_elements(const std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>& src) {
+::tpy::BigInt bytes_elements(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
     // x, y = src
     const auto& __tup_1 = src;
     std::span<const uint8_t> x = std::get<0>(__tup_1);
     std::span<const uint8_t> y = std::get<1>(__tup_1);
     // xs: list[bytes] = [x, y]
-    std::vector<std::vector<uint8_t>> xs = {::tpy::bytes_copy(x), ::tpy::bytes_copy(y)};
+    std::vector<::tpy::Bytes> xs = {::tpy::Bytes(x), ::tpy::Bytes(y)};
     // xs.append(x)
-    xs.push_back(::tpy::bytes_copy(x));
+    xs.push_back(::tpy::Bytes(x));
     // return len(xs) + take_bytes(y)
-    return ((::tpy::BigInt(::tpy::__len__(xs))) + (take_bytes(::tpy::bytes_copy(y))));
+    return ((::tpy::BigInt(::tpy::__len__(xs))) + (take_bytes(::tpy::Bytes(y))));
 }
 
 // def bytes_accumulate(t: tuple[bytes, bytes]) -> bytes:
-std::vector<uint8_t> bytes_accumulate(const std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>& t) {
+::tpy::Bytes bytes_accumulate(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& t) {
     // a, b = t
     const auto& __tup_1 = t;
     std::span<const uint8_t> a = std::get<0>(__tup_1);
     std::span<const uint8_t> b = std::get<1>(__tup_1);
     // out = a
-    std::vector<uint8_t> out = ::tpy::bytes_copy(a);
+    ::tpy::Bytes out = ::tpy::Bytes(a);
     // out = out + b
     out = (::tpy::bytes_concat(out, b));
     // return out
@@ -132,7 +132,7 @@ void main() {
     // src = ("ab", "c")
     std::tuple<std::string, std::string> src = std::tuple<std::string, std::string>{"ab", "c"};
     // bsrc = (b"ab", b"c")
-    std::tuple<std::vector<uint8_t>, std::vector<uint8_t>> bsrc = std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>{::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)};
+    std::tuple<::tpy::Bytes, ::tpy::Bytes> bsrc = std::tuple<::tpy::Bytes, ::tpy::Bytes>{::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)};
     // print(first_of(src))
     std::cout << first_of(src) << "\n";
     // print(first_bytes(bsrc))

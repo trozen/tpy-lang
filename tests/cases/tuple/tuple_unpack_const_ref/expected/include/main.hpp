@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 std::tuple<::tpy::BigInt, ::tpy::BigInt> get_pair();
-std::tuple<std::string, std::string> get_string_pair();
+std::tuple<::tpy::String, ::tpy::String> get_string_pair();
 void test_rvalue_const_ref();
 void test_augassign_no_const_ref();
 void test_reassign_no_const_ref();

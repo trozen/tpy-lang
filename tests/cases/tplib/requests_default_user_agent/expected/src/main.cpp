@@ -46,7 +46,7 @@ void main() {
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "my-app/9"}});
     s2.get("http://api.test/x", nullptr, &(__tmp_1));
     // sent = b2.recv(65536)
-    std::vector<uint8_t> sent = b2.recv(65536);
+    ::tpy::Bytes sent = b2.recv(65536);
     // print(b"User-Agent: my-app/9" in sent)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("User-Agent: my-app/9", 20)))) << "\n";
     // print(b"tpy-requests" in sent)
@@ -73,7 +73,7 @@ void main() {
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"user-agent", "low/1"}});
     s3.get("http://api.test/x", nullptr, &(__tmp_2));
     // sent3 = b3.recv(65536)
-    std::vector<uint8_t> sent3 = b3.recv(65536);
+    ::tpy::Bytes sent3 = b3.recv(65536);
     // print(b"user-agent: low/1" in sent3)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent3, ::tpy::bytes_literal_owned("user-agent: low/1", 17)))) << "\n";
     // print(b"tpy-requests" in sent3)

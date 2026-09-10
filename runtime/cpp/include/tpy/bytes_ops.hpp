@@ -19,14 +19,17 @@
 #include <vector>
 
 #include "bigint.hpp"
+#include "buffer_types.hpp"
 #include "core.hpp"
 #include "container_ops.hpp"
 #include "ranges.hpp"
 
 namespace tpy {
 
-// Type aliases for readability
-using Bytes = std::vector<uint8_t>;
+// `Bytes` and `ByteArray` are the two owning byte-buffer classes (declared in
+// buffer_types.hpp); the helpers below work in `BytesView` and return `Bytes`,
+// the `bytes` storage form. A `bytearray`-returning method respells the result
+// (`::tpy::ByteArray(...)`, a move) unless the helper is bytearray-only.
 using BytesView = std::span<const uint8_t>;
 
 // -- Static bytes literal ---------------------------------------------------
@@ -64,13 +67,13 @@ inline void write_byte_repr(std::ostream& os, uint8_t b) {
 struct BytesPrinter {
     BytesView value;
     explicit BytesPrinter(BytesView v) : value(v) {}
-    explicit BytesPrinter(const Bytes& v) : value(v) {}
+    explicit BytesPrinter(const std::vector<uint8_t>& v) : value(v) {}
 };
 
 struct ByteArrayPrinter {
     BytesView value;
     explicit ByteArrayPrinter(BytesView v) : value(v) {}
-    explicit ByteArrayPrinter(const Bytes& v) : value(v) {}
+    explicit ByteArrayPrinter(const std::vector<uint8_t>& v) : value(v) {}
 };
 
 namespace detail {
@@ -108,6 +111,15 @@ inline std::string __str__(const Bytes& b) { return __str__(BytesView{b}); }
 inline std::string __repr__(BytesView b) { return __str__(b); }
 inline std::string __repr__(const Bytes& b) { return __str__(BytesView{b}); }
 
+// A bytearray reprs as `bytearray(b'..')`. Its own type is what decides that,
+// so no print-form tag has to be carried from the front end.
+inline std::string __str__(const ByteArray& b) {
+    std::ostringstream ss;
+    ss << ByteArrayPrinter{BytesView{b}};
+    return ss.str();
+}
+inline std::string __repr__(const ByteArray& b) { return __str__(b); }
+
 // -- Construction -----------------------------------------------------------
 
 inline Bytes bytes_from_size(int32_t n) {
@@ -126,20 +138,18 @@ inline uint8_t int_to_byte(int32_t v) {
     return static_cast<uint8_t>(v);
 }
 
-inline Bytes bytes_copy(BytesView src) {
-    return Bytes(src.begin(), src.end());
-}
-
 // Owned counterpart of bytes_literal: a bytes literal materialized into an
 // owning vector (for owned slots -- fields, list elements, returns).
 inline Bytes bytes_literal_owned(const char* data, size_t n) {
-    return bytes_copy(bytes_literal(data, n));
+    return Bytes(bytes_literal(data, n));
 }
 
 // TODO(hot-path): per-element int_to_byte range check; revisit alongside a
 // @not_hot_path / unchecked variant. Prefer the UInt8 overload when possible.
-template<typename Arg>
-void bytes_extend_int_iterable(Bytes& self, Arg&& arg) {
+// The buffer is deduced: the same helper fills a fresh `bytes` (through
+// bytes_from_int_iterable) and appends to a live `bytearray`.
+template<typename Buf, typename Arg>
+void bytes_extend_int_iterable(Buf& self, Arg&& arg) {
     if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
         if constexpr (std::ranges::sized_range<std::remove_cvref_t<Arg>>) {
             self.reserve(self.size() + std::ranges::size(arg));
@@ -341,25 +351,26 @@ inline BytesView bytes_rstrip_chars_view(BytesView b, BytesView chars) {
     return BytesView(b.begin(), end);
 }
 
-// Copy-returning variants (for bytes/bytearray methods)
-inline Bytes bytes_strip(BytesView b) {
+// Copy-returning variants. Only `bytearray`'s strip family copies: `bytes`
+// (immutable) returns a view of the receiver instead.
+inline ByteArray bytes_strip(BytesView b) {
     auto v = bytes_strip_view(b);
-    return Bytes(v.begin(), v.end());
+    return ByteArray(v.begin(), v.end());
 }
 
-inline Bytes bytes_lstrip(BytesView b) {
+inline ByteArray bytes_lstrip(BytesView b) {
     auto v = bytes_lstrip_view(b);
-    return Bytes(v.begin(), v.end());
+    return ByteArray(v.begin(), v.end());
 }
 
-inline Bytes bytes_rstrip(BytesView b) {
+inline ByteArray bytes_rstrip(BytesView b) {
     auto v = bytes_rstrip_view(b);
-    return Bytes(v.begin(), v.end());
+    return ByteArray(v.begin(), v.end());
 }
 
-inline Bytes bytes_rstrip_chars(BytesView b, BytesView chars) {
+inline ByteArray bytes_rstrip_chars(BytesView b, BytesView chars) {
     auto v = bytes_rstrip_chars_view(b, chars);
-    return Bytes(v.begin(), v.end());
+    return ByteArray(v.begin(), v.end());
 }
 
 inline Bytes bytes_upper(BytesView b) {
@@ -443,32 +454,61 @@ inline bool bytes_eq(BytesView a, BytesView b) {
     return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
 }
 
+// -- bytearray-returning siblings -------------------------------------------
+//
+// A `bytearray` method declares a `bytearray` result, and `ByteArray` does not
+// convert from the `Bytes` its bytes-family sibling returns (the two types are
+// deliberately unrelated -- see buffer_types.hpp). Each of these adopts the
+// fresh buffer the sibling built: the explicit base-rvalue constructor moves it,
+// so the respelling costs nothing.
+
+inline ByteArray bytearray_from_size(int32_t n) {
+    return ByteArray(bytes_from_size(n));
+}
+
+template<typename Arg>
+ByteArray bytearray_from_int_iterable(Arg&& arg) {
+    return ByteArray(bytes_from_int_iterable(std::forward<Arg>(arg)));
+}
+
+inline ByteArray bytearray_concat(BytesView a, BytesView b) {
+    return ByteArray(bytes_concat(a, b));
+}
+
+inline ByteArray bytearray_repeat(BytesView b, int32_t n) {
+    return ByteArray(bytes_repeat(b, n));
+}
+
+inline ByteArray bytearray_upper(BytesView b) {
+    return ByteArray(bytes_upper(b));
+}
+
 // -- Mutation helpers (for bytearray) ---------------------------------------
 
-inline void bytearray_setitem(Bytes& b, int32_t index, uint8_t value) {
+inline void bytearray_setitem(ByteArray& b, int32_t index, uint8_t value) {
     auto i = normalize_index(b, index, "bytearray index out of range");
     b[i] = value;
 }
 
-inline void bytearray_setitem(Bytes& b, int32_t index, int32_t value) {
+inline void bytearray_setitem(ByteArray& b, int32_t index, int32_t value) {
     bytearray_setitem(b, index, int_to_byte(value));
 }
 
-inline uint8_t bytearray_pop(Bytes& b) {
+inline uint8_t bytearray_pop(ByteArray& b) {
     if (b.empty()) raise_index_error("pop from empty bytearray");
     uint8_t val = b.back();
     b.pop_back();
     return val;
 }
 
-inline uint8_t bytearray_pop_at(Bytes& b, int32_t index) {
+inline uint8_t bytearray_pop_at(ByteArray& b, int32_t index) {
     auto i = normalize_index(b, index, "pop index out of range");
     uint8_t val = b[i];
     b.erase(b.begin() + static_cast<std::ptrdiff_t>(i));
     return val;
 }
 
-inline void bytearray_insert(Bytes& b, int32_t index, uint8_t value) {
+inline void bytearray_insert(ByteArray& b, int32_t index, uint8_t value) {
     auto sz = static_cast<int32_t>(b.size());
     int32_t i = index;
     if (i < 0) i = std::max(0, sz + i);
@@ -476,17 +516,17 @@ inline void bytearray_insert(Bytes& b, int32_t index, uint8_t value) {
     b.insert(b.begin() + i, value);
 }
 
-inline void bytearray_insert(Bytes& b, int32_t index, int32_t value) {
+inline void bytearray_insert(ByteArray& b, int32_t index, int32_t value) {
     bytearray_insert(b, index, int_to_byte(value));
 }
 
-inline void bytearray_remove(Bytes& b, uint8_t value) {
+inline void bytearray_remove(ByteArray& b, uint8_t value) {
     auto it = std::find(b.begin(), b.end(), value);
     if (it == b.end()) raise_value_error("value not found in bytearray");
     b.erase(it);
 }
 
-inline void bytearray_remove(Bytes& b, int32_t value) {
+inline void bytearray_remove(ByteArray& b, int32_t value) {
     bytearray_remove(b, int_to_byte(value));
 }
 

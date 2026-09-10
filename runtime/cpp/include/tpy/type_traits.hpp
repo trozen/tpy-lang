@@ -6,8 +6,11 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
+#include <concepts>
 #include <cstdint>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <span>
@@ -187,11 +190,38 @@ namespace detail {
     template<> struct val_or_ref_impl<void>       { using type = void; };
     template<> struct val_or_cref_impl<void>      { using type = void; };
     template<> struct param_val_or_ref_impl<void> { using type = void; };
+
+    // `std::string` is TPy `str` and nothing else (TPy `String` is
+    // `tpy::String`), so a generic slot at it takes the twin's parameter form:
+    // the view, not an owned `const std::string&` the caller would have to
+    // materialize. The bytes sibling of this row lives in buffer_types.hpp,
+    // next to `tpy::Bytes`.
+    template<> struct param_val_or_ref_impl<std::string> {
+        using type = std::string_view;
+    };
 }
 
 template<typename T> using val_or_ref_t       = typename detail::val_or_ref_impl<T>::type;
 template<typename T> using val_or_cref_t      = typename detail::val_or_cref_impl<T>::type;
 template<typename T> using param_val_or_ref_t = typename detail::param_val_or_ref_impl<T>::type;
+
+// The parameter form for a generic `T` slot whose callee's FRAME borrows it
+// past the statement -- a generator factory, whose simple-generator peephole
+// captures the slot by reference (`[&value]`, a capture form decided on the
+// open `T`, BUGS.md#simple-generator-captures-open-t-param-by-reference). It
+// must be a REFERENCE at every instantiation, so the capture binds the call
+// site's object: a by-value view parameter's capture binds the parameter
+// object, which dies when the factory returns. That rules out the view rows
+// `param_val_or_ref_t` carries for the two types whose own parameter form is a
+// view, and nothing else -- so this is that trait's PRIMARY formula with the
+// specializations bypassed, mutable for a reference type (a body that mutates
+// the slot writes through to the caller, as it does at a monomorphic one) and
+// const for a value type.
+namespace detail {
+    template<typename T> struct borrow_frame_param_impl { using type = std::conditional_t<is_value_type<T>::value, const T&, T&>; };
+    template<> struct borrow_frame_param_impl<void> { using type = void; };
+}
+template<typename T> using borrow_frame_param_t = typename detail::borrow_frame_param_impl<T>::type;
 
 // Tuple-element borrow form for a generic T -- the pointer sibling of
 // val_or_ref_t. A reference can't be a std::tuple member and the concrete
@@ -307,6 +337,58 @@ Dest to_val_or_ptr(T&& x) {
         }
     } else {
         return std::forward<T>(x);
+    }
+}
+
+// The READ-ONLY form of a generic `T` parameter slot -- what a constructor's
+// parameter, a `@readonly` method's and an explicit `readonly[T]` spell. Derived
+// from the parameter form rather than from `T`: a mutable reference becomes
+// const (so a reference type keeps exactly the `const T&` it had), and anything
+// else -- a view, a const reference, a by-value scalar -- passes through
+// unchanged. Spelling `const T&` directly instead would not bind at the two
+// types whose parameter form is a distinct view, and there is nothing for a
+// caller inside a generic body to materialize: `T` is not fixed yet.
+template <typename T>
+using readonly_form_t = std::conditional_t<
+    std::is_lvalue_reference_v<param_val_or_ref_t<T>>
+        && !std::is_const_v<std::remove_reference_t<param_val_or_ref_t<T>>>,
+    const std::remove_reference_t<param_val_or_ref_t<T>>&,
+    param_val_or_ref_t<T>>;
+
+// The STORAGE form of a value handed in through a generic `T` parameter slot,
+// for the three body positions a borrow form cannot serve: a store into `T`
+// storage, an address-of, and a by-value `T` return. Keyed on the constructions
+// the C++ type admits (a view-form source is not implicitly convertible to its
+// owning form), never on which container T is.
+template <class T, class Src>
+T param_to_storage(Src&& s) {
+    if constexpr (std::is_constructible_v<T, Src&&>) {
+        return T(std::forward<Src>(s));
+    } else {
+        return T(std::begin(s), std::end(s));
+    }
+}
+
+// param_to_storage at a by-value `T` return: a reference instantiation returns
+// the borrow unchanged (it must NOT start copying), a value one owns.
+template <class T, class Src>
+val_or_ref_t<T> param_to_return(Src&& s) {
+    if constexpr (std::is_reference_v<val_or_ref_t<T>>) {
+        return s;
+    } else {
+        return param_to_storage<T>(std::forward<Src>(s));
+    }
+}
+
+// Equality between two spellings of the same generic `T`: `==` where the two
+// forms compare, element-wise where they do not (a span against its owning
+// container, which the standard leaves to us).
+template <class A, class B>
+bool eq(const A& a, const B& b) {
+    if constexpr (requires { { a == b } -> std::convertible_to<bool>; }) {
+        return a == b;
+    } else {
+        return std::ranges::equal(a, b);
     }
 }
 

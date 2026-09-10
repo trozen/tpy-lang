@@ -10,7 +10,7 @@ void main() {
     // s = "hello bytes"
     std::string_view s = "hello bytes";
     // encoded = s.encode()
-    std::vector<uint8_t> encoded = ::tpy::bytes_from_str(s);
+    ::tpy::Bytes encoded = ::tpy::bytes_from_str(s);
     // print(encoded)
     std::cout << ::tpy::BytesPrinter(encoded) << "\n";
     // decoded = encoded.decode()
@@ -20,7 +20,7 @@ void main() {
     // print(s == decoded)
     std::cout << ::tpy::print_bool((s == decoded)) << "\n";
     // combined = b"prefix:" + s.encode()
-    std::vector<uint8_t> combined = (::tpy::bytes_concat(::tpy::bytes_literal_owned("prefix:", 7), ::tpy::bytes_from_str(s)));
+    ::tpy::Bytes combined = (::tpy::bytes_concat(::tpy::bytes_literal_owned("prefix:", 7), ::tpy::bytes_from_str(s)));
     // print(combined)
     std::cout << ::tpy::BytesPrinter(combined) << "\n";
 }

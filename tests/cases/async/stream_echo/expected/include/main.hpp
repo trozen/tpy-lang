@@ -32,8 +32,8 @@ struct __coro_client_role {
     int32_t port;
     ::tpy::frame_slot<::tpystd::asyncio::StreamReader> reader;
     ::tpy::frame_slot<::tpystd::asyncio::StreamWriter> writer;
-    std::vector<uint8_t> line;
-    std::vector<uint8_t> rest;
+    ::tpy::Bytes line;
+    ::tpy::Bytes rest;
     ::tpy::frame_slot<std::tuple<::tpystd::asyncio::StreamReader, ::tpystd::asyncio::StreamWriter>> __await_lift_0;
     std::optional<::tpystd::asyncio::__coro_open_connection> __sub_0;
     std::optional<::tpystd::asyncio::__coro_StreamWriter_drain> __sub_1;
@@ -72,7 +72,7 @@ struct __coro_main_coro {
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> client;
     ::tpy::frame_slot<::tpystd::socket::socket> conn;
     std::tuple<std::string, int32_t> addr;
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     ::tpy::frame_slot<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>> __await_lift_0;
     std::optional<::tpystd::asyncio::_SockAccept> __sub_0;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_1;

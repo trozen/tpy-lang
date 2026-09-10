@@ -39,11 +39,11 @@ inline std::ostream& operator<<(std::ostream& os, const Meta& obj) {
 // class Buf:
 struct Buf {
     // data: bytes
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     // lit: bytes
-    std::vector<uint8_t> lit;
+    ::tpy::Bytes lit;
     // empty: bytes
-    std::vector<uint8_t> empty;
+    ::tpy::Bytes empty;
 
     // def __init__(self, data: bytes):
     explicit Buf(std::span<const uint8_t> data);
@@ -60,6 +60,6 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 inline Meta::Meta(std::string_view title, std::string_view v) : title(std::string(v)), tag("fixed"), view(title), label("lit") {}
 
 // def __init__(self, data: bytes):
-inline Buf::Buf(std::span<const uint8_t> data) : data(::tpy::bytes_copy(data)), lit(::tpy::bytes_literal_owned("\x01\x02", 2)), empty(std::vector<uint8_t>()) {}
+inline Buf::Buf(std::span<const uint8_t> data) : data(::tpy::Bytes(data)), lit(::tpy::bytes_literal_owned("\x01\x02", 2)), empty(::tpy::Bytes()) {}
 void __tpy_init();
 } // namespace tpyapp::main

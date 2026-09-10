@@ -39,7 +39,7 @@ int32_t apply(__F0&& f, const std::vector<T>& xs) {
 template<typename T>
 ::tpy::val_or_ref_t<T> apply(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return a
-    return a;
+    return ::tpy::param_to_return<T>(a);
 }
 
 void __tpy_init();

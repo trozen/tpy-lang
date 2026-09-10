@@ -19,7 +19,7 @@ std::expected<int32_t, MyErr> fallible(int32_t x) {
 // def run(x: Int32) -> None:
 void run(int32_t x) {
     // try:
-    std::string note;
+    ::tpy::String note;
     int32_t y;
     {
         try {

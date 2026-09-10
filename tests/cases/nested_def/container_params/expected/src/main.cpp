@@ -22,7 +22,7 @@ void main() {
         s.insert(7);
     };
     // def stamp(b: bytearray) -> None:
-    auto stamp = [](std::vector<uint8_t>& b) {
+    auto stamp = [](::tpy::ByteArray& b) {
         // b.append(65)
         b.push_back(65);
     };
@@ -55,7 +55,7 @@ void main() {
     // mark(seen)  # tpyc: ok
     mark(seen);
     // buf = bytearray()
-    std::vector<uint8_t> buf = std::vector<uint8_t>();
+    ::tpy::ByteArray buf = ::tpy::ByteArray();
     // stamp(buf)  # tpyc: ok
     stamp(buf);
     // print(len(data), data[2], total(data))

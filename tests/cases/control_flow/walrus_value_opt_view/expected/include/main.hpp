@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 std::optional<std::string> maybe_text(int32_t k);
-std::optional<std::vector<uint8_t>> maybe_blob(int32_t k);
+std::optional<::tpy::Bytes> maybe_blob(int32_t k);
 int32_t text_len(int32_t k);
 int32_t blob_len(int32_t k);
 int32_t from_text_param(std::optional<std::string_view> t);

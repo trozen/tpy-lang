@@ -9,7 +9,7 @@ void main() {
     // tmp = os.getcwd()
     std::string tmp = ::tpy::stdlib::os::getcwd();
     // f = tmp + "/tpy_ospath_fs.txt"
-    std::string f = (::tpy::str_concat(tmp, "/tpy_ospath_fs.txt"));
+    ::tpy::String f = (::tpy::str_concat(tmp, "/tpy_ospath_fs.txt"));
     // with open(f, "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode(f, "w");
     auto& fh = __ctx_1.__enter__();

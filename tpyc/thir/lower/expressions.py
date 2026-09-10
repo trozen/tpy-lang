@@ -97,7 +97,6 @@ from ...typesys import (
 )
 from ...type_def_registry import (
     enum_info_of,
-    has_view_param_form,
     is_array,
     is_big_int_type,
     is_bool_type,
@@ -706,6 +705,8 @@ from .checks import (
     _method_rvalue_f1_record,
     _typed_dict_ctor_call,
     _native_ctx_manager_ok,
+    _open_tparam_param_read,
+    _open_tparam_storage_slot,
     _str_owned_slot_arg,
     _bytes_owned_slot_arg,
     _own_bytes_literal_arg,
@@ -1475,7 +1476,7 @@ def _own_move_source_slice_facts(
         return False
     # Coerces are peeled before the last-use check, so an
     # all-identity chain over a movable name moves the same way the bare
-    # name does (`push_back(std::move((*buf)))` under bytearray->bytes).
+    # name does.
     bare = _peel_coerce(a)
     if not isinstance(bare, TpyName) or bare.name == "self":
         return False
@@ -3400,6 +3401,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     # The mixed-sign fixed-int compare's `::std::cmp_*` spelling, set in
     # the compare gate for the target-less non-literal slice.
     mixed_cmp_tpl: 'str | None' = None
+    # The open-`T` equality's `::tpy::eq` spelling, same seam.
+    open_eq_tpl: 'str | None' = None
     # This is the CONTAINER-result native dunder leg (list concat / the set
     # operators), whose operands render inline inside the dunder template.
     # Set in the gate, consumed by the operand render below.
@@ -3458,16 +3461,17 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             bt = _resolved_bytes_value(rtype, analyzer)
             lt = _declared_type(e.left, declared, analyzer)
             rt = _declared_type(e.right, declared, analyzer)
-            # A bytearray RESULT resolves the same native bytes_concat /
-            # bytes_repeat dunder as bytes, so it takes the bytes-family
-            # arms below rather than the container ladder -- the only
-            # difference is the operand slot, which spells the OWNED bytes
-            # literal (target-threaded through the resolved overload).
+            # A bytearray RESULT takes the bytes-family arms below rather
+            # than the container ladder: its operator dunders are native free
+            # functions over the same view family, and the arms that follow
+            # validate the OPERANDS (`_bytes_concat_operand` / the repeat
+            # arm's scalar count), so the result type plus a resolved native
+            # dunder is the whole rule -- no dunder name is spelled here. The
+            # only difference from bytes is the operand slot, which spells the
+            # OWNED bytes literal (target-threaded through the overload).
             _ba_res = (rtype is not None
                        and is_bytearray_type(unwrap_readonly(unwrap_ref_type(
                            unwrap_send_sync(rtype))))
-                       and rb.method.native_name.rsplit("::", 1)[-1]
-                       in ("bytes_concat", "bytes_repeat")
                        and bool(_witness("binop.bytearray_result")))
             if not _ba_res and (bt is None or not is_bytes_type(bt)):
                 # Container-result native free-function dunders: list
@@ -3734,6 +3738,19 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 or ptr_tuple_pair is not None
                 or opt_eq_targets is not None):
             reject()
+        if (e.op in ("==", "!=") and _tparam_value(_unwrap_own(lt))
+                and _tparam_value(_unwrap_own(rt))):
+            # Both operands are the SAME open `T`, whose two C++ spellings can
+            # differ at an instantiation: a `T` parameter arrives in its own
+            # type's parameter form (a view for `str` / `bytes`) while a `T`
+            # element or field is the storage form, and a span has no `==`
+            # against its owning buffer. `::tpy::eq` is `==` where the two
+            # forms compare and element-wise where they do not, so the one
+            # emitted body serves every instantiation. Ordering has no such
+            # form-neutral helper: BUGS.md#open-tparam-ordering-needs-one-form.
+            _witness("binop.open_tparam_eq")
+            open_eq_tpl = ("::tpy::eq({self}, {0})" if e.op == "=="
+                           else "(!::tpy::eq({self}, {0}))")
         if _mixed_sign_compare(lt, rt):
             # The `::std::cmp_*` slice: TARGET-LESS, non-literal fixed-int
             # operands. A coercion-targeted pair casts instead, a literal
@@ -4667,7 +4684,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         left_cast=lcast,
         right_cast=rcast,
         both_literal_int_operands=both_lit,
-        template_override=mixed_cmp_tpl,
+        template_override=mixed_cmp_tpl or open_eq_tpl,
         form=(Form.STORAGE if _is_string_owned(rtype)
               or (bt is not None and is_bytes_type(bt)) else Form.VALUE),
         loc=loc)
@@ -5498,7 +5515,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # A NARROWED read (sema retyped it to the inner view, `rtype` no
             # longer Optional) unwraps `(*s)`. For a PARAM that deref is a
             # BORROW view, so an owned sink still gets the family copy
-            # (`std::string`/`bytes_copy`); for a LOCAL it is already OWNED
+            # (`std::string`/`Bytes(x)`); for a LOCAL it is already OWNED
             # (STORAGE), so a sink takes it bare. An UN-narrowed read stays the
             # bare whole optional (VALUE), reached only inside the None-test /
             # truthiness / arg-shim wrappers (the bare value position is
@@ -5541,7 +5558,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             loc=loc)
         # A bytes-slice name carries the same load-bearing view/owned form tag
         # as str: BORROW (span param / view local) drives the owned-sink
-        # `::tpy::bytes_copy(x)`, STORAGE (owned vector local) suppresses it.
+        # `::tpy::Bytes(x)`, STORAGE (owned vector local) suppresses it.
         bytes_t = _resolved_bytes_value(rtype, analyzer)
         if bytes_t is not None:
             return THIRName(result_type=bytes_t, name=e.name, cpp=gcpp,
@@ -6230,7 +6247,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # BORROW -- an owned decl sink materializes it via the view->owned
             # THIRFormConvert (str: the strview_to_str coerce ->
             # `std::string(...)`; bytes: no coerce at a pending decl, the S6
-            # decl-init BORROW wrap -> `::tpy::bytes_copy(...)`); the stepped /
+            # decl-init BORROW wrap -> `::tpy::Bytes(...)`); the stepped /
             # slice-var owned result (std::string / std::vector<uint8_t>) is
             # STORAGE, landing bare in every sink. Absent bounds emit
             # std::nullopt.
@@ -6904,7 +6921,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if sub_str is None:
             # An owned-BYTES element read (list[bytes]) is an owned lvalue:
             # STORAGE via the shared form map, so owned decl/return sinks
-            # land it bare (implicit copy), never the S6 bytes_copy wrap.
+            # land it bare (implicit copy), never the S6 `Bytes(x)` wrap.
             sub_str = _resolved_bytes_value(rtype, analyzer)
             if sub_str is not None:
                 _witness("subscript.bytes_elem")
@@ -8042,29 +8059,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     note_detail(
                         "call.ctor_arg." + _type_family_tag(p.type, analyzer))
                     raise ThirUnsupported(call_reject_reason("expr.call"))
-                # A VIEW-form source at a GENERIC ctor slot: the emitted
-                # parameter is spelled off the record's own `T`
-                # (`explicit Boxed(const T& value)`), so it binds the storage
-                # type and the view owes the owned materialize -- the free
-                # call's and the generic method's arm at the third seam.
-                vt = _tparam_slot_temp_arg(
-                    a, p.type, i, raw_ctor_fi, lc.analyzer, locals_=declared,
-                    param_names=lc.prescan.param_names)
-                if vt is not None and has_view_param_form(vt):
-                    if not temp_args:
-                        note_detail("ctor.generic_slot_view_no_flush")
-                        raise ThirUnsupported(
-                            call_reject_reason("expr.call"))
-                    _witness("argtemp.generic_ref_slot")
-                    args.append(THIRArgTemp(
-                        result_type=vt, cpp_type=vt.to_cpp(),
-                        movable=unwrap_ref_type(vt).is_movable(),
-                        init=THIRFormConvert(
-                            result_type=vt,
-                            value=_lower_expr(a, lc, declared),
-                            form=Form.STORAGE, loc=getattr(a, "loc", None)),
-                        form=Form.VALUE, loc=getattr(a, "loc", None)))
-                    continue
                 rec = (_record_rvalue_temp_slot(a, p.type, lc.analyzer)
                        if i in ctor_mut else None)
                 if rec is not None:
@@ -8574,14 +8568,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             scalar_ctor = _eligible_scalar(rtype)
             slice_ctor = _slice_object_type(rtype)
             owned_str_ctor = _is_string_owned(rtype)
-            # `bytearray()` -- the template expands to the plain
-            # `std::vector<uint8_t>()` construction, no different in kind from
-            # the scalar ctors above; it was simply absent from the result-kind
-            # list. ARG-LESS only: `bytearray(n)` / `bytearray(b"..")` never
-            # reach this arm at all (they resolve as plain calls and are
-            # decided by the free-call arg ladder), so an arg rule here would
-            # be dead code.
-            bytearray_ctor = (not e.args and rtype is not None
+            # `bytearray(...)` -- the template expands to the buffer type's own
+            # construction, no different in kind from the scalar ctors above.
+            # Its buffer-argument and UInt8-iterable overloads reach here too,
+            # since each carries a `@cpp_template` rather than naming a factory;
+            # the size and Int32-iterable overloads are native FUNCTIONS and so
+            # are excluded by the `not fi.native_function` guard above, routing
+            # through the free-call arg ladder instead.
+            bytearray_ctor = (rtype is not None
                               and _bytes_family_ref(unwrap_readonly(
                                   unwrap_ref_type(unwrap_send_sync(rtype)))))
             if not (scalar_ctor or slice_ctor or owned_str_ctor
@@ -9201,7 +9195,18 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     or e.double_star_unpack is not None):
                 raise ThirUnsupported(call_reject_reason("expr.method_call"))
             _witness("ctor.nested_record")
-            type_cpp = NominalType(e.nested_type_name).to_cpp()
+            _nested_res = unwrap_readonly(unwrap_ref_type(rtype))
+            if (isinstance(_nested_res, NominalType)
+                    and _nested_res.type_args):
+                # A GENERIC nested record spells its resolved arguments, the
+                # way the top-level sibling does. Leaving them to CTAD only
+                # ever worked by accident: a constructor parameter whose slot
+                # is derived from `T` (`::tpy::readonly_form_t<T>`) is a
+                # non-deduced context, so `Outer::Box(7)` has nothing to
+                # deduce from.
+                type_cpp = lc.render_type(_nested_res)
+            else:
+                type_cpp = NominalType(e.nested_type_name).to_cpp()
             return THIRCtorCall(
                 result_type=rtype, type_cpp=type_cpp,
                 args=tuple(_lower_expr(a, lc, declared) for a in e.args),
@@ -9854,14 +9859,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     _witness("argtemp.generic_ref_slot")
                     t_init = _lower_expr(a, lc, declared,
                                          use=_ExprUse(slot_target=tt))
-                    if (has_view_param_form(tt)
-                            and t_init.form is Form.BORROW):
-                        # The view-form source owes the owned materialize the
-                        # storage-typed slot binds; the free-callee twin
-                        # builds the same convert.
-                        t_init = THIRFormConvert(
-                            result_type=tt, value=t_init, form=Form.STORAGE,
-                            loc=getattr(a, "loc", None))
                     return THIRArgTemp(
                         result_type=tt, cpp_type=tt.to_cpp(), movable=unwrap_ref_type(tt).is_movable(),
                         init=t_init,
@@ -9900,18 +9897,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 locals_=declared, param_names=lc.prescan.param_names,
                 borrowing_frame=_borrowing_frame_callee(fi))
             if nf is not None:
-                # Both temps this seam still owes are needed RENDER, not an
-                # optimization, and with no flush position neither can be
+                # The temp this seam still owes is needed RENDER, not an
+                # optimization, and with no flush position it cannot be
                 # hoisted -- so reject honestly (the `call.own_str_no_flush`
                 # precedent) rather than fall through to a pass-through arm.
-                # One tag per REASON: a shared tag is how an unpinned arm
-                # hides behind its neighbour's case.
-                if has_view_param_form(nf):
-                    # The view-form source would render the un-copied view
-                    # into a slot spelled off the storage type.
-                    note_detail("method.generic_slot_view_no_flush")
-                    raise ThirUnsupported(
-                        call_reject_reason("expr.method_call"))
                 if _borrowing_frame_callee(fi):
                     # A borrowing frame would capture a prvalue that dies at
                     # the end of the statement.
@@ -11243,6 +11232,16 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         if slot is not None else None
     if isinstance(su0, AnyType):
         return _lower_elem_into_any(e, su0, lc, declared)
+    # An open-`T` PARAM at a `T` element slot (`self.items = [first]` inside a
+    # generic record): the param arrives in the instantiation's parameter form,
+    # which at a view family is a view over the storage the element slot spells,
+    # so the construction is explicit and keyed on `T` alone.
+    if (isinstance(su0, TypeParamRef)
+            and _open_tparam_param_read(e, declared, lc.prescan.param_names)):
+        _witness("containerlit.open_tparam_elem")
+        return THIRFormConvert(
+            result_type=su0, value=_lower_expr(e, lc, declared),
+            form=Form.STORAGE, loc=getattr(e, "loc", None))
     # A wrapper-union element slot (`list[V]` / `dict[str, V]` over a
     # recursive alias): None is the monostate member and a nested literal
     # spells its typed container -- the ru-literal element renders. Scalar
@@ -11641,7 +11640,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                              loc=getattr(e, "loc", None))
     else:
         # The bytes sibling (S6): a view-form source into an owned `bytes`
-        # element slot copies via `::tpy::bytes_copy` (a bytes literal lowers
+        # element slot copies via `::tpy::Bytes` (a bytes literal lowers
         # STORAGE and renders its owned form bare). Same Optional peel as the
         # str arm -- the value-`Optional[bytes]` slot takes the copy too.
         bt = (_resolved_bytes_value(view_slot, lc.analyzer)
@@ -12441,8 +12440,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
         peeled = _peel_coerce(a)
         # The one verdict this seam takes, the same object the free-call
         # GATE and the method / ctor seams take: whether a bare-T slot's
-        # instantiation owes a temp, and whether that temp's init is the
-        # owned materialization.
+        # instantiation owes a temp.
         gslot = _generic_arg_slot(a, ptype, resolved, declared,
                                   lc.prescan.param_names, analyzer,
                                   borrowing_frame=borrowing_frame)
@@ -12474,20 +12472,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
                 movable=unwrap_ref_type(st).is_movable(),
                 loc=getattr(a, "loc", None)))
 
-        if gslot is not None and gslot.materialize:
-            # The view-form source at an OWNING view-family slot: the temp is
-            # the materialized copy (`std::string __tmp_N = std::string(k);`
-            # / `= ::tpy::bytes_copy(k);`), since the slot binds the storage
-            # type. The convert node is the one place the owned spelling
-            # lives, shared with the decl/return owned sinks. The slot is
-            # peeled to the OWNED type: a `readonly[T]` slot spells its own
-            # const, which the temp's declaration and the owned-conversion
-            # lookup must both see through.
-            vslot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(resolved)))
-            _ref_slot_temp(THIRFormConvert(
-                result_type=vslot, value=_lower_expr(a, lc, declared),
-                form=Form.STORAGE, loc=getattr(a, "loc", None)), vslot)
-        elif (isinstance(ptype, TypeParamRef)
+        if (isinstance(ptype, TypeParamRef)
                 and isinstance(peeled, (TpyIntLiteral,
                                         TpyFloatLiteral,
                                         TpyBoolLiteral))):
@@ -12656,10 +12641,13 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
     analyzer = lc.analyzer
     # Frame-capturing callee (generator/coro factory): its frame borrows ref
     # args past the statement, so readonly-slot rvalues hoist like mutable
-    # ones; the fact comes off the callee's func_info.
+    # ones; the fact comes off the callee's func_info, through the one
+    # predicate that also sees an @overload-ed generator (whose per-signature
+    # fi carries is_generator=False).
     _callee_fi = e.resolved_function_info
     frame_capturing = (_callee_fi is not None
-                       and (_callee_fi.is_generator or _callee_fi.is_async))
+                       and (_borrowing_frame_callee(_callee_fi)
+                            or _callee_fi.is_async))
     if isinstance(a, TpyVarargPack):
         # Kind-blind: the pack renders (`std::array` temp +
         # `::tpy::varargs<T>(__tmp_N)`) the same way for a @native callee,
@@ -13269,7 +13257,7 @@ def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
                 # A str/bytes value element lands in the owned std::array. A
                 # VIEW source (a view param/local, a view-resolved read)
                 # takes the owned-copy wrap (`std::string()` /
-                # `bytes_copy`); a str/bytes LITERAL is const char[N] /
+                # `Bytes(x)`); a str/bytes LITERAL is const char[N] /
                 # already-owned and an OWNED source lands bare.
                 src = a
                 while isinstance(src, TpyCoerce):
@@ -14597,9 +14585,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return lowered
     # The bytes twin: a VIEW-form source (a bytes param / narrowed deref /
     # view slice) at an `Own[bytes]` element slot materializes
-    # `::tpy::bytes_copy(x)` via the S6 view->owned THIRFormConvert. The
+    # `::tpy::Bytes(x)` via the S6 view->owned THIRFormConvert. The
     # sema `bytesview_to_bytes` coerce IS that copy, so it peels and the
-    # convert wraps the bare view render underneath.
+    # convert wraps the bare view render underneath. A `bytearray` source
+    # never arrives here: an owning `bytes` sink handed one is refused in
+    # sema, which asks for the explicit `bytes(...)`.
     ow_bytes = _plain_own_slot(ptype)
     if (ow_bytes is not None
             and is_bytes_type(unwrap_readonly(ow_bytes))
@@ -14616,6 +14606,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                    value=lowered, form=Form.STORAGE,
                                    loc=getattr(a, "loc", None))
         return lowered
+    # The open-`T` sibling of the two rows above: a `T`-typed PARAM at an
+    # `Own[T]` / `T` element slot. The param arrives in the instantiation's
+    # parameter form, a view over the storage form the element slot spells for
+    # `str` / `bytes`, so the construction is explicit and keyed on `T`.
+    ow_tp = _open_tparam_storage_slot(ptype)
+    if (ow_tp is not None
+            and _open_tparam_param_read(a, declared, lc.prescan.param_names)):
+        _witness("arg.open_tparam_storage")
+        lowered = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE)
+        return THIRFormConvert(result_type=ow_tp, value=lowered,
+                               form=Form.STORAGE, loc=getattr(a, "loc", None))
     # `copy(name)` of a plain F1-record into a SAME-nominal `Own[record]`
     # slot -- or its Own-OPTIONAL sibling (the shared
     # `_plain_or_opt_own_slot` peel): the copy-construct rvalue
@@ -16917,14 +16918,14 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     elif _resolved_bytes_value(rtype, analyzer) is not None:
         # A bytes-family ternary. The both-view arm shape (a narrowed
         # `(*a)` span and a bytes param `b`) is a BORROW span, so the owned
-        # decl/return sink wraps `::tpy::bytes_copy`. Mixed / owned-literal
+        # decl/return sink wraps `::tpy::Bytes`. Mixed / owned-literal
         # arms would need the str-mixed per-arm materialization and defer.
         form = Form.BORROW
         if not (_bytes_view_arm(e.then_expr, lc)
                 and _bytes_view_arm(e.else_expr, lc)):
             # A NARROWED-deref view arm + a bytes-LITERAL arm renders the
             # raw mixed ternary (`(*b)` vs `bytes_literal_owned(..)`), and
-            # the owned sink wraps the WHOLE ternary in bytes_copy. A
+            # the owned sink wraps the WHOLE ternary in `Bytes(x)`. A
             # PLAIN-param view arm is excluded: that flavor renders bare
             # (no copy wrap -- a span-vs-vector ternary with no exec
             # witness, see BUGS.md), so it keeps rejecting.
@@ -16953,7 +16954,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                 # Both arms OWNED container-element subscript lvalues
                 # (`c[0] if cond else d[0]` on list[bytes] -- a
                 # root-mutation-DEMOTED sink): arms render bare and the
-                # owned decl copies the ternary with no bytes_copy wrap.
+                # owned decl copies the ternary with no `Bytes(x)` wrap.
                 form = Form.STORAGE
                 _witness("ifexpr.bytes_owned_elems")
             else:

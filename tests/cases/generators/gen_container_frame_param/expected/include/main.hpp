@@ -13,15 +13,15 @@ struct __gen_twice_buf;
 struct __gen_twice_arr;
 struct __gen_twice_list;
 
-__gen_twice_buf twice_buf(std::vector<uint8_t>& b);
+__gen_twice_buf twice_buf(::tpy::ByteArray& b);
 __gen_twice_arr twice_arr(std::array<int32_t, 2>& a);
 __gen_twice_list twice_list(std::vector<int32_t>& xs);
 void main();
 
 // Generator: twice_buf
-struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::val_or_ref<std::vector<uint8_t>>> {
+struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::val_or_ref<::tpy::ByteArray>> {
     int32_t __state;
-    std::vector<uint8_t>& b;
+    ::tpy::ByteArray& b;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -30,10 +30,10 @@ struct __gen_twice_buf : public ::tpy::next_iter_mixin<__gen_twice_buf, ::tpy::v
         S_DONE = 3,
     };
 
-    __gen_twice_buf(std::vector<uint8_t>& b)
+    __gen_twice_buf(::tpy::ByteArray& b)
         : __state(S_INITIAL), b(b) {}
 
-    std::expected<::tpy::val_or_ref<std::vector<uint8_t>>, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> __next__();
     __gen_twice_buf& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_twice_buf&) {

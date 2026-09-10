@@ -54,7 +54,6 @@ from ..type_def_registry import (
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
     find_factory_by_simple_name, protocol_info_of,
-    has_view_param_form,
 )
 from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
@@ -2132,8 +2131,11 @@ class ExpressionAnalyzer:
         element coercion must not be (it would double-convert). Caller-side
         validation (the per-element compatibility check) still rejects
         genuinely incompatible elements."""
+        # A literal's element slot owns what it is handed, so a borrow-only
+        # rule does not apply here.
         coercion = resolve_coercion(
-            unwrap_own(actual), unwrap_own(expected), CoercionContext.INIT)
+            unwrap_own(actual), unwrap_own(expected), CoercionContext.INIT,
+            sink_owns=True)
         if coercion is not None and coercion.materialize_at_aggregate_element:
             return self.compat.coerce_expr(
                 elem, actual, expected, ctx_msg,
@@ -2267,6 +2269,7 @@ class ExpressionAnalyzer:
                         f"array literal element {i}",
                         expr.loc,
                         source_expr=expr.elements[i - 1],
+                        target_is_storage_form=True,
                     )
                 except SemanticError:
                     exp_s, act_s = disambiguated_pair(expected_elem, elem_type)
@@ -3051,7 +3054,8 @@ class ExpressionAnalyzer:
                 try:
                     self.compat.check_type_compatible(
                         kt, expected_key, f"dict literal key {i}", expr.loc,
-                        source_expr=expr.keys[i - 1])
+                        source_expr=expr.keys[i - 1],
+                        target_is_storage_form=True)
                 except SemanticError:
                     exp_s, act_s = disambiguated_pair(expected_key, kt)
                     raise self.ctx.error(
@@ -3090,7 +3094,8 @@ class ExpressionAnalyzer:
                 try:
                     self.compat.check_type_compatible(
                         vt, expected_value, f"dict literal value {i}", expr.loc,
-                        source_expr=expr.values[i - 1])
+                        source_expr=expr.values[i - 1],
+                        target_is_storage_form=True)
                 except SemanticError:
                     exp_s, act_s = disambiguated_pair(expected_value, vt)
                     raise self.ctx.error(
@@ -3166,7 +3171,8 @@ class ExpressionAnalyzer:
                 try:
                     self.compat.check_type_compatible(
                         et, expected_elem, f"set literal element {i}", expr.loc,
-                        source_expr=expr.elements[i - 1])
+                        source_expr=expr.elements[i - 1],
+                        target_is_storage_form=True)
                 except SemanticError:
                     exp_s, act_s = disambiguated_pair(expected_elem, et)
                     raise self.ctx.error(
@@ -4395,19 +4401,13 @@ class ExpressionAnalyzer:
                         f"inferred type argument {type_arg} for {param_name} "
                         f"does not satisfy bound '{bound.name}'"
                     )
-        # A generic instantiated at a type whose parameter form is a distinct
-        # VIEW over its own storage form takes the storage form at its `T`
-        # slot. At a CALL the argument materializes the owned copy; a function
-        # REFERENCE has no call site to materialize at -- the signature itself
-        # is what the Fn/Callable value carries -- so it stays rejected. A
-        # still-OPEN type argument has no parameter form to compare and is
-        # refused the same way.
+        # A still-OPEN type argument has no C++ parameter form at all, so the
+        # Fn/Callable value cannot carry a signature.
         for param_name, type_arg in inferred.items():
-            if contains_type_param(type_arg) or has_view_param_form(type_arg):
+            if contains_type_param(type_arg):
                 return None, (
                     f"Cannot use '{fi.name}' as function reference with "
-                    f"{param_name}={type_arg}: generic functions use a different "
-                    f"C++ parameter convention than {type_arg} "
-                    f"(use a lambda instead)"
+                    f"{param_name}={type_arg}: the type argument is not "
+                    f"resolved (use a lambda instead)"
                 )
         return tuple(inferred[tp] for tp in fi.type_params), None

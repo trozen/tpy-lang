@@ -26,14 +26,14 @@ __coro_make_list make_list() {
 }
 
 // async def make_bytes() -> Own[bytearray]:      # the bytearray return slot
-::tpystd::tpy::Poll<std::vector<uint8_t>> __coro_make_bytes::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::ByteArray> __coro_make_bytes::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
         // return bytearray(b"ab")
         __state = S_DONE;
-        std::vector<uint8_t> __tpy_async_ret = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
-        return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+        ::tpy::ByteArray __tpy_async_ret = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
+        return ::tpystd::tpy::Poll<::tpy::ByteArray>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

@@ -9,9 +9,9 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::vector<uint8_t> make_bytes(std::string_view s);
+::tpy::Bytes make_bytes(std::string_view s);
 std::string make_str(std::string_view s);
-std::string show(const std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> v);
+std::string show(const std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> v);
 void main();
 
 void __tpy_init();

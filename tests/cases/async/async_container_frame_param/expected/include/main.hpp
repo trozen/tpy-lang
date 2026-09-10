@@ -17,7 +17,7 @@ struct __coro_bump_arr;
 struct __coro_push_list;
 struct __coro_drive;
 
-__coro_fill_buf fill_buf(std::vector<uint8_t>& b);
+__coro_fill_buf fill_buf(::tpy::ByteArray& b);
 __coro_bump_arr bump_arr(std::array<int32_t, 2>& a);
 __coro_push_list push_list(std::vector<int32_t>& xs);
 __coro_drive drive();
@@ -26,7 +26,7 @@ __coro_drive drive();
 struct __coro_fill_buf {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<uint8_t>& b;
+    ::tpy::ByteArray& b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -35,7 +35,7 @@ struct __coro_fill_buf {
         S_DONE = 2,
     };
 
-    __coro_fill_buf(std::vector<uint8_t>& b)
+    __coro_fill_buf(::tpy::ByteArray& b)
         : __state(S_INITIAL), __cancel_pending(false), b(b) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -98,7 +98,7 @@ struct __coro_push_list {
 struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<std::vector<uint8_t>> b;
+    ::tpy::frame_slot<::tpy::ByteArray> b;
     ::tpy::frame_slot<std::array<int32_t, 2>> a;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
     int32_t __await_lift_0;

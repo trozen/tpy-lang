@@ -11,7 +11,7 @@ namespace tpyapp::main {
 // def add_joined(xs: list[str], a: str, b: str) -> None:
 void add_joined(std::vector<std::string>& xs, std::string_view a, std::string_view b) {
     // t = a + b
-    std::string t = (::tpy::str_concat(a, b));
+    ::tpy::String t = (::tpy::str_concat(a, b));
     // xs.append(t)  # the owned-str local at an Own[str] element slot
     std::string __tmp_1{t};
     xs.push_back(std::move(__tmp_1));

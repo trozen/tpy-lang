@@ -1,9 +1,9 @@
 # tpy: ext_module
 # CPython extension over the bytes boundary: bytes params/returns marshal by
 # copy. bytes is immutable, so the boundary copy is unobservable; a non-bytes
-# argument (including bytearray, a mutable buffer sharing bytes' C++
-# representation but not marshallable by value) is a TypeError enforced only by
-# the compiled .so and lives in ext_checks.py.
+# argument (including bytearray, a mutable buffer that is not marshallable by
+# value) is a TypeError enforced only by the compiled .so and lives in
+# ext_checks.py.
 from tpy import Own
 from tpy.extern import export
 

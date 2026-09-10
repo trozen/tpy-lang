@@ -730,13 +730,14 @@ def is_owned_in_coro_frame(t: "TpyType") -> bool:
 
 
 def view_to_owned_conv(t: "TpyType") -> str:
-    """The C++ callable that copies a view-form `t` into its owned storage form:
-    `std::string` for the str family (`str`/`String`, from a
-    `std::string_view`), `::tpy::bytes_copy` for `bytes` (from a `BytesView`).
-    `t` is the bare view type (Optional callers pass the inner). Only valid
-    for view-family types."""
-    return ("std::string" if is_str_type(t) or is_string_type(t)
-            else "::tpy::bytes_copy")
+    """The C++ spelling that copies a view into `t`'s owned storage form.
+
+    It is `t`'s OWN C++ type name: every owned buffer type constructs from its
+    family's view (`std::string` from a `std::string_view`, `::tpy::Bytes` and
+    `::tpy::ByteArray` from a `std::span<const uint8_t>`), so the conversion is
+    the type, not a helper beside it -- nothing here knows a runtime symbol.
+    `t` is the OWNED type (Optional callers pass the inner)."""
+    return t.to_cpp()
 
 
 def has_view_param_form(t: "TpyType") -> bool:
@@ -748,6 +749,10 @@ def has_view_param_form(t: "TpyType") -> bool:
     future family joins by registering its forms. `String` and `bytearray`
     are NOT this shape: their param form is a reference TO the storage form,
     which an owned lvalue binds.
+
+    Each of the four has its OWN C++ type, so a generic `T` slot instantiated
+    at one of them already resolves the twin's parameter form from the runtime
+    trait; the fact no longer implies a call-site materialization.
 
     The fact matters wherever a slot is spelled with the STORAGE form while
     the argument renders in the param form -- a generic `T` parameter, whose
@@ -957,8 +962,8 @@ def _populate() -> None:
     ))
     register(TypeDef(
         "tpy.String", TC.STR, is_value_type=True,
-        cpp_formatter=lambda args: "std::string",
-        param_cpp_formatter=lambda args: "const std::string&",
+        cpp_formatter=lambda args: "::tpy::String",
+        param_cpp_formatter=lambda args: "const ::tpy::String&",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_char_elem,
     ))
@@ -977,15 +982,17 @@ def _populate() -> None:
         is_compile_time_only=True,
     ))
 
-    # Bytes family. bytes/bytearray are heap-backed (std::vector<uint8_t>),
-    # BytesView borrows (std::span<const uint8_t>). Element type is UInt8.
+    # Bytes family. bytes/bytearray are heap-backed (each its own class over
+    # std::vector<uint8_t>, so a trait keyed on the C++ type can tell them --
+    # and list[UInt8] -- apart), BytesView borrows (std::span<const uint8_t>).
+    # Element type is UInt8.
     def _u8_elem(args):
         from tpyc.typesys import UINT8
         return UINT8
 
     register(TypeDef(
         "builtins.bytes", TC.BYTES, is_value_type=True, boundary_marshal=True,
-        cpp_formatter=lambda args: "std::vector<uint8_t>",
+        cpp_formatter=lambda args: "::tpy::Bytes",
         param_cpp_formatter=lambda args: "std::span<const uint8_t>",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_u8_elem,
@@ -999,9 +1006,9 @@ def _populate() -> None:
         # same as list[Int32]; the reference-type default is non-Send, so spell
         # it out.
         is_send=True, is_sync=False,
-        cpp_formatter=lambda args: "std::vector<uint8_t>",
-        param_cpp_formatter=lambda args: "const std::vector<uint8_t>&",
-        param_mut_cpp_formatter=lambda args: "std::vector<uint8_t>&",
+        cpp_formatter=lambda args: "::tpy::ByteArray",
+        param_cpp_formatter=lambda args: "const ::tpy::ByteArray&",
+        param_mut_cpp_formatter=lambda args: "::tpy::ByteArray&",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_u8_elem,
     ))

@@ -15,7 +15,7 @@ void main() {
     // ys: list[UInt8] = [1, 2, 3]
     std::vector<uint8_t> ys = {1, 2, 3};
     // print(bytes(ys))
-    std::cout << ::tpy::BytesPrinter(::tpy::construct<std::vector<uint8_t>>(ys)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::construct<::tpy::Bytes>(ys)) << "\n";
     // # Generator expression of Int32 (the original user case from the REPL)
     // print(bytes(x * 2 for x in xs))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable([&xs]() {
@@ -32,9 +32,9 @@ void main() {
     }())) << "\n";
     // # bytearray from iterable
     // print(bytearray(xs))
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_from_int_iterable(xs)) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable(xs)) << "\n";
     // print(bytearray(x + 1 for x in xs))
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_from_int_iterable([&xs]() {
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_from_int_iterable([&xs]() {
         auto& __src = xs;
         return ::tpy::make_generator<int32_t>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
@@ -48,7 +48,7 @@ void main() {
     }())) << "\n";
     // # bytearray.extend with Int32 iterable
     // ba = bytearray()
-    std::vector<uint8_t> ba = std::vector<uint8_t>();
+    ::tpy::ByteArray ba = ::tpy::ByteArray();
     // ba.extend(xs)
     ::tpy::bytes_extend_int_iterable(ba, xs);
     // print(ba)
@@ -60,7 +60,7 @@ void main() {
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     // # bytearray.extend with another bytearray (exercises range-path specialization)
     // other = bytearray([50, 60])
-    std::vector<uint8_t> other = ::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{50, 60});
+    ::tpy::ByteArray other = ::tpy::bytearray_from_int_iterable(std::array<int32_t, 2>{50, 60});
     // ba.extend(other)
     ::tpy::extend(ba, other);
     // print(ba)
@@ -87,7 +87,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{0, 255})) << "\n";
     // # bytes from bytearray uses the bytes_copy fast path (verified via snapshot).
     // print(bytes(ba))
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_copy(ba)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::Bytes(ba)) << "\n";
 }
 
 void __tpy_init() {

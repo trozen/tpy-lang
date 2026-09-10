@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Count& obj) {
 // class Blob:
 struct Blob {
     // data: bytes
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
     explicit Blob(std::span<const uint8_t> data);
@@ -164,7 +164,7 @@ inline bool Count::__eq__(int32_t other) const {
 }
 
 // def __init__(self, data: bytes) -> None:
-inline Blob::Blob(std::span<const uint8_t> data) : data(::tpy::bytes_copy(data)) {}
+inline Blob::Blob(std::span<const uint8_t> data) : data(::tpy::Bytes(data)) {}
 
 // def __eq__(self, other: bytes) -> bool:
 inline bool Blob::__eq__(std::span<const uint8_t> other) const {

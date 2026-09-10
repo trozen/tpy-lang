@@ -313,7 +313,7 @@ struct Rc {
     bool __eq__(const Rc<T>& other) const
       requires ::tpystd::tpy::Equatable<T> {
         // return self.get() == other.get()
-        return (this->get() == other.get());
+        return ::tpy::eq(this->get(), other.get());
     }
 
     // def __lt__[T: Comparable](self, other: Rc[T]) -> bool:

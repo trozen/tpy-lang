@@ -15,7 +15,7 @@ void read_list(const std::vector<int32_t>* lst);
 void aug_assign(std::vector<int32_t>* lst);
 void read_dict(const ::tpy::ordered_map<int32_t, int32_t>* d);
 void read_dict_readonly(const ::tpy::ordered_map<int32_t, int32_t>* d);
-void read_bytearray(const std::vector<uint8_t>* b);
+void read_bytearray(const ::tpy::ByteArray* b);
 void read_nested(const std::vector<std::vector<int32_t>>* rows);
 void read_user_record(const Doubler* g);
 void main();

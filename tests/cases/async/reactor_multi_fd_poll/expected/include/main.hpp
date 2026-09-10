@@ -41,7 +41,7 @@ struct __coro_reader {
     __coro_reader(::tpystd::socket::socket& sock)
         : __state(S_INITIAL), __cancel_pending(false), sock(sock) {}
 
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_reader&) {
@@ -57,13 +57,13 @@ struct __coro_main_coro {
     ::tpy::frame_slot<::tpystd::socket::socket> b1;
     ::tpy::frame_slot<::tpystd::socket::socket> a2;
     ::tpy::frame_slot<::tpystd::socket::socket> b2;
-    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::vector<uint8_t>>> t1;
-    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::vector<uint8_t>>> t2;
-    std::vector<uint8_t> r1;
-    std::vector<uint8_t> r2;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::Bytes>> t1;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::Bytes>> t2;
+    ::tpy::Bytes r1;
+    ::tpy::Bytes r2;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
-    ::tpystd::asyncio::_executor::Task<std::vector<uint8_t>>* __sub_1 = nullptr;
-    ::tpystd::asyncio::_executor::Task<std::vector<uint8_t>>* __sub_2 = nullptr;
+    ::tpystd::asyncio::_executor::Task<::tpy::Bytes>* __sub_1 = nullptr;
+    ::tpystd::asyncio::_executor::Task<::tpy::Bytes>* __sub_2 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

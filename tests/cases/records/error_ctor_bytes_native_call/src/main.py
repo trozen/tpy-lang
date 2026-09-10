@@ -1,10 +1,12 @@
-# `bytes(x)` resolves to the @native(function=True) __init__ overload, an emit
-# the member-init call slice does not spell.
+# `bytes(x)` at a member-init field is a CALL the member-init slice does not
+# spell. (The case name says `native_call` for the tag this rejected under
+# while the buffer constructors named a factory; the owned type constructs from
+# its own view now, so the same shape rejects one tag over.)
 class Blob:
     data: bytes
 
     def __init__(self, src: bytes) -> None:
-        self.data = bytes(src)  # tpyc: error(/ctor.mil_field.nominal.native_call/)
+        self.data = bytes(src)  # tpyc: error(/ctor.mil_field.nominal.call/)
 
 
 def main() -> None:

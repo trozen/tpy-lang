@@ -24,7 +24,7 @@ __coro_main main();
 struct __coro_consume {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -34,7 +34,7 @@ struct __coro_consume {
     };
 
     __coro_consume(std::span<const uint8_t> data_)
-        : __state(S_INITIAL), __cancel_pending(false), data(::tpy::bytes_copy(data_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), data(::tpy::Bytes(data_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -48,7 +48,7 @@ struct __coro_consume {
 struct __coro_head {
     int32_t __state;
     bool __cancel_pending;
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -58,7 +58,7 @@ struct __coro_head {
     };
 
     __coro_head(std::span<const uint8_t> data_)
-        : __state(S_INITIAL), __cancel_pending(false), data(::tpy::bytes_copy(data_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), data(::tpy::Bytes(data_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

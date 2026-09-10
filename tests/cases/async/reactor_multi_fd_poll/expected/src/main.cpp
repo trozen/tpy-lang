@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def reader(sock: socket) -> bytes:
-::tpystd::tpy::Poll<std::vector<uint8_t>> __coro_reader::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::Bytes> __coro_reader::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // loop = asyncio.get_running_loop()
@@ -17,11 +17,11 @@ namespace tpyapp::main {
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<uint8_t>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         auto __ret0 = std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__ret0));
+        return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__ret0));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -51,9 +51,9 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         // b2.setblocking(False)
         (*b2).setblocking(false);
         // t1 = asyncio.create_task(reader(b1))
-        t1.emplace(::tpystd::asyncio::create_task<std::vector<uint8_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::vector<uint8_t>>>(reader((*b1)))));
+        t1.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(reader((*b1)))));
         // t2 = asyncio.create_task(reader(b2))
-        t2.emplace(::tpystd::asyncio::create_task<std::vector<uint8_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::vector<uint8_t>>>(reader((*b2)))));
+        t2.emplace(::tpystd::asyncio::create_task<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(reader((*b2)))));
         // await asyncio.sleep(0.01)  # let both readers park on the reactor
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
         __state = S_RESUME_0;

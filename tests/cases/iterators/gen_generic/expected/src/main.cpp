@@ -92,6 +92,51 @@ void main() {
         std::cout << i << " " << s << "\n";
         }
     }
+    // # a REFERENCE instantiation of a mutated bare-`T` slot
+    // b = Bin()
+    Bin b = Bin();
+    // for k in bump_each(b, 2):  # tpyc: ok
+    {
+        auto __src_10 = bump_each<Bin>(b, 2);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            int32_t k = ::tpy::unwrap_ref(*__r_11);
+        // print("bump", k)
+        std::cout << "bump" << " " << k << "\n";
+        }
+    }
+    // print("bump total", b.total)
+    std::cout << "bump total" << " " << b.total << "\n";
+    // # the readonly sibling of that slot, at the same record
+    // for k in size_each(b, 2):  # tpyc: ok
+    {
+        auto __src_12 = size_each<Bin>(b, 2);
+        auto&& __itr_12 = ::tpy::__iter__(__src_12);
+        for (;;) {
+            auto __r_13 = __itr_12.__next__();
+            if (!__r_13.has_value()) break;
+            int32_t k = ::tpy::unwrap_ref(*__r_13);
+        // print("size", k)
+        std::cout << "size" << " " << k << "\n";
+        }
+    }
+    // # and at str, whose slot is `const std::string&`, not the view
+    // word = "ro"
+    std::string_view word = "ro";
+    // for t in len_each(word, 2):  # tpyc: ok
+    {
+        auto __src_14 = len_each<std::string_view>(word, 2);
+        auto&& __itr_14 = ::tpy::__iter__(__src_14);
+        for (;;) {
+            auto __r_15 = __itr_14.__next__();
+            if (!__r_15.has_value()) break;
+            int32_t t = ::tpy::unwrap_ref(*__r_15);
+        // print("len", t)
+        std::cout << "len" << " " << t << "\n";
+        }
+    }
 }
 
 void __tpy_init() {

@@ -72,7 +72,7 @@ struct Cell {
         // me.n += 1
         me.n = ::tpy::add_check<int32_t>(me.n, 1);
         // return value
-        return value;
+        return ::tpy::param_to_return<T>(value);
     }
 
     // def concrete(self, value: Int32) -> Int32:

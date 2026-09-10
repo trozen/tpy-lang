@@ -21,8 +21,8 @@ int32_t f(const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            Box<int32_t> __tmp_2 = wrap<int32_t>(1);
-            if (ok(__tmp_2)) {
+            Box<int32_t> __tmp_1 = wrap<int32_t>(1);
+            if (ok(__tmp_1)) {
                 __result.push_back(x);
             }
         }
@@ -35,8 +35,8 @@ int32_t f(const std::vector<int32_t>& xs) {
 // def main() -> None:
 void main() {
     // print(f([1, 2, 3]))
-    std::vector<int32_t> __tmp_3 = {1, 2, 3};
-    std::cout << f(__tmp_3) << "\n";
+    std::vector<int32_t> __tmp_2 = {1, 2, 3};
+    std::cout << f(__tmp_2) << "\n";
 }
 
 void __tpy_init() {

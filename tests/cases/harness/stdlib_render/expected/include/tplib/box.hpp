@@ -129,7 +129,7 @@ struct Box {
     bool __eq__(const Box<T>& other) const
       requires ::tpystd::tpy::Equatable<T> {
         // return self.get() == other.get()
-        return (this->get() == other.get());
+        return ::tpy::eq(this->get(), other.get());
     }
 
     // def __lt__[T: Comparable](self, other: Box[T]) -> bool:

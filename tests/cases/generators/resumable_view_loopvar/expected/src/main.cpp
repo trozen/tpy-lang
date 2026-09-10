@@ -74,7 +74,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            std::vector<uint8_t> b = *__beg_0;
+            ::tpy::Bytes b = *__beg_0;
             // print(len(b))
             std::cout << ::tpy::__len__(b) << "\n";
         }
@@ -100,7 +100,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
 
 
 // def blobs_gen(blobs: list[bytes]) -> Iterator[Int32]:
-__gen_blobs_gen blobs_gen(std::vector<std::vector<uint8_t>>& blobs) {
+__gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs) {
     return __gen_blobs_gen(blobs);
 }
 
@@ -186,7 +186,7 @@ void main() {
         }
     }
     // bs: list[bytes] = []
-    std::vector<std::vector<uint8_t>> bs = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> bs = std::vector<::tpy::Bytes>{};
     // bs.append(b"xyz")
     bs.push_back(::tpy::bytes_literal_owned("xyz", 3));
     // seen = 0

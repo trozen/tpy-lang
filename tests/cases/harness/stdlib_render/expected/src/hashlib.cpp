@@ -36,7 +36,7 @@ uint32_t _load_be32(std::span<const uint8_t> data, int32_t off) {
 }
 
 // def _pack_be32(out: bytearray, v: UInt32) -> None:
-void _pack_be32(std::vector<uint8_t>& out, uint32_t v) {
+void _pack_be32(::tpy::ByteArray& out, uint32_t v) {
     // out.append(UInt8((v >> 24) & UInt32(0xFF)))
     out.push_back(::tpy::int_cast_check<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 24)) & 255))));
     // out.append(UInt8((v >> 16) & UInt32(0xFF)))
@@ -70,7 +70,7 @@ SHA256::SHA256() : h(std::vector<uint32_t>{}) {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     // self.buffer = bytearray()
-    this->buffer = std::vector<uint8_t>();
+    this->buffer = ::tpy::ByteArray();
     // self.length = 0
     this->length = 0;
     // self.digest_size = 32
@@ -86,9 +86,9 @@ void SHA256::_drain_blocks() {
     // while Int32(len(self.buffer)) >= 64:
     while ((::tpy::__len__(this->buffer) >= 64)) {
         // self._process_block(bytes(self.buffer), 0)
-        this->_process_block(::tpy::bytes_copy(this->buffer), 0);
+        this->_process_block(::tpy::Bytes(this->buffer), 0);
         // new_buf: bytearray = bytearray()
-        std::vector<uint8_t> new_buf = std::vector<uint8_t>();
+        ::tpy::ByteArray new_buf = ::tpy::ByteArray();
         // j: Int32 = 64
         int32_t j = 64;
         // total: Int32 = Int32(len(self.buffer))
@@ -203,7 +203,7 @@ void SHA256::_process_block(std::span<const uint8_t> data, int32_t off) {
 }
 
 // def digest(self) -> bytes:
-std::vector<uint8_t> SHA256::digest() const {
+::tpy::Bytes SHA256::digest() const {
     // clone: SHA256 = self.copy()
     SHA256 clone = this->copy();
     // bit_len: UInt64 = UInt64.add_wrap(clone.length, clone.length)
@@ -233,7 +233,7 @@ std::vector<uint8_t> SHA256::digest() const {
     // clone._drain_blocks()
     clone._drain_blocks();
     // out: bytearray = bytearray()
-    std::vector<uint8_t> out = std::vector<uint8_t>();
+    ::tpy::ByteArray out = ::tpy::ByteArray();
     // i = 0
     i = 0;
     // while i < 8:
@@ -244,7 +244,7 @@ std::vector<uint8_t> SHA256::digest() const {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     // return bytes(out)
-    return ::tpy::bytes_copy(out);
+    return ::tpy::Bytes(out);
 }
 
 // def copy(self) -> Own[SHA256]:

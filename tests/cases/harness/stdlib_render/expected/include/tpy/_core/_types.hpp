@@ -72,15 +72,15 @@ concept Readable = requires(T& t) {
 // class BinaryWritable(Protocol):
 template<typename T>
 concept BinaryWritable = requires(T& t) {
-    { t.write(std::declval<std::vector<uint8_t>>()) } -> std::convertible_to<int32_t>;
+    { t.write(std::declval<::tpy::Bytes>()) } -> std::convertible_to<int32_t>;
     { t.flush() } -> std::convertible_to<void>;
 };
 
 // class BinaryReadable(Protocol):
 template<typename T>
 concept BinaryReadable = requires(T& t) {
-    { t.read(std::declval<int32_t>()) } -> std::convertible_to<std::vector<uint8_t>>;
-    { t.readline() } -> std::convertible_to<std::vector<uint8_t>>;
+    { t.read(std::declval<int32_t>()) } -> std::convertible_to<::tpy::Bytes>;
+    { t.readline() } -> std::convertible_to<::tpy::Bytes>;
 };
 
 // class Seekable(Protocol):

@@ -21,7 +21,7 @@ void test_hash_basic() {
 // def test_dict_key() -> None:
 void test_dict_key() {
     // d: dict[bytes, str] = {b"alice": "A", b"bob": "B"}
-    ::tpy::ordered_map<std::vector<uint8_t>, std::string> d = ::tpy::ordered_map<std::vector<uint8_t>, std::string>({{::tpy::bytes_literal_owned("alice", 5), "A"}, {::tpy::bytes_literal_owned("bob", 3), "B"}});
+    ::tpy::ordered_map<::tpy::Bytes, std::string> d = ::tpy::ordered_map<::tpy::Bytes, std::string>({{::tpy::bytes_literal_owned("alice", 5), "A"}, {::tpy::bytes_literal_owned("bob", 3), "B"}});
     // print(d[b"alice"])
     std::cout << ::tpy::__getitem__(d, ::tpy::bytes_literal_owned("alice", 5)) << "\n";
     // print(d[b"bob"])
@@ -33,7 +33,7 @@ void test_dict_key() {
 // def test_set_element() -> None:
 void test_set_element() {
     // s: set[bytes] = {b"x", b"y", b"x"}
-    ::tpy::ordered_set<std::vector<uint8_t>> s = ::tpy::ordered_set<std::vector<uint8_t>>({::tpy::bytes_literal_owned("x", 1), ::tpy::bytes_literal_owned("y", 1), ::tpy::bytes_literal_owned("x", 1)});
+    ::tpy::ordered_set<::tpy::Bytes> s = ::tpy::ordered_set<::tpy::Bytes>({::tpy::bytes_literal_owned("x", 1), ::tpy::bytes_literal_owned("y", 1), ::tpy::bytes_literal_owned("x", 1)});
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
@@ -41,7 +41,7 @@ void test_set_element() {
 // def test_bytes_view_hash() -> None:
 void test_bytes_view_hash() {
     // items: list[bytes] = [b"hello", b"world"]
-    std::vector<std::vector<uint8_t>> items = {::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)};
+    std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)};
     // v = items[Int32(0)]  # tpyc: type(BytesView)
     std::span<const uint8_t> v = ::tpy::__getitem__(items, 0);
     // h1 = hash(v)

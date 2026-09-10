@@ -85,8 +85,8 @@ void main() {
     std::cout << ::tpy::ListPrinter(big_keys) << "\n";
     // # Transform both elements
     // labels = [k + "=" + str(v) for k, v in d.items()]
-    std::vector<std::string> labels = ({
-        std::vector<std::string> __result;
+    std::vector<::tpy::String> labels = ({
+        std::vector<::tpy::String> __result;
         auto __obj_4 = ::tpy::dict_items(d);
         __result.reserve(static_cast<std::size_t>(__obj_4.size()));
         auto __beg_4 = __obj_4.begin();
@@ -158,8 +158,8 @@ void main() {
     // print(middle)
     std::cout << ::tpy::ListPrinter(middle) << "\n";
     // first_and_last = [s + ":" + str(b) for s, _, b in triples]
-    std::vector<std::string> first_and_last = ({
-        std::vector<std::string> __result;
+    std::vector<::tpy::String> first_and_last = ({
+        std::vector<::tpy::String> __result;
         auto& __obj_8 = triples;
         __result.reserve(static_cast<std::size_t>(__obj_8.size()));
         auto __beg_8 = __obj_8.begin();

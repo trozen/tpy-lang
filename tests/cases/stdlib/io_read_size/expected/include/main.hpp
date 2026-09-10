@@ -15,7 +15,7 @@ void bytesio_read_size();
 template<::tpystd::tpy::Readable T_fp>
 std::string via_protocol(T_fp& fp);
 template<::tpystd::tpy::BinaryReadable T_fp>
-std::vector<uint8_t> via_binary_protocol(T_fp& fp);
+::tpy::Bytes via_binary_protocol(T_fp& fp);
 void protocol_params();
 void file_read_size();
 void main();
@@ -34,7 +34,7 @@ std::string via_protocol(T_fp& fp) {
 }
 // def via_binary_protocol(fp: BinaryReadable) -> bytes:
 template<::tpystd::tpy::BinaryReadable T_fp>
-std::vector<uint8_t> via_binary_protocol(T_fp& fp) {
+::tpy::Bytes via_binary_protocol(T_fp& fp) {
     // return fp.read(2)
     return fp.read(2);
 }

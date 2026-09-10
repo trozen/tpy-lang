@@ -21,13 +21,13 @@ struct Processor {
 
     // def __init__(self, val: T):
     Processor() = default;
-    explicit Processor(const T& val) : val(val) {}
+    explicit Processor(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def wrap[U](self, x: U) -> U:
     template<typename U>
-    ::tpy::val_or_cref_t<U> wrap(const U& x) const {
+    ::tpy::val_or_cref_t<U> wrap(::tpy::readonly_form_t<U> x) const {
         // return x
-        return x;
+        return ::tpy::param_to_return<U>(x);
     }
 
     // def process(self) -> Int32:

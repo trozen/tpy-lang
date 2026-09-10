@@ -25,7 +25,7 @@ int32_t pick_local(std::span<const uint8_t> a, std::span<const uint8_t> b) {
 
 // def pick_rebound(a: bytes, b: bytes) -> Int32:
 int32_t pick_rebound(std::span<const uint8_t> a, std::span<const uint8_t> __param_b) {
-    std::vector<uint8_t> b = ::tpy::bytes_copy(__param_b);
+    ::tpy::Bytes b = ::tpy::Bytes(__param_b);
     // # A REBOUND `bytes` param is still a view for the select's purposes, so
     // # the pair stays same-spelling and the span composes over the live owned
     // # local (BUGS.md#bytes-select-mixed-runtime-spelling).
@@ -38,10 +38,10 @@ int32_t pick_rebound(std::span<const uint8_t> a, std::span<const uint8_t> __para
 }
 
 // def pick_owned(a: bytes, b: bytes) -> bytes:
-std::vector<uint8_t> pick_owned(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+::tpy::Bytes pick_owned(std::span<const uint8_t> a, std::span<const uint8_t> b) {
     // # The owned-RETURN sibling of the same select.
     // return a or b  # tpyc: ok
-    return ::tpy::bytes_copy(((!a.empty()) ? a : b));
+    return ::tpy::Bytes(((!a.empty()) ? a : b));
 }
 
 // def main() -> None:
@@ -88,12 +88,12 @@ void main() {
     // print(len(u))
     std::cout << ::tpy::__len__(u) << "\n";
     // ba = bytearray(b"z")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("z", 1));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
     // bb = bytearray()
-    std::vector<uint8_t> bb = std::vector<uint8_t>();
+    ::tpy::ByteArray bb = ::tpy::ByteArray();
     // # bytearray: the reference tier, `.empty()` truthiness like bytes.
     // picked = bb or ba  # tpyc: ok
-    std::vector<uint8_t>& picked = ((!bb.empty()) ? bb : ba);
+    ::tpy::ByteArray& picked = ((!bb.empty()) ? bb : ba);
     // print(len(picked))
     std::cout << ::tpy::__len__(picked) << "\n";
 }

@@ -19,7 +19,7 @@ struct Weird : ::tpy::OSError {
     std::string strerror;
 
     // def __init__(self, message: String = "") -> None:
-    explicit Weird(const std::string& message = "");
+    explicit Weird(const ::tpy::String& message = "");
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Weird>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -34,6 +34,6 @@ inline std::ostream& operator<<(std::ostream& os, const Weird& obj) {
 
 
 // def __init__(self, message: String = "") -> None:
-inline Weird::Weird(const std::string& message) : ::tpy::OSError(message), strerror("own-field") {}
+inline Weird::Weird(const ::tpy::String& message) : ::tpy::OSError(message), strerror("own-field") {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -70,7 +70,7 @@ struct __gen_static_source_view : public ::tpy::next_iter_mixin<__gen_static_sou
 };
 
 // Generator: static_bytes_view
-struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_bytes_view, std::vector<uint8_t>> {
+struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_bytes_view, ::tpy::Bytes> {
     int32_t __state;
     std::span<const uint8_t> raw;
 
@@ -84,7 +84,7 @@ struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_byte
     __gen_static_bytes_view()
         : __state(S_INITIAL) {}
 
-    std::expected<std::vector<uint8_t>, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_static_bytes_view& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_static_bytes_view&) {

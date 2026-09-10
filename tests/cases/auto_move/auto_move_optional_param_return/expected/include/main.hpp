@@ -12,21 +12,21 @@ struct Payload;
 inline constexpr std::string_view __name__ = "__main__";
 
 Payload unwrap_record(std::optional<Payload> x);
-std::string unwrap_string(std::optional<std::string> x);
+::tpy::String unwrap_string(std::optional<::tpy::String> x);
 ::tpy::BigInt unwrap_bigint(std::optional<::tpy::BigInt> x);
-std::string unwrap_string_with_print(std::optional<std::string> x);
+::tpy::String unwrap_string_with_print(std::optional<::tpy::String> x);
 void main();
 
 // class Payload:
 struct Payload {
     // data: String
-    std::string data;
+    ::tpy::String data;
     // count: int
     ::tpy::BigInt count;
 
     // def __init__(self, data: String, count: int):
     Payload() = default;
-    explicit Payload(const std::string& data, const ::tpy::BigInt& count);
+    explicit Payload(const ::tpy::String& data, const ::tpy::BigInt& count);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Payload";
 };
 
@@ -37,6 +37,6 @@ inline std::ostream& operator<<(std::ostream& os, const Payload& obj) {
 
 
 // def __init__(self, data: String, count: int):
-inline Payload::Payload(const std::string& data, const ::tpy::BigInt& count) : data(data), count(count) {}
+inline Payload::Payload(const ::tpy::String& data, const ::tpy::BigInt& count) : data(data), count(count) {}
 void __tpy_init();
 } // namespace tpyapp::main

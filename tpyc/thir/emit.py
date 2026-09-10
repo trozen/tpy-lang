@@ -1392,7 +1392,7 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
             return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
         # S1/S6 str+bytes slices: a view-form source (string_view / span) into
         # an owned storage sink (decl init / return) copies via the family's
-        # owned constructor -- `std::string(x)` / `::tpy::bytes_copy(x)` -- the
+        # owned constructor -- `std::string(x)` / `::tpy::Bytes(x)` -- the
         # view->owned construction being explicit, spelled through the shared
         # `view_to_owned_conv` helper. The materializing str-family coercions
         # (strview_to_str / str_to_string / strview_to_string) lower here too:
@@ -1407,13 +1407,19 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
                                      and (is_str_type(t) or is_string_type(t)
                                           or is_bytes_type(t))):
             return f"{view_to_owned_conv(t)}({inner})"
-        # F5: a generic record's `T` field write. The C++ template's
-        # `param_val_or_ref_t<T>` / `own_param_t<T>` resolve the copy/move target
-        # per instantiation, so the source-level assign is a plain `field = v` (a
-        # bare copy) or `field = std::move(v)` (an Own param at last use) -- the
-        # same `e.move` decision the sibling arms make, no runtime helper.
+        # An open-`T` storage sink: the value arrives in the instantiation's
+        # PARAMETER form, which for `str` / `bytes` is a view over the storage
+        # form the sink spells, so the construction is explicit and keyed on
+        # `T` alone. `param_to_return` is the return sink's sibling -- it must
+        # not copy at a reference-typed instantiation, where `val_or_ref_t<T>`
+        # is `T&`. An `Own[T]` param at its last use MOVES instead
+        # (`own_param_t<T>` is already the storage form).
         if isinstance(t, TypeParamRef):
-            return f"std::move({inner})" if e.move else inner
+            if e.move:
+                return f"std::move({inner})"
+            helper = ("param_to_return" if e.generic_return
+                      else "param_to_storage")
+            return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
         # A plain non-value record/container slot (a field write / MIL cell):
         # the storage sink consumes the source directly -- `std::move(v)` for
         # an owned source at its last use, the bare render (a copy) otherwise.

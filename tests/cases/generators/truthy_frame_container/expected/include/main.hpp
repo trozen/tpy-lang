@@ -164,7 +164,7 @@ struct __gen_str_branch : public ::tpy::next_iter_mixin<__gen_str_branch, int32_
 // Generator: bytes_branch
 struct __gen_bytes_branch : public ::tpy::next_iter_mixin<__gen_bytes_branch, int32_t> {
     int32_t __state;
-    std::vector<uint8_t> b;
+    ::tpy::Bytes b;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -175,7 +175,7 @@ struct __gen_bytes_branch : public ::tpy::next_iter_mixin<__gen_bytes_branch, in
     };
 
     __gen_bytes_branch(std::span<const uint8_t> b_)
-        : __state(S_INITIAL), b(::tpy::bytes_copy(b_)) {}
+        : __state(S_INITIAL), b(::tpy::Bytes(b_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_bytes_branch& __iter__() { return *this; }

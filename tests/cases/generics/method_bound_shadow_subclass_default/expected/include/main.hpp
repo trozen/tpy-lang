@@ -26,7 +26,7 @@ struct Bag {
     // def add(self, value: T) -> None:
     void add(::tpy::param_val_or_ref_t<T> value) {
         // self.items.append(value)
-        this->items.push_back(value);
+        this->items.push_back(::tpy::param_to_storage<T>(value));
     }
 
     // def resize[T: Default](self, n: Int32) -> None:

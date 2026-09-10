@@ -44,7 +44,7 @@ namespace tpyapp::defaults {
 const std::tuple<int32_t, int32_t> ORIGIN = std::tuple<int32_t, int32_t>{10, 20};
 
 std::string greet(std::string_view name, std::string_view greeting, bool excited) {
-    std::string s = (::tpy::str_concat((::tpy::str_concat(greeting, ", ")), name));
+    ::tpy::String s = (::tpy::str_concat((::tpy::str_concat(greeting, ", ")), name));
     if (excited) {
         s += "!";
     }

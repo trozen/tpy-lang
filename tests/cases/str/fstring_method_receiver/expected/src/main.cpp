@@ -11,7 +11,7 @@ namespace tpyapp::main {
 }
 
 // def render(n: int) -> bytes:
-std::vector<uint8_t> render(const ::tpy::BigInt& n) {
+::tpy::Bytes render(const ::tpy::BigInt& n) {
     // # Return sink for the f-string-receiver method result.
     // return f"<p>{n}</p>".encode()  # tpyc: ok
     return ::tpy::bytes_from_str(std::format("<p>{}</p>", (n).to_string()));
@@ -23,7 +23,7 @@ void main() {
     int32_t n = 42;
     // # Local sink: the owned-bytes result of a method on an f-string receiver.
     // body = f"<p>epoch: {n}</p>".encode()  # tpyc: ok
-    std::vector<uint8_t> body = ::tpy::bytes_from_str(std::format("<p>epoch: {}</p>", n));
+    ::tpy::Bytes body = ::tpy::bytes_from_str(std::format("<p>epoch: {}</p>", n));
     // print(len(body))
     std::cout << ::tpy::__len__(body) << "\n";
     // # str-returning methods over the same receiver shape.
@@ -45,7 +45,7 @@ void main() {
     std::cout << p.size() << "\n";
     // # Container-element sink.
     // parts = [f"<i>{n}</i>".encode()]  # tpyc: ok
-    std::vector<std::vector<uint8_t>> parts = {::tpy::bytes_from_str(std::format("<i>{}</i>", n))};
+    std::vector<::tpy::Bytes> parts = {::tpy::bytes_from_str(std::format("<i>{}</i>", n))};
     // parts.append(f"<b>{n}</b>".encode())
     parts.push_back(::tpy::bytes_from_str(std::format("<b>{}</b>", n)));
     // print(len(parts), len(parts[0]))

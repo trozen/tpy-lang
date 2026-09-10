@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, value: T) -> None:
     Box() = default;
-    explicit Box(const T& value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
     ::tpy::val_or_cref_t<T> get() const {
@@ -35,7 +35,7 @@ struct Box {
     // def set(self, value: T) -> None:
     void set(::tpy::param_val_or_ref_t<T> value) {
         // self.value = value  # tpyc: ok
-        this->value = value;
+        this->value = ::tpy::param_to_storage<T>(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
@@ -56,7 +56,7 @@ struct Ring {
 
     // def __init__(self, fill: T) -> None:
     Ring() = default;
-    explicit Ring(const T& fill) : data(std::array<T, 4>{fill, fill, fill, fill}), size(0) {}
+    explicit Ring(::tpy::readonly_form_t<T> fill) : data(std::array<T, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}), size(0) {}
 
     // def put(self, v: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> v) {
@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> v) {
     // return v
-    return v;
+    return ::tpy::param_to_return<T>(v);
 }
 
 void __tpy_init();

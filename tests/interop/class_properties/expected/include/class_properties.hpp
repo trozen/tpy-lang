@@ -63,7 +63,7 @@ struct Rect {
 
     void set_tags(std::vector<int32_t>&& v);
 
-    std::vector<uint8_t> blob() const;
+    ::tpy::Bytes blob() const;
 
     ::tpy::ordered_map<std::string, int32_t> mapping() const;
 
@@ -133,7 +133,7 @@ inline void Rect::set_tags(std::vector<int32_t>&& v) {
     this->_tags = std::move(v);
 }
 
-inline std::vector<uint8_t> Rect::blob() const {
+inline ::tpy::Bytes Rect::blob() const {
     return ::tpy::bytes_literal_owned("pb", 2);
 }
 

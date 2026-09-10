@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def send(data: bytes | dict[str, str] | None,
 // files: dict[str, FileField]) -> None:
-void send(std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data, ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files) {
+void send(std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -68,7 +68,7 @@ void send_redirect(::tpy::ordered_map<std::string, ::tpystd::tplib::requests::Fi
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     // r = s.post("http://api.test/submit", None, files=files)
     ::tpy::Union<bool, std::string> __tmp_2 = true;
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, &(files));
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, nullptr, nullptr, std::nullopt, true, __tmp_2, nullptr, &(files));
     // print(r.status_code, r.url)
     std::cout << r.status_code << " " << r.url << "\n";
     // b.recv(65536)
@@ -86,28 +86,28 @@ void main() {
     // # default content type (octet-stream)
     // send(None, {"doc": FileField("a.txt", b"hello")})
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_3 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
-    send(std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_3);
+    send(std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_3);
     // # dict data folds in as a form part; explicit content type on the file
     // send({"caption": "hi"}, {"doc": FileField("a.txt", b"hello"),
     // "pic": FileField("logo.png", b"img", "image/png")})
     ::tpy::ordered_map<std::string, std::string> __tmp_4 = ::tpy::ordered_map<std::string, std::string>({{"caption", "hi"}});
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_5 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}, {"pic", ::tpystd::tplib::requests::FileField("logo.png", ::tpy::bytes_literal_owned("img", 3), "image/png")}});
-    send(std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_4}, __tmp_5);
+    send(std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_4}, __tmp_5);
     // # data=bytes is ignored when files= is non-empty (only a dict data folds in)
     // send(b"ignored-bytes", {"doc": FileField("a.txt", b"hello")})
-    std::vector<uint8_t> __tmp_6 = ::tpy::bytes_literal_owned("ignored-bytes", 13);
+    ::tpy::Bytes __tmp_6 = ::tpy::bytes_literal_owned("ignored-bytes", 13);
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_7 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});
-    send(std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_6}, __tmp_7);
+    send(std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_6}, __tmp_7);
     // # empty files={} is falsy: no multipart, data= handling applies (urlencoded)
     // no_files: dict[str, FileField] = {}
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> no_files = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>();
     // send({"field": "v"}, no_files)
     ::tpy::ordered_map<std::string, std::string> __tmp_8 = ::tpy::ordered_map<std::string, std::string>({{"field", "v"}});
-    send(std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_8}, no_files);
+    send(std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_8}, no_files);
     // # a `"` and CR/LF in name/filename are percent-escaped
     // send(None, {"na\"me": FileField("re\r\nport.txt", b"x")})
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_9 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"na\"me", ::tpystd::tplib::requests::FileField("re\r\nport.txt", ::tpy::bytes_literal_owned("x", 1))}});
-    send(std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_9);
+    send(std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, __tmp_9);
     // # 307 redirect forwards the multipart body to the next hop
     // send_redirect({"doc": FileField("a.txt", b"hello")})
     ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField> __tmp_10 = ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>({{"doc", ::tpystd::tplib::requests::FileField("a.txt", ::tpy::bytes_literal_owned("hello", 5))}});

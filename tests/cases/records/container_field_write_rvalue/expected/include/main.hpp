@@ -12,7 +12,7 @@ struct Buf;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::array<int32_t, 4> mk_arr();
-std::vector<uint8_t> mk_ba();
+::tpy::ByteArray mk_ba();
 std::array<int32_t, 4>& borrow_arr(std::array<int32_t, 4>& x);
 void main();
 
@@ -23,7 +23,7 @@ struct Buf {
     // a: Array[Int32, 4]
     std::array<int32_t, 4> a;
     // ba: bytearray
-    std::vector<uint8_t> ba;
+    ::tpy::ByteArray ba;
 
     // def __init__(self, k: Int32) -> None:
     explicit Buf(int32_t k);
@@ -60,14 +60,14 @@ inline Buf::Buf(int32_t k) : n(k) {
     // self.a = Array[Int32, 4]()
     this->a = std::array<int32_t, 4>();
     // self.ba = bytearray()
-    this->ba = std::vector<uint8_t>();
+    this->ba = ::tpy::ByteArray();
 }
 
 // def load(self, src: bytes) -> None:
 inline void Buf::load(std::span<const uint8_t> src) {
     // # The converting construction: `this->ba = ::tpy::bytes_copy(src);`
     // self.ba = bytearray(src)
-    this->ba = ::tpy::bytes_copy(src);
+    this->ba = ::tpy::ByteArray(src);
 }
 
 // def own_call(self) -> None:

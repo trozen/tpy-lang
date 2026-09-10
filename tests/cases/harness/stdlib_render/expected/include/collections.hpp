@@ -44,7 +44,7 @@ struct Counter {
     }
 
     // def __getitem__(self, key: T) -> int:
-    ::tpy::BigInt __getitem__(const T& key) const {
+    ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const {
         // # Missing key returns 0 without inserting (unlike defaultdict).
         // return self._data.get(key, 0)
         return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
@@ -63,7 +63,7 @@ struct Counter {
     }
 
     // def __contains__(self, key: T) -> bool:
-    bool __contains__(const T& key) const {
+    bool __contains__(::tpy::readonly_form_t<T> key) const {
         // return key in self._data
         return std::ranges::contains(this->_data, key);
     }
@@ -141,7 +141,7 @@ struct Counter {
         }
     }
 
-    ::tpy::BigInt operator[](const T& key) const {
+    ::tpy::BigInt operator[](::tpy::readonly_form_t<T> key) const {
         return __getitem__(key);
     }
 

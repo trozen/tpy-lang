@@ -11,9 +11,9 @@ std::array<int32_t, 4> mk_arr() {
 }
 
 // def mk_ba() -> Own[bytearray]:
-std::vector<uint8_t> mk_ba() {
+::tpy::ByteArray mk_ba() {
     // return bytearray(b"xy")
-    return ::tpy::bytes_copy(::tpy::bytes_literal("xy", 2));
+    return ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
 }
 
 // def borrow_arr(x: Array[Int32, 4]) -> Array[Int32, 4]:

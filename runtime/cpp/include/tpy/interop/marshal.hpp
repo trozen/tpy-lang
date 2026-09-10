@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "tpy/bigint.hpp"
+#include "tpy/buffer_types.hpp"
 #include "tpy/interop/cpython_h.hpp"
 #include "tpy/ordered_map.hpp"
 #include "tpy/ordered_set.hpp"
@@ -237,15 +238,14 @@ inline std::string from_py<std::string>(cpy::PyObject *o) {
 }
 
 template <>
-inline std::vector<std::uint8_t> from_py<std::vector<std::uint8_t>>(
-    cpy::PyObject *o) {
+inline ::tpy::Bytes from_py<::tpy::Bytes>(cpy::PyObject *o) {
     char *buf = nullptr;
     cpy::Py_ssize_t n = 0;
     if (cpy::PyBytes_AsStringAndSize(o, &buf, &n) < 0) {  // TypeError if not bytes
         throw MarshalError{};
     }
     const auto *p = reinterpret_cast<const std::uint8_t *>(buf);
-    return std::vector<std::uint8_t>(p, p + n);
+    return ::tpy::Bytes(p, p + n);
 }
 
 // ---- Span[T] numeric marshalling (buffer protocol) -------------------------
@@ -444,7 +444,7 @@ inline cpy::PyObject *to_py(const char *s) {
     return to_py(std::string_view(s));
 }
 
-inline cpy::PyObject *to_py(const std::vector<std::uint8_t> &b) {
+inline cpy::PyObject *to_py(const ::tpy::Bytes &b) {
     // b.data() may be null for an empty vector; PyBytes_FromStringAndSize(nullptr,
     // 0) takes CPython's uninitialized-buffer path rather than a 0-length copy.
     return cpy::PyBytes_FromStringAndSize(
@@ -487,9 +487,9 @@ inline cpy::PyObject *to_py(const tpy::BigInt &b) {
 // glue, which holds the unambiguous TPy element types, drives the recursion and
 // passes a per-element conversion callable; these helpers own only the
 // container-shaped traversal + refcounting. Keying off the C++ type alone is
-// impossible -- list[bytes] and list[list[UInt8]] both render
-// std::vector<std::vector<uint8_t>> -- so the leaf choice (e.g. bytes vs list)
-// must come from the glue, never from a template specialization here.
+// impossible for a container of containers -- so the leaf choice (e.g. the
+// element callable for list[bytes] vs list[list[UInt8]]) must come from the
+// glue, never from a template specialization here.
 //
 // Direction mirrors the scalars: from_* THROWS MarshalError on failure (a
 // Python exception is already set); to_* RETURNS nullptr on failure (matching

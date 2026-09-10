@@ -15,9 +15,9 @@ namespace tpyapp::main {
 }
 
 // def owned_source(s: String) -> int:
-::tpy::BigInt owned_source(const std::string& s) {
+::tpy::BigInt owned_source(const ::tpy::String& s) {
     // xs = [s]
-    std::array<std::string, 1> xs = {s};
+    std::array<::tpy::String, 1> xs = {s};
     // print(xs[0])
     std::cout << ::tpy::__getitem__(xs, 0) << "\n";
     // return len(xs)
@@ -48,7 +48,7 @@ void main() {
     // print(literals())
     std::cout << literals() << "\n";
     // print(owned_source(String("kept")))
-    std::cout << owned_source(std::string("kept")) << "\n";
+    std::cout << owned_source(::tpy::String("kept")) << "\n";
     // print(view_reads(("ab", "c")))
     std::cout << view_reads(std::tuple<std::string, std::string>{"ab", "c"}) << "\n";
 }

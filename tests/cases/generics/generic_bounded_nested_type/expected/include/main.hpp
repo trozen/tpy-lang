@@ -48,7 +48,7 @@ struct Wrapper {
 
     // def __init__(self, holder: V) -> None:
     Wrapper() = default;
-    explicit Wrapper(const V& holder) : holder(holder) {}
+    explicit Wrapper(::tpy::readonly_form_t<V> holder) : holder(holder) {}
 
     // def get_holder(self) -> V:
     ::tpy::val_or_ref_t<V> get_holder() {

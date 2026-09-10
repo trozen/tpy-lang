@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // ba = bytearray(16)
-    std::vector<uint8_t> ba = ::tpy::bytes_from_size(16);
+    ::tpy::ByteArray ba = ::tpy::bytearray_from_size(16);
     // ba[0] = 1
     ::tpy::bytearray_setitem(ba, 0, 1);
     // ba[2] = 2
@@ -19,7 +19,7 @@ void main() {
     // ba[6] = 3
     ::tpy::bytearray_setitem(ba, 6, 3);
     // data: bytes = bytes(ba)
-    std::vector<uint8_t> data = ::tpy::bytes_copy(ba);
+    ::tpy::Bytes data = ::tpy::Bytes(ba);
     // # unpack_from with uint16
     // a, b = unpack_from('<HH', data, 0)
     auto __tup_1 = std::tuple<uint16_t, uint16_t>{*reinterpret_cast<const uint16_t*>(data.data() + 0), *reinterpret_cast<const uint16_t*>(data.data() + 2)};
@@ -58,13 +58,13 @@ void main() {
     std::cout << 10 << "\n";
     // # bool format
     // ba2 = bytearray(2)
-    std::vector<uint8_t> ba2 = ::tpy::bytes_from_size(2);
+    ::tpy::ByteArray ba2 = ::tpy::bytearray_from_size(2);
     // ba2[0] = 1
     ::tpy::bytearray_setitem(ba2, 0, 1);
     // ba2[1] = 0
     ::tpy::bytearray_setitem(ba2, 1, 0);
     // t, f2 = unpack_from('<??', bytes(ba2), 0)
-    auto __tup_4 = std::tuple<bool, bool>{((::tpy::bytes_copy(ba2))[0] != 0), ((::tpy::bytes_copy(ba2))[1] != 0)};
+    auto __tup_4 = std::tuple<bool, bool>{((::tpy::Bytes(ba2))[0] != 0), ((::tpy::Bytes(ba2))[1] != 0)};
     bool t = std::get<0>(__tup_4);
     bool f2 = std::get<1>(__tup_4);
     // print(t)   # True

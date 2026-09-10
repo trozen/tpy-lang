@@ -56,7 +56,7 @@ void pooled_reuse() {
     // b.recv(65536)
     b.recv(65536);
     // print("peer EOF after close:", b.recv(10) == b"")
-    std::cout << "peer EOF after close:" << " " << ::tpy::print_bool((::tpy::bytes_eq(b.recv(10), std::vector<uint8_t>{}))) << "\n";
+    std::cout << "peer EOF after close:" << " " << ::tpy::print_bool((::tpy::bytes_eq(b.recv(10), ::tpy::Bytes{}))) << "\n";
     // print("pool keeps handle:", key in s._pool)
     std::cout << "pool keeps handle:" << " " << ::tpy::print_bool((s._pool.contains(key))) << "\n";
     // b.close()
@@ -149,7 +149,7 @@ void exit_closes_pool() {
     __ctx_1.__exit__({}, nullptr, {});
     // # __exit__ closed the pooled connection; the peer now sees EOF.
     // print("closed on exit:", b.recv(10) == b"")
-    std::cout << "closed on exit:" << " " << ::tpy::print_bool((::tpy::bytes_eq(b.recv(10), std::vector<uint8_t>{}))) << "\n";
+    std::cout << "closed on exit:" << " " << ::tpy::print_bool((::tpy::bytes_eq(b.recv(10), ::tpy::Bytes{}))) << "\n";
     // b.close()
     b.close();
 }

@@ -32,7 +32,7 @@ struct Cell {
 
     // def __init__(self, value: T) -> None:
     Cell() = default;
-    explicit Cell(const T& value) : value(value) {}
+    explicit Cell(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def pair(self) -> tuple[T, Int32]:
     std::tuple<::tpy::val_or_cptr_t<T>, int32_t> pair() const {

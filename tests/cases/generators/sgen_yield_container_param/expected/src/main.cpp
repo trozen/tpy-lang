@@ -58,7 +58,7 @@ void main() {
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
     // b = bytearray(b"a")
-    std::vector<uint8_t> b = ::tpy::bytes_copy(::tpy::bytes_literal("a", 1));
+    ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     // for gb in repeat_buf(b, 1):
     {
         auto __src_6 = repeat_buf(b, 1);

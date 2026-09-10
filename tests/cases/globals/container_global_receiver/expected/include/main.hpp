@@ -7,7 +7,7 @@
 
 namespace tpyapp::main {
 
-extern std::vector<uint8_t>* BUF;
+extern ::tpy::ByteArray* BUF;
 extern std::vector<int32_t>* NUMS;
 inline constexpr std::string_view __name__ = "__main__";
 

@@ -4,7 +4,7 @@
 namespace tpyapp::geo::codec {
 
 // _HEX: bytes = b"0123456789ABCDEF"
-std::vector<uint8_t> _HEX;
+::tpy::Bytes _HEX;
 
 // def hi_nibble(c: Int32) -> Int32:
 int32_t hi_nibble(int32_t c) {

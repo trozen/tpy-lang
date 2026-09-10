@@ -26,7 +26,7 @@ struct Summer {
 
     // def __init__(self, items: T) -> None:
     Summer() = default;
-    explicit Summer(const T& items) : items(items) {}
+    explicit Summer(::tpy::readonly_form_t<T> items) : items(items) {}
 
     __coro_Summer_total<T> total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Summer";

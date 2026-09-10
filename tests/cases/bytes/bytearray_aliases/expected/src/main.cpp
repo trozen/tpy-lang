@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def main():
 void main() {
     // ba = bytearray(b"ab")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // x = ba              # local bind aliases the buffer
-    std::vector<uint8_t>& x = ba;
+    ::tpy::ByteArray& x = ba;
     // x.append(99)
     x.push_back(99);
     // print(len(ba))      # 3 -- mutation through x is visible on ba
     std::cout << ::tpy::__len__(ba) << "\n";
     // h = Holder(bytearray(b"xy"))
-    Holder h = Holder(::tpy::bytes_copy(::tpy::bytes_literal("xy", 2)));
+    Holder h = Holder(::tpy::ByteArray(::tpy::bytes_literal("xy", 2)));
     // y = h.data          # field read aliases the field's buffer
-    std::vector<uint8_t>& y = h.data;
+    ::tpy::ByteArray& y = h.data;
     // y.append(7)
     y.push_back(7);
     // print(len(h.data))  # 3 -- mutation through y is visible on the field

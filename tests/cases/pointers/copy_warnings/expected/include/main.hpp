@@ -80,9 +80,9 @@ struct Holder {
     // def set_value(self, v: T) -> None:
     void set_value(::tpy::param_val_or_ref_t<T> v) {
         // self.value = v            # tpyc: warning(/may copy T into field/)
-        this->value = v;
+        this->value = ::tpy::param_to_storage<T>(v);
         // self.value = copy(v)      # tpyc: ok
-        this->value = T(v);
+        this->value = ::tpy::param_to_storage<T>(T(v));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };

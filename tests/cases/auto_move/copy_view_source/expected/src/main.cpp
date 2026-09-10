@@ -11,11 +11,11 @@ std::string owned(std::string_view s) {
 }
 
 // def owned_bytes(b: bytes) -> bytes:
-std::vector<uint8_t> owned_bytes(std::span<const uint8_t> b) {
+::tpy::Bytes owned_bytes(std::span<const uint8_t> b) {
     // # A `bytes` PARAM resolves OWNED but passes as a span, so the copy takes
     // # the family's owning conversion -- the owned vector has no span ctor.
     // return copy(b)  # tpyc: ok
-    return ::tpy::bytes_copy(b);
+    return ::tpy::Bytes(b);
 }
 
 // def main() -> None:

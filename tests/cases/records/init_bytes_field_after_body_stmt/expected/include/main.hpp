@@ -22,7 +22,7 @@ void main();
 // class Holder:
 struct Holder {
     // data: bytes
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     // tag: str
     std::string tag;
 
@@ -42,7 +42,7 @@ inline Holder::Holder(std::span<const uint8_t> data, std::string_view tag) {
     // print("constructing", tag)
     std::cout << "constructing" << " " << tag << "\n";
     // self.data = data
-    this->data = ::tpy::bytes_copy(data);
+    this->data = ::tpy::Bytes(data);
     // self.tag = tag
     this->tag = tag;
 }

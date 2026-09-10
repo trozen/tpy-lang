@@ -42,7 +42,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(const T& value) : _value(value), _has(true) {}
+    explicit Container(::tpy::readonly_form_t<T> value) : _value(value), _has(true) {}
 
     // def get(self) -> T | None:
     T* get() {

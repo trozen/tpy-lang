@@ -12,7 +12,7 @@ namespace tpyapp::main {
 
 using ::tpystd::socket::socketpair;
 
-extern std::vector<uint8_t> _BIG;
+extern ::tpy::Bytes _BIG;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_main_coro;
@@ -27,7 +27,7 @@ struct __coro_main_coro {
     ::tpy::frame_slot<::tpystd::socket::socket> a;
     ::tpy::frame_slot<::tpystd::socket::socket> b;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
-    std::optional<::tpystd::asyncio::__coro_wait_for<std::vector<uint8_t>>> __sub_0;
+    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::Bytes>> __sub_0;
     std::optional<::tpystd::asyncio::__coro_wait_for<std::monostate>> __sub_1;
 
     enum : int32_t {

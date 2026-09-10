@@ -27,7 +27,7 @@ struct Container {
     // def set(self, val: T) -> None:
     void set(::tpy::param_val_or_ref_t<T> val) {
         // self.val = val
-        this->val = val;
+        this->val = ::tpy::param_to_storage<T>(val);
         // self.count = self.count + Int32(1)
         this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }

@@ -9,8 +9,8 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void pack(std::vector<uint8_t>& dst, const ::tpy::BigInt& v);
-::tpy::BigInt borrow(const std::vector<uint8_t>& src);
+void pack(::tpy::ByteArray& dst, const ::tpy::BigInt& v);
+::tpy::BigInt borrow(const ::tpy::ByteArray& src);
 void main();
 
 void __tpy_init();

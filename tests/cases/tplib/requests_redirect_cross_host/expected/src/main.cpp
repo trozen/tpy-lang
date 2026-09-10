@@ -42,7 +42,7 @@ bool second_has_auth(std::span<const uint8_t> location) {
     // b.recv(65536)
     b.recv(65536);
     // second = d.recv(65536)
-    std::vector<uint8_t> second = d.recv(65536);
+    ::tpy::Bytes second = d.recv(65536);
     // b.close()
     b.close();
     // d.close()

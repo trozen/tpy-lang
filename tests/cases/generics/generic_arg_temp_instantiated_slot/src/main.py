@@ -71,8 +71,9 @@ def free_positions() -> None:
 
 
 def view_source(k: str) -> None:
-    # A `str` PARAM reads as a view, and the generic slot is spelled off the
-    # owning type -- the temp here is the materialized copy, not a binding aid.
+    # A `str` PARAM reads as a view, and the generic slot resolves to that same
+    # view (`param_val_or_ref_t<std::string>`), so it binds bare -- no temp,
+    # exactly as the monomorphic twin's slot does.
     print("view", anyslot("view", k))  # tpyc: ok
 
 

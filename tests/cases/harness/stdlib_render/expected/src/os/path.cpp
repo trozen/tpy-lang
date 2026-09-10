@@ -570,7 +570,7 @@ std::string expanduser(std::string_view p) {
         }
     }
     // result = _rstrip_slashes(userhome) + p[i:]
-    std::string result = (::tpy::str_concat(_rstrip_slashes(userhome), ::tpy::str_slice(p, ::tpy::BasicSlice{i, std::nullopt})));
+    ::tpy::String result = (::tpy::str_concat(_rstrip_slashes(userhome), ::tpy::str_slice(p, ::tpy::BasicSlice{i, std::nullopt})));
     // if len(result) == 0:
     if ((::tpy::__len__(result) == 0)) {
         // return "/"

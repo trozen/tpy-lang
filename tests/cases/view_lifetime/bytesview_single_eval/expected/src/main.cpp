@@ -7,7 +7,7 @@ namespace tpyapp::main {
 int32_t calls{};
 
 // def make() -> bytes:
-std::vector<uint8_t> make() {
+::tpy::Bytes make() {
     // global calls
     // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
@@ -18,9 +18,9 @@ std::vector<uint8_t> make() {
 // def single_eval_into_list() -> None:
 void single_eval_into_list() {
     // out: list[bytes] = []
-    std::vector<std::vector<uint8_t>> out = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     // out.append(make()[1:3])
-    out.push_back(::tpy::bytes_copy(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3})));
+    out.push_back(::tpy::Bytes(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3})));
     // print(calls, len(out[0]))
     std::cout << calls << " " << ::tpy::__len__(::tpy::__getitem__(out, 0)) << "\n";
 }
@@ -33,7 +33,7 @@ void single_eval_into_field() {
     // h = Holder()
     Holder h = Holder();
     // h.b = make()[0:2]
-    h.b = ::tpy::bytes_copy(::tpy::bytes_slice(make(), ::tpy::BasicSlice{0, 2}));
+    h.b = ::tpy::Bytes(::tpy::bytes_slice(make(), ::tpy::BasicSlice{0, 2}));
     // print(calls, len(h.b))
     std::cout << calls << " " << ::tpy::__len__(h.b) << "\n";
 }
@@ -44,7 +44,7 @@ void single_eval_into_bytearray() {
     // calls = 0
     calls = 0;
     // ba: bytearray = make()[1:3]
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}));
     // print(calls, len(ba))
     std::cout << calls << " " << ::tpy::__len__(ba) << "\n";
 }
@@ -57,7 +57,7 @@ void single_eval_into_any() {
     // items: list[Any] = []
     std::vector<::tpy::Any> items = std::vector<::tpy::Any>{};
     // items.append(make()[1:3])
-    items.push_back(::tpy::make_any(::tpy::bytes_copy(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}))));
+    items.push_back(::tpy::make_any(::tpy::Bytes(::tpy::bytes_slice(make(), ::tpy::BasicSlice{1, 3}))));
     // print(calls, len(items))
     std::cout << calls << " " << ::tpy::__len__(items) << "\n";
 }

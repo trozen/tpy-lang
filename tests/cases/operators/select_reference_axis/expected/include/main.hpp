@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t pick_list(std::vector<Tag>& a, std::vector<Tag>& b);
 int32_t pick_dict(::tpy::ordered_map<std::string, Tag>& a, ::tpy::ordered_map<std::string, Tag>& b);
 int32_t pick_set(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
-int32_t pick_bytearray(std::vector<uint8_t>& a, std::vector<uint8_t>& b);
+int32_t pick_bytearray(::tpy::ByteArray& a, ::tpy::ByteArray& b);
 int32_t pick_array(std::array<int32_t, 2>& a, std::array<int32_t, 2>& b);
 void main();
 

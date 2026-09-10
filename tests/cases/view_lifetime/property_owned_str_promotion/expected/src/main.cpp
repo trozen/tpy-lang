@@ -43,7 +43,7 @@ void main() {
     // print(n)
     std::cout << n << "\n";
     // r = b.raw                         # tpyc: type(bytes)
-    std::vector<uint8_t> r = b.raw();
+    ::tpy::Bytes r = b.raw();
     // print(len(r))
     std::cout << ::tpy::__len__(r) << "\n";
 }

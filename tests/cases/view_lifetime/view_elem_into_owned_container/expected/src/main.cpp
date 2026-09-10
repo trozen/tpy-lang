@@ -71,13 +71,13 @@ void bytes_sinks(std::span<const uint8_t> b) {
     // # Print lengths/element bytes, not the bytes objects: TPy renders list[bytes]
     // # as int lists, which would diverge from CPython's b'...' repr.
     // lit: list[bytes] = [b]
-    std::vector<std::vector<uint8_t>> lit = {::tpy::bytes_copy(b)};
+    std::vector<::tpy::Bytes> lit = {::tpy::Bytes(b)};
     // app: list[bytes] = []
-    std::vector<std::vector<uint8_t>> app = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> app = std::vector<::tpy::Bytes>{};
     // app.append(b)
-    app.push_back(::tpy::bytes_copy(b));
+    app.push_back(::tpy::Bytes(b));
     // app.append(b[1:3])
-    app.push_back(::tpy::bytes_copy(::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 3})));
+    app.push_back(::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 3})));
     // print(len(lit), len(app), len(lit[0]), app[0][0], app[1][0], len(app[1]))
     std::cout << ::tpy::__len__(lit) << " " << ::tpy::__len__(app) << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 0), 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 1), 0)) << " " << ::tpy::__len__(::tpy::__getitem__(app, 1)) << "\n";
 }
@@ -85,11 +85,11 @@ void bytes_sinks(std::span<const uint8_t> b) {
 // def bytes_optional_deref(b: bytes | None) -> None:
 void bytes_optional_deref(std::optional<std::span<const uint8_t>> b) {
     // out: list[bytes] = []
-    std::vector<std::vector<uint8_t>> out = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     // if b is not None:
     if ((b.has_value())) {
         // out.append(b)
-        out.push_back(::tpy::bytes_copy((*b)));
+        out.push_back(::tpy::Bytes((*b)));
     }
     // print(len(out), len(out[0]) if out else 0)
     std::cout << ::tpy::__len__(out) << " " << (((::tpy::__len__(out) != 0)) ? (::tpy::__len__(::tpy::__getitem__(out, 0))) : (0)) << "\n";

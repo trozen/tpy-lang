@@ -19,9 +19,9 @@ void remove_owned_local(std::vector<std::string>& xs);
 void remove_element_read(std::vector<std::string>& xs);
 ::tpy::BigInt find(const std::vector<std::string>& xs, std::string_view k);
 ::tpy::BigInt tally(const std::vector<std::string>& xs, std::string_view k);
-void drop_bytes_literal(std::vector<std::vector<uint8_t>>& bs);
-void drop_bytes_param(std::vector<std::vector<uint8_t>>& bs, std::span<const uint8_t> k);
-void empty_keys(std::vector<std::string>& xs, std::vector<std::vector<uint8_t>>& bs, std::string_view k, std::span<const uint8_t> bk);
+void drop_bytes_literal(std::vector<::tpy::Bytes>& bs);
+void drop_bytes_param(std::vector<::tpy::Bytes>& bs, std::span<const uint8_t> k);
+void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, std::span<const uint8_t> bk);
 ::tpy::BigInt key_len(std::string_view k);
 void main();
 

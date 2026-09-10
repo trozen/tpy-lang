@@ -15,15 +15,15 @@ std::array<int32_t, 3> fresh_array() {
 }
 
 // def grow_bytes(n: Int32) -> Own[bytearray]:
-std::vector<uint8_t> grow_bytes(int32_t n) {
-    std::optional<std::vector<uint8_t>> __slot_2;
+::tpy::ByteArray grow_bytes(int32_t n) {
+    std::optional<::tpy::ByteArray> __slot_2;
     // buf = bytearray(b"ab")
-    std::vector<uint8_t> __slot_1 = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
-    std::vector<uint8_t>* buf = &__slot_1;
+    ::tpy::ByteArray __slot_1 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray* buf = &__slot_1;
     // if n > 2:
     if ((n > 2)) {
         // buf = bytearray(b"cde")   # reassigned -> a rebind-slot pointer local
-        buf = &*(__slot_2 = ::tpy::bytes_copy(::tpy::bytes_literal("cde", 3)));
+        buf = &*(__slot_2 = ::tpy::ByteArray(::tpy::bytes_literal("cde", 3)));
     }
     // return buf                    # tpyc: ok -- deref+move out of the slot
     return std::move((*buf));
@@ -70,7 +70,7 @@ void main() {
     // print(a[0], a[1], len(a))
     std::cout << ::tpy::__getitem__(a, 0) << " " << ::tpy::__getitem__(a, 1) << " " << ::tpy::__len__(a) << "\n";
     // b = grow_bytes(4)
-    std::vector<uint8_t> b = grow_bytes(4);
+    ::tpy::ByteArray b = grow_bytes(4);
     // b.append(70)
     b.push_back(70);
     // print(len(b), b[-1])

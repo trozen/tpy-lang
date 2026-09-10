@@ -65,7 +65,7 @@ struct Stack {
     // def push(self, item: T) -> Self:
     Stack<T>& push(::tpy::param_val_or_ref_t<T> item) {
         // self.items.append(item)
-        this->items.push_back(item);
+        this->items.push_back(::tpy::param_to_storage<T>(item));
         // return self
         return (*this);
     }

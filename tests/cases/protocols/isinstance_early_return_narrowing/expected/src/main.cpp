@@ -324,7 +324,7 @@ std::string narrow_in_with_body(const Pet& p) {
     // # `try { ... } catch (...) { __exit__; throw; }`; the cast-and-cache
     // # alias declared inside the body must not leak into the post-with read.
     // with CM():
-    std::string result;
+    ::tpy::String result;
     auto __ctx_1 = CM();
     __ctx_1.__enter__();
     bool __fin_ran_1 = false;

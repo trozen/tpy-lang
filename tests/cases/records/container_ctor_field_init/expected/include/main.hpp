@@ -19,7 +19,7 @@ void main();
 // class Empty:
 struct Empty {
     // buf: bytearray
-    std::vector<uint8_t> buf;
+    ::tpy::ByteArray buf;
     // tags: list[Int32]
     std::vector<int32_t> tags;
 
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Empty& obj) {
 // class Seeded:
 struct Seeded {
     // buf: bytearray
-    std::vector<uint8_t> buf;
+    ::tpy::ByteArray buf;
 
     // def __init__(self, seed: bytes) -> None:
     explicit Seeded(std::span<const uint8_t> seed);
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Seeded& obj) {
 // class Sized:
 struct Sized {
     // buf: bytearray
-    std::vector<uint8_t> buf;
+    ::tpy::ByteArray buf;
 
     // def __init__(self, n: Int32) -> None:
     explicit Sized(int32_t n);
@@ -66,10 +66,10 @@ inline std::ostream& operator<<(std::ostream& os, const Sized& obj) {
 // class Copied:
 struct Copied {
     // buf: bytearray
-    std::vector<uint8_t> buf;
+    ::tpy::ByteArray buf;
 
     // def __init__(self, data: bytearray) -> None:
-    explicit Copied(const std::vector<uint8_t>& data);
+    explicit Copied(const ::tpy::ByteArray& data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Copied";
 };
 
@@ -80,15 +80,15 @@ inline std::ostream& operator<<(std::ostream& os, const Copied& obj) {
 
 
 // def __init__(self) -> None:
-inline Empty::Empty() : buf(std::vector<uint8_t>()), tags(std::vector<int32_t>()) {}
+inline Empty::Empty() : buf(::tpy::ByteArray()), tags(std::vector<int32_t>()) {}
 
 // def __init__(self, seed: bytes) -> None:
-inline Seeded::Seeded(std::span<const uint8_t> seed) : buf(::tpy::bytes_copy(seed)) {}
+inline Seeded::Seeded(std::span<const uint8_t> seed) : buf(::tpy::ByteArray(seed)) {}
 
 // def __init__(self, n: Int32) -> None:
-inline Sized::Sized(int32_t n) : buf(::tpy::bytes_from_size(n)) {}
+inline Sized::Sized(int32_t n) : buf(::tpy::bytearray_from_size(n)) {}
 
 // def __init__(self, data: bytearray) -> None:
-inline Copied::Copied(const std::vector<uint8_t>& data) : buf(data) {}
+inline Copied::Copied(const ::tpy::ByteArray& data) : buf(data) {}
 void __tpy_init();
 } // namespace tpyapp::main

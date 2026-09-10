@@ -115,7 +115,7 @@ bool own_str_name(std::vector<int32_t>& xs, std::string_view tail) {
     // # An OWNED str NAME source: the view->owned conversion temp is audited
     // # like the container rows, so it defers instead of being refused.
     // s = tail + "!"
-    std::string s = (::tpy::str_concat(tail, "!"));
+    ::tpy::String s = (::tpy::str_concat(tail, "!"));
     // return (xs.pop() > 0) or seen_str("ownstr", s)
     std::optional<std::string> __tmp_8;
     return ((::tpy::pop_back(xs) > 0) || (__tmp_8.emplace(std::string{s}), seen_str("ownstr", std::move((*__tmp_8)))));

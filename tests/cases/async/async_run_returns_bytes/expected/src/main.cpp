@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def payload() -> bytes:
-::tpystd::tpy::Poll<std::vector<uint8_t>> __coro_payload::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::Bytes> __coro_payload::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0)
@@ -15,13 +15,13 @@ namespace tpyapp::main {
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<uint8_t>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         // return b"hi"
         __state = S_DONE;
-        std::vector<uint8_t> __tpy_async_ret = ::tpy::bytes_literal_owned("hi", 2);
-        return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+        ::tpy::Bytes __tpy_async_ret = ::tpy::bytes_literal_owned("hi", 2);
+        return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -37,7 +37,7 @@ __coro_payload payload() {
 // def main() -> None:
 void main() {
     // print(asyncio.run(payload()))
-    std::cout << ::tpy::BytesPrinter(::tpystd::asyncio::run<std::vector<uint8_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::vector<uint8_t>>>(payload()))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::asyncio::run<::tpy::Bytes>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>(payload()))) << "\n";
 }
 
 void __tpy_init() {

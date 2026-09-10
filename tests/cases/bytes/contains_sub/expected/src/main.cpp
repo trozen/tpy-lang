@@ -14,7 +14,7 @@ void main() {
     // print(b"xyz" in data)     # False
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("xyz", 3)))) << "\n";
     // print(b"" in data)        # True (empty always matches)
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, std::vector<uint8_t>{}))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::Bytes{}))) << "\n";
     // print(b"hello world" in data)  # True (exact match)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("hello world", 11)))) << "\n";
     // # Single byte via int still works

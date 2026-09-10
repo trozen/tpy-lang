@@ -18,8 +18,10 @@ void main();
 struct __gen_chunks : public ::tpy::next_iter_mixin<__gen_chunks, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;
-    ::tpy::frame_slot<std::vector<std::vector<uint8_t>>> out;
-    ::tpy::frame_slot<std::vector<uint8_t>> buf;
+    ::tpy::frame_slot<std::vector<std::vector<int32_t>>> out;
+    ::tpy::frame_slot<std::vector<::tpy::Bytes>> seen;
+    ::tpy::frame_slot<std::vector<int32_t>> buf;
+    ::tpy::frame_slot<::tpy::ByteArray> ba;
 
     enum : int32_t {
         S_INITIAL = 0,

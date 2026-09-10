@@ -10,7 +10,7 @@ void main() {
     H h = H();
     // # The binding under test: a borrow-returned bytearray in a plain local.
     // v = h.view()
-    std::vector<uint8_t>& v = h.view();
+    ::tpy::ByteArray& v = h.view();
     // v.append(33)
     v.push_back(33);
     // print(len(h.buf), len(v))

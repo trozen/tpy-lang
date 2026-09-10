@@ -1539,25 +1539,25 @@ class Char(Sized, Equatable):
 
 
 @builtin_type("tpy.String")
-@native("std::string")
+@native("::tpy::String")
 class String(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @dispatch
-    @cpp_template("std::string()")
+    @cpp_template("::tpy::String()")
     def __init__(self) -> None: ...
     @dispatch
-    @cpp_template("std::string({0})")
+    @cpp_template("::tpy::String({0})")
     def __init__(self, x: str) -> None: ...
     @dispatch
-    @cpp_template("std::string({0})")
+    @cpp_template("::tpy::String({0})")
     def __init__(self, x: String) -> None: ...
     @dispatch
-    @cpp_template("std::string({0})")
+    @cpp_template("::tpy::String({0})")
     def __init__(self, x: StrView) -> None: ...
     @dispatch
-    @cpp_template("std::string(::tpy::bool_to_str({0}))")
+    @cpp_template("::tpy::String(::tpy::bool_to_str({0}))")
     def __init__(self, x: bool) -> None: ...
     @dispatch
-    @cpp_template("std::string(::tpy::char_to_str({0}))")
+    @cpp_template("::tpy::String(::tpy::char_to_str({0}))")
     def __init__(self, x: Char) -> None: ...
     @dispatch
     @cpp_template("::tpy::fixed_to_str<int8_t>({0})")
@@ -1584,7 +1584,7 @@ class String(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @cpp_template("::tpy::fixed_to_str<uint64_t>({0})")
     def __init__(self, x: UInt64) -> None: ...
     @dispatch
-    @cpp_template("({0}).to_string()")
+    @cpp_template("::tpy::String(({0}).to_string())")
     def __init__(self, x: int) -> None: ...
     @dispatch
     @native("tpy::float_to_str", function=True)

@@ -17,7 +17,7 @@ void main();
 // class Box:
 struct Box {
     // payload: bytes
-    std::vector<uint8_t> payload;
+    ::tpy::Bytes payload;
     // label: str
     std::string label;
 
@@ -44,7 +44,7 @@ struct Box {
 
     // @property
     // def raw(self) -> bytes:           # property, owned bytes (decode round-trip)
-    std::vector<uint8_t> raw() const;
+    ::tpy::Bytes raw() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, payload: bytes, label: str) -> None:
-inline Box::Box(std::span<const uint8_t> payload, std::string_view label) : payload(::tpy::bytes_copy(payload)), label(label) {}
+inline Box::Box(std::span<const uint8_t> payload, std::string_view label) : payload(::tpy::Bytes(payload)), label(label) {}
 
 // def m_text(self) -> str:          # method, owned return
 inline std::string Box::m_text() const {
@@ -92,7 +92,7 @@ inline std::string_view Box::name() const {
 
 // @property
 // def raw(self) -> bytes:           # property, owned bytes (decode round-trip)
-inline std::vector<uint8_t> Box::raw() const {
+inline ::tpy::Bytes Box::raw() const {
     // return self.text.encode()
     return ::tpy::bytes_from_str(this->text());
 }

@@ -53,7 +53,7 @@ struct Outer {
 
         // def __init__(self, value: T) -> None:
         Box() = default;
-        explicit Box(const T& value) : value(value) {}
+        explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
         __coro_2_5_Outer_3_Box_3_get<T> get();
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Box";
@@ -339,7 +339,7 @@ template <typename T>
         __sub_0.reset();
         // return value
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(value);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -649,7 +649,7 @@ template <typename T>
         __sub_0.reset();
         // return value
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(value);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -67,7 +67,7 @@ struct Summer {
 
     // def __init__(self, items: T) -> None:
     Summer() = default;
-    explicit Summer(const T& items) : items(items) {}
+    explicit Summer(::tpy::readonly_form_t<T> items) : items(items) {}
 
     // def total(self) -> Int32:
     int32_t total() const {

@@ -44,14 +44,16 @@ the detection side-sets in favor of the carried tag.
 | Union `A \| B` (non-value) | `std::variant<A*, B*>` | `std::variant<A, B>` | `context.is_ptr_variant_union(t)` |
 | Non-value local (record/list/dict/set) | `T*` (pointer-local) or `T&` (alias) | `T` (inline) | `is_value_type()` + side-sets |
 | `str` | `std::string_view` (param/borrow) | `std::string` | TypeDef `param_cpp_formatter` |
-| `String` | `const std::string&` | `std::string` | TypeDef `param_cpp_formatter` |
-| `bytes` | `std::span<const uint8_t>` | `std::vector<uint8_t>` | TypeDef `param_cpp_formatter` |
+| `String` | `const ::tpy::String&` | `::tpy::String` | TypeDef `param_cpp_formatter` |
+| `bytes` | `std::span<const uint8_t>` | `::tpy::Bytes` | TypeDef `param_cpp_formatter` |
 | generic `T` (RefType `U`) | `val_or_ptr_t<T>` / `val_or_ref_t<T>` | `val_or_ref<T>` (stored) | `RefType` + traits |
 
-`str`/`String`/`bytes`/`bytearray` are value types with a storage/param split
-(Open Q 8) -- the generic ABI can't tell `str` from `String` (both `std::string`)
-because the trait keys on the C++ storage type. Folded in here because the form
-fact subsumes the split (Open Q 11 "scope extension").
+`str`/`String`/`bytes` are value types with a storage/param split
+(Open Q 8); `bytearray` is a reference type with the same split spelled by its
+two param formatters. The generic ABI CAN tell them apart: the trait keys on the
+C++ storage type and each of the four now has its own, so a generic `T` slot
+resolves the same parameter form the monomorphic twin's slot spells. Folded in
+here because the form fact subsumes the split (Open Q 11 "scope extension").
 
 ---
 

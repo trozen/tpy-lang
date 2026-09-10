@@ -34,7 +34,7 @@ struct Box : Holder {
 
     // def __init__(self, v: T):
     Box() = default;
-    explicit Box(const T& v) : v(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 

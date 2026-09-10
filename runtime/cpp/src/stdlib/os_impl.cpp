@@ -430,8 +430,8 @@ void close_fd(int64_t fd) {
     if (::close(static_cast<int>(fd)) != 0) raise_errno();
 }
 
-std::vector<uint8_t> read_fd(int64_t fd, int64_t n) {
-    std::vector<uint8_t> buf(n > 0 ? static_cast<size_t>(n) : 0);
+::tpy::Bytes read_fd(int64_t fd, int64_t n) {
+    ::tpy::Bytes buf(n > 0 ? static_cast<size_t>(n) : 0);
     if (n <= 0) return buf;
     ssize_t got = ::read(static_cast<int>(fd), buf.data(),
                          static_cast<size_t>(n));
@@ -593,8 +593,8 @@ bool access_path(std::string_view path, int64_t mode) {
     return ::access(std::string(path).c_str(), static_cast<int>(mode)) == 0;
 }
 
-std::vector<uint8_t> urandom(int64_t n) {
-    std::vector<uint8_t> buf(n > 0 ? static_cast<size_t>(n) : 0);
+::tpy::Bytes urandom(int64_t n) {
+    ::tpy::Bytes buf(n > 0 ? static_cast<size_t>(n) : 0);
     size_t off = 0;
     while (off < buf.size()) {
         // getentropy caps at 256 bytes per call on every platform.

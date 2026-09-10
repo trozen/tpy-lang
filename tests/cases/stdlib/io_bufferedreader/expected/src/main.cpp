@@ -86,7 +86,7 @@ void main() {
     // r7 = BufferedReader(FileIO(feed(b"p\nq\n")))
     ::tpystd::io::BufferedReader r7 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("p\nq\n", 4)))));
     // lines = r7.readlines()
-    std::vector<std::vector<uint8_t>> lines = r7.readlines();
+    std::vector<::tpy::Bytes> lines = r7.readlines();
     // print(len(lines))
     std::cout << ::tpy::__len__(lines) << "\n";
     // for ln in lines:

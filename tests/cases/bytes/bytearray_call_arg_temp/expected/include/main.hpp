@@ -9,8 +9,8 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show(const std::vector<uint8_t>& b);
-void grow(std::vector<uint8_t>& b);
+void show(const ::tpy::ByteArray& b);
+void grow(::tpy::ByteArray& b);
 void main();
 
 void __tpy_init();

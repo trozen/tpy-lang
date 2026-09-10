@@ -21,7 +21,7 @@ struct Box {
 
     // def __init__(self, value: T) -> None:
     Box() = default;
-    explicit Box(const T& value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {

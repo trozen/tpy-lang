@@ -12,7 +12,7 @@ struct Sink;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string joins(std::string_view a, ::tpy::varargs<const std::string> parts);
-int32_t total_len(std::span<const uint8_t> a, ::tpy::varargs<const std::vector<uint8_t>> parts);
+int32_t total_len(std::span<const uint8_t> a, ::tpy::varargs<const ::tpy::Bytes> parts);
 int32_t addall(::tpy::varargs<const int32_t> nums);
 std::string reassign_view_param(std::string_view __param_p);
 std::string from_str_view(std::string_view sv);

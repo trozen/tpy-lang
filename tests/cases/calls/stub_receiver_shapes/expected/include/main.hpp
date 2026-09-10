@@ -18,20 +18,20 @@ void main();
 // class Buf:
 struct Buf {
     // data: bytearray
-    std::vector<uint8_t> data;
+    ::tpy::ByteArray data;
     // nums: list[Int32]
     std::vector<int32_t> nums;
 
     // def __init__(self, data: Own[bytearray]) -> None:
-    explicit Buf(std::vector<uint8_t>&& data);
+    explicit Buf(::tpy::ByteArray&& data);
 
     // @property
     // def view(self) -> bytearray:
-    std::vector<uint8_t>& view();
+    ::tpy::ByteArray& view();
 
     // @property
     // def view(self) -> bytearray:
-    const std::vector<uint8_t>& view() const;
+    const ::tpy::ByteArray& view() const;
 
     // @property
     // def rows(self) -> list[Int32]:
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 }
 
 // class Tagged(bytearray):
-struct Tagged : std::vector<uint8_t> {
+struct Tagged : ::tpy::ByteArray {
     // tag: Int32
     int32_t tag;
 
@@ -80,18 +80,18 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedList& obj) {
 
 
 // def __init__(self, data: Own[bytearray]) -> None:
-inline Buf::Buf(std::vector<uint8_t>&& data) : data(std::move(data)), nums(std::vector<int32_t>{1}) {}
+inline Buf::Buf(::tpy::ByteArray&& data) : data(std::move(data)), nums(std::vector<int32_t>{1}) {}
 
 // @property
 // def view(self) -> bytearray:
-inline std::vector<uint8_t>& Buf::view() {
+inline ::tpy::ByteArray& Buf::view() {
     // return self.data
     return this->data;
 }
 
 // @property
 // def view(self) -> bytearray:
-inline const std::vector<uint8_t>& Buf::view() const {
+inline const ::tpy::ByteArray& Buf::view() const {
     // return self.data
     return this->data;
 }

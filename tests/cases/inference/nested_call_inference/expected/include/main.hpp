@@ -39,8 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template<typename T>
 Box<T> wrap(::tpy::param_val_or_ref_t<T> v) {
     // return Box[T](v)
-    T __tmp_1 = v;
-    return Box<T>(std::move(__tmp_1));
+    return Box<T>(::tpy::param_to_storage<T>(v));
 }
 
 void __tpy_init();

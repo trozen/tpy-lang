@@ -121,13 +121,19 @@ emitted form of the same body written with `X` spelled directly. The type parame
 placeholder, not a further value shape: a form or ownership verdict taken while `T` is still
 unresolved and not retaken at the instantiation is where the twin drifts.
 
-**Example.** `def find[T](xs: list[T], v: T)` called as `find(names, k)` with `k: str`. The slot
-spells `const std::string&` (`param_val_or_ref_t<T>` at `std::string`) while the caller's read is
-a `std::string_view`, so the twin `def find(xs: list[str], v: str)` -- whose slot IS the view --
-binds where the generic did not; the call site now materializes an owned copy, a per-call
-allocation the twin does not pay -- a drift of the emitted form, not a fix. Same class, still
-open: a `T | None` RETURN is committed to `T*` for every instantiation, so returning the body's
-own `T | None` parameter does not compile at a value `T` where the twin's does.
+**Example.** `def find[T](xs: list[T], v: T)` called as `find(names, k)` with `k: str` USED to
+spell the slot `const std::string&` and buy the caller an owned copy, because `str` and `String`
+shared `std::string` and a trait keyed on the C++ type could not tell their parameter forms
+apart. Each of the four str/bytes types owns a C++ type now, so `param_val_or_ref_t<T>` at that
+slot IS the twin's `std::string_view` -- the fix was to make the two spellings distinct, not to
+carry the form beside `T`. The three slots that render CONST (a `readonly[T]` param, a
+`@readonly` method's `T`, a constructor's) went with it: they spell `readonly_form_t<T>`, the same
+parameter form const-qualified only where it is a mutable reference, because `const T&` binds
+neither a view NOR anything a generic BODY could materialize -- there `T` is not fixed yet.
+Same class, still open: a `T | None` RETURN is committed to `T*` for every instantiation, so
+returning the body's own `T | None` parameter does not compile at a value `T` where the twin's
+does; an open-`T` ORDERING compare has no form-neutral render, so it fails to compile at
+`T = bytes`.
 
 **One ACCEPTED divergence, decided deliberately** -- the owning-slot copy contract
 (`tpyc/sema/own_copy.py`). The twin names the type it copies, once per concrete type; the generic
@@ -138,7 +144,7 @@ is TPy's default, so the declaration is the only place the contract can be state
 `T: ValueType` bound silence it; a non-copyable instantiation (`@nocopy`, or a record with
 `__del__`) promotes the same line to the twin's error. Do not "fix" this drift back toward
 the twin -- see `docs/LANGUAGE_FEATURES.md`, "the copy contract of a generic body".
-(open: `BUGS.md#generic-str-slot-copies-where-twin-binds-view`,
+(open: `BUGS.md#open-tparam-ordering-needs-one-form`,
 `BUGS.md#generic-own-slot-borrow-call-unwarned`,
 `BUGS.md#generic-optional-return-committed-to-pointer`,
 `BUGS.md#simple-generator-captures-open-t-param-by-reference`)
@@ -165,7 +171,7 @@ built from the argument at the call, a copy the plain `str` parameter would not 
 `def take(s: str)`, a `std::string_view`, unless the callee stores the buffer in a field.
 
 **Check.** Grep for `Own[` on a value type, and for `std::string(`, `std::string ` and
-`bytes_copy(` in the emitted C++ of the shape under change; each needs a position where the
+`::tpy::Bytes(` in the emitted C++ of the shape under change; each needs a position where the
 type mapping requires owned storage.
 
 ### `hidden-allocation`
@@ -184,7 +190,7 @@ would be a view or a pointer.
 
 **Example.** `a: str = v` emits `std::string_view a = v` (free), but `t: tuple[str] = (v,)`
 emits `std::tuple<std::string>(std::string(v))`, an allocation plus a character copy per
-element, twice for `tuple[str, str]`; `bytes` pays `bytes_copy(v)` per element the same way.
+element, twice for `tuple[str, str]`; `bytes` pays `::tpy::Bytes(v)` per element the same way.
 `a < b` on two small `int` values must compare inline payloads without building limb
 vectors; floor division, remainder, `divmod`, shifts and bitwise operations also
 stay allocation-free when their small inputs produce a small result.
@@ -193,7 +199,7 @@ stay allocation-free when their small inputs produce a small result.
 the view itself.
 (open: `BUGS.md#str-tuple-element-local-owned`)
 
-**Check.** Read the emitted C++ of the shape under change for `std::string(`, `bytes_copy(`,
+**Check.** Read the emitted C++ of the shape under change for `std::string(`, `::tpy::Bytes(`,
 `std::vector<...>(`, `BigInt(` temporaries, `from_str`, `make_`, `new ` and `__tmp` locals;
 each must be one the type mapping requires at that position. Where the corpus
 does not reach a position, compile a probe and read its emit. For runtime operators,

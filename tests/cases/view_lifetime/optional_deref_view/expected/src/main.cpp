@@ -36,7 +36,7 @@ void bytes_compound(std::optional<std::span<const uint8_t>> a, std::span<const u
     // if a is not None:
     if ((a.has_value())) {
         // y = a if len(b) > 0 else b  # tpyc: type(bytes)
-        std::vector<uint8_t> y = ::tpy::bytes_copy((((::tpy::__len__(b) > 0)) ? ((*a)) : (b)));
+        ::tpy::Bytes y = ::tpy::Bytes((((::tpy::__len__(b) > 0)) ? ((*a)) : (b)));
         // print(len(y))
         std::cout << ::tpy::__len__(y) << "\n";
     }

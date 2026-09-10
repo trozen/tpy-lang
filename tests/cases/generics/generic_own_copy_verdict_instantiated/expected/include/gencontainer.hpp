@@ -19,7 +19,7 @@ int32_t cross_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }

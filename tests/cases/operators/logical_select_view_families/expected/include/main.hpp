@@ -14,13 +14,13 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t pick(std::span<const uint8_t> a, std::span<const uint8_t> b);
 int32_t pick_local(std::span<const uint8_t> a, std::span<const uint8_t> b);
 int32_t pick_rebound(std::span<const uint8_t> a, std::span<const uint8_t> __param_b);
-std::vector<uint8_t> pick_owned(std::span<const uint8_t> a, std::span<const uint8_t> b);
+::tpy::Bytes pick_owned(std::span<const uint8_t> a, std::span<const uint8_t> b);
 void main();
 
 // class Store:
 struct Store {
     // data: bytes
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
     explicit Store(std::span<const uint8_t> data);
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Store& obj) {
 
 
 // def __init__(self, data: bytes) -> None:
-inline Store::Store(std::span<const uint8_t> data) : data(::tpy::bytes_copy(data)) {}
+inline Store::Store(std::span<const uint8_t> data) : data(::tpy::Bytes(data)) {}
 
 // def put(self, a: bytes, b: bytes) -> None:
 inline void Store::put(std::span<const uint8_t> a, std::span<const uint8_t> b) {
@@ -45,7 +45,7 @@ inline void Store::put(std::span<const uint8_t> a, std::span<const uint8_t> b) {
     // # store copies, so the field keeps the bytes after the caller's
     // # argument buffers are gone.
     // self.data = a or b  # tpyc: ok
-    this->data = ::tpy::bytes_copy(((!a.empty()) ? a : b));
+    this->data = ::tpy::Bytes(((!a.empty()) ? a : b));
 }
 void __tpy_init();
 } // namespace tpyapp::main

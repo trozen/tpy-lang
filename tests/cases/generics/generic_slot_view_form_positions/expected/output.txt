@@ -1,5 +1,6 @@
 module_level True True
 free_function True True
+while_cond 3 True
 method True True
 ctor_arg True True
 comprehension [True, False] [True, False]

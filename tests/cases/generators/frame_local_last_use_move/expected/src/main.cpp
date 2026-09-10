@@ -8,19 +8,25 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_chunks::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // out: list[bytes] = []
-        out.emplace(std::vector<std::vector<uint8_t>>{});
-        // buf = bytearray(b"abc")
-        buf.emplace(::tpy::bytes_copy(::tpy::bytes_literal("abc", 3)));
+        // out: list[list[Int32]] = []
+        out.emplace(std::vector<std::vector<int32_t>>{});
+        // seen: list[bytes] = []
+        seen.emplace(std::vector<::tpy::Bytes>{});
+        // buf = [1, 2, 3]
+        buf.emplace(std::vector<int32_t>{1, 2, 3});
+        // ba = bytearray(b"abc")
+        ba.emplace(::tpy::ByteArray(::tpy::bytes_literal("abc", 3)));
         // yield n
         __state = S_RESUME_0;
         return n;
     }
     case S_RESUME_0: {
-        // out.append(buf)
+        // out.append(buf)  # the frame slot, moved at its last use
         (*out).push_back(std::move((*buf)));
-        // print(len(out), len(out[0]))
-        std::cout << ::tpy::__len__((*out)) << " " << ::tpy::__len__(::tpy::__getitem__((*out), 0)) << "\n";
+        // seen.append(bytes(ba))  # the written copy into a `bytes` element slot
+        (*seen).push_back(::tpy::Bytes((*ba)));
+        // print(len(out), len(out[0]), len(seen[0]))
+        std::cout << ::tpy::__len__((*out)) << " " << ::tpy::__len__(::tpy::__getitem__((*out), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*seen), 0)) << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

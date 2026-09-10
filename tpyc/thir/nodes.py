@@ -126,8 +126,8 @@ class THIRBytesLiteral(THIRExpr):
     """A bytes literal. Unlike a str literal (a position-neutral const char[N]),
     a bytes literal's C++ render is TARGET-dependent, so lowering decides it
     per sink and carries the verdict on the `form` tag: STORAGE renders the
-    owning vector (`::tpy::bytes_literal_owned(...)` / empty
-    `std::vector<uint8_t>{}` -- the default, matching every target-less
+    owning buffer (`::tpy::bytes_literal_owned(...)` / empty
+    `::tpy::Bytes{}` -- the default, matching every target-less
     position: print args, compare operands, owned decl inits/returns), BORROW
     the static-storage span (`::tpy::bytes_literal(...)` / empty
     `std::span<const uint8_t>{}`, the view-targeted positions: view-local
@@ -433,7 +433,7 @@ class THIROptViewArg(THIRExpr):
     `std::optional<std::span<const uint8_t>>` binding is converted to the
     owned-storage `std::optional<std::string>` / `std::optional<std::vector<
     uint8_t>>` the slot's boundary needs: `x ? std::make_optional(<conv>(*x)) :
-    std::nullopt`, where `<conv>` is `std::string` / `::tpy::bytes_copy` per the
+    std::nullopt`, where `<conv>` is `std::string` / `::tpy::Bytes` per the
     view family. Fires for the WHOLE optional (narrowed or not -- the slot
     type drives it, not the narrowed read). `result_type` is the Optional
     slot, whose inner drives the owned-copy spelling (`view_to_owned_conv`);
@@ -946,7 +946,7 @@ class THIRContainerLiteral(THIRExpr):
     `values` is used only by the dict family (zipped with `elements` as keys).
     Elements are value scalars, str/bytes-slice values (S5/S6: a view-form
     source into an owned element slot arrives wrapped in the view->owned
-    `THIRFormConvert` -- `std::string(x)` / `::tpy::bytes_copy(x)`), enums,
+    `THIRFormConvert` -- `std::string(x)` / `::tpy::Bytes(x)`), enums,
     Optional[scalar] (a None element is the STORAGE-form `std::nullopt`
     literal), value-tuple literals (`THIRTupleLiteral`), nested list literals
     (a nested `THIRContainerLiteral`; a demoted-Array outer adds the extra
@@ -1466,7 +1466,7 @@ class THIRStrSlice(THIRExpr):
     materialized at an owned sink by the view->owned `THIRFormConvert` keyed
     on the BORROW form -- str: a sema `strview_to_str` TpyCoerce (decl init /
     return) lowered via `_coerce_disposition` to `std::string(...)`; bytes: a
-    coerce-less owned decl init wrapped `::tpy::bytes_copy(...)` at lowering
+    coerce-less owned decl init wrapped `::tpy::Bytes(...)` at lowering
     (an owned bytes RETURN arrives as the gate-rejected `bytesview_to_bytes`
     coerce, which is not lowered yet). Bounds are
     eligible fixed-int value exprs rendered bare (a BigInt bound's
@@ -1569,13 +1569,23 @@ class THIRFormConvert(THIRExpr):
     owned member of a view family that is a REFERENCE type, so a borrow-form
     `bytes` value is a span while a borrow-form `bytearray` value is an
     object reference; the same (family, BORROW->STORAGE) pair thus has two
-    correct renders (`::tpy::bytes_copy(view)` vs move/copy the object) and
+    correct renders (`::tpy::Bytes(view)` vs move/copy the object) and
     a bytearray-result STORAGE convert MUST carry an explicit True/False
-    (validate.py enforces it)."""
+    (validate.py enforces it).
+
+    An OPEN-`T` result type is the third shape: the value arrives in the
+    instantiation's PARAMETER form (`param_val_or_ref_t<T>`, a view for `str`
+    and `bytes`) and the sink spells `T` storage, so the construction is
+    explicit -- `::tpy::param_to_storage<T>` -- keyed on `T` alone.
+    `generic_return` picks the return sink's sibling
+    (`::tpy::param_to_return<T>`), which must NOT copy at a reference-typed
+    instantiation: there `val_or_ref_t<T>` is `T&` and an owned temporary
+    would dangle."""
     value: THIRExpr
     is_const: bool = False
     move: bool = False
     materialize: 'bool | None' = None
+    generic_return: bool = False
 
 
 # --- Statements ---

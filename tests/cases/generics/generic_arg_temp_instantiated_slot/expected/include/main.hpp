@@ -80,10 +80,10 @@ struct Boxed {
 
     // def __init__(self, v: T) -> None:
     Boxed() = default;
-    explicit Boxed(const T& v) : v(v) {}
+    explicit Boxed(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def holds(self, other: T) -> bool:  # tpyc: ok
-    bool holds(const T& other) const {
+    bool holds(::tpy::readonly_form_t<T> other) const {
         // return True
         return true;
     }
@@ -164,7 +164,7 @@ template <typename T>
     case S_INITIAL: {
         // return value
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(value);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -254,10 +254,10 @@ bool anyslot(std::string_view name, ::tpy::param_val_or_ref_t<T> v) {
 template<typename T>
 ::tpy::val_or_ref_t<T> pass_through(::tpy::param_val_or_ref_t<T> v) {
     // return v
-    return v;
+    return ::tpy::param_to_return<T>(v);
 }
 template<typename T>
-inline auto repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
+inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
     // # A SIMPLE generator: the peephole's lambda captures the slot by reference,
     // # so its argument keeps the temp at every instantiation.
     // i = 0

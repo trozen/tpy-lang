@@ -49,6 +49,7 @@ from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...typesys import (
+    substitute_type_params_simple,
     collapse_tuple_own_elements,
     contains_type_param,
     RecursiveAliasInstanceType,
@@ -381,10 +382,10 @@ def _coerce_disposition(e: TpyCoerce, *,
     consumer keeps the blanket `Own[...]` reject, because there the
     surrounding call-argument auto-move cascade owns the render decision.
     `str_to_string` materializes only at ARG for a non-literal source; a
-    NUL-free literal is const char[N], binding const std::string& directly
-    (the lambda's startswith('"') token check made structural:
+    NUL-free literal is const char[N], which the `String` slot converts from
+    directly (the lambda's startswith('"') token check made structural:
     cpp_string_literal_expr emits the bare-quote form exactly when the value
-    is NUL-free). `strview_to_string` (const std::string& slot / owned
+    is NUL-free). `strview_to_string` (a `const ::tpy::String&` slot / an owned
     String target) materializes in every position. The Optional and Char
     arms have their own renders and reject here."""
     name = e.coercion.name
@@ -400,9 +401,11 @@ def _coerce_disposition(e: TpyCoerce, *,
         # view-typed sink's retag flips its form to the static
         # `bytes_literal` span (`bv: BytesView = b"hello"`).
         return "identity"
-    if name in ("bytearray_to_bytes", "bytes_to_bytearray"):
-        # Both spell std::vector<uint8_t>; the coercion has no codegen
-        # lambda -- passthrough in every position.
+    if name == "bytearray_to_bytes":
+        # Only the BORROWING `bytes` parameter reaches here: that slot is the
+        # span view a ByteArray satisfies directly, so the coercion has no
+        # codegen. An owning `bytes` sink never lowers -- sema refuses it and
+        # asks for the explicit `bytes(...)`.
         return "identity"
     if isinstance(e.expected_type, OwnType):
         if own_slot_arg and name == "strview_to_str":
@@ -461,14 +464,14 @@ def _coerce_disposition(e: TpyCoerce, *,
     if name == "strview_to_string":
         return "materialize"
     if name == "bytesview_to_bytes":
-        # `::tpy::bytes_copy({0})` with no position or source branch in the
+        # `::tpy::Bytes({0})` with no position or source branch in the
         # lambda -- the `strview_to_string` shape, so it materializes
         # everywhere below the Own reject, which leaves the arg cascade
         # owning the render decision exactly as for the str family.
         return "materialize"
     if name == "bytesview_to_bytearray":
-        # The bytearray twin of bytesview_to_bytes: the identical
-        # `::tpy::bytes_copy({0})` lambda. Unlike bytes, a bytearray sink
+        # The bytearray twin of bytesview_to_bytes, spelling its own owned
+        # buffer (`::tpy::ByteArray({0})`). Unlike bytes, a bytearray sink
         # from a view source ALWAYS carries this sema coercion (the
         # coercion-less same-type case cannot arise for a reference type),
         # so this row alone covers the family's view->owned direction.
@@ -481,7 +484,7 @@ def _wrap_view_owned_sink(value: 'THIRExpr | None',
                           loc) -> 'THIRExpr | None':
     """An owned-str/bytes slot (std::string / std::vector<uint8_t> by value)
     fed a view-form source copies explicitly -- `std::string(a)` /
-    `::tpy::bytes_copy(a)` -- the view->owned construction being explicit.
+    `::tpy::Bytes(a)` -- the view->owned construction being explicit.
     The single chokepoint for that copy, keyed on the lowered value's own
     form fact; a literal (VALUE) or owned local / owned call result
     (STORAGE) lands bare. Shared by the return sinks and the generator's
@@ -2163,7 +2166,7 @@ def _bytes_name_form(name: str, resolved: TpyType, param_names: set[str],
     """The bytes twin of `_str_name_form`: a `BytesView`-resolved binding and
     a `bytes`-typed
     param (the signature spells `std::span<const uint8_t>`) are view/BORROW --
-    they drive the owned-sink `::tpy::bytes_copy(x)` -- while an owned local is
+    they drive the owned-sink `::tpy::Bytes(x)` -- while an owned local is
     `std::vector<uint8_t>` (STORAGE). `owned_params` carves out the
     `Own[bytes]` params (owned `std::vector<uint8_t>` by value -- STORAGE),
     exactly like the str twin."""
@@ -5159,7 +5162,7 @@ def _value_opt_bytes(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     form) and an owned `std::optional<std::vector<uint8_t>>` elsewhere -- the
     bytes twin of `_value_opt_str`. Every position renders family-neutrally
     (`has_value()`, the narrowed `(*b)` span read, `::tpy::is_truthy(b)`) except
-    the view->owned copy, which the view-family emit spells `::tpy::bytes_copy`
+    the view->owned copy, which the view-family emit spells `::tpy::Bytes`
     instead of `std::string` (the arg-split shim / owned sinks). Consumed only at
     the family-NEUTRAL value-optional sites via `_value_opt_view`; the
     str-specific arms (if-expr str-result, `print_optional_val`, value-tuple
@@ -5175,7 +5178,7 @@ def _value_opt_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """A value-repr `Optional[view]` -- str OR bytes -- the shared family-neutral
     predicate for the value-optional read / None-test / truthiness / arg-shim /
     param+return-gate sites. The view-family emit (`view_to_owned_conv`) resolves
-    the `std::string` vs `::tpy::bytes_copy` split, so these sites need no
+    the `std::string` vs `::tpy::Bytes` split, so these sites need no
     per-family branch."""
     return (_value_opt_str(t, analyzer)
             or _value_opt_bytes(t, analyzer))
@@ -6462,7 +6465,7 @@ def _bytes_elem_container(t: TpyType | None, analyzer) -> bool:
     (`const std::vector<uint8_t>&`) lands bare in every admitted sink: an
     owned decl/return copies implicitly, a view-resolved binding / span arg
     converts implicitly, compare/print wrap by type -- so the read is STORAGE
-    form (never the S6 `::tpy::bytes_copy` view wrap). Writes / literals /
+    form (never the S6 `::tpy::Bytes` view wrap). Writes / literals /
     iteration keep `_container_scalar_read`'s families; `BytesView` elements
     stay excluded (the static-storage literal key pin, like str-view slots)."""
     def owned_bytes(a: 'TpyType | int') -> bool:
@@ -9960,9 +9963,9 @@ def _own_bytes_identity_move_slot(a: TpyExpr, ptype: TpyType | None,
                                   param_names: 'AbstractSet[str]' = frozenset()
                                   ) -> 'TpyType | None':
     """The MOVE-ONLY bytes sibling of `_own_lvalue_temp_slot`'s identity-
-    chain name branch: an all-identity coerce chain (bytearray->bytes) over
-    a NAME into a plain `Own[bytes]` slot -- or the BARE owned-form bytes
-    NAME at the same slot (`self._chunks.append(owned)` in a resumable body
+    chain name branch: an all-identity coerce chain over a NAME into a plain
+    `Own[bytes]` slot -- or the BARE owned-form bytes NAME at the same slot
+    (`self._chunks.append(owned)` in a resumable body
     -> `push_back(std::move(owned))`). Serves ONLY the temp-free last-use
     move; the non-move halves stay unshared deliberately -- a non-moved
     bytes lvalue passes BARE to an inline_template callee, which the
@@ -11147,7 +11150,28 @@ def _generic_root_subst(e: TpyCall, analyzer) -> 'tuple[FunctionInfo, dict[str, 
     root = (e.resolved_function_info
             if len(fis) > 1 and e.resolved_function_info is not None
             else fis[0])
-    return root, dict(zip(root.type_params, e.inferred_type_args))
+    subst = dict(zip(root.type_params, e.inferred_type_args))
+    # An @overload group resolves to a per-call fi whose params sema already
+    # SUBSTITUTED, while the emitted function is the impl TEMPLATE, whose slots
+    # are still `T`. Recover the declared stub -- the one whose params
+    # reproduce the resolved signature under this substitution -- so every
+    # consumer asks about the slot the template actually spells. Without it a
+    # bare-`T` slot is invisible on this route and the verdicts that key on it
+    # (the arg rows, the frame-borrow temp) silently do not apply.
+    if any(not _is_type_param_slot(unwrap_ref_type(p.type))
+           for p in root.params) and subst:
+        for cand in fis:
+            if len(cand.params) != len(root.params):
+                continue
+            if any(_is_type_param_slot(unwrap_ref_type(p.type))
+                   for p in cand.params) and all(
+                    substitute_type_params_simple(unwrap_ref_type(c.type),
+                                                  subst)
+                    == unwrap_ref_type(r.type)
+                    for c, r in zip(cand.params, root.params)):
+                root = cand
+                break
+    return root, subst
 
 def _is_range_call(it: TpyExpr) -> bool:
     """The `range(...)` iterable form -- the range-vs-container discriminator

@@ -8,25 +8,30 @@ from tpy import BytesView
 
 
 @builtin_type("builtins.bytes")
-@native("std::vector<uint8_t>")
+@native("::tpy::Bytes")
 class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @dispatch
-    @cpp_template("std::vector<uint8_t>()")
+    @cpp_template("::tpy::Bytes()")
     def __init__(self) -> None: ...
+    # The owned type constructs from its own family's view, so the copy IS the
+    # constructor -- no helper beside it. A `bytes`/`BytesView` argument arrives
+    # as the span and takes the span ctor; a `bytearray` argument arrives as a
+    # reference and binds the base-const-ref ctor (derived-to-base beats the
+    # span's user-defined conversion), so neither needs a spelling at the site.
     @dispatch
-    @native("tpy::bytes_copy", function=True)
+    @cpp_template("::tpy::Bytes({0})")
     def __init__(self, x: bytes) -> None: ...
     @dispatch
-    @native("tpy::bytes_copy", function=True)
+    @cpp_template("::tpy::Bytes({0})")
     def __init__(self, x: bytearray) -> None: ...
     @dispatch
-    @native("tpy::bytes_copy", function=True)
+    @cpp_template("::tpy::Bytes({0})")
     def __init__(self, x: BytesView) -> None: ...
     @dispatch
     @native("tpy::bytes_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
     @dispatch
-    @cpp_template("::tpy::construct<std::vector<uint8_t>>({0})")
+    @cpp_template("::tpy::construct<::tpy::Bytes>({0})")
     def __init__(self, x: Iterable[UInt8]) -> None: ...
     # TODO(hot-path): the Int32 overload below is per-element range-checked.
     @dispatch
@@ -186,30 +191,30 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
 
 
 @builtin_type("builtins.bytearray")
-@native("std::vector<uint8_t>")
+@native("::tpy::ByteArray")
 class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @dispatch
-    @cpp_template("std::vector<uint8_t>()")
+    @cpp_template("::tpy::ByteArray()")
     def __init__(self) -> None: ...
     # Concrete overloads first, same rationale as in `bytes` above.
     @dispatch
-    @native("tpy::bytes_copy", function=True)
+    @cpp_template("::tpy::ByteArray({0})")
     def __init__(self, x: bytes) -> None: ...
     @dispatch
-    @native("tpy::bytes_copy", function=True)
+    @cpp_template("::tpy::ByteArray({0})")
     def __init__(self, x: BytesView) -> None: ...
     @dispatch
-    @native("tpy::bytes_copy", function=True)
+    @cpp_template("::tpy::ByteArray({0})")
     def __init__(self, x: bytearray) -> None: ...
     @dispatch
-    @native("tpy::bytes_from_size", function=True)
+    @native("tpy::bytearray_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
     @dispatch
-    @cpp_template("::tpy::construct<std::vector<uint8_t>>({0})")
+    @cpp_template("::tpy::construct<::tpy::ByteArray>({0})")
     def __init__(self, x: Iterable[UInt8]) -> None: ...
     # TODO(hot-path): the Int32 overload below is per-element range-checked.
     @dispatch
-    @native("tpy::bytes_from_int_iterable", function=True)
+    @native("tpy::bytearray_from_int_iterable", function=True)
     def __init__(self, x: Iterable[Int32]) -> None: ...
 
     @native("tpy::__iter__", function=True)
@@ -255,19 +260,19 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     def __setitem__(self, index: Int32, value: UInt8) -> None: ...
 
     @dispatch
-    @native("tpy::bytes_concat", function=True)
+    @native("tpy::bytearray_concat", function=True)
     @readonly
     def __add__(self, other: bytes) -> Own[bytearray]: ...
     @dispatch
-    @native("tpy::bytes_concat", function=True)
+    @native("tpy::bytearray_concat", function=True)
     @readonly
     def __add__(self, other: bytearray) -> Own[bytearray]: ...
     @dispatch
-    @native("tpy::bytes_concat", function=True)
+    @native("tpy::bytearray_concat", function=True)
     @readonly
     def __add__(self, other: BytesView) -> Own[bytearray]: ...
 
-    @native("tpy::bytes_repeat", function=True)
+    @native("tpy::bytearray_repeat", function=True)
     @readonly
     @pure
     def __mul__(self, n: Int32) -> Own[bytearray]: ...
@@ -379,7 +384,7 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def rstrip(self, chars: bytes) -> bytearray: ...
 
-    @native("tpy::bytes_upper", function=True)
+    @native("tpy::bytearray_upper", function=True)
     @readonly
     @pure
     def upper(self) -> bytearray: ...

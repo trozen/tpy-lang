@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_string_basic() -> None:
 void test_string_basic() {
     // s: String = String("hello")
-    std::string s = std::string("hello");
+    ::tpy::String s = ::tpy::String("hello");
     // print(s)  # hello
     std::cout << s << "\n";
     // print(len(s))  # 5
@@ -17,7 +17,7 @@ void test_string_basic() {
 // def test_string_from_int() -> None:
 void test_string_from_int() {
     // s: String = String(Int32(42))
-    std::string s = ::tpy::fixed_to_str<int32_t>(42);
+    ::tpy::String s = ::tpy::fixed_to_str<int32_t>(42);
     // print(s)  # 42
     std::cout << s << "\n";
 }
@@ -25,7 +25,7 @@ void test_string_from_int() {
 // def test_string_from_bool() -> None:
 void test_string_from_bool() {
     // s: String = String(True)
-    std::string s = std::string(::tpy::bool_to_str(true));
+    ::tpy::String s = ::tpy::String(::tpy::bool_to_str(true));
     // print(s)  # True
     std::cout << s << "\n";
 }
@@ -33,7 +33,7 @@ void test_string_from_bool() {
 // def test_string_getitem() -> None:
 void test_string_getitem() {
     // s: String = String("abc")
-    std::string s = std::string("abc");
+    ::tpy::String s = ::tpy::String("abc");
     // print(s[0])  # a
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
     // print(s[-1])  # c

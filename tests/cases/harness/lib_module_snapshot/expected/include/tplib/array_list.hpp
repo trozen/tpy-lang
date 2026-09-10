@@ -142,13 +142,13 @@ struct ArrayList {
     }
 
     // def index[T: Equatable](self, value: T) -> Int32:
-    int32_t index(const T& value) const
+    int32_t index(::tpy::readonly_form_t<T> value) const
       requires ::tpystd::tpy::Equatable<T> {
         // for ui in range(self._size):
         uint32_t __stop_0 = this->_size;
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
             // if self._storage.load(ui) == value:
-            if ((this->_storage.load(ui) == value)) {
+            if (::tpy::eq(this->_storage.load(ui), value)) {
                 // return Int32.trunc(ui)
                 return static_cast<int32_t>(ui);
             }
@@ -158,7 +158,7 @@ struct ArrayList {
     }
 
     // def count[T: Equatable](self, value: T) -> Int32:
-    int32_t count(const T& value) const
+    int32_t count(::tpy::readonly_form_t<T> value) const
       requires ::tpystd::tpy::Equatable<T> {
         // n: Int32 = 0
         int32_t n = 0;
@@ -166,7 +166,7 @@ struct ArrayList {
         uint32_t __stop_0 = this->_size;
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
             // if self._storage.load(ui) == value:
-            if ((this->_storage.load(ui) == value)) {
+            if (::tpy::eq(this->_storage.load(ui), value)) {
                 // n += 1
                 n = ::tpy::add_check<int32_t>(n, 1);
             }
@@ -330,13 +330,13 @@ struct ArrayList {
     }
 
     // def __contains__[T: Equatable](self, value: T) -> bool:
-    bool __contains__(const T& value) const
+    bool __contains__(::tpy::readonly_form_t<T> value) const
       requires ::tpystd::tpy::Equatable<T> {
         // for ui in range(self._size):
         uint32_t __stop_0 = this->_size;
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
             // if self._storage.load(ui) == value:
-            if ((this->_storage.load(ui) == value)) {
+            if (::tpy::eq(this->_storage.load(ui), value)) {
                 // return True
                 return true;
             }
@@ -357,7 +357,7 @@ struct ArrayList {
         uint32_t __stop_0 = this->_size;
         for (uint32_t ui = 0; ui < __stop_0; ++ui) {
             // if self._storage.load(ui) != other._storage.load(ui):
-            if ((this->_storage.load(ui) != other._storage.load(ui))) {
+            if ((!::tpy::eq(this->_storage.load(ui), other._storage.load(ui)))) {
                 // return False
                 return false;
             }

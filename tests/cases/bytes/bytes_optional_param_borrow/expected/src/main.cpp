@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def first_or_empty(b: bytes | None) -> bytes:
-std::vector<uint8_t> first_or_empty(std::optional<std::span<const uint8_t>> b) {
+::tpy::Bytes first_or_empty(std::optional<std::span<const uint8_t>> b) {
     // if b is None:
     if ((!b.has_value())) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // return b                      # owned-bytes return from borrow param
-    return ::tpy::bytes_copy((*b));
+    return ::tpy::Bytes((*b));
 }
 
 // def collect(b: bytes | None) -> int:
 ::tpy::BigInt collect(std::optional<std::span<const uint8_t>> b) {
     // out: list[bytes] = []
-    std::vector<std::vector<uint8_t>> out = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     // if b is not None:
     if ((b.has_value())) {
         // out.append(b)             # container insert from borrow param
-        out.push_back(::tpy::bytes_copy((*b)));
+        out.push_back(::tpy::Bytes((*b)));
     }
     // return len(out)
     return ::tpy::BigInt(::tpy::__len__(out));
@@ -30,7 +30,7 @@ std::vector<uint8_t> first_or_empty(std::optional<std::span<const uint8_t>> b) {
 
 // def reassigned(b: bytes | None) -> int:
 ::tpy::BigInt reassigned(std::optional<std::span<const uint8_t>> __param_b) {
-    std::optional<std::vector<uint8_t>> b = __param_b ? std::make_optional(::tpy::bytes_copy(*__param_b)) : std::nullopt;
+    std::optional<::tpy::Bytes> b = __param_b ? std::make_optional(::tpy::Bytes(*__param_b)) : std::nullopt;
     // if b is None:
     if ((!b.has_value())) {
         // b = b"fallback"           # reassign of a borrow-form param
@@ -42,7 +42,7 @@ std::vector<uint8_t> first_or_empty(std::optional<std::span<const uint8_t>> b) {
 
 // def reassigned_plain(b: bytes, c: bool) -> int:
 ::tpy::BigInt reassigned_plain(std::span<const uint8_t> __param_b, bool c) {
-    std::vector<uint8_t> b = ::tpy::bytes_copy(__param_b);
+    ::tpy::Bytes b = ::tpy::Bytes(__param_b);
     // if c:
     if (c) {
         // b = b"longer"             # reassign of a plain bytes (span) param -> owned copy

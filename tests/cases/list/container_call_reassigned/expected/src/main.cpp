@@ -35,7 +35,7 @@ std::vector<::tpy::BigInt> other(const ::tpy::BigInt& n) {
 }
 
 // def push(b: bytearray, v: int) -> None:
-void push(std::vector<uint8_t>& b, const ::tpy::BigInt& v) {
+void push(::tpy::ByteArray& b, const ::tpy::BigInt& v) {
     // b.append(v)
     b.push_back((v).to_fixed_check<uint8_t>());
 }
@@ -44,7 +44,7 @@ void push(std::vector<uint8_t>& b, const ::tpy::BigInt& v) {
 void main() {
     std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::optional<::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt>> __slot_4;
-    std::optional<std::vector<uint8_t>> __slot_6;
+    std::optional<::tpy::ByteArray> __slot_6;
     // # First bind fills `__slot_1`, the reseat fills the optional `__slot_2`;
     // # the append after it proves the reseated local is the live container.
     // r = make(3)  # tpyc: ok
@@ -68,14 +68,14 @@ void main() {
     // print(len(d))
     std::cout << ::tpy::__len__((*d)) << "\n";
     // ba = bytearray(b"ab")
-    std::vector<uint8_t> __slot_5 = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
-    std::vector<uint8_t>* ba = &__slot_5;
+    ::tpy::ByteArray __slot_5 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray* ba = &__slot_5;
     // ba = bytearray(b"cd")  # tpyc: ok
-    ba = &*(__slot_6 = ::tpy::bytes_copy(::tpy::bytes_literal("cd", 2)));
+    ba = &*(__slot_6 = ::tpy::ByteArray(::tpy::bytes_literal("cd", 2)));
     // push(ba, 99)  # the param aliases the reseated buffer
     push((*ba), ::tpy::BigInt(99));
     // print(len(ba), bytes(ba))
-    std::cout << ::tpy::__len__((*ba)) << " " << ::tpy::BytesPrinter(::tpy::bytes_copy((*ba))) << "\n";
+    std::cout << ::tpy::__len__((*ba)) << " " << ::tpy::BytesPrinter(::tpy::Bytes((*ba))) << "\n";
 }
 
 void __tpy_init() {

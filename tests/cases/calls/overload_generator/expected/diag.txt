@@ -1,0 +1,1 @@
+main.py:41: warning: Iterator borrows from temporary argument 'obj'; the temporary is destroyed before iteration begins

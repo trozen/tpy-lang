@@ -1,0 +1,5 @@
+repr 'a' a 1
+fstring [a]
+element ['a', 'b']
+generic a
+dictkey True 1 1

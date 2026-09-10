@@ -70,7 +70,7 @@ struct MyList {
     // def add(self, x: T) -> None:
     void add(::tpy::param_val_or_ref_t<T> x) {
         // self.items.append(x)
-        this->items.push_back(x);
+        this->items.push_back(::tpy::param_to_storage<T>(x));
     }
 
     // def __iter__(self) -> Own[MyIter[T]]:

@@ -23,7 +23,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(const T& value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 

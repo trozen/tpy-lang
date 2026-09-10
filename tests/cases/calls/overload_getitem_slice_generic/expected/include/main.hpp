@@ -25,7 +25,7 @@ struct Container {
     // def add(self, item: T) -> None:
     void add(::tpy::param_val_or_ref_t<T> item) {
         // self._data.append(item)
-        this->_data.push_back(item);
+        this->_data.push_back(::tpy::param_to_storage<T>(item));
     }
 
     // @overload

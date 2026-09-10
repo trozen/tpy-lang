@@ -79,7 +79,7 @@ struct GenericBox {
 
     // def __init__(self, item: T):
     GenericBox() = default;
-    explicit GenericBox(const T& item) : item(item) {}
+    explicit GenericBox(::tpy::readonly_form_t<T> item) : item(item) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericBox";
 };
 

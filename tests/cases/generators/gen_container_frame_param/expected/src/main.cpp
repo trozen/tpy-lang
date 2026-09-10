@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
-std::expected<::tpy::val_or_ref<std::vector<uint8_t>>, ::tpy::StopIteration> __gen_twice_buf::__next__() {
+std::expected<::tpy::val_or_ref<::tpy::ByteArray>, ::tpy::StopIteration> __gen_twice_buf::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // yield b  # tpyc: ok
@@ -28,7 +28,7 @@ std::expected<::tpy::val_or_ref<std::vector<uint8_t>>, ::tpy::StopIteration> __g
 
 
 // def twice_buf(b: bytearray) -> Iterator[bytearray]:  # tpyc: ok
-__gen_twice_buf twice_buf(std::vector<uint8_t>& b) {
+__gen_twice_buf twice_buf(::tpy::ByteArray& b) {
     return __gen_twice_buf(b);
 }
 
@@ -93,7 +93,7 @@ void main() {
     // # Each leg mutates through the yielded borrow and reads the caller's
     // # object afterwards -- a frame COPY would leave the originals untouched.
     // b = bytearray(b"a")
-    std::vector<uint8_t> b = ::tpy::bytes_copy(::tpy::bytes_literal("a", 1));
+    ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     // for got in twice_buf(b):
     {
         auto __src_0 = twice_buf(b);

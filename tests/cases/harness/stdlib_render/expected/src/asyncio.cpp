@@ -481,7 +481,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def read(self, n: Int32) -> bytes:
-::tpystd::tpy::Poll<std::vector<uint8_t>> __coro_StreamReader_read::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((n < 0)) {
@@ -501,7 +501,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<uint8_t>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_JOIN_0;
@@ -509,7 +509,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     }
     case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
-        if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::vector<uint8_t>>::pending();
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
         __state = S_JOIN_1;
@@ -524,8 +524,8 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
         } else {
             // return self._take(len(self._buf))
             __state = S_DONE;
-            std::vector<uint8_t> __tpy_async_ret = __self._take(::tpy::__len__(__self._buf));
-            return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+            ::tpy::Bytes __tpy_async_ret = __self._take(::tpy::__len__(__self._buf));
+            return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
         }
     }
     case S_JOIN_1: {
@@ -533,8 +533,8 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
         take = (((n < ::tpy::__len__(__self._buf))) ? (n) : (::tpy::__len__(__self._buf)));
         // return self._take(take)
         __state = S_DONE;
-        std::vector<uint8_t> __tpy_async_ret = __self._take(take);
-        return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+        ::tpy::Bytes __tpy_async_ret = __self._take(take);
+        return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -543,7 +543,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def readexactly(self, n: Int32) -> bytes:
-::tpystd::tpy::Poll<std::vector<uint8_t>> __coro_StreamReader_readexactly::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readexactly::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // if n < 0:
@@ -556,7 +556,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<uint8_t>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_JOIN_0;
@@ -576,8 +576,8 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
             }
             // return self._take(n)
             __state = S_DONE;
-            std::vector<uint8_t> __tpy_async_ret = __self._take(n);
-            return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+            ::tpy::Bytes __tpy_async_ret = __self._take(n);
+            return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
         }
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -587,7 +587,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def readline(self) -> bytes:
-::tpystd::tpy::Poll<std::vector<uint8_t>> __coro_StreamReader_readline::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readline::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // idx = self._buf.find(b"\n")
@@ -597,7 +597,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<uint8_t>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         // idx = self._buf.find(b"\n")
@@ -616,13 +616,13 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
             if ((idx < 0)) {
                 // return self._take(len(self._buf))
                 __state = S_DONE;
-                std::vector<uint8_t> __tpy_async_ret = __self._take(::tpy::__len__(__self._buf));
-                return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+                ::tpy::Bytes __tpy_async_ret = __self._take(::tpy::__len__(__self._buf));
+                return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
             }
             // return self._take(idx + 1)
             __state = S_DONE;
-            std::vector<uint8_t> __tpy_async_ret = __self._take((::tpy::add_check<int32_t>(idx, 1)));
-            return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+            ::tpy::Bytes __tpy_async_ret = __self._take((::tpy::add_check<int32_t>(idx, 1)));
+            return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
         }
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -632,7 +632,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def readuntil(self, separator: bytes) -> bytes:
-::tpystd::tpy::Poll<std::vector<uint8_t>> __coro_StreamReader_readuntil::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readuntil::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // if len(separator) == 0:
@@ -647,7 +647,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
     }
     case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<uint8_t>>::pending();
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
         // idx = self._buf.find(separator)
@@ -669,8 +669,8 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
             }
             // return self._take(idx + len(separator))
             __state = S_DONE;
-            std::vector<uint8_t> __tpy_async_ret = __self._take((::tpy::add_check<int32_t>(idx, ::tpy::__len__(separator))));
-            return ::tpystd::tpy::Poll<std::vector<uint8_t>>::ready(std::move(__tpy_async_ret));
+            ::tpy::Bytes __tpy_async_ret = __self._take((::tpy::add_check<int32_t>(idx, ::tpy::__len__(separator))));
+            return ::tpystd::tpy::Poll<::tpy::Bytes>::ready(std::move(__tpy_async_ret));
         }
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -701,7 +701,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
         (void)std::move(__r0).value();
         __sub_0.reset();
         // self._buf = bytes()
-        __self._buf = std::vector<uint8_t>();
+        __self._buf = ::tpy::Bytes();
         __state = S_JOIN_0;
         continue;
     }
@@ -855,7 +855,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
 }
 
 // def __poll__(self, waker: Waker) -> Own[Poll[bytes]]:
-::tpystd::tpy::Poll<std::vector<uint8_t>> _SockRecv::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::Bytes> _SockRecv::__poll__(::tpystd::coro::Waker waker) {
     // if self._cancel_pending:
     if (this->_cancel_pending) {
         // self._cancel_pending = False
@@ -871,12 +871,12 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
     {
         try {
             // return poll_ready(self._sock.recv(self._n))
-            return ::tpystd::coro::poll_ready<std::vector<uint8_t>>(::tpy::deref_check(this->_sock).recv(this->_n));
+            return ::tpystd::coro::poll_ready<::tpy::Bytes>(::tpy::deref_check(this->_sock).recv(this->_n));
         } catch (const ::tpy::BlockingIOError&) {
             // _reactor_register_fd(self._sock.fileno(), EPOLLIN, waker)
             _reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLIN, waker);
             // return poll_pending()
-            return ::tpystd::coro::poll_pending<std::vector<uint8_t>>();
+            return ::tpystd::coro::poll_pending<::tpy::Bytes>();
         }
     }
 }

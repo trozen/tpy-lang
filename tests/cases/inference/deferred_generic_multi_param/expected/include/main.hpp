@@ -29,21 +29,21 @@ struct Pair {
     // def set_a(self, val: T) -> None:
     void set_a(::tpy::param_val_or_ref_t<T> val) {
         // self.a = val
-        this->a = val;
+        this->a = ::tpy::param_to_storage<T>(val);
     }
 
     // def set_b(self, val: U) -> None:
     void set_b(::tpy::param_val_or_ref_t<U> val) {
         // self.b = val
-        this->b = val;
+        this->b = ::tpy::param_to_storage<U>(val);
     }
 
     // def set_both(self, a: T, b: U) -> None:
     void set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
         // self.a = a
-        this->a = a;
+        this->a = ::tpy::param_to_storage<T>(a);
         // self.b = b
-        this->b = b;
+        this->b = ::tpy::param_to_storage<U>(b);
     }
 
     // def get_a(self) -> T:

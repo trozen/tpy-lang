@@ -17,10 +17,10 @@ namespace tpyapp::main {
 using ::tpystd::tplib::box::Box;
 using ::tpystd::http::client::HTTPConnection;
 
-extern std::vector<uint8_t> PAST;
-extern std::vector<uint8_t> FUTURE;
-extern std::vector<uint8_t> RFC850_PAST;
-extern std::vector<uint8_t> ASCTIME;
+extern ::tpy::Bytes PAST;
+extern ::tpy::Bytes FUTURE;
+extern ::tpy::Bytes RFC850_PAST;
+extern ::tpy::Bytes ASCTIME;
 extern double AFTER_2099;
 inline constexpr std::string_view __name__ = "__main__";
 

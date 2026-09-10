@@ -26,8 +26,7 @@ void drop_from_record(Labels<int32_t, 4>& box, int32_t k) {
 void drop_str_param(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view k) {
     // # A str PARAM (a std::string_view) at the library record's T slot.
     // al.remove(k)  # tpyc: ok
-    std::string __tmp_3 = std::string(k);
-    al.remove(__tmp_3);
+    al.remove(k);
 }
 
 // def drop_str_local(al: ArrayList[str, 4]) -> None:
@@ -36,32 +35,28 @@ void drop_str_local(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al) 
     // k = "b"
     std::string_view k = "b";
     // al.remove(k)  # tpyc: ok
-    std::string __tmp_4 = std::string(k);
-    al.remove(__tmp_4);
+    al.remove(k);
 }
 
 // def drop_str_slice(al: ArrayList[str, 4], src: str) -> None:
 void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view src) {
     // # A SLICE result is a view with no owning buffer of its own.
     // al.remove(src[0:1])  # tpyc: ok
-    std::string __tmp_5 = std::string(::tpy::str_slice(src, ::tpy::BasicSlice{0, 1}));
-    al.remove(__tmp_5);
+    al.remove(::tpy::str_slice(src, ::tpy::BasicSlice{0, 1}));
 }
 
 // def drop_bytes(al: ArrayList[bytes, 4], k: bytes) -> None:
-void drop_bytes(::tpystd::tplib::array_list::ArrayList<std::vector<uint8_t>, 4>& al, std::span<const uint8_t> k) {
+void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, std::span<const uint8_t> k) {
     // # The bytes twin: the slot wants std::vector<uint8_t>, the key is a span.
     // al.remove(k)  # tpyc: ok
-    std::vector<uint8_t> __tmp_6 = ::tpy::bytes_copy(k);
-    al.remove(__tmp_6);
+    al.remove(k);
 }
 
 // def has_str(box: Labels[str, 4], k: str) -> bool:
 bool has_str(Labels<std::string, 4>& box, std::string_view k) {
     // # The readonly `const T&` spelling, fed a view.
     // return box.has(k)  # tpyc: ok
-    std::string __tmp_7 = std::string(k);
-    return box.has(__tmp_7);
+    return box.has(k);
 }
 
 // def has_item_str(xs: list[str], v: str) -> bool:
@@ -167,8 +162,7 @@ void main() {
     // print("user_str", has_str(ul, key))
     std::cout << "user_str" << " " << ::tpy::print_bool(has_str(ul, key)) << "\n";
     // ul.drop(key)
-    std::string __tmp_8 = std::string(key);
-    ul.drop(__tmp_8);
+    ul.drop(key);
     // print("user_str", len(ul.items), ul.items[0], has_str(ul, key))
     std::cout << "user_str" << " " << ::tpy::__len__(ul.items) << " " << ul.items[0] << " " << ::tpy::print_bool(has_str(ul, key)) << "\n";
     // tu = StrLabels()
@@ -185,7 +179,7 @@ void main() {
     std::cout << "user_str" << " " << ::tpy::__len__(tu.items) << " " << tu.items[0] << " " << ::tpy::print_bool(tu.has(key)) << "\n";
     // # Library generic record at bytes: the slot is a mutable reference there.
     // bl = ArrayList[bytes, 4]()
-    ::tpystd::tplib::array_list::ArrayList<std::vector<uint8_t>, 4> bl = ::tpystd::tplib::array_list::ArrayList<std::vector<uint8_t>, 4>();
+    ::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4> bl = ::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>();
     // bl.append(b"a")
     bl.append(::tpy::bytes_literal_owned("a", 1));
     // bl.append(b"b")
@@ -202,17 +196,15 @@ void main() {
     // nk = "p"
     std::string_view nk = "p";
     // print("free_fn", has_item(names, nk))
-    std::string __tmp_9 = std::string(nk);
-    std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<std::string>(names, __tmp_9)) << "\n";
+    std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<std::string>(names, nk)) << "\n";
     // print("free_fn", has_item_str(names, nk))
     std::cout << "free_fn" << " " << ::tpy::print_bool(has_item_str(names, nk)) << "\n";
     // keys = [b"p", b"q"]
-    std::vector<std::vector<uint8_t>> keys = {::tpy::bytes_literal_owned("p", 1), ::tpy::bytes_literal_owned("q", 1)};
+    std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("p", 1), ::tpy::bytes_literal_owned("q", 1)};
     // bnk = b"p"
     std::span<const uint8_t> bnk = ::tpy::bytes_literal("p", 1);
     // print("free_fn", has_item(keys, bnk))
-    std::vector<uint8_t> __tmp_10 = ::tpy::bytes_copy(bnk);
-    std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<std::vector<uint8_t>>(keys, __tmp_10)) << "\n";
+    std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, bnk)) << "\n";
 }
 
 void __tpy_init() {

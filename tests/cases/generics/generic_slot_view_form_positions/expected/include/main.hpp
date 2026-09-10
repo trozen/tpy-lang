@@ -15,6 +15,7 @@ template<typename T> struct OwnBoxed;
 struct MyErr;
 struct Ctx;
 struct Holder;
+template<typename T> struct Labels;
 
 extern std::vector<std::string>* NAMES;
 extern std::string KEY;
@@ -27,9 +28,9 @@ template<::tpystd::tpy::Equatable T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
 template<typename T>
-bool peek(const std::vector<T>& xs, const T& v);
+bool peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v);
 bool peek_str(const std::vector<std::string>& xs, std::string_view v);
-bool peek_bytes(const std::vector<std::vector<uint8_t>>& xs, std::span<const uint8_t> v);
+bool peek_bytes(const std::vector<::tpy::Bytes>& xs, std::span<const uint8_t> v);
 void free_function(std::string_view k);
 void ctor_arg(std::string_view k);
 void comprehension(const std::vector<std::string>& ks);
@@ -44,6 +45,7 @@ std::expected<bool, MyErr> er_body(std::string_view k);
 std::expected<bool, MyErr> er_body_str(std::string_view k);
 void bytes_positions(std::span<const uint8_t> k);
 void readonly_slot(std::string_view k, std::span<const uint8_t> b);
+void while_cond(std::string_view k);
 void inverse(std::string_view k, const ::tpy::BigInt& n);
 void main();
 
@@ -55,7 +57,7 @@ struct Boxed {
 
     // def __init__(self, value: T) -> None:
     Boxed() = default;
-    explicit Boxed(const T& value) : v(value) {}
+    explicit Boxed(::tpy::readonly_form_t<T> value) : v(value) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
 };
 
@@ -142,12 +144,47 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
+// class Labels[T]:
+template<typename T>
+struct Labels {
+    // items: list[T]
+    std::vector<T> items;
+
+    // def __init__(self, first: T) -> None:
+    Labels() = default;
+    explicit Labels(::tpy::readonly_form_t<T> first) : items(std::vector<T>{::tpy::param_to_storage<T>(first)}) {}
+
+    // def has(self, value: T) -> bool:
+    bool has(::tpy::readonly_form_t<T> value) const {
+        // for it in self.items:
+        auto& __obj_0 = this->items;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& it = *__beg_0;
+            // if it == value:
+            if (::tpy::eq(it, value)) {
+                // return True
+                return true;
+            }
+        }
+        // return False
+        return false;
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Labels";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Labels<T>& obj) {
+    ::tpy::print_object_default(os, "Labels", obj);
+    return os;
+}
+
 // Async coroutine: async_body
 struct __coro_async_body {
     int32_t __state;
     bool __cancel_pending;
     std::string k;
-    bool r;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -171,7 +208,6 @@ struct __coro_async_body {
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, bool> {
     int32_t __state;
     std::string k;
-    bool r;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -212,8 +248,7 @@ inline void Holder::method(std::string_view k) const {
     // xs = self.labels  # the field read is bound first: BUGS.md#generic-composite-slot-field-arg
     const std::vector<std::string>& xs = this->labels;
     // print("method", has_item(xs, k), has_item_str(xs, k))  # tpyc: ok
-    std::string __tmp_1 = std::string(k);
-    std::cout << "method" << " " << ::tpy::print_bool(has_item<std::string>(xs, __tmp_1)) << " " << ::tpy::print_bool(has_item_str(xs, k)) << "\n";
+    std::cout << "method" << " " << ::tpy::print_bool(has_item<std::string>(xs, k)) << " " << ::tpy::print_bool(has_item_str(xs, k)) << "\n";
 }
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Equatable T>
@@ -225,7 +260,7 @@ bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
         // if x == v:
-        if ((x == v)) {
+        if (::tpy::eq(x, v)) {
             // return True
             return true;
         }
@@ -235,7 +270,7 @@ bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
 }
 // def peek[T](xs: list[T], v: readonly[T]) -> bool:
 template<typename T>
-bool peek(const std::vector<T>& xs, const T& v) {
+bool peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v) {
     // # A `readonly[T]` slot renders `const T&` -- the same owning binding the
     // # bare `T` slot resolves to, so a view owes the same copy.
     // for x in xs:
@@ -245,7 +280,7 @@ bool peek(const std::vector<T>& xs, const T& v) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
         // if x == v:
-        if ((x == v)) {
+        if (::tpy::eq(x, v)) {
             // return True
             return true;
         }

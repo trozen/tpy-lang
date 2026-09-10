@@ -13,7 +13,7 @@ void main() {
     // other = {2, 3}
     ::tpy::ordered_set<int32_t> other = ::tpy::ordered_set<int32_t>({2, 3});
     // ba = bytearray(b" ab ")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal(" ab ", 4));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal(" ab ", 4));
     // xs.copy()  # tpyc: ok
     ::tpy::list_copy(xs);
     // ss.copy()  # tpyc: ok
@@ -25,7 +25,7 @@ void main() {
     // ba.strip()  # tpyc: ok
     ::tpy::bytes_strip(ba);
     // ba.upper()  # tpyc: ok
-    ::tpy::bytes_upper(ba);
+    ::tpy::bytearray_upper(ba);
     // # Each receiver is mutated AFTER the discarded call and read back, so a
     // # discarded result that had consumed or reseated its receiver would show.
     // xs.append(4)

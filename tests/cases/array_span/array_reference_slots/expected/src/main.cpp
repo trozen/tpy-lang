@@ -57,7 +57,7 @@ void main() {
     // print(al[0], len(al))
     std::cout << al[0] << " " << ::tpy::__len__(al) << "\n";
     // ba = bytearray(b"abc")                    # ... and the bytearray leg
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     // bl = ArrayList[UInt8, 8](ba)
     ::tpystd::tplib::array_list::ArrayList<uint8_t, 8> bl = ::tpystd::tplib::array_list::ArrayList<uint8_t, 8>(&(ba));
     // print(bl[0], len(bl))

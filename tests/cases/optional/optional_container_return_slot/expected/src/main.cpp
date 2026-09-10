@@ -23,9 +23,9 @@ std::vector<int32_t> mk_list() {
 }
 
 // def mk_bytes() -> Own[bytearray]:
-std::vector<uint8_t> mk_bytes() {
+::tpy::ByteArray mk_bytes() {
     // return bytearray(b"abcde")
-    return ::tpy::bytes_copy(::tpy::bytes_literal("abcde", 5));
+    return ::tpy::ByteArray(::tpy::bytes_literal("abcde", 5));
 }
 
 // def mk_array() -> Own[Array[Int32, 6]]:
@@ -75,7 +75,7 @@ std::optional<::tpy::ordered_set<int32_t>> opt_set(bool flag) {
 }
 
 // def opt_bytes(flag: bool) -> Own[bytearray] | None:
-std::optional<std::vector<uint8_t>> opt_bytes(bool flag) {
+std::optional<::tpy::ByteArray> opt_bytes(bool flag) {
     // if flag:
     if (flag) {
         // return mk_bytes()
@@ -134,7 +134,7 @@ int32_t size(bool flag) {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*c)));
     }
     // d = opt_bytes(flag)
-    std::optional<std::vector<uint8_t>> d = opt_bytes(flag);
+    std::optional<::tpy::ByteArray> d = opt_bytes(flag);
     // if d is not None:
     if ((d.has_value())) {
         // total += len(d)

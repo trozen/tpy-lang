@@ -19,7 +19,7 @@ std::tuple<::tpy::val_or_ptr_t<U>, ::tpy::val_or_ptr_t<T>> swap(::tpy::param_val
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     // return x
-    return x;
+    return ::tpy::param_to_return<T>(x);
 }
 // def swap[T, U](a: T, b: U) -> tuple[U, T]:
 template<typename T, typename U>

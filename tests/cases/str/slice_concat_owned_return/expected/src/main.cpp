@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def cut_join(s: str) -> str:
 std::string cut_join(std::string_view s) {
     // t = s[1:3] + s
-    std::string t = (::tpy::str_concat(::tpy::str_slice(s, ::tpy::BasicSlice{1, 3}), s));
+    ::tpy::String t = (::tpy::str_concat(::tpy::str_slice(s, ::tpy::BasicSlice{1, 3}), s));
     // return t
     return t;
 }

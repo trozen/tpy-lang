@@ -8,13 +8,13 @@ namespace tpyapp::main {
 // # argument lands in a temp. The named leg proves the parameter aliases the
 // # caller's buffer rather than copying it.
 // def show(b: bytearray) -> None:
-void show(const std::vector<uint8_t>& b) {
+void show(const ::tpy::ByteArray& b) {
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def grow(b: bytearray) -> None:
-void grow(std::vector<uint8_t>& b) {
+void grow(::tpy::ByteArray& b) {
     // b.append(120)
     b.push_back(120);
 }
@@ -22,10 +22,10 @@ void grow(std::vector<uint8_t>& b) {
 // def main() -> None:
 void main() {
     // show(bytearray(b"abc"))  # rvalue call at a bytearray slot -> argument temp
-    std::vector<uint8_t> __tmp_1 = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    ::tpy::ByteArray __tmp_1 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     show(__tmp_1);
     // named = bytearray(b"ab")
-    std::vector<uint8_t> named = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray named = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // grow(named)
     grow(named);
     // print(len(named), named[2])

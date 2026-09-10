@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def echo(b: bytes) -> bytes:
-std::vector<uint8_t> echo(std::span<const uint8_t> b) {
+::tpy::Bytes echo(std::span<const uint8_t> b) {
     // return b
-    return ::tpy::bytes_copy(b);
+    return ::tpy::Bytes(b);
 }
 
 // def first_or_empty(b: bytes) -> bytes:
-std::vector<uint8_t> first_or_empty(std::span<const uint8_t> b) {
+::tpy::Bytes first_or_empty(std::span<const uint8_t> b) {
     // if len(b) == 0:
     if ((::tpy::__len__(b) == 0)) {
         // return b"empty"
         return ::tpy::bytes_literal_owned("empty", 5);
     }
     // return b
-    return ::tpy::bytes_copy(b);
+    return ::tpy::Bytes(b);
 }
 
 // def opt_or_default(b: Optional[bytes]) -> bytes:
-std::vector<uint8_t> opt_or_default(std::optional<std::span<const uint8_t>> b) {
+::tpy::Bytes opt_or_default(std::optional<std::span<const uint8_t>> b) {
     // return b if b is not None else b"none"
-    return ::tpy::bytes_copy((((b.has_value())) ? ((*b)) : (::tpy::bytes_literal_owned("none", 4))));
+    return ::tpy::Bytes((((b.has_value())) ? ((*b)) : (::tpy::bytes_literal_owned("none", 4))));
 }
 
 // def main() -> None:
 void main() {
     // r = echo(b"hello")
-    std::vector<uint8_t> r = echo(::tpy::bytes_literal("hello", 5));
+    ::tpy::Bytes r = echo(::tpy::bytes_literal("hello", 5));
     // print(len(r), r == b"hello")
     std::cout << ::tpy::__len__(r) << " " << ::tpy::print_bool((::tpy::bytes_eq(r, ::tpy::bytes_literal_owned("hello", 5)))) << "\n";
     // print(len(first_or_empty(b"")))

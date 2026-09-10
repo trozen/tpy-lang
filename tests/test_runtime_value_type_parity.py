@@ -7,7 +7,9 @@ concept all read `tpy::is_value_type<T>`. The two lists are written by hand in
 different languages, so they drift: before this guard the runtime called `float`
 (Float32), `std::span<const uint8_t>` (BytesView), the spans, the dict views,
 Range and the slices reference types, which made a generic slot at any of them a
-MUTABLE `T&`.
+MUTABLE `T&`. `bytes` was undecidable until it stopped sharing
+`std::vector<uint8_t>` with `bytearray` and `list[UInt8]`; the one entry left in
+UNDECIDABLE is the C++ type the runtime mints for its own borrows.
 
 A runtime type declares its own value-ness next to its definition (span_iter,
 slice, range, varargs, dict_ops); `type_traits.hpp` keeps only the rows whose
@@ -76,11 +78,6 @@ MIN_HEADER_FILES = 40
 # the same normalized form as the two scans; the test also asserts the header
 # does NOT specialize them, so a stale exception fails instead of hiding.
 UNDECIDABLE: dict[str, str] = {
-    # `builtins.bytes` (value) shares std::vector<uint8_t> with
-    # `builtins.bytearray` (reference) AND with list[UInt8] (reference). A
-    # trait keyed on the C++ type cannot say value for one and reference for
-    # the others; see BUGS.md#generic-slot-bytes-mutable-ref.
-    "std::vector": "bytes shares std::vector<uint8_t> with bytearray and list[UInt8]",
     # `tpy.Ptr` renders T* (through PtrType, so it has no cpp_formatter and
     # never reaches the registry scan). T* is also the borrow form the runtime
     # itself mints for a NON-value T (val_or_ptr_t<T>, val_or_ref<T>::storage_t,

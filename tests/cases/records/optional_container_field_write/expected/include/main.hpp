@@ -22,7 +22,7 @@ void main();
 // class Slot:
 struct Slot {
     // b: bytearray | None
-    std::optional<std::vector<uint8_t>> b;
+    std::optional<::tpy::ByteArray> b;
     // xs: list[Int32] | None
     std::optional<std::vector<int32_t>> xs;
     // boxes: list[Box[Int32]] | None
@@ -37,7 +37,7 @@ struct Slot {
     Slot& operator=(Slot&&) = default;
 
     // def take(self, v: Own[bytearray]) -> None:
-    void take(std::vector<uint8_t>&& v);
+    void take(::tpy::ByteArray&& v);
 
     // def take_list(self, v: Own[list[Int32]]) -> None:
     void take_list(std::vector<int32_t>&& v);
@@ -46,7 +46,7 @@ struct Slot {
     void take_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& v);
 
     // def copy_in(self, v: bytearray) -> None:
-    void copy_in(const std::vector<uint8_t>& v);
+    void copy_in(const ::tpy::ByteArray& v);
 
     // def size(self) -> Int32:
     int32_t size() const;
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Slot& obj) {
 inline Slot::Slot() : b(std::nullopt), xs(std::nullopt), boxes(std::nullopt) {}
 
 // def take(self, v: Own[bytearray]) -> None:
-inline void Slot::take(std::vector<uint8_t>&& v) {
+inline void Slot::take(::tpy::ByteArray&& v) {
     // self.b = v  # tpyc: ok
     this->b = std::move(v);
 }
@@ -84,7 +84,7 @@ inline void Slot::take_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& v
 }
 
 // def copy_in(self, v: bytearray) -> None:
-inline void Slot::copy_in(const std::vector<uint8_t>& v) {
+inline void Slot::copy_in(const ::tpy::ByteArray& v) {
     // self.b = v  # tpyc: warning(/copies bytearray into field/)
     this->b = v;
 }

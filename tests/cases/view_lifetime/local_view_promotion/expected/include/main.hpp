@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string make();
-std::vector<uint8_t> make_bytes();
+::tpy::Bytes make_bytes();
 void main();
 
 void __tpy_init();

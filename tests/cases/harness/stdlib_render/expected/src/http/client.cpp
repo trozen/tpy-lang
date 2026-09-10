@@ -31,7 +31,7 @@ int32_t _hex_val(int32_t c) {
     // # Content-Length / status falls back to a caller-handled sentinel rather
     // # than panicking the way int(str) would).
     // data = s.encode()
-    std::vector<uint8_t> data = ::tpy::bytes_from_str(s);
+    ::tpy::Bytes data = ::tpy::bytes_from_str(s);
     // n = len(data)
     int32_t n = ::tpy::__len__(data);
     // if n == 0:
@@ -110,7 +110,7 @@ int32_t _hex_val(int32_t c) {
 // def _build_request(method: str, url: str, body: bytes | None,
 // headers: dict[str, str] | None,
 // host: str, port: Int32, default_port: Int32) -> bytes:
-std::vector<uint8_t> _build_request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port) {
+::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port) {
     // lines: list[str] = []
     std::vector<std::string> lines = std::vector<std::string>{};
     // lines.append(method + " " + url + " HTTP/1.1")
@@ -173,7 +173,7 @@ std::vector<uint8_t> _build_request(std::string_view method, std::string_view ur
     // if not has_cl and not has_te:
     if (((!(has_cl)) && (!(has_te)))) {
         // cl = _content_length(method, body)
-        ::tpy::BigInt cl = _content_length(method, body ? std::make_optional(::tpy::bytes_copy(*body)) : std::nullopt);
+        ::tpy::BigInt cl = _content_length(method, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt);
         // if cl >= 0:
         if ((cl >= 0)) {
             // lines.append("Content-Length: " + str(cl))
@@ -197,7 +197,7 @@ std::vector<uint8_t> _build_request(std::string_view method, std::string_view ur
         }
     }
     // data = b""
-    std::vector<uint8_t> data = std::vector<uint8_t>{};
+    ::tpy::Bytes data = ::tpy::Bytes{};
     // for ln in lines:
     auto& __obj_3 = lines;
     auto __beg_3 = __obj_3.begin();
@@ -382,11 +382,11 @@ bool HTTPResponse::_check_close() const {
 }
 
 // def read(self, amt: Int32 = -1) -> bytes:
-std::vector<uint8_t> HTTPResponse::read(int32_t amt) {
+::tpy::Bytes HTTPResponse::read(int32_t amt) {
     // if self._eof:
     if (this->_eof) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // if self._chunked:
     if (this->_chunked) {
@@ -396,7 +396,7 @@ std::vector<uint8_t> HTTPResponse::read(int32_t amt) {
     // if amt < 0:
     if ((amt < 0)) {
         // data = self._fp.read() if self._length < 0 else self._fp.read(Int32(self._length))
-        std::vector<uint8_t> data = (((this->_length < 0)) ? (this->_fp.read()) : (this->_fp.read((this->_length).to_fixed_check<int32_t>())));
+        ::tpy::Bytes data = (((this->_length < 0)) ? (this->_fp.read()) : (this->_fp.read((this->_length).to_fixed_check<int32_t>())));
         // self._eof = True
         this->_eof = true;
         // return data
@@ -410,7 +410,7 @@ std::vector<uint8_t> HTTPResponse::read(int32_t amt) {
         want = this->_length;
     }
     // data = self._fp.read(Int32(want))
-    std::vector<uint8_t> data = this->_fp.read((want).to_fixed_check<int32_t>());
+    ::tpy::Bytes data = this->_fp.read((want).to_fixed_check<int32_t>());
     // if self._length >= 0:
     if ((this->_length >= 0)) {
         // self._length = self._length - len(data)
@@ -432,12 +432,12 @@ std::vector<uint8_t> HTTPResponse::read(int32_t amt) {
 }
 
 // def _read_chunked(self, amt: Int32) -> bytes:
-std::vector<uint8_t> HTTPResponse::_read_chunked(int32_t amt) {
+::tpy::Bytes HTTPResponse::_read_chunked(int32_t amt) {
     // # bytearray accumulator: `result = result + piece` would be
     // # O(total*chunks), and chunked framing is normal streamed-response
     // # behavior, not an edge (CPython collects pieces and joins once).
     // result = bytearray()
-    std::vector<uint8_t> result = std::vector<uint8_t>();
+    ::tpy::ByteArray result = ::tpy::ByteArray();
     // while not self._eof:
     while ((!(this->_eof))) {
         // if self._chunk_left <= 0:
@@ -468,7 +468,7 @@ std::vector<uint8_t> HTTPResponse::_read_chunked(int32_t amt) {
             want = this->_chunk_left;
         }
         // piece = self._fp.read(Int32(want))
-        std::vector<uint8_t> piece = this->_fp.read((want).to_fixed_check<int32_t>());
+        ::tpy::Bytes piece = this->_fp.read((want).to_fixed_check<int32_t>());
         // if len(piece) == 0:
         if ((::tpy::__len__(piece) == 0)) {
             // self._eof = True
@@ -489,7 +489,7 @@ std::vector<uint8_t> HTTPResponse::_read_chunked(int32_t amt) {
         // # Chunk data is CRLF-terminated; drop it before the next size line.
     }
     // return bytes(result)
-    return ::tpy::bytes_copy(result);
+    return ::tpy::Bytes(result);
 }
 
 // def getheader(self, name: str, default: str | None = None) -> str | None:

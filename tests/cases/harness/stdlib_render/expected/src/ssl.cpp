@@ -105,11 +105,11 @@ int32_t _bundled_ca_count() {
 
 
 // def read_into(self, size: Int32) -> bytes:
-std::vector<uint8_t> _SslSession::read_into(int32_t size) const {
+::tpy::Bytes _SslSession::read_into(int32_t size) const {
     // if size <= Int32(0):
     if ((size <= 0)) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // buf = UninitHeapStorage[UInt8](UInt32.trunc(size))
     ::tpy::UninitHeapStorage<uint8_t> buf = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(size));
@@ -118,7 +118,7 @@ std::vector<uint8_t> _SslSession::read_into(int32_t size) const {
     // if mbedtls.tls_classify(rc) == 3:  # peer close_notify -> EOF
     if ((::tpy_tls_classify(rc) == 3)) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // if rc < Int32(0):
     if ((rc < 0)) {

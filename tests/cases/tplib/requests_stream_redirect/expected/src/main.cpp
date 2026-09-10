@@ -49,7 +49,7 @@ void main() {
     std::cout << "intermediate not streamed:" << " " << ::tpy::print_bool((!::tpy::__getitem__(r.history, 0).raw().has_value())) << "\n";
     // # The terminal 200 streams its body lazily.
     // got = bytearray()
-    std::vector<uint8_t> got = std::vector<uint8_t>();
+    ::tpy::ByteArray got = ::tpy::ByteArray();
     // for chunk in r.iter_content(4):
     {
         auto __src_0 = r.iter_content(4);
@@ -59,11 +59,11 @@ void main() {
             if (!__r_1.has_value()) break;
             std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
         // got += chunk
-        got = ::tpy::bytes_concat(got, chunk);
+        got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     // print("streamed body:", bytes(got).decode())
-    std::cout << "streamed body:" << " " << ::tpy::bytes_decode(::tpy::bytes_copy(got)) << "\n";
+    std::cout << "streamed body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
     // b.close()
     b.close();
     // d.close()

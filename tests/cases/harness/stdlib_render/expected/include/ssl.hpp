@@ -91,7 +91,7 @@ struct _SslSession {
     void setblocking(bool flag);
 
     // def read_into(self, size: Int32) -> bytes:
-    std::vector<uint8_t> read_into(int32_t size) const;
+    ::tpy::Bytes read_into(int32_t size) const;
     static constexpr std::string_view __tpy_class_name__ = "ssl._SslSession";
 };
 
@@ -172,7 +172,7 @@ struct SSLSocket {
     void do_handshake_blocking();
 
     // def recv(self, bufsize: Int32) -> bytes:
-    std::vector<uint8_t> recv(int32_t bufsize);
+    ::tpy::Bytes recv(int32_t bufsize);
 
     // def send(self, data: bytes) -> Int32:
     int32_t send(std::span<const uint8_t> data);
@@ -217,7 +217,7 @@ struct SSLRawIO {
     SSLRawIO& operator=(SSLRawIO&&) = default;
 
     // def read(self, size: Int32 = -1) -> bytes:
-    std::vector<uint8_t> read(int32_t size = -1);
+    ::tpy::Bytes read(int32_t size = -1);
 
     // def close(self) -> None:
     void close() const;
@@ -412,7 +412,7 @@ inline void SSLSocket::do_handshake_blocking() {
 }
 
 // def recv(self, bufsize: Int32) -> bytes:
-inline std::vector<uint8_t> SSLSocket::recv(int32_t bufsize) {
+inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) {
     // return self._session.get().read_into(bufsize)
     return this->_session.get().read_into(bufsize);
 }
@@ -473,7 +473,7 @@ inline void SSLSocket::close() {
 inline SSLRawIO::SSLRawIO(::tpystd::tplib::rc::Rc<_SslSession>&& session) : _session(std::move(session)) {}
 
 // def read(self, size: Int32 = -1) -> bytes:
-inline std::vector<uint8_t> SSLRawIO::read(int32_t size) {
+inline ::tpy::Bytes SSLRawIO::read(int32_t size) {
     // n = size if size > Int32(0) else 8192
     int32_t n = (((size > 0)) ? (size) : (8192));
     // return self._session.get().read_into(n)

@@ -9,7 +9,7 @@ std::optional<std::string> from_local(std::string_view k) {
     // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
         // v = String(k)
-        std::string v = std::string(k);
+        ::tpy::String v = ::tpy::String(k);
         // return v
         return v;
     }
@@ -22,7 +22,7 @@ std::optional<std::string> from_concat(std::string_view k) {
     // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
         // v = k + "x"
-        std::string v = (::tpy::str_concat(k, "x"));
+        ::tpy::String v = (::tpy::str_concat(k, "x"));
         // return v
         return v;
     }
@@ -31,11 +31,11 @@ std::optional<std::string> from_concat(std::string_view k) {
 }
 
 // def from_bytes(k: bytes) -> bytes | None:
-std::optional<std::vector<uint8_t>> from_bytes(std::span<const uint8_t> k) {
+std::optional<::tpy::Bytes> from_bytes(std::span<const uint8_t> k) {
     // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
         // v = bytes(k)
-        std::vector<uint8_t> v = ::tpy::bytes_copy(k);
+        ::tpy::Bytes v = ::tpy::Bytes(k);
         // return v
         return v;
     }
@@ -59,9 +59,9 @@ void main() {
     // print(from_local("a"), from_concat("a"))
     std::cout << ::tpy::print_optional_val(from_local("a")) << " " << ::tpy::print_optional_val(from_concat("a")) << "\n";
     // print(from_bytes(b"a"), from_own_param(String("a")))
-    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, std::vector<uint8_t>>(from_bytes(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_optional_val(from_own_param(std::string("a"))) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(from_bytes(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_optional_val(from_own_param(::tpy::String("a"))) << "\n";
     // print(from_local(""), from_own_param(String("")))
-    std::cout << ::tpy::print_optional_val(from_local("")) << " " << ::tpy::print_optional_val(from_own_param(std::string(""))) << "\n";
+    std::cout << ::tpy::print_optional_val(from_local("")) << " " << ::tpy::print_optional_val(from_own_param(::tpy::String(""))) << "\n";
 }
 
 void __tpy_init() {

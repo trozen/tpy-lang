@@ -414,8 +414,8 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                          is_send=True, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=True, param_needs_copy_for_reassign=True,
                          is_compile_time_only=False,
-                         to_cpp="std::string",
-                         to_cpp_param_type="const std::string&",
+                         to_cpp="::tpy::String",
+                         to_cpp_param_type="const ::tpy::String&",
                          element_qname="tpy.Char"),
     "tpy.StrView":  dict(category=TypeCategory.STR, is_value_type=True,
                          is_send=False, is_sync=True, subscript_borrows=False,
@@ -436,15 +436,15 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                                is_send=True, is_sync=True, subscript_borrows=False,
                                is_expensive_copy=True, param_needs_copy_for_reassign=True,
                                is_compile_time_only=False,
-                               to_cpp="std::vector<uint8_t>",
+                               to_cpp="::tpy::Bytes",
                                to_cpp_param_type="std::span<const uint8_t>",
                                element_qname="tpy.UInt8"),
     "builtins.bytearray": dict(category=TypeCategory.BYTES, is_value_type=False,
                                is_send=True, is_sync=False, subscript_borrows=False,
                                is_expensive_copy=True, param_needs_copy_for_reassign=True,
                                is_compile_time_only=False,
-                               to_cpp="std::vector<uint8_t>",
-                               to_cpp_param_type="const std::vector<uint8_t>&",
+                               to_cpp="::tpy::ByteArray",
+                               to_cpp_param_type="const ::tpy::ByteArray&",
                                element_qname="tpy.UInt8"),
     "tpy.BytesView":      dict(category=TypeCategory.BYTES, is_value_type=True,
                                is_send=False, is_sync=True, subscript_borrows=False,
@@ -1767,10 +1767,9 @@ def test_view_param_form_set_is_str_and_bytes():
     (list, dict, Span, ...) register no param formatter and default to
     `<storage>&`, which the predicate excludes by construction.
 
-    A new row here changes where the generic-slot materialize fires, so the
-    set is pinned rather than left to a corpus sweep: `String` and
-    `bytearray` pass a REFERENCE to their storage and must stay out, or an
-    owned lvalue would start hoisting a redundant copy at every generic slot.
+    The set is pinned rather than left to a corpus sweep: `String` and
+    `bytearray` pass a REFERENCE to their storage and must stay out, or the
+    runtime row below would give them a view slot they cannot bind.
     """
     from tpyc.type_def_registry import _type_defs, has_view_param_form
 
@@ -1790,3 +1789,52 @@ def test_view_param_form_set_is_str_and_bytes():
     assert len(scanned) >= 15, f"formatter scan collapsed: {sorted(scanned)}"
     assert view_param == {"builtins.str", "builtins.bytes"}, sorted(view_param)
     assert "tpy.String" in scanned and "builtins.bytearray" in scanned
+
+
+def test_view_param_form_matches_the_runtime_trait_rows():
+    """The registry's view-param set and the runtime's
+    `param_val_or_ref_impl` rows are the same fact in two languages.
+
+    A generic `T` parameter renders `::tpy::param_val_or_ref_t<T>`, whose
+    default is `const T&` for a value type -- the OWNED form. A type whose TPy
+    parameter form is a distinct view therefore needs a row in the runtime, or
+    a generic slot at it stops matching the monomorphic twin and the caller has
+    to materialize a copy (the defect the distinct C++ types removed). The
+    reverse drift is worse: a row for a type whose param form is NOT a view
+    would hand a generic body a view of a buffer it is supposed to own.
+
+    KEY: registry side, every value TypeDef `has_view_param_form` answers True
+    for, rendered through its own `cpp_formatter`; runtime side, every
+    `param_val_or_ref_impl<X>` specialization under
+    `runtime/cpp/include/tpy/` except the `void` row, which is trait
+    machinery (`val_or_ref_t<void>` lets `def f[T] -> T` instantiate at None).
+    Both normalized by stripping a leading `::`.
+    """
+    import re
+
+    from tpyc import get_runtime_dir
+    from tpyc.type_def_registry import _type_defs, has_view_param_form
+
+    registry = set()
+    for qname, td in _type_defs.items():
+        if td.cpp_formatter is None or td.param_cpp_formatter is None:
+            continue
+        t = ts.NominalType(name=qname.rsplit(".", 1)[-1], type_args=(),
+                           _module_qname=qname)
+        if has_view_param_form(t):
+            registry.add(td.cpp_formatter(()).removeprefix("::"))
+
+    include = get_runtime_dir() / "cpp" / "include" / "tpy"
+    text = "\n".join(f.read_text() for f in sorted(include.rglob("*.hpp")))
+    pat = re.compile(r"struct\s+param_val_or_ref_impl<([^;>]+)>\s*\{")
+    def qualify(head: str) -> str:
+        # A row inside `namespace tpy` spells its own types unqualified.
+        return head if "::" in head else f"tpy::{head}"
+
+    rows = {qualify(h) for h in
+            ({m.group(1).strip().removeprefix("::")
+              for m in pat.finditer(text)} - {"void"})}
+    assert rows, "the param_val_or_ref_impl scan found no rows at all"
+    assert registry == rows, (
+        f"registry view-param types {sorted(registry)} != runtime rows "
+        f"{sorted(rows)}")

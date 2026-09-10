@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // # no separate mutable form for to_cpp_param to use. Now both forms exist
 // # and codegen picks the mutable one for mutated params.
 // def pack(dst: bytearray, v: int) -> None:
-void pack(std::vector<uint8_t>& dst, const ::tpy::BigInt& v) {
+void pack(::tpy::ByteArray& dst, const ::tpy::BigInt& v) {
     // dst.append(v)
     dst.push_back((v).to_fixed_check<uint8_t>());
     // dst.append(v + 1)
@@ -18,7 +18,7 @@ void pack(std::vector<uint8_t>& dst, const ::tpy::BigInt& v) {
 }
 
 // def borrow(src: bytearray) -> int:
-::tpy::BigInt borrow(const std::vector<uint8_t>& src) {
+::tpy::BigInt borrow(const ::tpy::ByteArray& src) {
     // # Non-mutating param: still uses const ref.
     // return len(src)
     return ::tpy::BigInt(::tpy::__len__(src));
@@ -27,7 +27,7 @@ void pack(std::vector<uint8_t>& dst, const ::tpy::BigInt& v) {
 // def main() -> None:
 void main() {
     // buf = bytearray()
-    std::vector<uint8_t> buf = std::vector<uint8_t>();
+    ::tpy::ByteArray buf = ::tpy::ByteArray();
     // pack(buf, 65)
     pack(buf, ::tpy::BigInt(65));
     // pack(buf, 67)

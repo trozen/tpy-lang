@@ -86,7 +86,7 @@ void test_record_in_body() {
     // items = ["a", "b", "c"]
     std::array<std::string, 3> items = {"a", "b", "c"};
     // for s in items:
-    std::string msg;
+    ::tpy::String msg;
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

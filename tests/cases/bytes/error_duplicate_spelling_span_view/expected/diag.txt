@@ -1,0 +1,1 @@
+main.py:11: error: in function 'span_or_bytesview': this construct is not yet supported by C++ code generation (stmt.if:cond.call)

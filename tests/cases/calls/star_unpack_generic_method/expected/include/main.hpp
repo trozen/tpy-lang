@@ -23,7 +23,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(const T& v) : val(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;

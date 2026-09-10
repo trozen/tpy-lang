@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "bigint.hpp"
+#include "buffer_types.hpp"
 #include "dunder.hpp"
 #include "format.hpp"
 
@@ -128,6 +129,12 @@ inline void print_element(std::ostream& os, const std::string& elem) {
 }
 
 inline void print_element(std::ostream& os, std::string_view elem) {
+    os << repr_quote_string(elem);
+}
+
+// A `String` element: the generic template below is an exact match and would
+// print through `operator<<` (a raw, unquoted string) rather than repr it.
+inline void print_element(std::ostream& os, const String& elem) {
     os << repr_quote_string(elem);
 }
 
@@ -303,6 +310,7 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
     // String types are ranges but should print as strings, not char lists
     if constexpr (std::is_same_v<T, std::string_view> ||
                   std::is_same_v<T, std::string> ||
+                  std::is_same_v<T, String> ||
                   std::is_same_v<T, const char*>) {
         return os << p.value;
     } else if constexpr (std::is_same_v<T, bool>) {

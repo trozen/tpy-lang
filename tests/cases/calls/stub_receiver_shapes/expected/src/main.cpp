@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // ba = bytearray(b"ab")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // ba.append(99)  # tpyc: ok
     ba.push_back(99);
     // seed = bytearray(b"xy")
-    std::vector<uint8_t> seed = ::tpy::bytes_copy(::tpy::bytes_literal("xy", 2));
+    ::tpy::ByteArray seed = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
     // holder = Buf(seed)
     Buf holder = Buf(std::move(seed));
     // holder.data.append(100)  # tpyc: ok
@@ -29,7 +29,7 @@ void main() {
     // # An inner-call receiver: `strip()` yields an owned temporary that the
     // # outer stub method composes onto.
     // print(ba.strip().upper())  # tpyc: ok
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_upper(::tpy::bytes_strip(ba))) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(::tpy::bytes_strip(ba))) << "\n";
     // t = Tagged()
     Tagged t = Tagged();
     // t.append(65)  # tpyc: ok

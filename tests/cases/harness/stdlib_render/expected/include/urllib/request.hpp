@@ -43,7 +43,7 @@ inline constexpr int32_t HTTPS_PORT = 443;
 struct URLError : ::tpy::OSError {
 
     // def __init__(self, reason: String = "") -> None:
-    explicit URLError(const std::string& reason = "");
+    explicit URLError(const ::tpy::String& reason = "");
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<URLError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -58,6 +58,6 @@ inline std::ostream& operator<<(std::ostream& os, const URLError& obj) {
 
 
 // def __init__(self, reason: String = "") -> None:
-inline URLError::URLError(const std::string& reason) : ::tpy::OSError(reason) {}
+inline URLError::URLError(const ::tpy::String& reason) : ::tpy::OSError(reason) {}
 void __tpy_init();
 } // namespace tpystd::urllib::request

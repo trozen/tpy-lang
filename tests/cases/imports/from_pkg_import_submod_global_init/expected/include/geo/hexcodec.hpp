@@ -7,11 +7,11 @@
 
 namespace tpyapp::geo::hexcodec {
 
-extern std::vector<uint8_t> _HEX;
+extern ::tpy::Bytes _HEX;
 extern std::vector<int32_t>* _OFFSETS;
 inline constexpr std::string_view __name__ = "geo.hexcodec";
 
-std::vector<uint8_t> hex_byte(int32_t c);
+::tpy::Bytes hex_byte(int32_t c);
 int32_t offset_sum();
 
 void __tpy_init();

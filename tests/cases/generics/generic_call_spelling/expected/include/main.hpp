@@ -25,7 +25,7 @@ struct Util {
     template<typename T>
     static ::tpy::val_or_ref_t<T> smax(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
         // return b
-        return b;
+        return ::tpy::param_to_return<T>(b);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Util";
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Util& obj) {
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return b
-    return b;
+    return ::tpy::param_to_return<T>(b);
 }
 
 void __tpy_init();

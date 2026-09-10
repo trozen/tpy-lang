@@ -21,7 +21,7 @@ void main();
 template<typename U>
 ::tpy::val_or_ref_t<U> pick(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y) {
     // return x
-    return x;
+    return ::tpy::param_to_return<U>(x);
 }
 // def use[T](a: T, b: T) -> T:
 template<typename T>

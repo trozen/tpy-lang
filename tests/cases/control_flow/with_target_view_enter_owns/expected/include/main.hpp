@@ -39,7 +39,7 @@ struct Blob {
 
 
     // def __enter__(self) -> bytes:
-    std::vector<uint8_t> __enter__() const;
+    ::tpy::Bytes __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
     void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     std::string s;
-    std::vector<uint8_t> b;
+    ::tpy::Bytes b;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -88,7 +88,7 @@ inline void Label::__exit__(std::monostate et, const ::tpy::BaseException* ev, s
 }
 
 // def __enter__(self) -> bytes:
-inline std::vector<uint8_t> Blob::__enter__() const {
+inline ::tpy::Bytes Blob::__enter__() const {
     // return b"abc" + b"def"
     return (::tpy::bytes_concat(::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)));
 }

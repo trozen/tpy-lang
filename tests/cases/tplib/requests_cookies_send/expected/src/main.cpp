@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def _send(headers: dict[str, str] | None,
 // cookies: dict[str, str] | None) -> bytes:
-std::vector<uint8_t> _send(const ::tpy::ordered_map<std::string, std::string>* headers, const ::tpy::ordered_map<std::string, std::string>* cookies) {
+::tpy::Bytes _send(const ::tpy::ordered_map<std::string, std::string>* headers, const ::tpy::ordered_map<std::string, std::string>* cookies) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -29,7 +29,7 @@ std::vector<uint8_t> _send(const ::tpy::ordered_map<std::string, std::string>* h
     // print(r.status_code)
     std::cout << r.status_code << "\n";
     // sent = b.recv(65536)
-    std::vector<uint8_t> sent = b.recv(65536);
+    ::tpy::Bytes sent = b.recv(65536);
     // b.close()
     b.close();
     // return sent

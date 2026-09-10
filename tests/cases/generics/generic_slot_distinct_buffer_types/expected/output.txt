@@ -1,0 +1,10 @@
+str True True
+String True True
+bytes True True
+bytearray 2 2
+borrow 2 3
+list True
+list 2 2
+store ['z'] ['z']
+store [b'z'] [b'z']
+readonly True

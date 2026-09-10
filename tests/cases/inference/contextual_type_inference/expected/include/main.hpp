@@ -50,7 +50,7 @@ struct Pair {
 
     // def __init__(self, a: A) -> None:
     Pair() = default;
-    explicit Pair(const A& a) : first(a) {}
+    explicit Pair(::tpy::readonly_form_t<A> a) : first(a) {}
 
     // def __repr__(self) -> str:
     std::string __repr__() const {
@@ -76,7 +76,7 @@ Container<T> make_box() {
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     // return x
-    return x;
+    return ::tpy::param_to_return<T>(x);
 }
 
 void __tpy_init();

@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 // BUF: bytearray = bytearray(b"ab")
-std::vector<uint8_t>* BUF{};
+::tpy::ByteArray* BUF{};
 // NUMS: list[Int32] = [1, 2]
 std::vector<int32_t>* NUMS{};
 
@@ -27,7 +27,7 @@ void main() {
     // print(len(BUF), BUF[2])
     std::cout << ::tpy::__len__((*BUF)) << " " << static_cast<int>(::tpy::bytes_getitem((*BUF), 2)) << "\n";
     // print(BUF.upper())
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_upper((*BUF))) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper((*BUF))) << "\n";
     // add_num(3)
     add_num(3);
     // print(len(NUMS))
@@ -40,7 +40,7 @@ void __tpy_init() {
     initialized = true;
 
     // BUF: bytearray = bytearray(b"ab")
-    static std::vector<uint8_t> __global_slot_1 = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
+    static ::tpy::ByteArray __global_slot_1 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     BUF = &__global_slot_1;
     // NUMS: list[Int32] = [1, 2]
     static std::vector<int32_t> __global_slot_2 = {1, 2};

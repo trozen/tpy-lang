@@ -4,14 +4,26 @@
 namespace tpyapp::main {
 
 
+// def mk() -> str:
+std::string mk() {
+    // # an rvalue SOURCE, so the argument is a temporary rather than a literal
+    // return "yo"
+    return "yo";
+}
+
 // def main():
 void main() {
+    // # The arguments are rvalues on purpose: the generator's frame borrows its
+    // # `T` slot past the statement, so each one has to be hoisted into a named
+    // # temp whatever route resolved the call -- an overload's per-signature fi
+    // # carries concrete params, which used to hide the slot entirely.
     // # one-arg arm (unbounded), consumed with a manual break
     // count = 0
     int32_t count = 0;
     // for x in rep("hi"):
     {
-        auto __src_0 = rep<std::string>("hi");
+        std::string __tmp_1 = "hi";
+        auto __src_0 = rep<std::string>(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -31,7 +43,8 @@ void main() {
     // # two-arg arm (bounded)
     // for y in rep(9, 3):
     {
-        auto __src_2 = rep<int32_t>(9, 3);
+        int32_t __tmp_2 = 9;
+        auto __src_2 = rep<int32_t>(__tmp_2, 3);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -39,6 +52,22 @@ void main() {
             int32_t y = ::tpy::unwrap_ref(*__r_3);
         // print(y)
         std::cout << y << "\n";
+        }
+    }
+    // # ... and an rvalue that is a CALL, not a literal. The warning is spurious
+    // # -- the temp below outlives the loop -- and filed as
+    // # BUGS.md#gen-iter-arg-temp-warns-though-hoisted
+    // for z in rep(mk(), 2):  # tpyc: warning(/borrows from temporary argument/)
+    {
+        std::string __tmp_3 = mk();
+        auto __src_4 = rep<std::string>(__tmp_3, 2);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            std::string_view z = ::tpy::unwrap_ref(*__r_5);
+        // print(z)
+        std::cout << z << "\n";
         }
     }
 }

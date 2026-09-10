@@ -21,7 +21,7 @@ struct Container {
 
     // def __init__(self, value: T) -> None:
     Container() = default;
-    explicit Container(const T& value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def get_value(self) -> T:
     ::tpy::val_or_ref_t<T> get_value() {
@@ -45,9 +45,9 @@ struct Wrapper : Container<T> {
 
     // def __init__(self, value: T, extra: Int32) -> None:
     Wrapper() = default;
-    explicit Wrapper(const T& value, int32_t extra) : extra(extra) {
+    explicit Wrapper(::tpy::readonly_form_t<T> value, int32_t extra) : extra(extra) {
         // self.value = value
-        this->value = value;
+        this->value = ::tpy::param_to_storage<T>(value);
     }
 
     // def get_extra(self) -> Int32:

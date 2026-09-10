@@ -218,15 +218,17 @@ between the two forms. The common helpers:
 | pointer-variant `A \| B` (non-value) | `::tpy::Union<A, B>` | `std::variant<A*, B*>` | `tpy::to_ptr_variant` / inverse |
 | `tuple` element-wise (`T \| None` slot -> `std::optional<T>`, plain non-value slot -> `T`) | `std::tuple<std::optional<A>, B, ...>` | `std::tuple<A*, B*, ...>` | `tpy::tuple_to_storage[_move]` / `tpy::tuple_to_pointer` (per-element dest-shape dispatch; mixing both slot kinds is fine) |
 | `str` | `std::string` | `std::string_view` | implicit C++ conversion |
-| `bytes` | `std::vector<uint8_t>` | `std::span<const uint8_t>` | explicit `::tpy::bytes_copy` (span -> vector is not an implicit conversion) |
+| `bytes` | `::tpy::Bytes` | `std::span<const uint8_t>` | explicit `::tpy::Bytes(span)` -- the owned type's own constructor (span -> buffer is not an implicit conversion) |
 
-A container method's ELEMENT-typed parameter splits by what the method does with it. At a LOOKUP slot (`list.remove` / `index` / `count`, `set.remove` / `discard`, the membership read, a `dict` key) the argument is READ-ONLY, so a `str` / `bytes` key passes as a view like any other `str` / `bytes` argument and the RUNTIME compares it against what it stores -- `std::string` against `std::string_view` directly, and `std::vector<uint8_t>` against `std::span<const uint8_t>` through `tpy::key_eq`, the one pair with no `operator==` (`runtime/cpp/include/tpy/lookup_key.hpp`). `ordered_set` and `ordered_map` both give their hash table that transparent hash/equality pair, so a set or dict lookup probes with the key as it arrives and builds none -- and a bare string LITERAL (`d["a"]`, `s.discard("b")`) is a lookup form of `std::string` for the same reason, so it does not allocate either. Neither container needs a `std::hash` specialization on a standard type, which [namespace.std] forbids. At a STORING slot (`append` / `insert` / `add`, `d[k] = v` -- the `Own[T]` spellings), where the runtime does not build the element itself, the borrowed argument materializes the owned form: `std::string(x)` / `::tpy::bytes_copy(x)`. Nothing in the compiler names a method here; the slot's `Own[T]` spelling is the whole rule.
+A container method's ELEMENT-typed parameter splits by what the method does with it. At a LOOKUP slot (`list.remove` / `index` / `count`, `set.remove` / `discard`, the membership read, a `dict` key) the argument is READ-ONLY, so a `str` / `bytes` key passes as a view like any other `str` / `bytes` argument and the RUNTIME compares it against what it stores -- `std::string` against `std::string_view` directly, and `::tpy::Bytes` against `std::span<const uint8_t>` through `tpy::key_eq`, the one pair with no `operator==` (`runtime/cpp/include/tpy/lookup_key.hpp`). `ordered_set` and `ordered_map` both give their hash table that transparent hash/equality pair, so a set or dict lookup probes with the key as it arrives and builds none -- and a bare string LITERAL (`d["a"]`, `s.discard("b")`) is a lookup form of `std::string` for the same reason, so it does not allocate either. Neither container needs a `std::hash` specialization on a standard type, which [namespace.std] forbids. At a STORING slot (`append` / `insert` / `add`, `d[k] = v` -- the `Own[T]` spellings), where the runtime does not build the element itself, the borrowed argument materializes the owned form: `std::string(x)` / `::tpy::Bytes(x)`. Nothing in the compiler names a method here; the slot's `Own[T]` spelling is the whole rule.
 
-A GENERIC `T` parameter is the one slot spelled off the instantiation's C++ type rather than the TPy type's own parameter form: `param_val_or_ref_t<T>` (and the `const T&` a readonly method or a `readonly[T]` slot spells) resolve to `const std::string&` / `std::vector<uint8_t>&` at `str` / `bytes`, which the caller's view cannot bind. The call site closes it by materializing the owned copy into a named temp -- `std::string __tmp_N = std::string(k);` / `= ::tpy::bytes_copy(k);` -- at a generic free call, a generic record method and a generic record constructor alike. So a generic over `str` costs an allocation per call where the monomorphic twin costs none -- two at the constructor seam, where the member init copies the temp again; the allocation-free end state (the parameter form carried as a template argument) is queued in `TODO.md`. Which arguments owe such a temp is decided at the INSTANTIATION, not on the open `T`: a value-typed instantiation's slot is `const T&`, which binds an rvalue for the full expression, so a literal or a by-value call renders inline exactly as it does at the monomorphic twin's slot; a reference-typed one's is the mutable `T&`, which binds none, so the temp stays. Two value-typed cases keep it anyway. The view-form source above, whose temp is the owned copy. And an argument to a GENERATOR factory: the simple-generator peephole captures its parameter by reference (a capture form decided on the open `T` -- `BUGS.md#simple-generator-captures-open-t-param-by-reference`), so the named temp is what keeps the captured object alive past the statement; whether a given generator lowers to that peephole or to a resumable frame is not knowable at the call site, so the rule covers both. A COROUTINE factory is not in scope -- its frame copies the argument into a `val_or_ref_t<T>` member at construction -- nor is a resumable generator frame, which does the same. Rendering inline restores C++'s unspecified argument evaluation order at these slots, which the temp incidentally serialized: `f(side("A"), side("B"))` at a value-typed `T` runs B before A under g++ where CPython runs A then B. That is the monomorphic twin's behaviour too (`BUGS.md#subexpression-right-to-left-eval`), so the generic and its twin agree; the fix belongs to that entry, not to this slot. In a position with no statement to hoist a needed temp into -- a compound `while` or an `elif` condition -- the call is rejected with a located message rather than emitted uncopied; a call whose arguments render inline needs no such position. A generator factory in such a condition is rejected for that reason even at a value-typed instantiation, and a RESUMABLE one pays that reject only because the call site cannot tell it from the peephole (the residue entry in `TODO.md`).
+A GENERIC `T` parameter is spelled off the instantiation's C++ type -- `param_val_or_ref_t<T>` -- which IS the TPy type's own parameter form for every type, because each of `str` / `String` / `bytes` / `bytearray` renders a distinct C++ type: the trait answers `std::string_view` at `str`, `const ::tpy::String&` at `String`, `std::span<const uint8_t>` at `bytes` and `::tpy::ByteArray&` at `bytearray`. So a generic over `str` or `bytes` binds the caller's view bare, exactly as the monomorphic twin does, and costs no allocation. A slot that is spelled CONST -- an explicit `readonly[T]`, a `@readonly` method's bare `T`, a record constructor's -- renders `::tpy::readonly_form_t<T>`, the same parameter form const-qualified only where it is a mutable reference, so a reference instantiation keeps its `const T&` and a view instantiation keeps the view. `const T&` would bind neither the view nor anything a generic BODY could materialize, since `T` is not fixed there. The body positions a view slot cannot serve go through runtime helpers keyed on `T` alone: `::tpy::param_to_storage<T>` at a store into `T` storage, `::tpy::param_to_return<T>` at a by-value `T` return, and `::tpy::eq` for an open-`T` equality (whose operands may arrive in the parameter and the storage form). Which arguments owe such a temp is decided at the INSTANTIATION, not on the open `T`: a value-typed instantiation's slot is `const T&`, which binds an rvalue for the full expression, so a literal or a by-value call renders inline exactly as it does at the monomorphic twin's slot; a reference-typed one's is the mutable `T&`, which binds none, so the temp stays. One value-typed case keeps it anyway: an argument to a GENERATOR factory, the simple-generator peephole captures its parameter by reference (a capture form decided on the open `T` -- `BUGS.md#simple-generator-captures-open-t-param-by-reference`), so the named temp is what keeps the captured object alive past the statement; whether a given generator lowers to that peephole or to a resumable frame is not knowable at the call site, so the rule covers both. A COROUTINE factory is not in scope -- its frame copies the argument into a `val_or_ref_t<T>` member at construction -- nor is a resumable generator frame, which does the same. Rendering inline restores C++'s unspecified argument evaluation order at these slots, which the temp incidentally serialized: `f(side("A"), side("B"))` at a value-typed `T` runs B before A under g++ where CPython runs A then B. That is the monomorphic twin's behaviour too (`BUGS.md#subexpression-right-to-left-eval`), so the generic and its twin agree; the fix belongs to that entry, not to this slot. In a position with no statement to hoist a needed temp into -- a compound `while` or an `elif` condition -- the call is rejected with a located message rather than emitted uncopied; a call whose arguments render inline needs no such position. A generator factory in such a condition is rejected for that reason even at a value-typed instantiation, and a RESUMABLE one pays that reject only because the call site cannot tell it from the peephole (the residue entry in `TODO.md`).
 
-In either variant form the union's members must render DISTINCT C++ types:
-`bytes | bytearray`, `list[UInt8] | bytes` and `list[UInt8] | bytearray` all
-spell `std::vector<uint8_t>`, and `std::holds_alternative` / `std::get` are
+In either variant form the union's members must render DISTINCT C++ types.
+The str/bytes family is fine now that each type owns one -- `bytes | bytearray`,
+`str | String` and `list[UInt8] | bytes` all discriminate correctly. What still
+collides is the VIEW pair: `tpy.BytesView` and `Span[readonly[UInt8]]` both
+spell `std::span<const uint8_t>`, and `std::holds_alternative` / `std::get` are
 ill-formed on a repeated alternative. The pointer-variant and `Own`-storage
 slots reject such a union at a located tag; sema still accepts the annotation
 itself (BUGS.md#duplicate-cpp-spelling-union).
@@ -377,7 +379,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Float32` | `float` (IEEE 754 single precision) |
 | `bool` | `bool` |
 | `str` | `std::string` (parameters: `std::string_view`) |
-| `String` | `std::string` (parameters: `const std::string&`) |
+| `String` | `::tpy::String` (parameters: `const ::tpy::String&`) |
 | `StrView` | `std::string_view` |
 | `Char` | `char` |
 | `None` (function-return slot, e.g. `def f() -> None`) | `void` |
@@ -394,7 +396,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Span[readonly[T]]` | `std::span<const T>` |
 | `SpanIter[T]` | `tpy::SpanIter<T>` |
 | `A \| B` (value types) | `::tpy::Union<A, B>` (a `std::variant` that owns Python's comparison rule -- see Union/Optional) |
-| `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (borrow form -- pointer-variant). Members must render distinct C++ types -- `bytes \| bytearray` and `list[UInt8] \| bytes` both spell `std::vector<uint8_t>` and reject at a located tag (BUGS.md#duplicate-cpp-spelling-union) |
+| `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (borrow form -- pointer-variant). Members must render distinct C++ types -- the str/bytes family is fine now that each type owns one; what still collides is the VIEW pair `tpy.BytesView` against `Span[readonly[UInt8]]`, which rejects at a located tag (BUGS.md#duplicate-cpp-spelling-union) |
 | `A \| B` (non-value, fields/containers) | `::tpy::Union<A, B>` (storage form -- the SAME type a value union spells, so one type owns Python's comparison rule at every owning position) |
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
@@ -409,8 +411,8 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Weak[T]` (arc) | Non-owning atomic companion to `Arc[T]`. `@nocopy`. `from tplib.arc import Weak` -- module-scoped, coexists with `tplib.rc.Weak`. |
 | `Mutex[T]` / `RwLock[T]` | Blocking locks wrapping `std::mutex` / `std::shared_mutex` (`tpy.sync`, `from tpy.sync import Mutex, RwLock`). `@nocopy`; the interior-mutability primitives. both `Mutex[T]` and `RwLock[T]` are `Send + Sync` iff `T: Send` (conditional override). For `RwLock` this is looser than Rust's `RwLock<T>: Sync iff T: Send + Sync`, and sound on the safe surface (a safe not-`Sync` `T` is always a container whose shared-mutability the readonly read guard removes; TPy has no safe interior mutability, unlike Rust's `Cell`). It is *not* sound for a `Send`-but-not-`Sync` interior-mutable payload built with the unsafe `unsafe_interior_mutable` hatch (a user `Cell`-analog): the bound fabricates a `Sync` the author never asserted -- a latent hole, low priority; see `BUGS.md` / `docs/SEND_SYNC_DESIGN.md`. `lock()` (Mutex) / `read()` / `write()` (RwLock) are `@readonly` -- you lock through a shared handle, so `arc.lock()` works -- and return a `@nocopy` `Deref[T]` guard used as a context manager: `with m.lock() as g: g.append(x)` (deref forwards to the payload; value-type payloads use `g.get()`/`g.set()`). `set()` takes `Own[T]` -- it moves into the lock's storage, so replacing a reference payload with a still-live lvalue warns (copy-into-owned-storage; silence with `set(x.copy())`), while an rvalue/last-use moves in cleanly. The guard acquires the lock in `__enter__` and releases in `__exit__`; a guard never entered never blocks. Canonical shared-mutable form is `Arc[Mutex[T]]`, which each spawned thread reaches through its own `arc.clone()`. |
 | `Condvar` | Blocking condition variable (`tpy.sync`, `from tpy.sync import Condvar`) over `std::condition_variable`. `@nocopy`, `Send + Sync` unconditionally (the primitive is internally synchronized, like `Atomic`). `@readonly` `wait(guard)` / `notify_one()` / `notify_all()`. `wait` takes the live `Mutex` guard directly (`with m.lock() as g: cv.wait(g)`), atomically releases the lock it holds, blocks until notified, then reacquires; callers re-check their predicate in a loop (spurious wakeups possible). The guard is taken via a monomorphized structural hook, so `wait(g)` is a static call and `_RawMutex` never appears in the surface. Pairs with `Mutex` for blocking producer/consumer handoff across threads. |
-| `bytes` | `std::vector<uint8_t>` |
-| `bytearray` | `std::vector<uint8_t>` (mutable) |
+| `bytes` | `::tpy::Bytes` (parameters: `std::span<const uint8_t>`) |
+| `bytearray` | `::tpy::ByteArray` (mutable; parameters: a reference) |
 | `BytesView` | `std::span<const uint8_t>` |
 | `basic_slice` | `tpy::BasicSlice` (start, stop) |
 | `slice` | `tpy::Slice` (start, stop, step) |
@@ -568,7 +570,7 @@ This means `Float32` arithmetic stays in single precision without requiring expl
 
 ### Strings
 - **Working**: `str` type -- context-dependent: `std::string` by default, `std::string_view` for parameters
-- **Working**: `String` (`tpy.String`) -- explicit owned `std::string` (parameters use `const std::string&`)
+- **Working**: `String` (`tpy.String`) -- explicit owned `::tpy::String`, a `std::string` subclass (parameters use `const ::tpy::String&`)
 - **Working**: `StrView` (`tpy.StrView`) -- explicit `std::string_view`
 - **Working**: `Char` type for single characters (str-like: `str + Char`, `Char + str`, `Char + Char` concat, `Char * n` / `n * Char` repeat, `len(c)` returns 1, `ord(str)` with runtime length-1 check)
 - **Working**: String concatenation with `+` and `+=`
@@ -633,7 +635,7 @@ For explicit control, use `String` or `StrView` from the `tpy` module:
 ```python
 from tpy import String, StrView
 
-def process(name: String) -> String:   # const std::string& in, std::string out
+def process(name: String) -> String:   # const ::tpy::String& in, ::tpy::String out
     return name
 
 def peek(data: StrView) -> StrView:    # string_view in, string_view out
@@ -726,8 +728,8 @@ log(f"x={x}")
 
 ### Bytes
 
-- **Working**: `bytes` type -- immutable byte sequence -> `std::vector<uint8_t>`
-- **Working**: `bytearray` type -- mutable byte sequence -> `std::vector<uint8_t>`
+- **Working**: `bytes` type -- immutable byte sequence -> `::tpy::Bytes` (a `std::vector<uint8_t>` subclass; parameters take the view `std::span<const uint8_t>`)
+- **Working**: `bytearray` type -- mutable byte sequence -> `::tpy::ByteArray` (the same base, a distinct type; a reference type, so parameters and locals alias)
 - **Working**: `BytesView` (`tpy.BytesView`) -- non-owning read-only view -> `std::span<const uint8_t>`
 - **Working**: Byte literals (`b"hello"`, `b"\x00\xff"`) -- use static storage (C++ string literal) when used as `BytesView` or function arguments (zero heap allocation)
 - **Working**: `bytes(n)` zero-fill constructor, `bytes(b)` / `bytearray(b)` copy constructors, and the same three spellings as a `bytearray` field's constructor member-init (`self.buf = bytearray()` / `bytearray(seed)` / `bytearray(n)`). Caveats: `bytearray(n)` with a runtime `BigInt` size fails the C++ build (`BUGS.md#bytearray-size-bigint-unnarrowed`), and a `bytearray` field initialized in a constructor from an ordinary FUNCTION call (`self.buf = make(n)`) still rejects (`BUGS.md#bytearray-ctor-field-and-list-conv`).
@@ -741,17 +743,83 @@ log(f"x={x}")
 - **Working**: `bytearray` mutation: `append`, `extend`, `pop`, `clear`, `insert`, `remove`, `__setitem__`
 - **Working**: `hash(b)` for `bytes` and `BytesView` -- enables use as dict keys and set elements
 - **Working**: Iteration over bytes (`for b in data`)
-- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated. A `bytes | None` parameter lowers to the borrow form `std::optional<std::span<const uint8_t>>`, matching `str | None` (`std::optional<std::string_view>`) -- both are members of one view-type family, so a real `bytes` value can be passed without a copy. When such a borrow flows into an owned sink (return, field/container store, `dict[k] = v` value), an explicit `::tpy::bytes_copy` is emitted (unlike `string_view -> string`, `span -> vector` is not an implicit conversion). In an `async def` / generator, a `bytes | None` / `str | None` param is captured OWNED in the resumable frame (the borrow copied into `std::optional<owned>` at frame construction) so it survives suspension, parallel to bare `str`/`bytes`
+- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated. A `bytes | None` parameter lowers to the borrow form `std::optional<std::span<const uint8_t>>`, matching `str | None` (`std::optional<std::string_view>`) -- both are members of one view-type family, so a real `bytes` value can be passed without a copy. When such a borrow flows into an owned sink (return, field/container store, `dict[k] = v` value), an explicit `::tpy::Bytes(span)` is emitted (unlike `string_view -> string`, `span -> vector` is not an implicit conversion). In an `async def` / generator, a `bytes | None` / `str | None` param is captured OWNED in the resumable frame (the borrow copied into `std::optional<owned>` at frame construction) so it survives suspension, parallel to bare `str`/`bytes`
 
 #### Bytes Type Semantics (Working)
 
-`bytes` and `bytearray` both map to `std::vector<uint8_t>` in C++. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable. `bytearray` is a **reference type** (like `list`/`dict`/`set`): a local binding or field/return read aliases the buffer rather than deep-copying it, so mutation through the alias is visible, matching CPython; storing one into owned storage (field, container element) copies and warns like any reference type. `bytes` stays value-like -- it is immutable, so the copy is unobservable. Being a reference type, `bytearray` takes the reference-shaped slots the other containers do: an `Own[bytearray]` parameter reads as a plain owned local, and a coroutine may return `Own[bytearray]`.
+`bytes` maps to `::tpy::Bytes` and `bytearray` to `::tpy::ByteArray` -- two distinct C++ types over the same `std::vector<uint8_t>` base, neither convertible to the other (a conversion between them is a TPy coercion the front end decides, never something C++ does on its own), and both distinct from `list[UInt8]`, which keeps the bare base. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable. `bytearray` is a **reference type** (like `list`/`dict`/`set`): a local binding or field/return read aliases the buffer rather than deep-copying it, so mutation through the alias is visible, matching CPython; storing one into owned storage (field, container element) copies and warns like any reference type. `bytes` stays value-like -- it is immutable, so the copy is unobservable. Being a reference type, `bytearray` takes the reference-shaped slots the other containers do: an `Own[bytearray]` parameter reads as a plain owned local, and a coroutine may return `Own[bytearray]`.
 
 A `bytearray` receiver is the same method-call family a `list`/`dict`/`set` receiver is, so every receiver shape they admit it admits: a bare name, a field, a container-valued **property** (the getter call is the receiver lvalue), an inner-call result (`ba.strip().upper()`), and an inherited stub method on a `class MyBA(bytearray)` subclass that declares its own `__init__`. A `bytearray | None` **field** stores `std::optional<std::vector<uint8_t>>` and takes the same bare-or-moved name write an `Optional[list]` field takes.
 
 Five shapes still reject for `bytearray` where `list` routes, all measured rather than inferred: binding a local from a container **element** (`b = bas[0]`) and calling through one (`len(bas[0])`), appending a freshly built `bytearray` to a container (`bas.append(bytearray(b"ab"))`), iterating `d.values()` over a `dict[str, bytearray]`, and a comprehension **producing** `bytearray` elements. Four more reject for `bytearray` and `list` alike -- a container LITERAL returned at an `Own[T] | None` slot (an owning CALL source routes there), an `Own[T | Record]` return, that union's constructor-argument twin, and a walrus binding a fresh container (`use(x := [1, 2])`).
 
-Only two facts about `bytearray` are genuinely its own, and both live on the type registry rather than in the lowering: its parameter slot is `const std::vector<uint8_t>&` by default with a separate mutable spelling (the pair that also lets an rvalue bind such a slot), and its storage owns a buffer. Everything else it gets by being a reference type -- the field write, the `Own` parameter and return, the coroutine and generator slots, the container element store, the ternary and select arms all admit it through the same reference-axis test a `list` or a record passes, with no `bytearray` leg. The places the compiler still spells the bytes family are OPERATIONS, not admissions: the concat / repeat / slice / `in` renders, `bytes_getitem` and `bytearray_setitem`, and the print-formatter ladder each name a runtime symbol per family, and they close together when the resolved dunder is read off the node (the stage-5 entry in `TODO.md`). The one admission that still names it is the method RECEIVER. What made `set[bytes]` unsafe there was `discard`'s lookup key arriving as a view at an `erase(const std::vector<uint8_t>&)`; the runtime now takes the view for both the parameter and the literal spelling, so what remains is re-running the fold's own gates for the other families the pure axis would admit.
+Only two facts about `bytearray` are genuinely its own, and both live on the type registry rather than in the lowering: its parameter slot is `const ::tpy::ByteArray&` by default with a separate mutable spelling (the pair that also lets an rvalue bind such a slot), and its storage owns a buffer. Everything else it gets by being a reference type -- the field write, the `Own` parameter and return, the coroutine and generator slots, the container element store, the ternary and select arms all admit it through the same reference-axis test a `list` or a record passes, with no `bytearray` leg. The places the compiler still spells the bytes family are OPERATIONS, not admissions: the concat / repeat / slice / `in` renders, `bytes_getitem` and `bytearray_setitem`, and the print-formatter ladder each name a runtime symbol per family, and they close together when the resolved dunder is read off the node (the stage-5 entry in `TODO.md`). The one admission that still names it is the method RECEIVER. What made `set[bytes]` unsafe there was `discard`'s lookup key arriving as a view at an `erase(const std::vector<uint8_t>&)`; the runtime now takes the view for both the parameter and the literal spelling, so what remains is re-running the fold's own gates for the other families the pure axis would admit.
+
+Binding a `bytes` value to a `bytearray` slot (`ba: bytearray = p`) is a
+located ERROR, and it is a rule rather than a detected hazard: CPython does
+not enforce the annotation, so `ba` stays the same immutable object and only
+a later mutation raises -- a program that never mutates runs fine there.
+Copying silently would make the TPy program mutate a private buffer where
+CPython raises, so the copy has to be written
+(`tests/cases/bytes/error_bytes_at_bytearray_slot`).
+
+The reverse direction, a `bytearray` at an OWNING `bytes` sink, is the SAME
+rule, in the same shape: a located ERROR asking for the explicit `bytes(ba)` --
+`Type mismatch in variable 'b': expected bytes, got bytearray -- write
+'bytes(...)' around it` (`tests/cases/bytes/error_bytearray_at_bytes_sink`). Every owning sink is
+covered -- an annotated local (`b: bytes = ba`), a `-> bytes` return, a `bytes`
+field store, an `Own[bytes]` slot including the `list[bytes]` element
+`seen.append(ba)` reaches, a container LITERAL element (`[ba]` at a
+`list[bytes]`, a dict key or value, a set element) and a COMPREHENSION element,
+key or value. Neither buffer type
+converts to the other, so TPy would have to copy; CPython does not enforce the
+annotation, so it binds the bytearray OBJECT and every later read sees mutations
+of the source. Only the explicit `bytes(ba)` copies there too, which is why the
+spelled form is parity-clean at every sink
+(`tests/cases/bytes/bytearray_copy_into_bytes_sink` writes it at the element
+slot, the local, the return, the field, a list literal and a comprehension,
+mutates the source and observes that each copy stood still, in TPy and in
+CPython alike; `tests/cases/bytes/error_bytearray_in_bytes_literal` pins the
+literal face of the rejection).
+
+A sink OWNS what it is handed when it is a field, a container element, an
+`Own[...]` slot, an initializer or a return -- everything except a plain
+argument, which borrows. The `bytearray` -> `bytes` conversion DECLARES that
+it is admitted only at a borrowing sink, so at an owning one it does not
+apply at all and the program sees the ordinary type mismatch; no part of the
+compiler names the two buffer types to reach that. The verdict is read where
+the binding is already stated rather than re-derived, and the question is
+asked again at every level a wrapper peels: `bytes | None`, a union member and a container
+element each reach it as their own binding, carrying the same verdict as the
+bare slot, so `ob: bytes | None = ba` is refused exactly as `b: bytes = ba` is.
+
+A TUPLE element is the one wrapper that does not inherit the outer verdict: a
+tuple holds its elements by value, so each element owns even where the tuple
+itself is borrowed, and `f((ba, 1))` at a `tuple[bytes, int]` PARAMETER is
+refused like every other owning sink. A view element is the opposite and keeps
+the borrow: `Span[bytes]` is a window onto someone else's buffer, so its
+element owns nothing.
+
+So neither buffer type converts implicitly to the other at an owning sink, in
+either direction -- one rule over both.
+
+The `-- write 'bytes(...)' around it` half is not a fact about buffers either.
+A mismatch ends that way exactly when a conversion for the pair EXISTS but is
+admitted only where the destination borrows: the value can be handed over, so
+the one thing missing here is the copy, and spelling the destination type
+around it is the copy. The name inside the quotes is the destination type's
+own. Every other mismatch is left alone -- a `list` at a `bytes` slot, or a
+`str` at an `Int32` slot, needs a conversion or a parse, not a copy, and gets
+the bare mismatch.
+
+The `bytes` -> `bytearray` direction is one of those: it has no conversion at
+any position, so it is a plain located mismatch with no remediation, while its
+reverse -- which DOES bind at a borrowing `bytes` parameter -- is told to copy.
+
+A BORROWING `bytes` slot is not affected either way: a `bytes` parameter is
+`std::span<const uint8_t>`, a free view over whatever buffer it is handed, so a
+`bytearray` argument passes bare with no copy at all and both languages see the
+caller's object (`tests/cases/generics/generic_slot_distinct_buffer_types`).
 
 `BytesView` (`std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Bytes literals use C++ string literal static storage (via `bytes_literal()`), so `BytesView` references to literals never dangle. Local variables inferred from bytes literals or `list[bytes]` subscripts use `BytesView` when safe, and fall back to owned `bytes` when mutated:
 
@@ -3721,7 +3789,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   `cfg: dict[str, Any] = {...}`. Inline construction via `Any(value)` is
   supported (TPy-specific sugar for the INTO_ANY coercion -- CPython
   rejects this; documented divergence). View types upgrade to owned at the storage
-  site (`StrView` -> `std::string`, `BytesView` -> `std::vector<uint8_t>`)
+  site (`StrView` -> `std::string`, `BytesView` -> `::tpy::Bytes`)
   so the cell owns its contents. `int` literals store as `BigInt` (matches
   TPy's `int` annotation and makes `cast(int, x)` round-trip naturally).
   Move-only contents (`@nocopy` records, `Own[T]` of `@nocopy`) rejected.
@@ -6254,11 +6322,11 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   unmarshal and stays rejected.
 - **Working (`str` + `bytes`)**: functions taking and returning `str`
   (PyUnicode <-> `std::string` via `PyUnicode_AsUTF8AndSize` /
-  `PyUnicode_FromStringAndSize`) and `bytes` (PyBytes <-> `std::vector<uint8_t>`
+  `PyUnicode_FromStringAndSize`) and `bytes` (PyBytes <-> `::tpy::Bytes`
   via `PyBytes_AsStringAndSize` / `PyBytes_FromStringAndSize`). Both cross **by
   copy** (v1 copy-in; the zero-copy view borrow is the deferred phase-3.5
   foreign-borrow primitive). The marshaller produces the *owned* form
-  (`std::string` / `std::vector<uint8_t>`); the generated wrapper passes it to
+  (`std::string` / `::tpy::Bytes`); the generated wrapper passes it to
   the function's *borrow*-form parameter (`std::string_view` /
   `std::span<const uint8_t>`) by implicit conversion, the owned local outliving
   the call -- so the borrow/storage-form duality is absorbed with no change to
@@ -6280,9 +6348,8 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   <-> PySet, `std::tuple` <-> PyTuple. Elements are the scalar/str/bytes leaves
   and arbitrarily nested containers of those (`list[list[int]]`,
   `dict[str, list[int]]`). The recursion is **glue-driven**, not
-  C++-template-driven: the C++ storage type is ambiguous at the leaves
-  (`list[bytes]` and `list[list[UInt8]]` both render
-  `std::vector<std::vector<uint8_t>>`), so the codegen glue -- holding the
+  C++-template-driven: the C++ storage type cannot be trusted to name the leaf
+  at every depth, so the codegen glue -- holding the
   unambiguous TPy element types -- emits nested per-element conversion lambdas
   bottoming out at `from_py<leaf>` / `to_py`; `marshal.hpp` supplies the
   element-fn-parameterized container helpers. `is_function_boundary_marshallable`

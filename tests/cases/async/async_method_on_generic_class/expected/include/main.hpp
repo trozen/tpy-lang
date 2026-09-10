@@ -26,7 +26,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(const T& v) : value(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v) : value(v) {}
 
     __coro_Box_take<T> take();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

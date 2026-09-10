@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<std::vector<uint8_t>, std::vector<uint8_t>> split_b(std::span<const uint8_t> b);
+std::tuple<::tpy::Bytes, ::tpy::Bytes> split_b(std::span<const uint8_t> b);
 void main();
 
 void __tpy_init();

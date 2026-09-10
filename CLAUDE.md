@@ -286,6 +286,8 @@ Full TurboPython -> C++ type mapping lives in `docs/LANGUAGE_FEATURES.md`. Types
 | Type | C++ |
 |------|-----|
 | `int` | `tpy::BigInt` (arbitrary precision) |
+| `String` | `::tpy::String` (a `std::string` subclass; parameters `const ::tpy::String&`) -- the mutable, owning sibling of `str`. Its own C++ type so a trait keyed on the C++ type can tell it from `str` |
+| `bytes` / `bytearray` | `::tpy::Bytes` / `::tpy::ByteArray` (both `std::vector<uint8_t>` subclasses; a `bytes` parameter is `std::span<const uint8_t>`, a `bytearray` one a reference). Distinct from each other and from `list[UInt8]`, which keeps the plain `std::vector<uint8_t>` |
 | `StrView` | `std::string_view` |
 | `Char` | `char` |
 | `Span[T]` / `Span[readonly[T]]` | `std::span<T>` / `std::span<const T>` |

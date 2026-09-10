@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def takes_string(s: String) -> None:
-void takes_string(const std::string& s) {
+void takes_string(const ::tpy::String& s) {
     // print(s)
     std::cout << s << "\n";
 }

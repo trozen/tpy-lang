@@ -73,7 +73,7 @@ struct GenBox {
 
     // def __init__(self, k: K, v: V):
     GenBox() = default;
-    explicit GenBox(const K& k, const V& v) : _k(k), _v(v) {}
+    explicit GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
 
     // def __getitem__(self, want: Int32) -> V | None:
     V* __getitem__(int32_t want) {

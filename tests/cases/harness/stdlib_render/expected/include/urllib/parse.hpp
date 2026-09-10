@@ -16,7 +16,7 @@ namespace tpystd::urllib::parse {
 struct SplitResult;
 struct ParseResult;
 
-extern std::vector<uint8_t> _HEX;
+extern ::tpy::Bytes _HEX;
 extern ::tpy::ordered_set<std::string>* _USES_NETLOC;
 extern ::tpy::ordered_set<std::string>* _USES_RELATIVE;
 extern ::tpy::ordered_set<std::string>* _USES_PARAMS;

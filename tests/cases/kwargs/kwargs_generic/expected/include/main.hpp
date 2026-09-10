@@ -18,7 +18,7 @@ void main();
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return a
-    return a;
+    return ::tpy::param_to_return<T>(a);
 }
 
 void __tpy_init();

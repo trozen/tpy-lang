@@ -12,3 +12,10 @@ hi
 0 x
 1 x
 2 x
+bump 0
+bump 1
+bump total 1
+size 1
+size 2
+len 2
+len 3

@@ -41,7 +41,7 @@ struct Holder {
 
     // def __init__(self, k: K, v: V):
     Holder() = default;
-    explicit Holder(const K& k, const V& v) : _k(k), _v(v) {}
+    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : _k(k), _v(v) {}
 
     // @property
     // def key(self) -> K:

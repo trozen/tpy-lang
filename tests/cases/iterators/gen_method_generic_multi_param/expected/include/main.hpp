@@ -23,7 +23,7 @@ struct Pair {
 
     // def __init__(self, k: K, v: V) -> None:
     Pair() = default;
-    explicit Pair(const K& k, const V& v) : k(k), v(v) {}
+    explicit Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v) : k(k), v(v) {}
 
     // def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
     auto stream(const ::tpy::BigInt& n) {

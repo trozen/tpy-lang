@@ -38,15 +38,15 @@ struct Cell {
     }
 
     // def echo(self, v: T) -> T:
-    ::tpy::val_or_cref_t<T> echo(const T& v) const {
+    ::tpy::val_or_cref_t<T> echo(::tpy::readonly_form_t<T> v) const {
         // return v
-        return v;
+        return ::tpy::param_to_return<T>(v);
     }
 
     // def store(self, v: T) -> None:
     void store(::tpy::param_val_or_ref_t<T> v) {
         // self.value = v
-        this->value = v;
+        this->value = ::tpy::param_to_storage<T>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };

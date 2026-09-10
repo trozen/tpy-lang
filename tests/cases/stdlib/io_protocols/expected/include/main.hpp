@@ -15,9 +15,9 @@ void emit_text(T_fp& fp, const std::vector<std::string>& items);
 template<::tpystd::tpy::Readable T_fp>
 std::string consume_text(T_fp& fp);
 template<::tpystd::tpy::BinaryWritable T_fp>
-void emit_bytes(T_fp& fp, const std::vector<std::vector<uint8_t>>& chunks);
+void emit_bytes(T_fp& fp, const std::vector<::tpy::Bytes>& chunks);
 template<::tpystd::tpy::BinaryReadable T_fp>
-std::vector<uint8_t> consume_bytes(T_fp& fp);
+::tpy::Bytes consume_bytes(T_fp& fp);
 template<::tpystd::tpy::Seekable T_fp>
 int32_t rewind_and_close(T_fp& fp);
 template<::tpystd::tpy::Closable T_fp>
@@ -47,7 +47,7 @@ std::string consume_text(T_fp& fp) {
 }
 // def emit_bytes(fp: BinaryWritable, chunks: list[bytes]) -> None:
 template<::tpystd::tpy::BinaryWritable T_fp>
-void emit_bytes(T_fp& fp, const std::vector<std::vector<uint8_t>>& chunks) {
+void emit_bytes(T_fp& fp, const std::vector<::tpy::Bytes>& chunks) {
     // for b in chunks:
     auto& __obj_0 = chunks;
     auto __beg_0 = __obj_0.begin();
@@ -60,7 +60,7 @@ void emit_bytes(T_fp& fp, const std::vector<std::vector<uint8_t>>& chunks) {
 }
 // def consume_bytes(fp: BinaryReadable) -> bytes:
 template<::tpystd::tpy::BinaryReadable T_fp>
-std::vector<uint8_t> consume_bytes(T_fp& fp) {
+::tpy::Bytes consume_bytes(T_fp& fp) {
     // return fp.read()
     return fp.read();
 }

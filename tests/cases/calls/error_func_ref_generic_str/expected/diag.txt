@@ -1,1 +1,0 @@
-main.py:11: error: Cannot use 'identity' as function reference with T=str: generic functions use a different C++ parameter convention than str (use a lambda instead)

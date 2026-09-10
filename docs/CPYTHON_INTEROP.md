@@ -354,7 +354,7 @@ for numeric data and shares that gap.
 
 **v1 default: copy-in (implemented).** For `str`/`bytes` args, v1 *copies on
 entry* (always sound): the marshaller produces the owned form (`std::string` /
-`std::vector<uint8_t>`) and the generated wrapper passes it to the function's
+`::tpy::Bytes`) and the generated wrapper passes it to the function's
 borrow-form param (`std::string_view` / `std::span<const uint8_t>`) by implicit
 conversion, the owned local outliving the call -- so the boundary marshals a
 type's *owned* form (`to_cpp()`) with no special-casing in the glue emitter.
@@ -434,9 +434,8 @@ recursively:
 `tpy::ordered_set` <-> PySet, `std::tuple` <-> PyTuple. Elements are the
 scalar/str/bytes leaves and arbitrarily nested containers of those. The
 recursion is **glue-driven**, not C++-template-driven: the C++ storage type
-is ambiguous at the leaves (`list[bytes]` and `list[list[UInt8]]` both render
-`std::vector<std::vector<uint8_t>>`), so only the codegen glue -- which holds
-the unambiguous TPy element types -- can pick the right leaf marshaller. The
+cannot be trusted to name the leaf at every depth, so only the codegen glue --
+which holds the unambiguous TPy element types -- picks the leaf marshaller. The
 `marshal.hpp` helpers (`list_from_py`/`list_to_py`/...) take a per-element
 conversion callable; `extension.py` emits nested lambdas bottoming out at
 `from_py<leaf>`/`to_py`.

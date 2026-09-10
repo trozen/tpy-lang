@@ -27,7 +27,7 @@ template<typename T>
 std::vector<T> make_single(::tpy::param_val_or_ref_t<T> x) {
     // # The element is an open `T`, so the body states its copy contract here.
     // return [x]  # tpyc: warning(/may copy T into owned storage/)
-    return {x};
+    return {::tpy::param_to_storage<T>(x)};
 }
 
 void __tpy_init();

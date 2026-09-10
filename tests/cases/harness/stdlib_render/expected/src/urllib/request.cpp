@@ -12,7 +12,7 @@ namespace tpystd::urllib::request {
     // # verification when None, against the vendored Mozilla roots + the system
     // # CA bundle); pass a context with load_verify_locations for custom CAs.
     // return _urlopen(url, data, timeout, context, None)
-    return _urlopen(url, data ? std::make_optional(::tpy::bytes_copy(*data)) : std::nullopt, timeout, context, std::nullopt);
+    return _urlopen(url, data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt, timeout, context, std::nullopt);
 }
 
 // def _urlopen(url: str, data: bytes | None, timeout: float | None,
@@ -65,7 +65,7 @@ namespace tpystd::urllib::request {
         // # Test seam: drive the pre-connected box directly (avoids moving it out
         // # of the narrowed Optional into a shared local).
         // injected.request(method, target, data, None)
-        (*injected).__deref__().request(method, target, data ? std::make_optional(::tpy::bytes_copy(*data)) : std::nullopt, nullptr);
+        (*injected).__deref__().request(method, target, data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt, nullptr);
         // return injected.getresponse()
         return (*injected).__deref__().getresponse();
     }
@@ -104,7 +104,7 @@ namespace tpystd::urllib::request {
         conn = &*(__slot_1 = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(::tpystd::http::client::HTTPConnection((*host), port, timeout)));
     }
     // conn.request(method, target, data, None)
-    conn->__deref__().request(method, target, data ? std::make_optional(::tpy::bytes_copy(*data)) : std::nullopt, nullptr);
+    conn->__deref__().request(method, target, data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt, nullptr);
     // return conn.getresponse()
     return conn->__deref__().getresponse();
 }

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # Slicing a bytes element of a container: the chained element read is the
 // # receiver of the slice, so the outer index applies to the element, not the list.
 // def peek(app: list[bytes]) -> None:
-void peek(const std::vector<std::vector<uint8_t>>& app) {
+void peek(const std::vector<::tpy::Bytes>& app) {
     // print(len(app[0][1:]))
     std::cout << ::tpy::__len__(::tpy::bytes_slice(::tpy::__getitem__(app, 0), ::tpy::BasicSlice{1, std::nullopt})) << "\n";
 }
@@ -15,7 +15,7 @@ void peek(const std::vector<std::vector<uint8_t>>& app) {
 // def main() -> None:
 void main() {
     // xs: list[bytes] = [b"hi"]
-    std::vector<std::vector<uint8_t>> xs = {::tpy::bytes_literal_owned("hi", 2)};
+    std::vector<::tpy::Bytes> xs = {::tpy::bytes_literal_owned("hi", 2)};
     // peek(xs)
     peek(xs);
 }

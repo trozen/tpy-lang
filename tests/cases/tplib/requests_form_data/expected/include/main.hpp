@@ -19,7 +19,7 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void send(std::string_view url, std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*> data);
+void send(std::string_view url, std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data);
 void main();
 
 void __tpy_init();

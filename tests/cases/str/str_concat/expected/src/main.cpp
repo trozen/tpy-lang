@@ -11,7 +11,7 @@ void test_str_concat() {
     // b: str = " world"
     std::string_view b = " world";
     // c: String = a + b
-    std::string c = (::tpy::str_concat(a, b));
+    ::tpy::String c = (::tpy::str_concat(a, b));
     // print(c)  # hello world
     std::cout << c << "\n";
 }
@@ -19,7 +19,7 @@ void test_str_concat() {
 // def test_str_plus_eq() -> None:
 void test_str_plus_eq() {
     // s: String = String("hello")
-    std::string s = std::string("hello");
+    ::tpy::String s = ::tpy::String("hello");
     // s += " world"
     s += " world";
     // print(s)  # hello world
@@ -29,7 +29,7 @@ void test_str_plus_eq() {
 // def test_str_multiconcat() -> None:
 void test_str_multiconcat() {
     // s: String = String("a") + "b" + "c"
-    std::string s = (::tpy::str_concat((::tpy::str_concat(std::string("a"), "b")), "c"));
+    ::tpy::String s = (::tpy::str_concat((::tpy::str_concat(::tpy::String("a"), "b")), "c"));
     // print(s)  # abc
     std::cout << s << "\n";
 }
@@ -37,7 +37,7 @@ void test_str_multiconcat() {
 // def test_literal_concat() -> None:
 void test_literal_concat() {
     // s: String = "foo" + "bar"
-    std::string s = (::tpy::str_concat("foo", "bar"));
+    ::tpy::String s = (::tpy::str_concat("foo", "bar"));
     // print(s)  # foobar
     std::cout << s << "\n";
 }
@@ -47,7 +47,7 @@ void test_cross_type_concat() {
     // a: str = str("hello")
     std::string a = std::string("hello");
     // b: String = String(" world")
-    std::string b = std::string(" world");
+    ::tpy::String b = ::tpy::String(" world");
     // # str + String
     // print(a + b)  # hello world
     std::cout << (::tpy::str_concat(a, b)) << "\n";
@@ -65,7 +65,7 @@ void test_cross_type_concat() {
 void test_reassign_concat() {
     // # x = x + y should use in-place append
     // s: String = String("hello")
-    std::string s = std::string("hello");
+    ::tpy::String s = ::tpy::String("hello");
     // s = s + " world"
     s += " world";
     // print(s)  # hello world
@@ -89,7 +89,7 @@ void test_reassign_concat() {
 // def test_loop_concat() -> None:
 void test_loop_concat() {
     // s: String = String("")
-    std::string s = std::string("");
+    ::tpy::String s = ::tpy::String("");
     // i: Int32 = 0
     int32_t i = 0;
     // while i < 5:

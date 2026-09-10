@@ -94,7 +94,7 @@ int32_t randrange(int32_t start, int32_t stop, int32_t step) {
 }
 
 // def randbytes(n: Int32) -> bytes:
-std::vector<uint8_t> randbytes(int32_t n) {
+::tpy::Bytes randbytes(int32_t n) {
     // return _inst.randbytes(n)
     return _inst->randbytes(n);
 }
@@ -439,7 +439,7 @@ int32_t Random::randrange(int32_t start, int32_t stop, int32_t step) {
 }
 
 // def randbytes(self, n: Int32) -> bytes:
-std::vector<uint8_t> Random::randbytes(int32_t n) {
+::tpy::Bytes Random::randbytes(int32_t n) {
     // # Matches CPython's `self.getrandbits(n * 8).to_bytes(n, 'little')`.
     // # Full uint32 chunks yield their 4 bytes low-to-high (little-endian).
     // # The last partial word uses its TOP `rem*8` bits (CPython's
@@ -452,7 +452,7 @@ std::vector<uint8_t> Random::randbytes(int32_t n) {
         throw ::tpy::ValueError("n must be non-negative");
     }
     // out: bytearray = bytearray()
-    std::vector<uint8_t> out = std::vector<uint8_t>();
+    ::tpy::ByteArray out = ::tpy::ByteArray();
     // i: Int32 = 0
     int32_t i = 0;
     // full: Int32 = n // 4
@@ -491,7 +491,7 @@ std::vector<uint8_t> Random::randbytes(int32_t n) {
         }
     }
     // return bytes(out)
-    return ::tpy::bytes_copy(out);
+    return ::tpy::Bytes(out);
 }
 
 // def triangular(self, low: float = 0.0, high: float = 1.0, mode: float | None = None) -> float:

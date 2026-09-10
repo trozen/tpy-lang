@@ -44,7 +44,7 @@ void main();
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     // return x
-    return x;
+    return ::tpy::param_to_return<T>(x);
 }
 // def pair[T, U](a: T, b: U) -> tuple[T, U]:
 template<typename T, typename U>
@@ -58,10 +58,10 @@ template<::tpystd::tpy::Comparable T>
     // if a > b:
     if ((a > b)) {
         // return a
-        return a;
+        return ::tpy::param_to_return<T>(a);
     }
     // return b
-    return b;
+    return ::tpy::param_to_return<T>(b);
 }
 // # Fn param (zero-cost template)
 // def apply_fn(f: Fn[[Int32], Int32], x: Int32) -> Int32:

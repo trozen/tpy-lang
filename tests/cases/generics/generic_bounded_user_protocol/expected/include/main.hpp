@@ -47,7 +47,7 @@ struct Holder {
 
     // def __init__(self, item: T):
     Holder() = default;
-    explicit Holder(const T& item) : item(item) {}
+    explicit Holder(::tpy::readonly_form_t<T> item) : item(item) {}
 
     // def get_item(self) -> T:
     ::tpy::val_or_ref_t<T> get_item() {

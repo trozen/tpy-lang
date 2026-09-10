@@ -14,7 +14,7 @@ using ::tpystd::tplib::box::Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::array<int32_t, 3> fresh_array();
-std::vector<uint8_t> grow_bytes(int32_t n);
+::tpy::ByteArray grow_bytes(int32_t n);
 std::vector<int32_t> grow_list(int32_t n);
 std::vector<::tpystd::tplib::box::Box<int32_t>> grow_boxes(int32_t n);
 void main();

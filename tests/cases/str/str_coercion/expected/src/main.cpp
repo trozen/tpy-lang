@@ -11,7 +11,7 @@ void take_str(std::string_view s) {
 }
 
 // def take_string(s: String) -> None:
-void take_string(const std::string& s) {
+void take_string(const ::tpy::String& s) {
     // print(s)
     std::cout << s << "\n";
 }
@@ -26,7 +26,7 @@ void take_strview(std::string_view s) {
 void main() {
     // # String -> str (identity, both std::string)
     // s1: String = String("hello")
-    std::string s1 = std::string("hello");
+    ::tpy::String s1 = ::tpy::String("hello");
     // take_str(s1)  # hello
     take_str(s1);
     // # str -> String (identity)
@@ -44,7 +44,7 @@ void main() {
     // sv: StrView = StrView("view")
     std::string_view sv = "view";
     // take_string(sv)  # view
-    take_string(std::string(sv));
+    take_string(::tpy::String(sv));
     // # StrView -> str (allocates)
     // take_str(sv)  # view
     take_str(sv);

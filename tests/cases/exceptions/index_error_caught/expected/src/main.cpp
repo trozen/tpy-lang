@@ -55,7 +55,7 @@ void main() {
         }
     }
     // ba: bytearray = bytearray(b"")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(std::span<const uint8_t>{});
+    ::tpy::ByteArray ba = ::tpy::ByteArray(std::span<const uint8_t>{});
     // try:
     {
         try {
@@ -67,7 +67,7 @@ void main() {
         }
     }
     // ba2: bytearray = bytearray(b"abc")
-    std::vector<uint8_t> ba2 = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    ::tpy::ByteArray ba2 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     // try:
     {
         try {

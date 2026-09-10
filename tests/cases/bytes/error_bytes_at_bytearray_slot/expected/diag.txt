@@ -1,0 +1,1 @@
+main.py:9: error: Type mismatch in variable 'ba': expected bytearray, got bytes

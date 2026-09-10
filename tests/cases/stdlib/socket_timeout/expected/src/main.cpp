@@ -16,7 +16,7 @@ void main() {
     // a.sendall(b"hi")
     a.sendall(::tpy::bytes_literal("hi", 2));
     // got = b.recv(2)
-    std::vector<uint8_t> got = b.recv(2);
+    ::tpy::Bytes got = b.recv(2);
     // print("recv ok:", got)
     std::cout << "recv ok:" << " " << ::tpy::BytesPrinter(got) << "\n";
     // # A recv that never receives data times out -> TimeoutError("timed out").

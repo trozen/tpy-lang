@@ -56,25 +56,25 @@ int32_t empty_key(const ::tpy::ordered_map<std::string, int32_t>& d, std::string
 }
 
 // def read_bytes_param(d: dict[bytes, Int32], k: bytes) -> Int32:
-int32_t read_bytes_param(const ::tpy::ordered_map<std::vector<uint8_t>, int32_t>& d, std::span<const uint8_t> k) {
+int32_t read_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k) {
     // return d[k]  # tpyc: ok -- a std::span key probes the table directly
     return ::tpy::__getitem__(d, k);
 }
 
 // def get_bytes_param(d: dict[bytes, Int32], k: bytes) -> bool:
-bool get_bytes_param(const ::tpy::ordered_map<std::vector<uint8_t>, int32_t>& d, std::span<const uint8_t> k) {
+bool get_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k) {
     // return d.get(k) is not None  # tpyc: ok
     return (::tpy::dict_get(d, k) != nullptr);
 }
 
 // def drop_bytes_param(d: dict[bytes, Int32], k: bytes) -> None:
-void drop_bytes_param(::tpy::ordered_map<std::vector<uint8_t>, int32_t>& d, std::span<const uint8_t> k) {
+void drop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k) {
     // del d[k]  # tpyc: ok
     ::tpy::__delitem__(d, k);
 }
 
 // def pop_bytes_param(d: dict[bytes, Int32], k: bytes) -> Int32:
-int32_t pop_bytes_param(::tpy::ordered_map<std::vector<uint8_t>, int32_t>& d, std::span<const uint8_t> k) {
+int32_t pop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k) {
     // return d.pop(k)  # tpyc: ok
     return ::tpy::dict_pop(d, k);
 }
@@ -108,7 +108,7 @@ void main() {
     // print(empty_key(e, ""), empty_key(e, "zz"))
     std::cout << empty_key(e, "") << " " << empty_key(e, "zz") << "\n";
     // b: dict[bytes, Int32] = {}
-    ::tpy::ordered_map<std::vector<uint8_t>, int32_t> b = ::tpy::ordered_map<std::vector<uint8_t>, int32_t>();
+    ::tpy::ordered_map<::tpy::Bytes, int32_t> b = ::tpy::ordered_map<::tpy::Bytes, int32_t>();
     // b[b"aa"] = 1
     ::tpy::__setitem__(b, ::tpy::bytes_literal_owned("aa", 2), 1);
     // b[b"bb"] = 2

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void grow(std::variant<std::vector<uint8_t>*, std::vector<int32_t>*> u);
+void grow(std::variant<::tpy::ByteArray*, std::vector<int32_t>*> u);
 void touch(std::variant<std::array<int32_t, 2>*, std::vector<int32_t>*> u);
 void main();
 

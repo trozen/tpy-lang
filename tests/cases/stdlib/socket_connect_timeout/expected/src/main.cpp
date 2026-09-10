@@ -20,7 +20,7 @@ void main() {
     // c.sendall(b"ping")
     c.sendall(::tpy::bytes_literal("ping", 4));
     // got = conn.recv(4)
-    std::vector<uint8_t> got = conn.recv(4);
+    ::tpy::Bytes got = conn.recv(4);
     // print("server got:", got)
     std::cout << "server got:" << " " << ::tpy::BytesPrinter(got) << "\n";
     // conn.close()

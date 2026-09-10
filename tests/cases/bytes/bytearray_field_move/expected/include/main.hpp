@@ -20,7 +20,7 @@ void main();
 // class Buf:
 struct Buf {
     // data: bytearray
-    std::vector<uint8_t> data;
+    ::tpy::ByteArray data;
     // tags: list[Int32]
     std::vector<int32_t> tags;
     // boxes: list[Box[Int32]]
@@ -52,12 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 
 
 // def __init__(self) -> None:
-inline Buf::Buf() : data(std::vector<uint8_t>()), tags(std::vector<int32_t>{}), boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>{}) {}
+inline Buf::Buf() : data(::tpy::ByteArray()), tags(std::vector<int32_t>{}), boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>{}) {}
 
 // def reset(self, n: Int32) -> None:
 inline void Buf::reset(int32_t n) {
     // fresh = bytearray(n)
-    std::vector<uint8_t> fresh = ::tpy::bytes_from_size(n);
+    ::tpy::ByteArray fresh = ::tpy::bytearray_from_size(n);
     // self.data = fresh  # tpyc: ok -- the moved bytes-family name
     this->data = std::move(fresh);
 }

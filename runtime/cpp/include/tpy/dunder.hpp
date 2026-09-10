@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "bigint.hpp"
+#include "buffer_types.hpp"
 #include "enum.hpp"
 #include "format.hpp"
 #include "container_ops.hpp"
@@ -71,6 +72,19 @@ inline int32_t __len__(const std::string& x) {
 
 // Overload: std::string_view
 inline int32_t __len__(std::string_view x) {
+    return static_cast<int32_t>(x.size());
+}
+
+// Overloads: the owning byte buffers. Deduction DOES see through a derived
+// class, so the std::vector overload above is viable for them -- these exist
+// because they are non-template EXACT matches, which beat that template's
+// derived-to-base conversion, and because keeping the answer beside the type
+// is what lets a future buffer differ.
+inline int32_t __len__(const Bytes& x) {
+    return static_cast<int32_t>(x.size());
+}
+
+inline int32_t __len__(const ByteArray& x) {
     return static_cast<int32_t>(x.size());
 }
 
@@ -324,6 +338,10 @@ inline std::string __str__(uint64_t x) { return std::to_string(x); }
 inline std::string __str__(double x) { return format_float(x); }
 inline std::string __str__(float x) { return format_float(static_cast<double>(x)); }
 inline std::string __str__(const std::string& x) { return x; }
+// A `String` is an exact match for the formattable fallback below, which would
+// out-rank `const std::string&`'s derived-to-base conversion. Same trap as
+// `__repr__`; the answer is the same either way today, and this keeps it so.
+inline std::string __str__(const String& x) { return x; }
 inline std::string __str__(std::string_view x) { return std::string(x); }
 inline std::string __str__(const BigInt& x) { return x.to_string(); }
 
@@ -451,12 +469,19 @@ inline std::string __repr__(std::string_view x) {
 inline std::string __repr__(const char* x) {
     return repr_quote_string(std::string_view(x));
 }
+// A `String` is an exact match for the formattable fallback below, which would
+// out-rank `const std::string&`'s derived-to-base conversion and print the
+// characters raw instead of quoting them.
+inline std::string __repr__(const String& x) {
+    return repr_quote_string(x);
+}
 
 // Optional: None or repr(value).
 template<typename T>
 std::string __repr__(const std::optional<T>& x) {
     if (!x.has_value()) return "None";
-    if constexpr (std::same_as<T, std::string> || std::same_as<T, std::string_view>) {
+    if constexpr (std::same_as<T, std::string> || std::same_as<T, String>
+                  || std::same_as<T, std::string_view>) {
         return repr_quote_string(*x);
     } else if constexpr (std::same_as<T, bool>) {
         return *x ? "True" : "False";
@@ -478,6 +503,7 @@ inline std::string __repr__(float x) { return format_float(static_cast<double>(x
 template<typename T>
     requires (!requires(const T& t) { t.__repr__(); })
           && (!std::same_as<T, std::string>)
+          && (!std::same_as<T, String>)
           && (!std::same_as<T, std::string_view>)
           && (!std::floating_point<T>)
           && std::formattable<T, char>

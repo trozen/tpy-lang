@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::vector<::tpy::BigInt> make(const ::tpy::BigInt& n);
 std::vector<::tpy::BigInt> other(const ::tpy::BigInt& n);
 ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> counts();
-void push(std::vector<uint8_t>& b, const ::tpy::BigInt& v);
+void push(::tpy::ByteArray& b, const ::tpy::BigInt& v);
 void main();
 
 void __tpy_init();

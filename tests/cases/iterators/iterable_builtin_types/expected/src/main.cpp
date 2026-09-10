@@ -41,7 +41,7 @@ void test_iterable_params() {
     std::cout << sum_items(sl) << "\n";
     // # String
     // s: String = String("ab")
-    std::string s = std::string("ab");
+    ::tpy::String s = ::tpy::String("ab");
     // print(count_chars(s))
     std::cout << count_chars(s) << "\n";
     // # StrView

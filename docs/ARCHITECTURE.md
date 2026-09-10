@@ -462,8 +462,8 @@ cosmetic. Left as one cohesive module.
   the runtime would give a mutable `T&` slot. The same scan holds
   the `is_send` / `is_sync` overrides, which default to
   `is_value_type` and so must spell out a False.
-  `std::vector<uint8_t>` (shared by `bytes`, `bytearray` and
-  `list[UInt8]`) and `T*` are declared exceptions; user value
+  `T*` -- the borrow form the runtime mints for a non-value `T` --
+  is the one declared exception; user value
   records are out of scope, since codegen emits their
   specialization next to the struct. A runtime type declares its own
   value-ness beside its definition (`span_iter.hpp`, `slice.hpp`,

@@ -11,7 +11,7 @@ void main() {
     // tmp = os.getcwd()
     std::string tmp = ::tpy::stdlib::os::getcwd();
     // d = tmp + "/tpy_ospath_roundout"
-    std::string d = (::tpy::str_concat(tmp, "/tpy_ospath_roundout"));
+    ::tpy::String d = (::tpy::str_concat(tmp, "/tpy_ospath_roundout"));
     // if os.path.exists(d):
     if (::tpy::stdlib::os::path_exists(d)) {
         // os.rmdir(d)
@@ -31,7 +31,7 @@ void main() {
     // os.path.realpath(d, strict=True) == os.path.realpath(d, strict=False))
     std::cout << "strict-eq:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_realpath(d, true) == ::tpy::stdlib::os::path_realpath(d, false))) << "\n";
     // missing = d + "/nope"
-    std::string missing = (::tpy::str_concat(d, "/nope"));
+    ::tpy::String missing = (::tpy::str_concat(d, "/nope"));
     // # strict=False never fails on a missing path.
     // print("loose-ok:", len(os.path.realpath(missing, strict=False)) > 0)
     std::cout << "loose-ok:" << " " << ::tpy::print_bool((::tpy::__len__(::tpy::stdlib::os::path_realpath(missing, false)) > 0)) << "\n";
@@ -49,7 +49,7 @@ void main() {
     // # realpath resolves a symlink to its target (the behavior that
     // # distinguishes it from abspath); a dangling symlink fails under strict.
     // lnk = tmp + "/tpy_ospath_roundout_lnk"
-    std::string lnk = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_lnk"));
+    ::tpy::String lnk = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_lnk"));
     // if os.path.lexists(lnk):
     if (::tpy::stdlib::os::path_lexists(lnk)) {
         // os.remove(lnk)
@@ -63,7 +63,7 @@ void main() {
     // os.remove(lnk)
     ::tpy::stdlib::os::remove(lnk);
     // dangling = tmp + "/tpy_ospath_roundout_dangling"
-    std::string dangling = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_dangling"));
+    ::tpy::String dangling = (::tpy::str_concat(tmp, "/tpy_ospath_roundout_dangling"));
     // if os.path.lexists(dangling):
     if (::tpy::stdlib::os::path_lexists(dangling)) {
         // os.remove(dangling)

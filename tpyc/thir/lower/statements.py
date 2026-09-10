@@ -443,6 +443,7 @@ from .context import (
     ValueOptKind,
 )
 from .checks import (
+    _open_tparam_return_slot,
     _value_opt_scalar_elem_arg,
     _str_field_over_container_subscript_read,
     _borrow_form_tuple_call,
@@ -6256,6 +6257,29 @@ def _wrap_view_owned_return(value: 'THIRExpr | None', lc: '_LowerCtx',
         slot = ret_str
     elif ret_bytes is not None and is_bytes_type(ret_bytes):
         slot = ret_bytes
+    if slot is None and isinstance(value, THIRName):
+        # An open-`T` return of a bare-`T` PARAM: the signature spells the
+        # param `param_val_or_ref_t<T>` and the return `val_or_ref_t<T>`,
+        # which at a view-family instantiation are two different types.
+        # `param_to_return<T>` owns at a value-typed T and passes the borrow
+        # through at a reference-typed one (an owned temporary would dangle).
+        # `Own[T]` is out on both sides: `own_param_t<T>` and
+        # `own_return_t<T>` are already the storage form, so the bare move
+        # stands.
+        rt_decl = getattr(lc.func, "return_type", None)
+        tp = (_open_tparam_return_slot(rt_decl)
+              if isinstance(rt_decl, TpyType)
+              and not isinstance(unwrap_readonly(unwrap_send_sync(rt_decl)),
+                                 OwnType)
+              else None)
+        pt = dict(lc.func.params).get(value.name)
+        pt_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+                if isinstance(pt, TpyType) else None)
+        if tp is not None and isinstance(pt_u, TypeParamRef):
+            _witness("return.open_tparam_param")
+            return THIRFormConvert(result_type=tp, value=value,
+                                   form=Form.STORAGE, generic_return=True,
+                                   loc=loc)
     return _wrap_view_owned_sink(value, slot, loc)
 
 
@@ -10407,7 +10431,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
             )
         # Owned-str/bytes decl init off a view-form source copies explicitly --
         # `std::string u = std::string(v);` / `std::vector<uint8_t> u =
-        # ::tpy::bytes_copy(v);` -- the view->owned CONSTRUCTION being explicit.
+        # ::tpy::Bytes(v);` -- the view->owned CONSTRUCTION being explicit.
         # The view->owned chokepoint; a literal init
         # (VALUE form: const char[N] / an already-owned bytes render)
         # constructs directly and stays bare.
@@ -11203,7 +11227,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 if (value.form is Form.BORROW and elem_bytes is not None
                         and is_bytes_type(elem_bytes)):
                     # The bytes twin of the owned-str copy: the view-form
-                    # source materializes via `::tpy::bytes_copy(...)`.
+                    # source materializes via `::tpy::Bytes(...)`.
                     _witness("setitem.bytes_owned_copy")
                     value = THIRFormConvert(result_type=elem_bytes,
                                             value=value,
@@ -12245,7 +12269,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     and _coerce_disposition(stmt.value) == "materialize"):
                 # An OWNED inner (`-> str | None`) makes sema wrap a view
                 # source in the view->owned coercion, so the copy IS the render
-                # (`std::string(x)` / `::tpy::bytes_copy(x)`) and its owned
+                # (`std::string(x)` / `::tpy::Bytes(x)`) and its owned
                 # result reaches the optional through the converting ctor. The
                 # copy targets the INNER slot, never the optional, so it goes
                 # through the shared view->owned sink; the source is gated at

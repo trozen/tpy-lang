@@ -16,14 +16,14 @@ using ::tpystd::socket::socketpair;
 using ::tpystd::socket::socket;
 
 extern int32_t _N;
-extern std::vector<uint8_t> _PAYLOAD;
+extern ::tpy::Bytes _PAYLOAD;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_sender;
 struct __coro_receiver;
 struct __coro_main_coro;
 
-std::vector<uint8_t> _make_payload();
+::tpy::Bytes _make_payload();
 __coro_sender sender(::tpystd::socket::socket& sock);
 __coro_receiver receiver(::tpystd::socket::socket& sock);
 __coro_main_coro main_coro();
@@ -62,7 +62,7 @@ struct __coro_receiver {
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
     int32_t pos;
     int32_t mismatches;
-    std::vector<uint8_t> chunk;
+    ::tpy::Bytes chunk;
     int32_t n;
     int32_t i;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_0;

@@ -66,7 +66,7 @@ struct Cell {
 
     // def __init__(self, v: T) -> None:
     Cell() = default;
-    explicit Cell(const T& v) : v(v) {}
+    explicit Cell(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
@@ -77,7 +77,7 @@ struct Cell {
     // def find(self, v: T) -> T | None:
     T* find(::tpy::param_val_or_ref_t<T> v) {
         // if self.v == v:
-        if ((this->v == v)) {
+        if (::tpy::eq(this->v, v)) {
             // return self.v
             return &(this->v);
         }
@@ -134,7 +134,7 @@ template <typename T>
         __sub_0.reset();
         // return x
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x);
+        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(x));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -239,7 +239,7 @@ __gen_hold<T> hold(::tpy::param_val_or_ref_t<T> x) {
 template<typename T>
 ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v) {
     // return v
-    return v;
+    return ::tpy::param_to_return<T>(v);
 }
 // def has_item[T](xs: list[T], v: T) -> bool:
 template<typename T>
@@ -251,7 +251,7 @@ bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
         // if x == v:
-        if ((x == v)) {
+        if (::tpy::eq(x, v)) {
             // return True
             return true;
         }

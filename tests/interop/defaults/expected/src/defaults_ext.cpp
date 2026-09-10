@@ -75,7 +75,7 @@ PyObject *defaults__tag_pywrap(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:tag", __kwlist, &a0)) return nullptr;
     try {
-        std::vector<uint8_t> __p0 = a0 ? ::tpy::interop::from_py<std::vector<uint8_t>>(a0) : ::tpy::bytes_literal_owned("ab", 2);
+        ::tpy::Bytes __p0 = a0 ? ::tpy::interop::from_py<::tpy::Bytes>(a0) : ::tpy::bytes_literal_owned("ab", 2);
         return ::tpy::interop::to_py(::tpyapp::defaults::tag(__p0));
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);

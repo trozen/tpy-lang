@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void peek(const std::vector<std::vector<uint8_t>>& app);
+void peek(const std::vector<::tpy::Bytes>& app);
 void main();
 
 void __tpy_init();

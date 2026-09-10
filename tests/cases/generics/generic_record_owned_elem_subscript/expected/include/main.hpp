@@ -31,7 +31,7 @@ struct Bare {
 
     // def __init__(self, x: U) -> None:
     Bare() = default;
-    explicit Bare(const U& x) : x(x) {}
+    explicit Bare(::tpy::readonly_form_t<U> x) : x(x) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bare";
 };
 

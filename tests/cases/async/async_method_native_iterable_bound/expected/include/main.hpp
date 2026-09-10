@@ -26,7 +26,7 @@ struct Wrap {
 
     // def __init__(self, items: T) -> None:
     Wrap() = default;
-    explicit Wrap(const T& items) : items(items) {}
+    explicit Wrap(::tpy::readonly_form_t<T> items) : items(items) {}
 
     __coro_Wrap_total<T> total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";

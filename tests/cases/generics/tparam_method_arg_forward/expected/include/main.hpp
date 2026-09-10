@@ -22,12 +22,12 @@ struct Inner {
 
     // def __init__(self, v: T) -> None:
     Inner() = default;
-    explicit Inner(const T& v) : v(v) {}
+    explicit Inner(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def put(self, value: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> value) {
         // self.v = value  # tpyc: warning(/may copy T into field/)
-        this->v = value;
+        this->v = ::tpy::param_to_storage<T>(value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
@@ -46,7 +46,7 @@ struct Outer {
 
     // def __init__(self, v: T) -> None:
     Outer() = default;
-    explicit Outer(const T& v) : _in(Inner<T>(v)) {}
+    explicit Outer(::tpy::readonly_form_t<T> v) : _in(Inner<T>(v)) {}
 
     // def put(self, value: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> value) {

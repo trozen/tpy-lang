@@ -88,11 +88,11 @@ struct Tagged {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T], tag: N) -> None:
-    explicit Tagged(::tpy::own_param_t<T> val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
+    explicit Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
         // unsafe_init(self._ptr, val)
         ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
         // self._tag = tag
-        this->_tag = tag;
+        this->_tag = ::tpy::param_to_storage<N>(tag);
         // self._owned = True
         this->_owned = true;
     }

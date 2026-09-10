@@ -60,17 +60,17 @@ void test_bytes_concat_fresh() {
     // p = b"ab"
     std::span<const uint8_t> p = ::tpy::bytes_literal("ab", 2);
     // q = p.__add__(b"cd")
-    std::vector<uint8_t> q = ::tpy::bytes_concat(p, ::tpy::bytes_literal("cd", 2));
+    ::tpy::Bytes q = ::tpy::bytes_concat(p, ::tpy::bytes_literal("cd", 2));
     // print(q, p)
     std::cout << ::tpy::BytesPrinter(q) << " " << ::tpy::BytesPrinter(p) << "\n";
     // r = p * 2
-    std::vector<uint8_t> r = (::tpy::bytes_repeat(p, 2));
+    ::tpy::Bytes r = (::tpy::bytes_repeat(p, 2));
     // print(r)
     std::cout << ::tpy::BytesPrinter(r) << "\n";
     // print(2 * p)
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_repeat(p, 2))) << "\n";
     // ba = bytearray(b"xy")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("xy", 2));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
     // print(p + ba)
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(p, ba))) << "\n";
 }
@@ -78,17 +78,17 @@ void test_bytes_concat_fresh() {
 // def test_bytearray_fresh():
 void test_bytearray_fresh() {
     // ba = bytearray(b"ab")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // bb = ba + b"cd"
-    std::vector<uint8_t> bb = (::tpy::bytes_concat(ba, ::tpy::bytes_literal_owned("cd", 2)));
+    ::tpy::ByteArray bb = (::tpy::bytearray_concat(ba, ::tpy::bytes_literal_owned("cd", 2)));
     // bb.append(33)
     bb.push_back(33);
     // print(bb, ba)
     std::cout << ::tpy::ByteArrayPrinter(bb) << " " << ::tpy::ByteArrayPrinter(ba) << "\n";
     // print(ba + ba)
-    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytes_concat(ba, ba))) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_concat(ba, ba))) << "\n";
     // print(ba * 2)
-    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytes_repeat(ba, 2))) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter((::tpy::bytearray_repeat(ba, 2))) << "\n";
     // # Stepped slices compared by content: TPy types the result bytes where
     // # CPython returns bytearray (filed divergence), so the repr can't be
     // # printed parity-safely -- equality is content-based on both sides.

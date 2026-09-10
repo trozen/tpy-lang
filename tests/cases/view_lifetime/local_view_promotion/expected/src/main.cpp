@@ -17,7 +17,7 @@ std::string make() {
 }
 
 // def make_bytes() -> bytes:
-std::vector<uint8_t> make_bytes() {
+::tpy::Bytes make_bytes() {
     // return b"   padded long bytes that dodge the small buffer here   "
     return ::tpy::bytes_literal_owned("   padded long bytes that dodge the small buffer here   ", 56);
 }
@@ -35,11 +35,11 @@ void main() {
     // print(s2)
     std::cout << s2 << "\n";
     // b = make_bytes()[3:9]       # tpyc: type(bytes)
-    std::vector<uint8_t> b = ::tpy::bytes_copy(::tpy::bytes_slice(make_bytes(), ::tpy::BasicSlice{3, 9}));
+    ::tpy::Bytes b = ::tpy::Bytes(::tpy::bytes_slice(make_bytes(), ::tpy::BasicSlice{3, 9}));
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
     // b2 = make_bytes().strip()   # tpyc: type(bytes)
-    std::vector<uint8_t> b2 = ::tpy::bytes_copy(::tpy::bytes_strip_view(make_bytes()));
+    ::tpy::Bytes b2 = ::tpy::Bytes(::tpy::bytes_strip_view(make_bytes()));
     // print(len(b2))
     std::cout << ::tpy::__len__(b2) << "\n";
 }

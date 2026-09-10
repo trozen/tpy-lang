@@ -32,7 +32,7 @@ struct __coro_echo_client {
     int32_t port;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
     ::tpy::frame_slot<::tpystd::socket::socket> s;
-    std::vector<uint8_t> reply;
+    ::tpy::Bytes reply;
     std::optional<::tpystd::asyncio::_SockConnect> __sub_0;
     std::optional<::tpystd::asyncio::_SockSendAll> __sub_1;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_2;
@@ -67,7 +67,7 @@ struct __coro_main_coro {
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> client;
     ::tpy::frame_slot<::tpystd::socket::socket> conn;
     std::tuple<std::string, int32_t> addr;
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     ::tpy::frame_slot<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>> __await_lift_0;
     std::optional<::tpystd::asyncio::_SockAccept> __sub_0;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_1;

@@ -17,9 +17,9 @@ void main();
 // class Sink:
 struct Sink {
     // chunks: list[bytes]
-    std::vector<std::vector<uint8_t>> chunks;
+    std::vector<::tpy::Bytes> chunks;
     // owned: list[bytes]
-    std::vector<std::vector<uint8_t>> owned;
+    std::vector<::tpy::Bytes> owned;
 
     // def __init__(self) -> None:
     Sink();
@@ -39,13 +39,13 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 
 
 // def __init__(self) -> None:
-inline Sink::Sink() : chunks(std::vector<std::vector<uint8_t>>{}), owned(std::vector<std::vector<uint8_t>>{}) {}
+inline Sink::Sink() : chunks(std::vector<::tpy::Bytes>{}), owned(std::vector<::tpy::Bytes>{}) {}
 
 // def add_view(self, b: bytes) -> None:
 inline void Sink::add_view(std::span<const uint8_t> b) {
     // # The call's result is a BytesView: materialized into the element.
     // self.chunks.append(view_of(b))
-    this->chunks.push_back(::tpy::bytes_copy(view_of(b)));
+    this->chunks.push_back(::tpy::Bytes(view_of(b)));
 }
 
 // def add_owned(self, b: bytes) -> None:
@@ -54,7 +54,7 @@ inline void Sink::add_owned(std::span<const uint8_t> b) {
     // # same materialize -- what tells the two apart is the FORM, and an
     // # owned local is what stays bare (the str twin pins that leg).
     // self.owned.append(b)
-    this->owned.push_back(::tpy::bytes_copy(b));
+    this->owned.push_back(::tpy::Bytes(b));
 }
 void __tpy_init();
 } // namespace tpyapp::main

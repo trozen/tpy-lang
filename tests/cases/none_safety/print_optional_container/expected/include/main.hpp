@@ -15,7 +15,7 @@ void show_list_param(const std::vector<::tpy::BigInt>* lst);
 void show_dict_param(const ::tpy::ordered_map<std::string, int32_t>* d);
 void show_set_param(const ::tpy::ordered_set<int32_t>* s);
 void show_bytes_param(std::optional<std::span<const uint8_t>> b);
-void show_bytearray_param(const std::vector<uint8_t>* b);
+void show_bytearray_param(const ::tpy::ByteArray* b);
 void main();
 
 // class Bag:
@@ -27,9 +27,9 @@ struct Bag {
     // elems: set[Int32] | None
     std::optional<::tpy::ordered_set<int32_t>> elems;
     // data: bytes | None
-    std::optional<std::vector<uint8_t>> data;
+    std::optional<::tpy::Bytes> data;
     // buf: bytearray | None
-    std::optional<std::vector<uint8_t>> buf;
+    std::optional<::tpy::ByteArray> buf;
 
     // def __init__(
     // self,
@@ -40,7 +40,7 @@ struct Bag {
     // buf: bytearray | None,
     // ) -> None:
     Bag() = default;
-    explicit Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::span<const uint8_t>> data, const std::vector<uint8_t>* buf);
+    explicit Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::span<const uint8_t>> data, const ::tpy::ByteArray* buf);
 
     // def show_fields(self) -> None:
     void show_fields() const;
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // data: bytes | None,
 // buf: bytearray | None,
 // ) -> None:
-inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::span<const uint8_t>> data, const std::vector<uint8_t>* buf) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), data(data ? std::make_optional(::tpy::bytes_copy(*data)) : std::nullopt), buf(::tpy::ptr_to_optional(buf)) {}
+inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::span<const uint8_t>> data, const ::tpy::ByteArray* buf) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), data(data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt), buf(::tpy::ptr_to_optional(buf)) {}
 
 // def show_fields(self) -> None:
 inline void Bag::show_fields() const {
@@ -72,9 +72,9 @@ inline void Bag::show_fields() const {
     // print(self.elems)
     std::cout << ::tpy::print_optional_val<::tpy::SetPrinter<int32_t>, ::tpy::ordered_set<int32_t>>(this->elems) << "\n";
     // print(self.data)
-    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, std::vector<uint8_t>>(this->data) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::Bytes>(this->data) << "\n";
     // print(self.buf)
-    std::cout << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, std::vector<uint8_t>>(this->buf) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(this->buf) << "\n";
 }
 void __tpy_init();
 } // namespace tpyapp::main

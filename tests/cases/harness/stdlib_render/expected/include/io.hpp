@@ -27,12 +27,12 @@ struct RawBinaryIO;
 // class RawBinaryIO(Protocol):
 template<typename T>
 concept __RawBinaryIO_Concept__ = requires(T& t) {
-    { t.read(std::declval<int32_t>()) } -> std::convertible_to<std::vector<uint8_t>>;
+    { t.read(std::declval<int32_t>()) } -> std::convertible_to<::tpy::Bytes>;
     { t.close() } -> std::convertible_to<void>;
 };
 
 struct RawBinaryIO {
-    virtual std::vector<uint8_t> read(int32_t size) = 0;
+    virtual ::tpy::Bytes read(int32_t size) = 0;
     virtual void close() = 0;
     virtual ~RawBinaryIO() = default;
 };
@@ -146,7 +146,7 @@ inline std::ostream& operator<<(std::ostream& os, const StringIO& obj) {
 // class BytesIO(BinaryWritable, BinaryReadable, Seekable, Closable):
 struct BytesIO {
     // _chunks: list[bytes]
-    std::vector<std::vector<uint8_t>> _chunks;
+    std::vector<::tpy::Bytes> _chunks;
     // _pos: Int32
     int32_t _pos;
     // _total: Int32
@@ -166,18 +166,18 @@ struct BytesIO {
     int32_t write(std::span<const uint8_t> data);
 
     // def read(self, size: Int32 = -1) -> bytes:
-    std::vector<uint8_t> read(int32_t size = -1);
+    ::tpy::Bytes read(int32_t size = -1);
 
     // def readline(self) -> bytes:
-    std::vector<uint8_t> readline();
+    ::tpy::Bytes readline();
 
     // def readlines(self) -> Own[list[bytes]]:
-    std::vector<std::vector<uint8_t>> readlines();
+    std::vector<::tpy::Bytes> readlines();
 
     __gen_BytesIO___iter__ __iter__();
 
     // def getvalue(self) -> bytes:
-    std::vector<uint8_t> getvalue() const;
+    ::tpy::Bytes getvalue() const;
 
     // def tell(self) -> Int32:
     int32_t tell() const;
@@ -256,13 +256,13 @@ struct FileIO {
     ~FileIO();
 
     // def read(self, size: Int32 = -1) -> bytes:
-    std::vector<uint8_t> read(int32_t size = -1) const;
+    ::tpy::Bytes read(int32_t size = -1) const;
 
     // def _readall(self) -> bytes:
-    std::vector<uint8_t> _readall() const;
+    ::tpy::Bytes _readall() const;
 
     // def _os_read(self, n: Int64) -> bytes:
-    std::vector<uint8_t> _os_read(int64_t n) const;
+    ::tpy::Bytes _os_read(int64_t n) const;
 
     // def readable(self) -> bool:
     bool readable() const;
@@ -299,7 +299,7 @@ struct BufferedReader {
     // _raw: Box[RawBinaryIO]
     ::tpystd::tplib::box::Box<RawBinaryIO> _raw;
     // _buf: bytes
-    std::vector<uint8_t> _buf;
+    ::tpy::Bytes _buf;
     // _eof: bool
     bool _eof;
     // _buffer_size: Int32
@@ -320,16 +320,16 @@ struct BufferedReader {
     void _fill();
 
     // def _take(self, n: Int32) -> bytes:
-    std::vector<uint8_t> _take(int32_t n);
+    ::tpy::Bytes _take(int32_t n);
 
     // def read(self, size: Int32 = -1) -> bytes:
-    std::vector<uint8_t> read(int32_t size = -1);
+    ::tpy::Bytes read(int32_t size = -1);
 
     // def readline(self, size: Int32 = -1) -> bytes:
-    std::vector<uint8_t> readline(int32_t size = -1);
+    ::tpy::Bytes readline(int32_t size = -1);
 
     // def readlines(self) -> Own[list[bytes]]:
-    std::vector<std::vector<uint8_t>> readlines();
+    std::vector<::tpy::Bytes> readlines();
 
     __gen_BufferedReader___iter__ __iter__();
 
@@ -366,7 +366,7 @@ struct tpy::Adapter<tpystd::io::RawBinaryIO, T> : tpystd::io::RawBinaryIO {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::vector<uint8_t> read(int32_t size) override { return inner.read(size); }
+    ::tpy::Bytes read(int32_t size) override { return inner.read(size); }
     void close() override { inner.close(); }
 };
 
@@ -374,7 +374,7 @@ template<tpystd::io::__RawBinaryIO_Concept__ T>
 struct tpy::RefAdapter<tpystd::io::RawBinaryIO, T> : tpystd::io::RawBinaryIO {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::vector<uint8_t> read(int32_t size) override { return inner.read(size); }
+    ::tpy::Bytes read(int32_t size) override { return inner.read(size); }
     void close() override { inner.close(); }
 };
 
@@ -409,10 +409,10 @@ inline __gen_StringIO___iter__ StringIO::__iter__() {
 }
 
 // Generator: BytesIO.__iter__
-struct __gen_BytesIO___iter__ : public ::tpy::next_iter_mixin<__gen_BytesIO___iter__, std::vector<uint8_t>> {
+struct __gen_BytesIO___iter__ : public ::tpy::next_iter_mixin<__gen_BytesIO___iter__, ::tpy::Bytes> {
     int32_t __state;
     BytesIO& __self;
-    std::vector<uint8_t> line;
+    ::tpy::Bytes line;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -424,7 +424,7 @@ struct __gen_BytesIO___iter__ : public ::tpy::next_iter_mixin<__gen_BytesIO___it
     __gen_BytesIO___iter__(BytesIO& __self)
         : __state(S_INITIAL), __self(__self) {}
 
-    std::expected<std::vector<uint8_t>, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_BytesIO___iter__& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_BytesIO___iter__&) {
@@ -437,10 +437,10 @@ inline __gen_BytesIO___iter__ BytesIO::__iter__() {
 }
 
 // Generator: BufferedReader.__iter__
-struct __gen_BufferedReader___iter__ : public ::tpy::next_iter_mixin<__gen_BufferedReader___iter__, std::vector<uint8_t>> {
+struct __gen_BufferedReader___iter__ : public ::tpy::next_iter_mixin<__gen_BufferedReader___iter__, ::tpy::Bytes> {
     int32_t __state;
     BufferedReader& __self;
-    std::vector<uint8_t> line;
+    ::tpy::Bytes line;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -452,7 +452,7 @@ struct __gen_BufferedReader___iter__ : public ::tpy::next_iter_mixin<__gen_Buffe
     __gen_BufferedReader___iter__(BufferedReader& __self)
         : __state(S_INITIAL), __self(__self) {}
 
-    std::expected<std::vector<uint8_t>, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::Bytes, ::tpy::StopIteration> __next__();
     __gen_BufferedReader___iter__& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_BufferedReader___iter__&) {
@@ -615,11 +615,11 @@ inline void StringIO::_check_open() const {
 }
 
 // def __init__(self, initial: bytes | None = None) -> None:
-inline BytesIO::BytesIO(std::optional<std::span<const uint8_t>> initial) : _chunks(std::vector<std::vector<uint8_t>>{}), _pos(0), _total(0) {
+inline BytesIO::BytesIO(std::optional<std::span<const uint8_t>> initial) : _chunks(std::vector<::tpy::Bytes>{}), _pos(0), _total(0) {
     // if initial is not None and len(initial) > 0:
     if (((initial.has_value()) && (::tpy::__len__((*initial)) > 0))) {
         // self._chunks.append(bytes(initial))
-        this->_chunks.push_back(::tpy::bytes_copy((*initial)));
+        this->_chunks.push_back(::tpy::Bytes((*initial)));
         // self._total = Int32(len(initial))
         this->_total = ::tpy::__len__((*initial));
     }
@@ -628,13 +628,13 @@ inline BytesIO::BytesIO(std::optional<std::span<const uint8_t>> initial) : _chun
 }
 
 // def readlines(self) -> Own[list[bytes]]:
-inline std::vector<std::vector<uint8_t>> BytesIO::readlines() {
+inline std::vector<::tpy::Bytes> BytesIO::readlines() {
     // out: list[bytes] = []
-    std::vector<std::vector<uint8_t>> out = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     // while True:
     while (true) {
         // line: bytes = self.readline()
-        std::vector<uint8_t> line = this->readline();
+        ::tpy::Bytes line = this->readline();
         // if len(line) == 0:
         if ((::tpy::__len__(line) == 0)) {
             // break
@@ -648,13 +648,13 @@ inline std::vector<std::vector<uint8_t>> BytesIO::readlines() {
 }
 
 // def getvalue(self) -> bytes:
-inline std::vector<uint8_t> BytesIO::getvalue() const {
+inline ::tpy::Bytes BytesIO::getvalue() const {
     // self._check_open()
     this->_check_open();
     // if len(self._chunks) == 0:
     if ((::tpy::__len__(this->_chunks) == 0)) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // if len(self._chunks) == 1:
     if ((::tpy::__len__(this->_chunks) == 1)) {
@@ -662,7 +662,7 @@ inline std::vector<uint8_t> BytesIO::getvalue() const {
         return ::tpy::__getitem__(this->_chunks, 0);
     }
     // return b"".join(self._chunks)
-    return ::tpy::bytes_join(std::vector<uint8_t>{}, this->_chunks);
+    return ::tpy::bytes_join(::tpy::Bytes{}, this->_chunks);
 }
 
 // def tell(self) -> Int32:
@@ -684,7 +684,7 @@ inline void BytesIO::close() {
     // self._closed = True
     this->_closed = true;
     // self._chunks = []
-    this->_chunks = std::vector<std::vector<uint8_t>>{};
+    this->_chunks = std::vector<::tpy::Bytes>{};
     // self._total = 0
     this->_total = 0;
     // self._pos = 0
@@ -733,11 +733,11 @@ inline void BytesIO::_collapse() {
     // if len(self._chunks) > 1:
     if ((::tpy::__len__(this->_chunks) > 1)) {
         // self._chunks = [b"".join(self._chunks)]
-        this->_chunks = {::tpy::bytes_join(std::vector<uint8_t>{}, this->_chunks)};
+        this->_chunks = {::tpy::bytes_join(::tpy::Bytes{}, this->_chunks)};
     // elif len(self._chunks) == 0 and self._total > 0:
     } else if (((::tpy::__len__(this->_chunks) == 0) && (this->_total > 0))) {
         // self._chunks = [b""]
-        this->_chunks = {std::vector<uint8_t>{}};
+        this->_chunks = {::tpy::Bytes{}};
     }
 }
 
@@ -795,7 +795,7 @@ inline FileIO::~FileIO() {
 }
 
 // def read(self, size: Int32 = -1) -> bytes:
-inline std::vector<uint8_t> FileIO::read(int32_t size) const {
+inline ::tpy::Bytes FileIO::read(int32_t size) const {
     // self._check_open()
     this->_check_open();
     // if size < 0:
@@ -806,20 +806,20 @@ inline std::vector<uint8_t> FileIO::read(int32_t size) const {
     // if size == 0:
     if ((size == 0)) {
         // return b""
-        return std::vector<uint8_t>{};
+        return ::tpy::Bytes{};
     }
     // return self._os_read(Int64(size))
     return this->_os_read(::tpy::int_cast_check<int64_t>(size));
 }
 
 // def _readall(self) -> bytes:
-inline std::vector<uint8_t> FileIO::_readall() const {
+inline ::tpy::Bytes FileIO::_readall() const {
     // out: bytes = b""
-    std::vector<uint8_t> out = std::vector<uint8_t>{};
+    ::tpy::Bytes out = ::tpy::Bytes{};
     // while True:
     while (true) {
         // chunk: bytes = self._os_read(Int64(DEFAULT_BUFFER_SIZE))
-        std::vector<uint8_t> chunk = this->_os_read(::tpy::int_cast_check<int64_t>(DEFAULT_BUFFER_SIZE));
+        ::tpy::Bytes chunk = this->_os_read(::tpy::int_cast_check<int64_t>(DEFAULT_BUFFER_SIZE));
         // if len(chunk) == 0:
         if ((::tpy::__len__(chunk) == 0)) {
             // break
@@ -833,7 +833,7 @@ inline std::vector<uint8_t> FileIO::_readall() const {
 }
 
 // def _os_read(self, n: Int64) -> bytes:
-inline std::vector<uint8_t> FileIO::_os_read(int64_t n) const {
+inline ::tpy::Bytes FileIO::_os_read(int64_t n) const {
     // if not self._timeout_mode:
     if ((!(this->_timeout_mode))) {
         // return os.read(self._fd, n)
@@ -913,7 +913,7 @@ inline void FileIO::_check_open() const {
 
 // def __init__(self, raw: Own[RawBinaryIO],
 // buffer_size: Int32 = DEFAULT_BUFFER_SIZE) -> None:
-inline BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size) : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))), _buf(std::vector<uint8_t>{}), _eof(false), _buffer_size(buffer_size), _closed(false) {
+inline BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size) : _raw(::tpystd::tplib::box::Box<RawBinaryIO>(std::move(raw))), _buf(::tpy::Bytes{}), _eof(false), _buffer_size(buffer_size), _closed(false) {
     // if buffer_size <= 0:
     if ((buffer_size <= 0)) {
         // raise ValueError("buffer size must be strictly positive")
@@ -924,7 +924,7 @@ inline BufferedReader::BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t 
 // def _fill(self) -> None:
 inline void BufferedReader::_fill() {
     // chunk = self._raw.read(self._buffer_size)
-    std::vector<uint8_t> chunk = this->_raw.__deref__().read(this->_buffer_size);
+    ::tpy::Bytes chunk = this->_raw.__deref__().read(this->_buffer_size);
     // if len(chunk) == 0:
     if ((::tpy::__len__(chunk) == 0)) {
         // self._eof = True
@@ -937,25 +937,25 @@ inline void BufferedReader::_fill() {
 }
 
 // def _take(self, n: Int32) -> bytes:
-inline std::vector<uint8_t> BufferedReader::_take(int32_t n) {
+inline ::tpy::Bytes BufferedReader::_take(int32_t n) {
     // # Materialize the owned head before reassigning `_buf` (a slice is a
     // # borrow into the old buffer).
     // head = bytes(self._buf[:n])
-    std::vector<uint8_t> head = ::tpy::bytes_copy(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{std::nullopt, n}));
+    ::tpy::Bytes head = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{std::nullopt, n}));
     // self._buf = bytes(self._buf[n:])
-    this->_buf = ::tpy::bytes_copy(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{n, std::nullopt}));
+    this->_buf = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{n, std::nullopt}));
     // return head
     return head;
 }
 
 // def readlines(self) -> Own[list[bytes]]:
-inline std::vector<std::vector<uint8_t>> BufferedReader::readlines() {
+inline std::vector<::tpy::Bytes> BufferedReader::readlines() {
     // out: list[bytes] = []
-    std::vector<std::vector<uint8_t>> out = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     // while True:
     while (true) {
         // line = self.readline()
-        std::vector<uint8_t> line = this->readline();
+        ::tpy::Bytes line = this->readline();
         // if len(line) == 0:
         if ((::tpy::__len__(line) == 0)) {
             // break
@@ -983,7 +983,7 @@ inline void BufferedReader::close() {
         // self._raw.close()
         this->_raw.__deref__().close();
         // self._buf = b""
-        this->_buf = std::vector<uint8_t>{};
+        this->_buf = ::tpy::Bytes{};
     }
 }
 

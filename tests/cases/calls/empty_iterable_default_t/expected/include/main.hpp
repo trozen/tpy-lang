@@ -41,7 +41,7 @@ template<typename T, ::tpystd::typing::Iterable<T> T_xs>
         return x;
     }
     // return fallback
-    return fallback;
+    return ::tpy::param_to_return<T>(fallback);
 }
 // # Two iterables of the same T -- exercises both directions of the
 // # UnknownElementType placeholder rule in match_type_with_inference. Either

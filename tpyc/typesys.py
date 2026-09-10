@@ -972,7 +972,12 @@ class TypeParamRef(TpyType):
     def to_cpp_const_param(self, name: str) -> str:
         if self.kind == TypeParamKind.INT:
             return f"std::size_t {name}"
-        return f"const {self.to_cpp()}& {name}"
+        # Not `const T&`: at a type whose parameter form is a distinct view
+        # (`str`, `bytes`) that slot cannot bind the caller's read, and inside a
+        # generic body there is nothing to materialize because `T` is not fixed.
+        # `readonly_form_t` const-qualifies a mutable reference and passes every
+        # other form through, so a reference instantiation keeps `const T&`.
+        return f"::tpy::readonly_form_t<{self.to_cpp()}> {name}"
 
     def to_cpp_return(self) -> str:
         if self.kind == TypeParamKind.INT:
@@ -2224,6 +2229,9 @@ class RefType(TpyType):
         return f"{self.to_cpp_param_type()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
+        if isinstance(self.wrapped, TypeParamRef):
+            # Not `const T&` -- see TypeParamRef.to_cpp_const_param.
+            return self.wrapped.to_cpp_const_param(name)
         return f"const {self.wrapped.to_cpp()}& {name}"
 
     def to_cpp_stored(self) -> str:

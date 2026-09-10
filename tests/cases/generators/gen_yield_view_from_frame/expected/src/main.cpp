@@ -35,19 +35,19 @@ __gen_static_source_view static_source_view() {
 }
 
 // def static_bytes_view() -> Iterator[bytes]:
-std::expected<std::vector<uint8_t>, ::tpy::StopIteration> __gen_static_bytes_view::__next__() {
+std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_static_bytes_view::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // raw = b"xy"  # tpyc: type(BytesView)
         raw = ::tpy::bytes_literal_owned("xy", 2);
         // yield raw  # tpyc: ok
         __state = S_RESUME_0;
-        return ::tpy::bytes_copy(raw);
+        return ::tpy::Bytes(raw);
     }
     case S_RESUME_0: {
         // yield raw
         __state = S_RESUME_1;
-        return ::tpy::bytes_copy(raw);
+        return ::tpy::Bytes(raw);
     }
     case S_RESUME_1: {
         __state = S_DONE;

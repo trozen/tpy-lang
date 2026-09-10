@@ -23,6 +23,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "buffer_types.hpp"
 #include "core.hpp"
 #include "enum.hpp"
 #include "variant_ref.hpp"
@@ -191,13 +192,13 @@ inline std::string_view char_to_str(char c) {
 }
 
 /**
- * str_concat - Concatenate two string-like values into a new std::string.
+ * str_concat - Concatenate two string-like values into a new `String`.
  *
  * Takes both sides as string_view (zero-copy from std::string, string_view,
  * and const char*) and performs a single optimally-sized allocation.
  */
-inline std::string str_concat(std::string_view a, std::string_view b) {
-    std::string result;
+inline String str_concat(std::string_view a, std::string_view b) {
+    String result;
     result.reserve(a.size() + b.size());
     result.append(a);
     result.append(b);
@@ -577,24 +578,28 @@ inline const char* bool_to_str(bool x) {
 }
 
 /**
- * fixed_to_str - Convert any fixed-width integer to string.
+ * fixed_to_str - Convert any fixed-width integer to a `String`.
  * 8-bit types are promoted to int to avoid char interpretation.
+ *
+ * Returns the TPy type the stub declares, not the std::string the body
+ * builds: `String(std::string&&)` moves, so naming it here costs nothing and
+ * spares every call site a wrap. Same for str_concat and float_to_str.
  */
 template<typename T>
-inline std::string fixed_to_str(T x) {
+inline String fixed_to_str(T x) {
     if constexpr (sizeof(T) == 1)
-        return std::to_string(static_cast<int>(x));
+        return String(std::to_string(static_cast<int>(x)));
     else
-        return std::to_string(x);
+        return String(std::to_string(x));
 }
 
 /**
- * float_to_str - Convert double to string.
+ * float_to_str - Convert double to a `String`.
  * Produces Python-like output (removes trailing zeros after decimal point).
- * Note: Returns std::string. Caller must ensure the result is used immediately
- * or stored in std::string/auto, not std::string_view.
+ * Note: Returns an OWNING buffer. Caller must ensure the result is used
+ * immediately or stored in String/std::string/auto, not std::string_view.
  */
-inline std::string float_to_str(double x) {
+inline String float_to_str(double x) {
     // Use Python's repr-like approach: shortest representation that round-trips
     std::ostringstream oss;
     oss << std::setprecision(15) << x;

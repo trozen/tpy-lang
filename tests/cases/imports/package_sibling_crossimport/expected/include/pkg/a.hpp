@@ -47,7 +47,7 @@ struct Container {
 
     // def __init__(self, item: T) -> None:
     Container() = default;
-    explicit Container(const T& item) : item(item) {}
+    explicit Container(::tpy::readonly_form_t<T> item) : item(item) {}
 
     // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {

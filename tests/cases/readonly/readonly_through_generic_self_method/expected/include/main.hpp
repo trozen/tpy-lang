@@ -22,13 +22,13 @@ struct Holder {
 
     // def __init__(self, val: T) -> None:
     Holder() = default;
-    explicit Holder(const T& val) : val(val) {}
+    explicit Holder(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def identity[U](self, key: U) -> U:
     template<typename U>
-    ::tpy::val_or_cref_t<U> identity(const U& key) const {
+    ::tpy::val_or_cref_t<U> identity(::tpy::readonly_form_t<U> key) const {
         // return key
-        return key;
+        return ::tpy::param_to_return<U>(key);
     }
 
     // def lookup(self, x: Int32) -> Int32:
@@ -51,7 +51,7 @@ struct SubHolder : Holder<T> {
 
     // def __init__(self, val: T) -> None:
     SubHolder() = default;
-    explicit SubHolder(const T& val) : Holder<T>(val) {}
+    explicit SubHolder(::tpy::readonly_form_t<T> val) : Holder<T>(val) {}
 
     // def super_lookup(self, x: Int32) -> Int32:
     int32_t super_lookup(int32_t x) const {

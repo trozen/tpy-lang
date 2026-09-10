@@ -49,9 +49,9 @@ struct Container : Box<U>, Label {
 
     // def __init__(self, v: U, label: str) -> None:
     Container() = default;
-    explicit Container(const U& v, std::string_view label) {
+    explicit Container(::tpy::readonly_form_t<U> v, std::string_view label) {
         // Box.value = v
-        this->Box<U>::value = v;
+        this->Box<U>::value = ::tpy::param_to_storage<U>(v);
         // Label.value = label
         this->Label::value = label;
     }

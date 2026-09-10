@@ -46,7 +46,7 @@ struct Blob {
 
 
     // def __enter__(self) -> bytes:
-    std::vector<uint8_t> __enter__() const;
+    ::tpy::Bytes __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
     void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
@@ -97,7 +97,7 @@ inline void Pair::__exit__(std::monostate et, const ::tpy::BaseException* ev, st
 }
 
 // def __enter__(self) -> bytes:
-inline std::vector<uint8_t> Blob::__enter__() const {
+inline ::tpy::Bytes Blob::__enter__() const {
     // return b"abc"
     return ::tpy::bytes_literal_owned("abc", 3);
 }

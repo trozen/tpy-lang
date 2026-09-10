@@ -66,7 +66,7 @@ void read_dict_readonly(const ::tpy::ordered_map<int32_t, int32_t>* d) {
 }
 
 // def read_bytearray(b: bytearray | None) -> None:
-void read_bytearray(const std::vector<uint8_t>* b) {
+void read_bytearray(const ::tpy::ByteArray* b) {
     // if b is None:
     if ((b == nullptr)) {
         // return
@@ -123,7 +123,7 @@ void main() {
     ::tpy::ordered_map<int32_t, int32_t> __tmp_4 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}});
     read_dict_readonly(&(__tmp_4));
     // read_bytearray(bytearray(b"abc"))
-    std::vector<uint8_t> __tmp_5 = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    ::tpy::ByteArray __tmp_5 = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     read_bytearray(&(__tmp_5));
     // read_nested([[1, 2], [3, 4]])
     std::vector<std::vector<int32_t>> __tmp_6 = std::vector<std::vector<int32_t>>{{1, 2}, {3, 4}};

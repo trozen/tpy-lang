@@ -7,16 +7,16 @@ namespace tpyapp::geo::hexcodec {
 // # scope and assigns it in this module's __tpy_init(). If that init is not
 // # chained, the constant stays empty and the indexing below panics.
 // _HEX: bytes = b"0123456789ABCDEF"
-std::vector<uint8_t> _HEX;
+::tpy::Bytes _HEX;
 // # A module-global built by a top-level statement (not a literal): only ever
 // # populated by __tpy_init running, so it double-guards that init actually ran.
 // _OFFSETS: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* _OFFSETS{};
 
 // def hex_byte(c: Int32) -> bytes:
-std::vector<uint8_t> hex_byte(int32_t c) {
+::tpy::Bytes hex_byte(int32_t c) {
     // out = bytearray()
-    std::vector<uint8_t> out = std::vector<uint8_t>();
+    ::tpy::ByteArray out = ::tpy::ByteArray();
     // out.append(UInt8(37))
     out.push_back(37);
     // out.append(_HEX[c >> 4])

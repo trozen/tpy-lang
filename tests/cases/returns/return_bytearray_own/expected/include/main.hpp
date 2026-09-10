@@ -11,7 +11,7 @@ struct Canvas;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::vector<uint8_t> make(int32_t n);
+::tpy::ByteArray make(int32_t n);
 void main();
 
 // class Canvas:
@@ -24,7 +24,7 @@ struct Canvas {
     explicit Canvas(uint8_t fill);
 
     // def draw(self, n: Int32) -> Own[bytearray]:
-    std::vector<uint8_t> draw(int32_t n) const;
+    ::tpy::ByteArray draw(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Canvas";
 };
 
@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
 inline Canvas::Canvas(uint8_t fill) : fill(fill) {}
 
 // def draw(self, n: Int32) -> Own[bytearray]:
-inline std::vector<uint8_t> Canvas::draw(int32_t n) const {
+inline ::tpy::ByteArray Canvas::draw(int32_t n) const {
     // # The method slot moves the local out exactly as the free function's.
     // out = bytearray(n)
-    std::vector<uint8_t> out = ::tpy::bytes_from_size(n);
+    ::tpy::ByteArray out = ::tpy::bytearray_from_size(n);
     // out[1] = self.fill
     ::tpy::bytearray_setitem(out, 1, this->fill);
     // return out  # tpyc: ok

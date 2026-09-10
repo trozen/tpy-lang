@@ -23,6 +23,7 @@
 #include <typeinfo>
 #include <variant>
 
+#include "buffer_types.hpp"
 #include "core.hpp"
 
 namespace tpy {
@@ -71,6 +72,9 @@ TPY_TYPE_NAME_(float,           "Float32");
 TPY_TYPE_NAME_(double,          "Float64");
 TPY_TYPE_NAME_(std::string,     "str");
 TPY_TYPE_NAME_(std::string_view, "StrView");
+TPY_TYPE_NAME_(String,          "String");
+TPY_TYPE_NAME_(Bytes,           "bytes");
+TPY_TYPE_NAME_(ByteArray,       "bytearray");
 TPY_TYPE_NAME_(std::nullptr_t,  "None");
 TPY_TYPE_NAME_(std::monostate,  "None");
 

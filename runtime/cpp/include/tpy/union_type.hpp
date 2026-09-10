@@ -130,6 +130,38 @@ struct union_pins {
     static_assert(requires (const U& a, const U& b) { { a >= b } -> std::same_as<bool>; });
 };
 
+// The BUFFER alternatives. `bytes` / `String` are their own C++ classes
+// derived from std::vector<uint8_t> / std::string, so the leaf reaches an
+// inherited operator through a derived-to-base deduction and the printer must
+// resolve the buffer's own `print_element` rather than the unconstrained
+// generic. No TPy program can witness either today -- a compare over such a
+// union rejects in sema (BUGS.md#bytes-value-union-boundary-rejects) -- so the
+// pin is what keeps the runtime half correct until it can.
+struct union_buffer_pins {
+    using UB = Union<std::int32_t, Bytes>;
+    using US = Union<std::int32_t, String>;
+    static_assert(std::equality_comparable<UB>);
+    static_assert(std::equality_comparable<US>);
+    static_assert(requires (const UB& a, const UB& b) { { a < b } -> std::same_as<bool>; });
+    static_assert(requires (const US& a, const US& b) { { a < b } -> std::same_as<bool>; });
+    // The leaf at each alternative PAIR, which is what a derived buffer class
+    // puts at risk: the same-type legs must find the base's inherited
+    // operator through a derived-to-base deduction, and the mixed legs must
+    // resolve at all rather than fall into the numeric arms. Well-formedness
+    // only -- `py_eq` is not constexpr, so the ANSWERS cannot be asserted
+    // here; the union's own operators are what carry them.
+    static_assert(requires (const Bytes& x, const std::int32_t& n) {
+        { detail::py_eq(x, x) } -> std::same_as<bool>;
+        { detail::py_eq(n, x) } -> std::same_as<bool>;
+        { detail::py_eq(x, n) } -> std::same_as<bool>;
+    });
+    static_assert(requires (const String& x, const std::int32_t& n) {
+        { detail::py_eq(x, x) } -> std::same_as<bool>;
+        { detail::py_eq(n, x) } -> std::same_as<bool>;
+        { detail::py_eq(x, n) } -> std::same_as<bool>;
+    });
+};
+
 // A record alternative is not trivially copyable, and a reference union's
 // storage form is spelled `Union` too -- so the no-layout-cost pins above,
 // which cover a scalar pack only, are repeated over a pack that owns.

@@ -48,7 +48,7 @@ void test_dict_with_literals() {
 void test_dict_with_bytes_keys() {
     // # The idiomatic form -- bytes elevates to owned vector at storage.
     // d: dict[bytes, int] = {}
-    ::tpy::ordered_map<std::vector<uint8_t>, ::tpy::BigInt> d = ::tpy::ordered_map<std::vector<uint8_t>, ::tpy::BigInt>();
+    ::tpy::ordered_map<::tpy::Bytes, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::Bytes, ::tpy::BigInt>();
     // d[b"a"] = 1
     ::tpy::__setitem__(d, ::tpy::bytes_literal_owned("a", 1), ::tpy::BigInt(1));
     // d[b"b"] = 2

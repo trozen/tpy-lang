@@ -25,7 +25,7 @@ extern "C" int32_t greet(const uint8_t* name) {
         std::cout << "greeting the world" << "\n";
     }
     // greeting = String("Hello, " + who + "!")
-    std::string greeting = std::string((::tpy::str_concat((::tpy::str_concat("Hello, ", who)), "!")));
+    ::tpy::String greeting = ::tpy::String((::tpy::str_concat((::tpy::str_concat("Hello, ", who)), "!")));
     // # Outbound: unsafe_cstr() borrows `greeting`'s buffer, so the pointer is
     // # only good while that String lives.
     // tpy_log(unsafe_cstr(greeting))
@@ -37,7 +37,7 @@ extern "C" int32_t greet(const uint8_t* name) {
 // def main() -> None:
 void main() {
     // arg = String("world")
-    std::string arg = std::string("world");
+    ::tpy::String arg = ::tpy::String("world");
     // print(greet(unsafe_cstr(arg)))
     std::cout << greet(::tpy::cstr(arg)) << "\n";
 }

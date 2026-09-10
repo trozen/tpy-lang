@@ -59,7 +59,7 @@ struct __coro_main_coro {
     ::tpy::frame_slot<::tpystd::socket::socket> b;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> sender;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_0;
     ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_1 = nullptr;
 

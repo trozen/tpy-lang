@@ -26,7 +26,7 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(const T& v) : val(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
 
     template <typename U>
     __coro_Box_with_label<T, U> with_label(::tpy::param_val_or_ref_t<U> label) const;
@@ -71,7 +71,7 @@ template <typename T, typename U>
     case S_INITIAL: {
         // return label
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(label);
+        ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(::tpy::param_to_return<U>(label));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

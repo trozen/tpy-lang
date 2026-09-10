@@ -587,7 +587,7 @@ def _comp_elem_slot_ok(slot: 'TpyType | None', analyzer, *,
 
     - value scalar / Char -- bare / target-typed literal retype;
     - owned str / bytes slot -- a BORROW source copies (`std::string(x)` /
-      `::tpy::bytes_copy`), a STORAGE/literal source lands bare;
+      `::tpy::Bytes`), a STORAGE/literal source lands bare;
     - enum -- a value type, bare;
     - F1-record -- a name derefs/moves off the same movable_locals facts,
       an rvalue lands bare (no owned-slot wrap for records).

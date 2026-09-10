@@ -40,9 +40,9 @@ std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t
     // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
     // result.append(a)
-    result.push_back(a);
+    result.push_back(::tpy::param_to_storage<T>(a));
     // result.append(b)
-    result.push_back(b);
+    result.push_back(::tpy::param_to_storage<T>(b));
     // return result
     return result;
 }

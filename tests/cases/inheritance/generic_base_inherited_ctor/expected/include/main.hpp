@@ -49,7 +49,7 @@ struct Typed {
 
     // def __init__(self, x: T) -> None:
     Typed() = default;
-    explicit Typed(const T& x) : val(x) {}
+    explicit Typed(::tpy::readonly_form_t<T> x) : val(x) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Typed";
 };
 

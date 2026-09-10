@@ -59,16 +59,16 @@ inline auto repeat_set(::tpy::ordered_set<int32_t>& s, int32_t n) {
     );
 }
 
-inline auto repeat_buf(std::vector<uint8_t>& b, int32_t n) {
+inline auto repeat_buf(::tpy::ByteArray& b, int32_t n) {
     // i = 0
     int32_t i = 0;
-    return ::tpy::make_generator<::tpy::val_or_ref<std::vector<uint8_t>>>(
-        [&b, n, i]() mutable -> std::optional<::tpy::val_or_ref<std::vector<uint8_t>>> {
+    return ::tpy::make_generator<::tpy::val_or_ref<::tpy::ByteArray>>(
+        [&b, n, i]() mutable -> std::optional<::tpy::val_or_ref<::tpy::ByteArray>> {
             while ((i < n)) {
                 auto&& __val = b;
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<::tpy::val_or_ref<std::vector<uint8_t>>>(__val);
+                return std::optional<::tpy::val_or_ref<::tpy::ByteArray>>(__val);
             }
             return std::nullopt;
         }

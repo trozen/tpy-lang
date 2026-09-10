@@ -159,7 +159,7 @@ void main() {
     // # the first raise (a WANT_WRITE mid-record needs a same-buffer retry; this
     // # session is only closed afterwards).
     // chunk = b"x" * 16384
-    std::vector<uint8_t> chunk = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 16384));
+    ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal_owned("x", 1), 16384));
     // i = 0
     int32_t i = 0;
     // filled = False

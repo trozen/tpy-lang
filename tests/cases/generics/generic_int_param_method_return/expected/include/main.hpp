@@ -21,7 +21,7 @@ struct Grid {
 
     // def __init__(self, value: T) -> None:
     Grid() = default;
-    explicit Grid(const T& value) : _value(value) {}
+    explicit Grid(::tpy::readonly_form_t<T> value) : _value(value) {}
 
     // def copy(self) -> Own[Grid[T, N]]:
     Grid<T, N> copy() const {
@@ -30,7 +30,7 @@ struct Grid {
     }
 
     // def with_value(self, value: T) -> Own[Grid[T, N]]:
-    Grid<T, N> with_value(const T& value) const {
+    Grid<T, N> with_value(::tpy::readonly_form_t<T> value) const {
         // return Grid[T, N](value)
         return Grid<T, N>(value);
     }

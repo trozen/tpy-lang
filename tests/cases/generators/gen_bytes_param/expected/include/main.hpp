@@ -15,7 +15,7 @@ inline auto byte_vals(std::span<const uint8_t> data) {
     // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::BigInt>(
-        [data = ::tpy::bytes_copy(data), i]() mutable -> std::optional<::tpy::BigInt> {
+        [data = ::tpy::Bytes(data), i]() mutable -> std::optional<::tpy::BigInt> {
             while ((i < ::tpy::__len__(data))) {
                 auto __val = ::tpy::BigInt(data[static_cast<std::size_t>(i)]);
                 // i += 1

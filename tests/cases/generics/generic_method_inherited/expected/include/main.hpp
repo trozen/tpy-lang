@@ -22,13 +22,13 @@ struct Base {
 
     // def __init__(self, val: T):
     Base() = default;
-    explicit Base(const T& val) : val(val) {}
+    explicit Base(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def transform[U](self, other: U) -> U:
     template<typename U>
-    ::tpy::val_or_cref_t<U> transform(const U& other) const {
+    ::tpy::val_or_cref_t<U> transform(::tpy::readonly_form_t<U> other) const {
         // return other
-        return other;
+        return ::tpy::param_to_return<U>(other);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
@@ -45,7 +45,7 @@ struct Child : Base<T> {
 
     // def __init__(self, val: T):
     Child() = default;
-    explicit Child(const T& val) : Base<T>(val) {}
+    explicit Child(::tpy::readonly_form_t<T> val) : Base<T>(val) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 

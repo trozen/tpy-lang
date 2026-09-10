@@ -14,7 +14,7 @@ struct __gen_blobs_gen;
 struct __gen_pairs_gen;
 
 __gen_words_gen words_gen(std::vector<std::string>& words);
-__gen_blobs_gen blobs_gen(std::vector<std::vector<uint8_t>>& blobs);
+__gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs);
 __gen_pairs_gen pairs_gen(std::vector<std::tuple<std::string, int32_t>>& pairs);
 void main();
 
@@ -47,9 +47,9 @@ struct __gen_words_gen : public ::tpy::next_iter_mixin<__gen_words_gen, int32_t>
 // Generator: blobs_gen
 struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t> {
     int32_t __state;
-    std::vector<std::vector<uint8_t>>& blobs;
+    std::vector<::tpy::Bytes>& blobs;
     int32_t i;
-    std::vector<uint8_t> b;
+    ::tpy::Bytes b;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -59,7 +59,7 @@ struct __gen_blobs_gen : public ::tpy::next_iter_mixin<__gen_blobs_gen, int32_t>
         S_DONE = 4,
     };
 
-    __gen_blobs_gen(std::vector<std::vector<uint8_t>>& blobs)
+    __gen_blobs_gen(std::vector<::tpy::Bytes>& blobs)
         : __state(S_INITIAL), blobs(blobs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

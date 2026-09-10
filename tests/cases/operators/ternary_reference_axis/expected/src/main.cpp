@@ -29,10 +29,10 @@ void pick_set(bool c, ::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t
 }
 
 // def pick_bytearray(c: bool, a: bytearray, b: bytearray) -> None:
-void pick_bytearray(bool c, std::vector<uint8_t>& a, std::vector<uint8_t>& b) {
+void pick_bytearray(bool c, ::tpy::ByteArray& a, ::tpy::ByteArray& b) {
     // # bytearray is a reference type, so its ternary aliases like list's.
     // v = a if c else b  # tpyc: ok
-    std::vector<uint8_t>& v = ((c) ? (a) : (b));
+    ::tpy::ByteArray& v = ((c) ? (a) : (b));
     // v.append(9)
     v.push_back(9);
 }
@@ -56,7 +56,7 @@ void pick_record(bool c, Tag& a, Tag& b) {
 }
 
 // def read_through(c: bool, a: bytearray, b: bytearray) -> Int32:
-int32_t read_through(bool c, const std::vector<uint8_t>& a, const std::vector<uint8_t>& b) {
+int32_t read_through(bool c, const ::tpy::ByteArray& a, const ::tpy::ByteArray& b) {
     // # The same lvalue ternary as a SUBSCRIPT RECEIVER: the element read
     // # aliases the chosen buffer.
     // return (a if c else b)[0]  # tpyc: ok
@@ -90,9 +90,9 @@ void main() {
     // print(len(s1), len(s2))
     std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(s2) << "\n";
     // b1 = bytearray(b"a")
-    std::vector<uint8_t> b1 = ::tpy::bytes_copy(::tpy::bytes_literal("a", 1));
+    ::tpy::ByteArray b1 = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     // b2 = bytearray(b"bb")
-    std::vector<uint8_t> b2 = ::tpy::bytes_copy(::tpy::bytes_literal("bb", 2));
+    ::tpy::ByteArray b2 = ::tpy::ByteArray(::tpy::bytes_literal("bb", 2));
     // pick_bytearray(False, b1, b2)
     pick_bytearray(false, b1, b2);
     // print(len(b1), len(b2))

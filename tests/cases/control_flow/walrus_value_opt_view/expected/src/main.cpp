@@ -16,7 +16,7 @@ std::optional<std::string> maybe_text(int32_t k) {
 }
 
 // def maybe_blob(k: Int32) -> bytes | None:
-std::optional<std::vector<uint8_t>> maybe_blob(int32_t k) {
+std::optional<::tpy::Bytes> maybe_blob(int32_t k) {
     // if k > 0:
     if ((k > 0)) {
         // return b"ab"
@@ -43,7 +43,7 @@ int32_t text_len(int32_t k) {
 // def blob_len(k: Int32) -> Int32:
 int32_t blob_len(int32_t k) {
     // if (b := maybe_blob(k)) is not None:   # tpyc: ok -- `bytes | None` target
-    std::optional<std::vector<uint8_t>> b;
+    std::optional<::tpy::Bytes> b;
     if (((b = maybe_blob(k)).has_value())) {
         // return len(b)
         return ::tpy::__len__((*b));
@@ -71,8 +71,8 @@ int32_t from_blob_param(std::optional<std::span<const uint8_t>> t) {
     // # The bytes face of the same copy: `optional<span>` never converts to
     // # `optional<vector>` on its own.
     // if (b := t) is not None:               # tpyc: ok -- a `bytes | None` param
-    std::optional<std::vector<uint8_t>> b;
-    if (((b = t ? std::make_optional(::tpy::bytes_copy(*t)) : std::nullopt).has_value())) {
+    std::optional<::tpy::Bytes> b;
+    if (((b = t ? std::make_optional(::tpy::Bytes(*t)) : std::nullopt).has_value())) {
         // return len(b)
         return ::tpy::__len__((*b));
     }

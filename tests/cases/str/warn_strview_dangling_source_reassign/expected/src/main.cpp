@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def strview_pinned_alias_warns() -> None:
 void strview_pinned_alias_warns() {
     // s = "hello" + "world"
-    std::string s = (::tpy::str_concat("hello", "world"));
+    ::tpy::String s = (::tpy::str_concat("hello", "world"));
     // view: StrView = s
     std::string_view view = s;
     // print(view)
@@ -23,7 +23,7 @@ void strview_pinned_alias_warns() {
 // def bytesview_pinned_alias_warns() -> None:
 void bytesview_pinned_alias_warns() {
     // b = b"hello" + b"world"
-    std::vector<uint8_t> b = (::tpy::bytes_concat(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)));
+    ::tpy::Bytes b = (::tpy::bytes_concat(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)));
     // bv: BytesView = b
     std::span<const uint8_t> bv = b;
     // print(len(bv))
@@ -37,9 +37,9 @@ void bytesview_pinned_alias_warns() {
 // def view_rebind_clears_pinned_alias() -> None:
 void view_rebind_clears_pinned_alias() {
     // s1 = "hello" + "world"
-    std::string s1 = (::tpy::str_concat("hello", "world"));
+    ::tpy::String s1 = (::tpy::str_concat("hello", "world"));
     // s2 = "foo" + "bar"
-    std::string s2 = (::tpy::str_concat("foo", "bar"));
+    ::tpy::String s2 = (::tpy::str_concat("foo", "bar"));
     // view: StrView = s1
     std::string_view view = s1;
     // view = s2  # view now aliases s2; the alias on s1 is cleared
@@ -55,7 +55,7 @@ void view_rebind_clears_pinned_alias() {
 // def multiple_pinned_views_per_source() -> None:
 void multiple_pinned_views_per_source() {
     // s = "hello" + "world"
-    std::string s = (::tpy::str_concat("hello", "world"));
+    ::tpy::String s = (::tpy::str_concat("hello", "world"));
     // alpha: StrView = s
     std::string_view alpha = s;
     // beta: StrView = s

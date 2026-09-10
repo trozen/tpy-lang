@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 void pick_list(bool c, std::vector<int32_t>& a, std::vector<int32_t>& b);
 void pick_dict(bool c, ::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b);
 void pick_set(bool c, ::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
-void pick_bytearray(bool c, std::vector<uint8_t>& a, std::vector<uint8_t>& b);
+void pick_bytearray(bool c, ::tpy::ByteArray& a, ::tpy::ByteArray& b);
 void pick_array(bool c, std::array<int32_t, 2>& a, std::array<int32_t, 2>& b);
 void pick_record(bool c, Tag& a, Tag& b);
-int32_t read_through(bool c, const std::vector<uint8_t>& a, const std::vector<uint8_t>& b);
+int32_t read_through(bool c, const ::tpy::ByteArray& a, const ::tpy::ByteArray& b);
 void main();
 
 // class Tag:

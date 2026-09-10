@@ -223,11 +223,13 @@ def cpp_bytes_literal_span(value: bytes) -> str:
 
 
 def cpp_bytes_literal_owned(value: bytes) -> str:
-    """Render a bytes literal landing in an owned (`std::vector<uint8_t>`)
-    slot: copy the static-storage span into an owning vector via the runtime
-    helper (one byte-copy), keeping the generated source readable."""
+    """Render a bytes literal landing in an owned (`::tpy::Bytes`) slot: copy
+    the static-storage span into the owning buffer via the runtime helper (one
+    byte-copy), keeping the generated source readable. The empty case spells
+    the buffer type too -- `Bytes` does not convert from a bare
+    `std::vector<uint8_t>` (buffer_types.hpp)."""
     if not value:
-        return "std::vector<uint8_t>{}"
+        return "::tpy::Bytes{}"
     return f'::tpy::bytes_literal_owned("{_escape_cpp_byte_seq(value)}", {len(value)})'
 
 

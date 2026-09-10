@@ -39,13 +39,13 @@ struct Bag {
 
     // # readonly methods (no self mutation) -> self._data is readonly[dict]
     // def __getitem__(self, key: T) -> int:
-    ::tpy::BigInt __getitem__(const T& key) const {
+    ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const {
         // return self._data.get(key, 0)  # tpyc: ok
         return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
     }
 
     // def __contains__(self, key: T) -> bool:
-    bool __contains__(const T& key) const {
+    bool __contains__(::tpy::readonly_form_t<T> key) const {
         // return key in self._data  # tpyc: ok
         return std::ranges::contains(this->_data, key);
     }
@@ -67,7 +67,7 @@ struct Bag {
         return s;
     }
 
-    ::tpy::BigInt operator[](const T& key) const {
+    ::tpy::BigInt operator[](::tpy::readonly_form_t<T> key) const {
         return __getitem__(key);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";

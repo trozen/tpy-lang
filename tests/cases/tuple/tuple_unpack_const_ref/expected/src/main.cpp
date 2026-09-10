@@ -11,9 +11,9 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> get_pair() {
 }
 
 // def get_string_pair() -> tuple[String, String]:
-std::tuple<std::string, std::string> get_string_pair() {
+std::tuple<::tpy::String, ::tpy::String> get_string_pair() {
     // return ("hello", "world")
-    return std::tuple<std::string, std::string>{"hello", "world"};
+    return std::tuple<::tpy::String, ::tpy::String>{"hello", "world"};
 }
 
 // def test_rvalue_const_ref() -> None:
@@ -90,8 +90,8 @@ void test_lvalue_reassigned_source() {
 void test_string_const_ref() {
     // a, b = get_string_pair()
     auto __tup_1 = get_string_pair();
-    const std::string& a = std::get<0>(__tup_1);
-    const std::string& b = std::get<1>(__tup_1);
+    const ::tpy::String& a = std::get<0>(__tup_1);
+    const ::tpy::String& b = std::get<1>(__tup_1);
     // print(a)
     std::cout << a << "\n";
     // print(b)

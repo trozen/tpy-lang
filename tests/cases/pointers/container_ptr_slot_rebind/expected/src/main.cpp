@@ -23,9 +23,9 @@ std::vector<int32_t> mk_list() {
 }
 
 // def mk_bytes() -> Own[bytearray]:
-std::vector<uint8_t> mk_bytes() {
+::tpy::ByteArray mk_bytes() {
     // return bytearray(b"a")
-    return ::tpy::bytes_copy(::tpy::bytes_literal("a", 1));
+    return ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
 }
 
 // def mk_array() -> Own[Array[Int32, 2]]:
@@ -70,10 +70,10 @@ void rebound_set(::tpy::ordered_set<int32_t>& other) {
 }
 
 // def rebound_bytes(other: bytearray) -> None:
-void rebound_bytes(std::vector<uint8_t>& other) {
+void rebound_bytes(::tpy::ByteArray& other) {
     // b = mk_bytes()
-    std::vector<uint8_t> __slot_1 = mk_bytes();
-    std::vector<uint8_t>* b = &__slot_1;
+    ::tpy::ByteArray __slot_1 = mk_bytes();
+    ::tpy::ByteArray* b = &__slot_1;
     // b = other
     b = &(other);
     // b.append(9)
@@ -142,7 +142,7 @@ void main() {
     // rebound_set(s)
     rebound_set(s);
     // b = bytearray(b"ab")
-    std::vector<uint8_t> b = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray b = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // rebound_bytes(b)
     rebound_bytes(b);
     // a: Array[Int32, 2] = [1, 2]

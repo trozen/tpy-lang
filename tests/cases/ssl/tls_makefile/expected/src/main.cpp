@@ -122,7 +122,7 @@ void main() {
     // print("l2:", reader.readline().decode().rstrip())
     std::cout << "l2:" << " " << ::tpy::str_rstrip(::tpy::bytes_decode(reader.readline())) << "\n";
     // rest = reader.read()
-    std::vector<uint8_t> rest = reader.read();
+    ::tpy::Bytes rest = reader.read();
     // print("rest:", rest.decode())
     std::cout << "rest:" << " " << ::tpy::bytes_decode(rest) << "\n";
     // print("eof:", len(reader.read()) == 0)

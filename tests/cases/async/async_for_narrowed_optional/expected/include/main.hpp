@@ -79,10 +79,10 @@ struct __coro_main_coro {
 // Generator: each_byte
 struct __gen_each_byte : public ::tpy::next_iter_mixin<__gen_each_byte, ::tpy::BigInt> {
     int32_t __state;
-    std::optional<std::vector<uint8_t>> b;
+    std::optional<::tpy::Bytes> b;
     uint8_t x;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<uint8_t>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<uint8_t>>> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::Bytes>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<::tpy::Bytes>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -92,7 +92,7 @@ struct __gen_each_byte : public ::tpy::next_iter_mixin<__gen_each_byte, ::tpy::B
     };
 
     __gen_each_byte(std::optional<std::span<const uint8_t>> b_)
-        : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::bytes_copy(*b_)) : std::nullopt) {}
+        : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_each_byte& __iter__() { return *this; }

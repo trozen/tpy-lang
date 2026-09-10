@@ -39,7 +39,7 @@ inline Formatter::Formatter() : prefix(">") {}
 // def format(self, text: str, width: int = 0, fill: str = " ") -> str:
 inline std::string Formatter::format(std::string_view text, const ::tpy::BigInt& width, std::string_view fill) const {
     // result = self.prefix + text
-    std::string result = (::tpy::str_concat(this->prefix, text));
+    ::tpy::String result = (::tpy::str_concat(this->prefix, text));
     // return result
     return result;
 }

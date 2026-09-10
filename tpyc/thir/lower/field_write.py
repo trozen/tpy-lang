@@ -338,7 +338,7 @@ class _ValueRender(Enum):
     PLAIN = auto()      # scalar / Char / enum / Ptr: target-typed flush
     VALUE_OPT = auto()  # value-repr Optional[scalar | owned-str literal]
     STR = auto()        # owned-str family: operator=(string_view) absorbs
-    BYTES = auto()      # owned bytes: a view (span) source takes bytes_copy
+    BYTES = auto()      # owned bytes: a view (span) source takes `Bytes(x)`
 
 
 @dataclass(frozen=True)

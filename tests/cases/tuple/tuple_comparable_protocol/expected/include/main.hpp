@@ -25,7 +25,7 @@ bool less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
 template<::tpystd::tpy::Equatable T>
 bool eq(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return a == b
-    return (a == b);
+    return ::tpy::eq(a, b);
 }
 
 void __tpy_init();

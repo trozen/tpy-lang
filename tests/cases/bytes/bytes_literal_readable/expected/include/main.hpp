@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::BigInt take(std::span<const uint8_t> x);
-std::vector<uint8_t> make_greeting();
+::tpy::Bytes make_greeting();
 void main();
 
 void __tpy_init();

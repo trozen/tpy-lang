@@ -20,7 +20,7 @@ std::vector<std::string> shout(const std::vector<std::string>& words);
 std::tuple<::tpy::BigInt, std::string> make_pair(const ::tpy::BigInt& n);
 std::tuple<std::string, ::tpy::BigInt> swap(const std::tuple<::tpy::BigInt, std::string>& p);
 std::vector<::tpy::BigInt> flatten(const ::tpy::ordered_map<std::string, std::vector<::tpy::BigInt>>& m);
-std::vector<::tpy::BigInt> byte_lengths(const std::vector<std::vector<uint8_t>>& chunks);
+std::vector<::tpy::BigInt> byte_lengths(const std::vector<::tpy::Bytes>& chunks);
 ::tpy::BigInt append_to(std::vector<::tpy::BigInt>& xs, const ::tpy::BigInt& v);
 
 void __tpy_init();

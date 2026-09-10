@@ -7,7 +7,7 @@
 
 namespace tpyapp::geo::codec {
 
-extern std::vector<uint8_t> _HEX;
+extern ::tpy::Bytes _HEX;
 inline constexpr std::string_view __name__ = "geo.codec";
 
 int32_t hi_nibble(int32_t c);

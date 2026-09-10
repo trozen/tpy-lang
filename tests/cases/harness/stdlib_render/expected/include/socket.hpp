@@ -191,7 +191,7 @@ struct socket {
     void sendall(std::span<const uint8_t> data) const;
 
     // def recv(self, bufsize: Int32) -> bytes:
-    std::vector<uint8_t> recv(int32_t bufsize) const;
+    ::tpy::Bytes recv(int32_t bufsize) const;
 
     // def setsockopt_int(self, level: Int32, optname: Int32, value: Int32) -> None:
     void setsockopt_int(int32_t level, int32_t optname, int32_t value) const;

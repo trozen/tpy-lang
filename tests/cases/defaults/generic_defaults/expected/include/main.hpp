@@ -26,7 +26,7 @@ template<typename T>
         return ::tpy::__getitem__(items, 0);
     }
     // return fallback
-    return fallback;
+    return ::tpy::param_to_return<T>(fallback);
 }
 // def fallback_or[T](items: list[T], fallback: T = 0) -> T:
 template<typename T>
@@ -37,7 +37,7 @@ template<typename T>
         return ::tpy::__getitem__(items, 0);
     }
     // return fallback
-    return fallback;
+    return ::tpy::param_to_return<T>(fallback);
 }
 // def pick[T](a: T, b: T, use_first: bool = True) -> T:
 template<typename T>
@@ -45,10 +45,10 @@ template<typename T>
     // if use_first:
     if (use_first) {
         // return a
-        return a;
+        return ::tpy::param_to_return<T>(a);
     }
     // return b
-    return b;
+    return ::tpy::param_to_return<T>(b);
 }
 
 void __tpy_init();

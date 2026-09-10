@@ -198,7 +198,7 @@ void teardown(std::string_view root) {
 // def main() -> None:
 void main() {
     // root = os.getcwd() + "/tpy_oswalk_bu_tree"
-    std::string root = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_oswalk_bu_tree"));
+    ::tpy::String root = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_oswalk_bu_tree"));
     // if os.path.exists(root):
     if (::tpy::stdlib::os::path_exists(root)) {
         // teardown(root)

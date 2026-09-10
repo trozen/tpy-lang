@@ -7,7 +7,7 @@
 
 namespace tpyapp::pkg::amod {
 
-extern std::vector<uint8_t> _A;
+extern ::tpy::Bytes _A;
 inline constexpr std::string_view __name__ = "pkg.amod";
 
 int32_t a_first();

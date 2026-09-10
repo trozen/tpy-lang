@@ -165,7 +165,7 @@ class _CoroParamKind(IntEnum):
         the owned storage type (`std::string` / `tpy::bytes`), but the
         factory/ctor take the borrow form (`std::string_view` / `BytesView`) --
         the form the call site passes -- and the init copies it into the owned
-        field at frame construction (`std::string(...)` / `bytes_copy(...)`, the
+        field at frame construction (`std::string(...)` / `Bytes(...)`, the
         per-type `owned_copy_conv`). This OWNS the value, so it can't dangle
         across a suspension when the arg is a temporary; the cost is one copy
         at capture. `_param_borrows` excludes it (no caller storage held), and
@@ -191,7 +191,7 @@ class _CoroParam:
     ctor_param_type: str  # type spelling for the constructor's parameter
     kind: _CoroParamKind
     # OWNED_COPY only: the ctor-init RHS expression copying the borrow param into
-    # the owned field (`::tpy::bytes_copy(b_)`, or the optional-aware form for
+    # the owned field (`::tpy::Bytes(b_)`, or the optional-aware form for
     # `str|None` / `bytes|None`). Built via view_owned_copy_init.
     owned_copy_init: str = ""
 
@@ -245,7 +245,7 @@ class _CoroParam:
         if self.kind is _CoroParamKind.OWNED_COPY:
             # Copy the borrow-form param into the owned field at construction,
             # so the value survives suspensions without aliasing the caller
-            # (std::string(view) for str, ::tpy::bytes_copy(view) for bytes; the
+            # (std::string(view) for str, ::tpy::Bytes(view) for bytes; the
             # nullable forms copy the inner only when present).
             return f"{self.cpp_name}({self.owned_copy_init})"
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"

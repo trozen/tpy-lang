@@ -4,7 +4,7 @@
 namespace tpystd::urllib::parse {
 
 // _HEX: bytes = b"0123456789ABCDEF"
-std::vector<uint8_t> _HEX;
+::tpy::Bytes _HEX;
 // # CPython's uses_netloc / uses_relative / uses_params scheme lists, verbatim.
 // # Module-level sets so each is built once at init (a set literal in the function
 // # body would reconstruct the set on every call); membership is then an O(1)
@@ -126,9 +126,9 @@ int32_t _hex_val(int32_t c) {
 // def _quote_impl(s: str, safe: str, plus: bool) -> str:
 std::string _quote_impl(std::string_view s, std::string_view safe, bool plus) {
     // data = s.encode()
-    std::vector<uint8_t> data = ::tpy::bytes_from_str(s);
+    ::tpy::Bytes data = ::tpy::bytes_from_str(s);
     // out = bytearray()
-    std::vector<uint8_t> out = std::vector<uint8_t>();
+    ::tpy::ByteArray out = ::tpy::ByteArray();
     // n = len(data)
     int32_t n = ::tpy::__len__(data);
     // i = 0
@@ -176,9 +176,9 @@ std::string quote_plus(std::string_view s, std::string_view safe) {
 // def _unquote_impl(s: str, plus: bool) -> str:
 std::string _unquote_impl(std::string_view s, bool plus) {
     // data = s.encode()
-    std::vector<uint8_t> data = ::tpy::bytes_from_str(s);
+    ::tpy::Bytes data = ::tpy::bytes_from_str(s);
     // out = bytearray()
-    std::vector<uint8_t> out = std::vector<uint8_t>();
+    ::tpy::ByteArray out = ::tpy::ByteArray();
     // n = len(data)
     int32_t n = ::tpy::__len__(data);
     // i = 0

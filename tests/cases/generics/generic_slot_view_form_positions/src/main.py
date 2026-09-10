@@ -1,8 +1,14 @@
-# A view-form `str`/`bytes` source at a generic `T` parameter slot -- the slot is
-# spelled off the instantiation's C++ type, so the view owes an owned copy -- in
-# every position a call can sit in. Each section prints its own name and its
-# monomorphic twin's answer on the same line, so a position where the generic and
-# the twin disagree names itself.
+# A view-form `str`/`bytes` source at a generic `T` parameter slot, in every
+# position a call can sit in. Each str/bytes type renders its own C++ type, so
+# `param_val_or_ref_t<T>` at the slot IS the monomorphic twin's own parameter
+# form and the view binds bare -- NO position here buys an owned temp, including
+# the three that spell their slot const (a `readonly[T]` param, a readonly
+# method's `T`, a constructor's), which render `readonly_form_t<T>`: the same
+# form, const-qualified only where it is a mutable reference. The
+# `generic_slot_distinct_buffer_types` case is the inverse, one generic at all
+# five buffer types. Each section prints its own name and its monomorphic twin's
+# answer on the same line, so a position where the generic and the twin disagree
+# names itself.
 from typing import Iterator
 import asyncio
 from tpy import Equatable, Own, ReturnException, error_return, readonly
@@ -118,16 +124,16 @@ def comprehension(ks: list[str]) -> None:
 
 def gen_body(k: str) -> Iterator[bool]:
     # generator body
-    r = has_item(NAMES, k)  # tpyc: ok -- `yield has_item(..)` direct: BUGS.md#resumable-arg-temp-no-flush
-    yield r
+    yield has_item(NAMES, k)  # tpyc: ok -- direct, no two-step needed
     yield has_item_str(NAMES, k)
 
 
 async def async_body(k: str) -> bool:
     # async body (the resumable frame captures the str param OWNED)
     await asyncio.sleep(0.0)
-    r = has_item(NAMES, k)  # tpyc: ok -- `return has_item(..)` direct: BUGS.md#resumable-arg-temp-no-flush
-    return r and has_item_str(NAMES, k)
+    # direct, no two-step needed: the instantiated body takes `str`'s own
+    # forms, so nothing has to be materialized into a temp here
+    return has_item(NAMES, k) and has_item_str(NAMES, k)  # tpyc: ok
 
 
 def closure(k: str) -> None:
@@ -187,10 +193,40 @@ def bytes_positions(k: bytes) -> None:
 
 
 def readonly_slot(k: str, b: bytes) -> None:
-    # readonly[T] free function, str and bytes, each beside its twin
+    # readonly[T] free function, str and bytes, each beside its twin: the const
+    # slot is `readonly_form_t<T>`, which at a view family IS the view
     keys = [b"a", b"b"]
     print("readonly_slot", peek(NAMES, k), peek_str(NAMES, k))  # tpyc: ok
     print("readonly_slot", peek(keys, b), peek_bytes(keys, b))  # tpyc: ok
+
+
+class Labels[T]:
+    items: list[T]
+
+    def __init__(self, first: T) -> None:
+        self.items = [first]  # tpyc: warning(/may copy T into owned storage/)
+
+    def has(self, value: T) -> bool:
+        for it in self.items:
+            if it == value:
+                return True
+        return False
+
+
+def while_cond(k: str) -> None:
+    # A compound `while` condition has no statement to hoist a temp into, which
+    # is why all three seams used to reject here. None of them needs a temp now:
+    # the free call's slot, the (readonly-inferred) METHOD's and the
+    # CONSTRUCTOR's all resolve to the caller's own read form.
+    n = 0
+    while has_item(NAMES, k) and n < 1:  # tpyc: ok
+        n += 1
+    box = Labels[str]("a")
+    while box.has(k) and n < 2:  # tpyc: ok
+        n += 1
+    while Labels[str](k).has("a") and n < 3:  # tpyc: ok
+        n += 1
+    print("while_cond", n, has_item_str(NAMES, k))
 
 
 def inverse(k: str, n: int) -> None:
@@ -208,6 +244,7 @@ def inverse(k: str, n: int) -> None:
 
 def main() -> None:
     free_function("a")
+    while_cond("a")
     Holder().method("a")
     ctor_arg("a")
     comprehension(["a", "z"])

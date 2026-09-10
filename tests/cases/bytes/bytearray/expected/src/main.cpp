@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // ba = bytearray(b"\x01\x02\x03")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x01\x02\x03", 3));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("\x01\x02\x03", 3));
     // print(ba)
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n";
     // print(len(ba))
@@ -38,11 +38,11 @@ void main() {
     // print(len(ba))
     std::cout << ::tpy::__len__(ba) << "\n";
     // grown = bytearray()
-    std::vector<uint8_t> grown = std::vector<uint8_t>();
+    ::tpy::ByteArray grown = ::tpy::ByteArray();
     // grown += b"xy"  # tpyc: ok -- a LOCAL bytearray target admits the concat
-    grown = ::tpy::bytes_concat(grown, ::tpy::bytes_literal_owned("xy", 2));
+    grown = ::tpy::bytearray_concat(grown, ::tpy::bytes_literal_owned("xy", 2));
     // print(bytes(grown).decode())
-    std::cout << ::tpy::bytes_decode(::tpy::bytes_copy(grown)) << "\n";
+    std::cout << ::tpy::bytes_decode(::tpy::Bytes(grown)) << "\n";
 }
 
 void __tpy_init() {

@@ -1153,7 +1153,7 @@ def _ctor_viewfam_source_ok(value: TpyExpr, fam_t: TpyType,
         `std::string(name)`).
       * **bytes** (owned `std::vector<uint8_t>`): a bytes literal (the owned
         `bytes_literal_owned` / empty-vector render); a bytes-family param name
-        (the span lifts to owned: `::tpy::bytes_copy(name)`); the same name under the sema
+        (the span lifts to owned: `::tpy::Bytes(name)`); the same name under the sema
         `bytesview_to_bytes` coerce (its codegen lambda IS that copy); or the
         zero-arg `bytes()` @cpp_template __init__ (`std::vector<uint8_t>()`,
         an owned rvalue landing bare). Arg-taking ctor overloads are
@@ -1398,7 +1398,7 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         # into the owned field like any other own-param source -- the tail
         # emitter runs that check ahead of its view arm, so admitting it here
         # is the whole gap. Move sources only: at a NON-last use the
-        # family's copy renders (`::tpy::bytes_copy(name)`), which the
+        # family's copy renders (`::tpy::Bytes(name)`), which the
         # view arm below does not spell for an Own-wrapped declaration.
         if _is_move_source(_unwrap_copy(stmt.value, analyzer), lc,
                            own_param_names):
@@ -2416,7 +2416,7 @@ def _lower_ctor_mil_init(
         the optional directly [M3b-rvalue];
       * a plain **F1-record** -> the `copy()`-unwrapped record-value source [M3b-copy/-rvalue];
       * an owned **bytes** field -> a view (span) source copies via the S6
-        STORAGE convert (`::tpy::bytes_copy(...)`, or the
+        STORAGE convert (`::tpy::Bytes(...)`, or the
         `bytesview_to_bytes` coerce lambda);
         an owned source (bytes literal / `bytes()` rvalue) lands bare;
       * a **str / StrView** field -> the bare lowered source (std::string's
@@ -2524,7 +2524,7 @@ def _lower_ctor_mil_init(
                 and source.coercion.name == "bytesview_to_bytes"):
             # The coerce's codegen lambda IS the view->owned bytes copy;
             # spell it through the S6 STORAGE convert (the identical
-            # `::tpy::bytes_copy(...)` render) over the inner name.
+            # `::tpy::Bytes(...)` render) over the inner name.
             v = THIRFormConvert(result_type=bytes_t,
                                 value=_lower_expr(source.expr, lc, declared),
                                 form=Form.STORAGE, move=False, loc=loc)

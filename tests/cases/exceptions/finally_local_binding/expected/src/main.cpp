@@ -11,7 +11,7 @@ namespace tpyapp::main {
 // def finally_only() -> None:
 void finally_only() {
     // try:
-    std::string tmp;
+    ::tpy::String tmp;
     {
         try {
             // print("body")
@@ -35,7 +35,7 @@ void finally_only() {
 // def throw_tier(trigger: bool) -> None:
 void throw_tier(bool trigger) {
     // try:
-    std::string note;
+    ::tpy::String note;
     {
         try {
             try {

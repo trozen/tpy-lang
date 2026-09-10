@@ -12,7 +12,7 @@ struct Page;
 inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::BigInt take(std::span<const uint8_t> b);
-std::vector<uint8_t> render(const ::tpy::BigInt& n);
+::tpy::Bytes render(const ::tpy::BigInt& n);
 void main();
 
 // # An f-string used directly as a method receiver -- the std::format rvalue
@@ -20,7 +20,7 @@ void main();
 // class Page:
 struct Page {
     // body: bytes
-    std::vector<uint8_t> body;
+    ::tpy::Bytes body;
 
     // def __init__(self) -> None:
     Page();
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Page& obj) {
 
 
 // def __init__(self) -> None:
-inline Page::Page() : body(std::vector<uint8_t>{}) {}
+inline Page::Page() : body(::tpy::Bytes{}) {}
 
 // def size(self) -> int:
 inline ::tpy::BigInt Page::size() const {

@@ -13,7 +13,7 @@ namespace tpyapp::main {
 }
 
 // def make_greeting() -> bytes:
-std::vector<uint8_t> make_greeting() {
+::tpy::Bytes make_greeting() {
     // return b"hello"
     return ::tpy::bytes_literal_owned("hello", 5);
 }
@@ -25,7 +25,7 @@ void main() {
     // print(take(b""))
     std::cout << take(std::span<const uint8_t>{}) << "\n";
     // g = make_greeting()
-    std::vector<uint8_t> g = make_greeting();
+    ::tpy::Bytes g = make_greeting();
     // print(len(g), g[0])
     std::cout << ::tpy::__len__(g) << " " << static_cast<int>(::tpy::bytes_getitem(g, 0)) << "\n";
     // quoted = b'a"b\\c'
@@ -42,7 +42,7 @@ void main() {
     std::cout << ::tpy::__len__(greedy) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 2)) << "\n";
     // # b"" lands in an owned (vector) element -- exercises the empty-owned slot
     // lst: list[bytes] = [b"world", b"\x00\x80\xff", b""]
-    std::vector<std::vector<uint8_t>> lst = {::tpy::bytes_literal_owned("world", 5), ::tpy::bytes_literal_owned("\000\x80\xff", 3), std::vector<uint8_t>{}};
+    std::vector<::tpy::Bytes> lst = {::tpy::bytes_literal_owned("world", 5), ::tpy::bytes_literal_owned("\000\x80\xff", 3), ::tpy::Bytes{}};
     // print(len(lst), len(lst[0]), len(lst[1]), len(lst[2]))
     std::cout << ::tpy::__len__(lst) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 0)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 1)) << " " << ::tpy::__len__(::tpy::__getitem__(lst, 2)) << "\n";
 }

@@ -31,9 +31,9 @@ int32_t pick_set(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b)
 }
 
 // def pick_bytearray(a: bytearray, b: bytearray) -> Int32:
-int32_t pick_bytearray(std::vector<uint8_t>& a, std::vector<uint8_t>& b) {
+int32_t pick_bytearray(::tpy::ByteArray& a, ::tpy::ByteArray& b) {
     // v = a or b  # tpyc: ok
-    std::vector<uint8_t>& v = ((!a.empty()) ? a : b);
+    ::tpy::ByteArray& v = ((!a.empty()) ? a : b);
     // v.append(90)
     v.push_back(90);
     // return len(v)
@@ -75,9 +75,9 @@ void main() {
     // print(len(s1), len(se))          # the add landed on s1, not on se
     std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(se) << "\n";
     // be = bytearray(b"")
-    std::vector<uint8_t> be = ::tpy::bytes_copy(std::span<const uint8_t>{});
+    ::tpy::ByteArray be = ::tpy::ByteArray(std::span<const uint8_t>{});
     // b1 = bytearray(b"xyz")
-    std::vector<uint8_t> b1 = ::tpy::bytes_copy(::tpy::bytes_literal("xyz", 3));
+    ::tpy::ByteArray b1 = ::tpy::ByteArray(::tpy::bytes_literal("xyz", 3));
     // print(pick_bytearray(be, b1))
     std::cout << pick_bytearray(be, b1) << "\n";
     // print(len(b1), len(be))

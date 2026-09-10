@@ -7,21 +7,21 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // s = concat("hello", "world")
-    std::string s = (::tpy::str_concat("hello", (::tpy::str_concat(" ", "world"))));
+    ::tpy::String s = (::tpy::str_concat("hello", (::tpy::str_concat(" ", "world"))));
     // print(s)
     std::cout << s << "\n";
     // x: Int32 = 42
     int32_t x = 42;
     // s2 = concat("x", x, sep="=")
-    std::string s2 = (::tpy::str_concat("x", (::tpy::str_concat("=", ::tpy::fixed_to_str<int32_t>(x)))));
+    ::tpy::String s2 = (::tpy::str_concat("x", (::tpy::str_concat("=", ::tpy::fixed_to_str<int32_t>(x)))));
     // print(s2)
     std::cout << s2 << "\n";
     // s3 = concat("a", "b", "c", sep=", ")
-    std::string s3 = (::tpy::str_concat((::tpy::str_concat("a", (::tpy::str_concat(", ", "b")))), (::tpy::str_concat(", ", "c"))));
+    ::tpy::String s3 = (::tpy::str_concat((::tpy::str_concat("a", (::tpy::str_concat(", ", "b")))), (::tpy::str_concat(", ", "c"))));
     // print(s3)
     std::cout << s3 << "\n";
     // s4 = concat("hello", "world", sep=", ", quote_str=True)
-    std::string s4 = (::tpy::str_concat((::tpy::str_concat("'", (::tpy::str_concat("hello", "'")))), (::tpy::str_concat(", ", (::tpy::str_concat("'", (::tpy::str_concat("world", "'"))))))));
+    ::tpy::String s4 = (::tpy::str_concat((::tpy::str_concat("'", (::tpy::str_concat("hello", "'")))), (::tpy::str_concat(", ", (::tpy::str_concat("'", (::tpy::str_concat("world", "'"))))))));
     // print(s4)
     std::cout << s4 << "\n";
 }

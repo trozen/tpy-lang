@@ -196,7 +196,7 @@ struct _SockRecv {
     void cancel();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[bytes]]:
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._SockRecv";
 };
 
@@ -211,7 +211,7 @@ struct _SockSendAll {
     // _sock: Ptr[socket]
     ::tpystd::socket::socket* _sock;
     // _data: bytes
-    std::vector<uint8_t> _data;
+    ::tpy::Bytes _data;
     // _sent: UInt64
     uint64_t _sent;
     // _cancel_pending: bool
@@ -1480,7 +1480,7 @@ inline std::ostream& operator<<(std::ostream& os, const EventLoop& obj) {
 // class IncompleteReadError(EOFError):
 struct IncompleteReadError : ::tpy::EOFError {
     // partial: bytes
-    std::vector<uint8_t> partial;
+    ::tpy::Bytes partial;
     // expected: Int32 | None
     std::optional<int32_t> expected;
 
@@ -1504,7 +1504,7 @@ struct StreamReader {
     // _sock: Rc[socket]
     ::tpystd::tplib::rc::Rc<::tpystd::socket::socket> _sock;
     // _buf: bytes
-    std::vector<uint8_t> _buf;
+    ::tpy::Bytes _buf;
     // _eof: bool
     bool _eof;
 
@@ -1522,7 +1522,7 @@ struct StreamReader {
     __coro_StreamReader__fill _fill();
 
     // def _take(self, n: Int32) -> bytes:
-    std::vector<uint8_t> _take(int32_t n);
+    ::tpy::Bytes _take(int32_t n);
 
     __coro_StreamReader_read read(int32_t n);
 
@@ -1545,7 +1545,7 @@ struct StreamWriter {
     // _sock: Rc[socket]
     ::tpystd::tplib::rc::Rc<::tpystd::socket::socket> _sock;
     // _buf: bytes
-    std::vector<uint8_t> _buf;
+    ::tpy::Bytes _buf;
     // _closed: bool
     bool _closed;
 
@@ -2040,7 +2040,7 @@ struct __coro_StreamReader__fill {
     bool __cancel_pending;
     StreamReader& __self;
     ::tpy::frame_slot<EventLoop> loop;
-    std::vector<uint8_t> chunk;
+    ::tpy::Bytes chunk;
     std::optional<_SockRecv> __sub_0;
 
     enum : int32_t {
@@ -2086,7 +2086,7 @@ struct __coro_StreamReader_read {
     __coro_StreamReader_read(StreamReader& __self, int32_t n_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), n(std::move(n_)) {}
 
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_StreamReader_read&) {
@@ -2116,7 +2116,7 @@ struct __coro_StreamReader_readexactly {
     __coro_StreamReader_readexactly(StreamReader& __self, int32_t n_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), n(std::move(n_)) {}
 
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_StreamReader_readexactly&) {
@@ -2146,7 +2146,7 @@ struct __coro_StreamReader_readline {
     __coro_StreamReader_readline(StreamReader& __self)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
 
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_StreamReader_readline&) {
@@ -2163,7 +2163,7 @@ struct __coro_StreamReader_readuntil {
     int32_t __state;
     bool __cancel_pending;
     StreamReader& __self;
-    std::vector<uint8_t> separator;
+    ::tpy::Bytes separator;
     int32_t idx;
     std::optional<__coro_StreamReader__fill> __sub_0;
 
@@ -2175,9 +2175,9 @@ struct __coro_StreamReader_readuntil {
     };
 
     __coro_StreamReader_readuntil(StreamReader& __self, std::span<const uint8_t> separator_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), separator(::tpy::bytes_copy(separator_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self), separator(::tpy::Bytes(separator_)) {}
 
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_StreamReader_readuntil&) {
@@ -2649,7 +2649,7 @@ inline void _SockRecv::cancel() {
 }
 
 // def __init__(self, sock: Ptr[socket], data: bytes) -> None:
-inline _SockSendAll::_SockSendAll(::tpystd::socket::socket* sock, std::span<const uint8_t> data) : _sock(sock), _data(::tpy::bytes_copy(data)), _sent(0), _cancel_pending(false) {}
+inline _SockSendAll::_SockSendAll(::tpystd::socket::socket* sock, std::span<const uint8_t> data) : _sock(sock), _data(::tpy::Bytes(data)), _sent(0), _cancel_pending(false) {}
 
 // def cancel(self) -> None:
 inline void _SockSendAll::cancel() {
@@ -2914,10 +2914,10 @@ inline _SockConnect EventLoop::sock_connect(::tpystd::socket::socket& sock, cons
 }
 
 // def __init__(self, partial: bytes, expected: Int32 | None) -> None:
-inline IncompleteReadError::IncompleteReadError(std::span<const uint8_t> partial, std::optional<int32_t> expected) : ::tpy::EOFError("incomplete read"), partial(::tpy::bytes_copy(partial)), expected(expected) {}
+inline IncompleteReadError::IncompleteReadError(std::span<const uint8_t> partial, std::optional<int32_t> expected) : ::tpy::EOFError("incomplete read"), partial(::tpy::Bytes(partial)), expected(expected) {}
 
 // def __init__(self, sock: Own[Rc[socket]]) -> None:
-inline StreamReader::StreamReader(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(std::vector<uint8_t>()), _eof(false) {}
+inline StreamReader::StreamReader(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(::tpy::Bytes()), _eof(false) {}
 
 // def at_eof(self) -> bool:
 inline bool StreamReader::at_eof() const {
@@ -2926,19 +2926,19 @@ inline bool StreamReader::at_eof() const {
 }
 
 // def _take(self, n: Int32) -> bytes:
-inline std::vector<uint8_t> StreamReader::_take(int32_t n) {
+inline ::tpy::Bytes StreamReader::_take(int32_t n) {
     // # Materialize owned head before reassigning `_buf` (a no-step slice
     // # is a borrow into the old buffer).
     // head = bytes(self._buf[:n])
-    std::vector<uint8_t> head = ::tpy::bytes_copy(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{std::nullopt, n}));
+    ::tpy::Bytes head = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{std::nullopt, n}));
     // self._buf = bytes(self._buf[n:])
-    this->_buf = ::tpy::bytes_copy(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{n, std::nullopt}));
+    this->_buf = ::tpy::Bytes(::tpy::bytes_slice(this->_buf, ::tpy::BasicSlice{n, std::nullopt}));
     // return head
     return head;
 }
 
 // def __init__(self, sock: Own[Rc[socket]]) -> None:
-inline StreamWriter::StreamWriter(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(std::vector<uint8_t>()), _closed(false) {}
+inline StreamWriter::StreamWriter(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(::tpy::Bytes()), _closed(false) {}
 
 // def write(self, data: bytes) -> None:
 inline void StreamWriter::write(std::span<const uint8_t> data) {

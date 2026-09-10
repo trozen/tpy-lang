@@ -17,12 +17,12 @@ void main();
 // class Base:
 struct Base {
     // buf: bytearray
-    std::vector<uint8_t> buf;
+    ::tpy::ByteArray buf;
     // xs: list[Int32]
     std::vector<int32_t> xs;
 
     // def __init__(self, b: bytearray, xs: list[Int32]) -> None:
-    explicit Base(const std::vector<uint8_t>& b, const std::vector<int32_t>& xs);
+    explicit Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -37,7 +37,7 @@ struct Child : Base {
     int32_t n;
 
     // def __init__(self, b: bytearray, xs: list[Int32]) -> None:
-    explicit Child(const std::vector<uint8_t>& b, const std::vector<int32_t>& xs);
+    explicit Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -48,9 +48,9 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 
 
 // def __init__(self, b: bytearray, xs: list[Int32]) -> None:
-inline Base::Base(const std::vector<uint8_t>& b, const std::vector<int32_t>& xs) : buf(b), xs(xs) {}
+inline Base::Base(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : buf(b), xs(xs) {}
 
 // def __init__(self, b: bytearray, xs: list[Int32]) -> None:
-inline Child::Child(const std::vector<uint8_t>& b, const std::vector<int32_t>& xs) : Base(b, xs), n(1) {}
+inline Child::Child(const ::tpy::ByteArray& b, const std::vector<int32_t>& xs) : Base(b, xs), n(1) {}
 void __tpy_init();
 } // namespace tpyapp::main

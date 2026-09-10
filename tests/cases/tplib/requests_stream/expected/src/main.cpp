@@ -34,7 +34,7 @@ void stream_content_length() {
     // print("not pooled:", key not in s._pool)
     std::cout << "not pooled:" << " " << ::tpy::print_bool((!(s._pool.contains(key)))) << "\n";
     // got = bytearray()
-    std::vector<uint8_t> got = std::vector<uint8_t>();
+    ::tpy::ByteArray got = ::tpy::ByteArray();
     // for chunk in r.iter_content(5):
     {
         auto __src_0 = r.iter_content(5);
@@ -46,11 +46,11 @@ void stream_content_length() {
         // print("chunk:", chunk.decode())
         std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n";
         // got += chunk
-        got = ::tpy::bytes_concat(got, chunk);
+        got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     // print("full:", bytes(got).decode())
-    std::cout << "full:" << " " << ::tpy::bytes_decode(::tpy::bytes_copy(got)) << "\n";
+    std::cout << "full:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
     // b.close()
     b.close();
 }
@@ -82,7 +82,7 @@ void stream_chunked() {
     ::tpy::Union<bool, std::string> __tmp_4 = true;
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/chunked", nullptr, nullptr, std::nullopt, true, __tmp_4, nullptr, true);
     // got = bytearray()
-    std::vector<uint8_t> got = std::vector<uint8_t>();
+    ::tpy::ByteArray got = ::tpy::ByteArray();
     // for chunk in r.iter_content(8):
     {
         auto __src_0 = r.iter_content(8);
@@ -92,11 +92,11 @@ void stream_chunked() {
             if (!__r_1.has_value()) break;
             std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
         // got += chunk
-        got = ::tpy::bytes_concat(got, chunk);
+        got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     // print("chunked:", bytes(got).decode())
-    std::cout << "chunked:" << " " << ::tpy::bytes_decode(::tpy::bytes_copy(got)) << "\n";
+    std::cout << "chunked:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
     // b.close()
     b.close();
 }
@@ -170,7 +170,7 @@ void stream_context_manager() {
     // # got declared outside the with-block: a with-block-scoped bytearray is
     // # stored optional-form and rejects +=, same shape as a try-scoped local.
     // got = bytearray()
-    std::vector<uint8_t> got = std::vector<uint8_t>();
+    ::tpy::ByteArray got = ::tpy::ByteArray();
     // with r:
     auto& __ctx_1 = r;
     __ctx_1.__enter__();
@@ -184,11 +184,11 @@ void stream_context_manager() {
                 if (!__r_1.has_value()) break;
                 std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
             // got += chunk
-            got = ::tpy::bytes_concat(got, chunk);
+            got = ::tpy::bytearray_concat(got, chunk);
             }
         }
         // print("ctx body:", bytes(got).decode())
-        std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::bytes_copy(got)) << "\n";
+        std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -278,7 +278,7 @@ void non_streamed_iter_content() {
     // r = s.get("http://api.test/full")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/full");
     // got = bytearray()
-    std::vector<uint8_t> got = std::vector<uint8_t>();
+    ::tpy::ByteArray got = ::tpy::ByteArray();
     // for chunk in r.iter_content(4):
     {
         auto __src_0 = r.iter_content(4);
@@ -288,11 +288,11 @@ void non_streamed_iter_content() {
             if (!__r_1.has_value()) break;
             std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
         // got += chunk
-        got = ::tpy::bytes_concat(got, chunk);
+        got = ::tpy::bytearray_concat(got, chunk);
         }
     }
     // print("non-stream iter_content:", bytes(got).decode())
-    std::cout << "non-stream iter_content:" << " " << ::tpy::bytes_decode(::tpy::bytes_copy(got)) << "\n";
+    std::cout << "non-stream iter_content:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n";
     // print("content intact:", r.content.decode())
     std::cout << "content intact:" << " " << ::tpy::bytes_decode(r.content) << "\n";
     // b.close()

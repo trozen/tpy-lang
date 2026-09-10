@@ -35,7 +35,7 @@ void main() {
     std::cout << ::tpy::str_join(",", h.parts) << "\n";
     // # A bytearray receiver at the same slot.
     // buf = bytearray(b"z")
-    std::vector<uint8_t> buf = ::tpy::bytes_copy(::tpy::bytes_literal("z", 1));
+    ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
     // buf.extend(h.nums)  # tpyc: ok
     ::tpy::bytes_extend_int_iterable(buf, h.nums);
     // print(len(buf))

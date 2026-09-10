@@ -18,7 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::vector<int32_t> make_list();
 ::tpy::ordered_map<std::string, int32_t> make_inner();
 std::array<int32_t, 2> make_pair();
-std::vector<uint8_t> make_blob();
+::tpy::ByteArray make_blob();
 ::tpy::ordered_set<int32_t> make_tags();
 std::vector<::tpystd::tplib::box::Box<int32_t>> make_boxes();
 void main();

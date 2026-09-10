@@ -32,7 +32,7 @@ struct __coro_payload {
     __coro_payload()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_payload&) {

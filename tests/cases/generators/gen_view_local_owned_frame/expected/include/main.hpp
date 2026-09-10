@@ -17,7 +17,7 @@ struct __gen_static_sources;
 std::tuple<std::string, std::string> pair(int32_t n);
 __gen_unpack_across_yield unpack_across_yield();
 __gen_dict_keys dict_keys(::tpy::ordered_map<std::string, int32_t>& d);
-__gen_blob_slices blob_slices(std::vector<std::vector<uint8_t>>& blobs);
+__gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs);
 __gen_static_sources static_sources();
 void main();
 
@@ -75,11 +75,11 @@ struct __gen_dict_keys : public ::tpy::next_iter_mixin<__gen_dict_keys, std::str
 // Generator: blob_slices
 struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int32_t> {
     int32_t __state;
-    std::vector<std::vector<uint8_t>>& blobs;
-    std::vector<uint8_t> total;
-    std::vector<uint8_t> b;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<uint8_t>>>> __for_it_0;
-    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<std::vector<uint8_t>>>> __for_end_0;
+    std::vector<::tpy::Bytes>& blobs;
+    ::tpy::Bytes total;
+    ::tpy::Bytes b;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::Bytes>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::Bytes>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -90,7 +90,7 @@ struct __gen_blob_slices : public ::tpy::next_iter_mixin<__gen_blob_slices, int3
         S_DONE = 5,
     };
 
-    __gen_blob_slices(std::vector<std::vector<uint8_t>>& blobs)
+    __gen_blob_slices(std::vector<::tpy::Bytes>& blobs)
         : __state(S_INITIAL), blobs(blobs) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

@@ -10,8 +10,8 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 bool is_absent(std::optional<std::span<const uint8_t>> b);
-std::optional<std::vector<uint8_t>> pick(bool keep);
-std::optional<std::vector<uint8_t>> forward(std::optional<std::span<const uint8_t>> b);
+std::optional<::tpy::Bytes> pick(bool keep);
+std::optional<::tpy::Bytes> forward(std::optional<std::span<const uint8_t>> b);
 void main();
 
 void __tpy_init();

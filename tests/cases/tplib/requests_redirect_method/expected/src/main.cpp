@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def run_redirect(status_line: bytes) -> tuple[bytes, bool, bool]:
-std::tuple<std::vector<uint8_t>, bool, bool> run_redirect(std::span<const uint8_t> status_line) {
+std::tuple<::tpy::Bytes, bool, bool> run_redirect(std::span<const uint8_t> status_line) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -34,27 +34,27 @@ std::tuple<std::vector<uint8_t>, bool, bool> run_redirect(std::span<const uint8_
     s._redirect_connections = ::tpy::make_vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>(::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(h1)));
     // r = s.post("http://api.test/submit", b'{"x":1}', None, None,
     // {"Content-Type": "text/plain"})
-    std::vector<uint8_t> __tmp_1 = ::tpy::bytes_literal_owned("{\"x\":1}", 7);
+    ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("{\"x\":1}", 7);
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", std::variant<std::monostate, std::vector<uint8_t>*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
     // print(r.status_code, r.url)
     std::cout << r.status_code << " " << r.url << "\n";
     // b.recv(65536)                         # drain hop-0 request
     b.recv(65536);
     // second = d.recv(65536)
-    std::vector<uint8_t> second = d.recv(65536);
+    ::tpy::Bytes second = d.recv(65536);
     // b.close()
     b.close();
     // d.close()
     d.close();
     // request_line = second.split(b"\r\n")[0]
-    std::vector<uint8_t> request_line = ::tpy::__getitem__(::tpy::bytes_split(second, ::tpy::bytes_literal("\r\n", 2)), 0);
+    ::tpy::Bytes request_line = ::tpy::__getitem__(::tpy::bytes_split(second, ::tpy::bytes_literal("\r\n", 2)), 0);
     // has_body = b'{"x":1}' in second
     bool has_body = (::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("{\"x\":1}", 7)));
     // has_content_type = b"text/plain" in second
     bool has_content_type = (::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("text/plain", 10)));
     // return (request_line, has_body, has_content_type)
-    return std::tuple<std::vector<uint8_t>, bool, bool>{request_line, has_body, has_content_type};
+    return std::tuple<::tpy::Bytes, bool, bool>{request_line, has_body, has_content_type};
 }
 
 // def report(status_line: bytes) -> None:

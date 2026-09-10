@@ -6,7 +6,7 @@ namespace tpyapp::main {
 // # 4 MiB overflows the socket send buffer, so sendall must park at least once
 // # (the peer never reads) -- giving the timeout a parked write to cancel.
 // _BIG = b"x" * (4 * 1024 * 1024)
-std::vector<uint8_t> _BIG;
+::tpy::Bytes _BIG;
 
 // async def main_coro() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
@@ -78,7 +78,7 @@ std::vector<uint8_t> _BIG;
     case S_JOIN_2: {
         try {
             // await asyncio.wait_for(loop.sock_recv(b, 16), 0.01)
-            __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<std::vector<uint8_t>>>((*loop).sock_recv((*b), 16)), 0.01);
+            __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::Bytes>>((*loop).sock_recv((*b), 16)), 0.01);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {

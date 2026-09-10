@@ -657,7 +657,7 @@ class _Prescan:
         # `std::optional<std::vector<uint8_t>>`): `return None` -> `std::nullopt`,
         # a value-repr Optional[view] param name takes the view->owned shim
         # (`x ? std::make_optional(<conv>(*x)) : std::nullopt`, THIROptViewArg;
-        # `<conv>` = `std::string` / `::tpy::bytes_copy`), and a str/bytes literal
+        # `<conv>` = `std::string` / `::tpy::Bytes`), and a str/bytes literal
         # lands bare (the owned literal / implicit conversion). The owned-view
         # twin of ret_value_opt.
         self.ret_value_opt_view = _value_opt_view(rt, analyzer)
@@ -714,7 +714,7 @@ class _Prescan:
         # differs (`_own_storage_viewfam_return`).
         self.ret_str = _resolved_str_value(rt, analyzer)
         # S6: the resolved bytes-family return type -- an owned `bytes` return
-        # copies a view-form source via `::tpy::bytes_copy`; a `BytesView`
+        # copies a view-form source via `::tpy::Bytes`; a `BytesView`
         # return renders a literal in its span form. `Own[bytes]` rides the
         # same arm via the unwrap.
         self.ret_bytes = _resolved_bytes_value(rt, analyzer)

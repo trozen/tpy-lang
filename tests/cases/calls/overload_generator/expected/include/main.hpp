@@ -9,10 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+std::string mk();
 void main();
 
 template<typename T>
-inline auto rep(::tpy::param_val_or_ref_t<T> obj, int32_t n = -1) {
+inline auto rep(::tpy::borrow_frame_param_t<T> obj, int32_t n = -1) {
     // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<T>(

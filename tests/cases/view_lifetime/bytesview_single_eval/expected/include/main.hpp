@@ -12,7 +12,7 @@ struct Holder;
 extern int32_t calls;
 inline constexpr std::string_view __name__ = "__main__";
 
-std::vector<uint8_t> make();
+::tpy::Bytes make();
 void single_eval_into_list();
 void single_eval_into_field();
 void single_eval_into_bytearray();
@@ -22,7 +22,7 @@ void main();
 // class Holder:
 struct Holder {
     // b: bytes
-    std::vector<uint8_t> b;
+    ::tpy::Bytes b;
     // s: str
     std::string s;
 
@@ -44,12 +44,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self):
-inline Holder::Holder() : b(std::vector<uint8_t>{}), s("") {}
+inline Holder::Holder() : b(::tpy::Bytes{}), s("") {}
 
 // def set_bytes(self, x: bytes) -> None:
 inline void Holder::set_bytes(std::span<const uint8_t> x) {
     // self.b = x[1:3]
-    this->b = ::tpy::bytes_copy(::tpy::bytes_slice(x, ::tpy::BasicSlice{1, 3}));
+    this->b = ::tpy::Bytes(::tpy::bytes_slice(x, ::tpy::BasicSlice{1, 3}));
 }
 
 // def set_str(self, x: str) -> None:

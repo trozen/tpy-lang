@@ -21,10 +21,9 @@ struct Holder {
 
     // def __init__(self, value: T):
     Holder() = default;
-    explicit Holder(const T& value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+    explicit Holder(::tpy::readonly_form_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
         // self._storage.init0(value)
-        T __tmp_1 = value;
-        this->_storage.init0(std::move(__tmp_1));
+        this->_storage.init0(::tpy::param_to_storage<T>(value));
     }
     // non-copyable (field '_storage')
     Holder(const Holder&) = delete;
@@ -43,8 +42,7 @@ struct Holder {
         // self._storage.drop0()
         this->_storage.drop0();
         // self._storage.init0(value)
-        T __tmp_2 = value;
-        this->_storage.init0(std::move(__tmp_2));
+        this->_storage.init0(::tpy::param_to_storage<T>(value));
     }
 
     // def take(self) -> Own[T]:

@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def make(n: Int32) -> Own[bytearray]:
-std::vector<uint8_t> make(int32_t n) {
+::tpy::ByteArray make(int32_t n) {
     // buf = bytearray(n)
-    std::vector<uint8_t> buf = ::tpy::bytes_from_size(n);
+    ::tpy::ByteArray buf = ::tpy::bytearray_from_size(n);
     // buf[0] = 7
     ::tpy::bytearray_setitem(buf, 0, 7);
     // return buf  # tpyc: ok
@@ -17,7 +17,7 @@ std::vector<uint8_t> make(int32_t n) {
 // def main() -> None:
 void main() {
     // b = make(4)
-    std::vector<uint8_t> b = make(4);
+    ::tpy::ByteArray b = make(4);
     // # The moved-out buffer is the caller's to mutate.
     // b[1] = 9
     ::tpy::bytearray_setitem(b, 1, 9);
@@ -31,7 +31,7 @@ void main() {
         std::cout << static_cast<int>(v) << "\n";
     }
     // d = Canvas(5).draw(3)
-    std::vector<uint8_t> d = Canvas(5).draw(3);
+    ::tpy::ByteArray d = Canvas(5).draw(3);
     // for v in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();

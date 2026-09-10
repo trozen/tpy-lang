@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
-std::vector<uint8_t> first_or_empty(std::optional<std::span<const uint8_t>> b);
+::tpy::Bytes first_or_empty(std::optional<std::span<const uint8_t>> b);
 ::tpy::BigInt collect(std::optional<std::span<const uint8_t>> b);
 ::tpy::BigInt reassigned(std::optional<std::span<const uint8_t>> __param_b);
 ::tpy::BigInt reassigned_plain(std::span<const uint8_t> __param_b, bool c);
@@ -24,7 +24,7 @@ void main();
 // class Holder:
 struct Holder {
     // data: bytes
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
 
     // def __init__(self):
     Holder();
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // Generator: gen
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
-    std::optional<std::vector<uint8_t>> b;
+    std::optional<::tpy::Bytes> b;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -53,7 +53,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     };
 
     __gen_gen(std::optional<std::span<const uint8_t>> b_)
-        : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::bytes_copy(*b_)) : std::nullopt) {}
+        : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
@@ -65,14 +65,14 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
 
 
 // def __init__(self):
-inline Holder::Holder() : data(std::vector<uint8_t>{}) {}
+inline Holder::Holder() : data(::tpy::Bytes{}) {}
 
 // def store(self, b: bytes | None) -> None:
 inline void Holder::store(std::optional<std::span<const uint8_t>> b) {
     // if b is not None:
     if ((b.has_value())) {
         // self.data = b         # narrowed bytes|None param -> bare bytes field
-        this->data = ::tpy::bytes_copy((*b));
+        this->data = ::tpy::Bytes((*b));
     }
 }
 void __tpy_init();

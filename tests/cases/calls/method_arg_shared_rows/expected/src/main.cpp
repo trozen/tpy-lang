@@ -26,7 +26,7 @@ void main() {
     // blob = b"pqrs"
     std::span<const uint8_t> blob = ::tpy::bytes_literal("pqrs", 4);
     // k.store_blob(blob)  # tpyc: ok
-    k.store_blob(::tpy::bytes_copy(blob));
+    k.store_blob(::tpy::Bytes(blob));
     // print(k.n, len(blob))
     std::cout << k.n << " " << ::tpy::__len__(blob) << "\n";
     // # A comprehension at a readonly container slot: the statement-expression

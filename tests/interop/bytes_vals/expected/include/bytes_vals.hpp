@@ -9,10 +9,10 @@ namespace tpyapp::bytes_vals {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::vector<uint8_t> echo(std::span<const uint8_t> data);
-std::vector<uint8_t> make_own();
-std::vector<uint8_t> cat(std::span<const uint8_t> a, std::span<const uint8_t> b);
-std::vector<uint8_t> shout(std::span<const uint8_t> data);
+::tpy::Bytes echo(std::span<const uint8_t> data);
+::tpy::Bytes make_own();
+::tpy::Bytes cat(std::span<const uint8_t> a, std::span<const uint8_t> b);
+::tpy::Bytes shout(std::span<const uint8_t> data);
 
 void __tpy_init();
 } // namespace tpyapp::bytes_vals

@@ -311,7 +311,7 @@ struct Arc {
     bool __eq__(const Arc<T>& other) const
       requires ::tpystd::tpy::Equatable<T> {
         // return self.get() == other.get()
-        return (this->get() == other.get());
+        return ::tpy::eq(this->get(), other.get());
     }
 
     // def __lt__[T: Comparable](self, other: Arc[T]) -> bool:

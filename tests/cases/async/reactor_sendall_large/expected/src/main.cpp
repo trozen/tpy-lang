@@ -6,12 +6,12 @@ namespace tpyapp::main {
 // _N = 1 << 20  # 1 MiB, well past any socketpair buffer
 int32_t _N{};
 // _PAYLOAD = _make_payload()
-std::vector<uint8_t> _PAYLOAD;
+::tpy::Bytes _PAYLOAD;
 
 // def _make_payload() -> bytes:
-std::vector<uint8_t> _make_payload() {
+::tpy::Bytes _make_payload() {
     // out = b""
-    std::vector<uint8_t> out = std::vector<uint8_t>{};
+    ::tpy::Bytes out = ::tpy::Bytes{};
     // band = 0
     int32_t band = 0;
     // while band < 256:

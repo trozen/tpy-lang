@@ -26,11 +26,11 @@ void main() {
     // print(data.startswith(b"world"))
     std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("world", 5))) << "\n";
     // replaced = data.replace(b"world", b"bytes")
-    std::vector<uint8_t> replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("bytes", 5));
+    ::tpy::Bytes replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("bytes", 5));
     // print(replaced)
     std::cout << ::tpy::BytesPrinter(replaced) << "\n";
     // parts = b"a,b,c".split(b",")
-    std::vector<std::vector<uint8_t>> parts = ::tpy::bytes_split(::tpy::bytes_literal_owned("a,b,c", 5), ::tpy::bytes_literal(",", 1));
+    std::vector<::tpy::Bytes> parts = ::tpy::bytes_split(::tpy::bytes_literal_owned("a,b,c", 5), ::tpy::bytes_literal(",", 1));
     // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
@@ -41,7 +41,7 @@ void main() {
         std::cout << ::tpy::BytesPrinter(p) << "\n";
     }
     // joined = b", ".join(parts)
-    std::vector<uint8_t> joined = ::tpy::bytes_join(::tpy::bytes_literal_owned(", ", 2), parts);
+    ::tpy::Bytes joined = ::tpy::bytes_join(::tpy::bytes_literal_owned(", ", 2), parts);
     // print(joined)
     std::cout << ::tpy::BytesPrinter(joined) << "\n";
     // # BytesView (from slice) -- methods work on views
@@ -52,7 +52,7 @@ void main() {
     // print(v.replace(b"world", b"there"))
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_replace(v, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("there", 5))) << "\n";
     // vparts = data[0:11].split(b" ")
-    std::vector<std::vector<uint8_t>> vparts = ::tpy::bytes_split(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11}), ::tpy::bytes_literal(" ", 1));
+    std::vector<::tpy::Bytes> vparts = ::tpy::bytes_split(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11}), ::tpy::bytes_literal(" ", 1));
     // for vp in vparts:
     auto& __obj_1 = vparts;
     auto __beg_1 = __obj_1.begin();

@@ -10,9 +10,9 @@ bool matches_default_repr(std::string_view s, std::string_view cls) {
     // # while TPy emits the bare class name. Accept either to keep the test
     // # runnable under both interpreters.
     // p1 = "<" + cls + " object at 0x"
-    std::string p1 = (::tpy::str_concat((::tpy::str_concat("<", cls)), " object at 0x"));
+    ::tpy::String p1 = (::tpy::str_concat((::tpy::str_concat("<", cls)), " object at 0x"));
     // p2 = "<__main__." + cls + " object at 0x"
-    std::string p2 = (::tpy::str_concat((::tpy::str_concat("<__main__.", cls)), " object at 0x"));
+    ::tpy::String p2 = (::tpy::str_concat((::tpy::str_concat("<__main__.", cls)), " object at 0x"));
     // return (s.startswith(p1) or s.startswith(p2)) and s.endswith(">")
     return ((::tpy::str_startswith(s, p1) || ::tpy::str_startswith(s, p2)) && ::tpy::str_endswith(s, ">"));
 }

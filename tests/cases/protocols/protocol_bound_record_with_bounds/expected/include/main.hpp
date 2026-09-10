@@ -59,7 +59,7 @@ struct Wrapper {
 
     // def __init__(self, value: T) -> None:
     Wrapper() = default;
-    explicit Wrapper(const T& value) : value(value) {}
+    explicit Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def print_wrapped(self) -> None:
     void print_wrapped() {
@@ -99,7 +99,7 @@ struct Container {
 
     // def __init__(self, factory: T) -> None:
     Container() = default;
-    explicit Container(const T& factory) : factory(factory) {}
+    explicit Container(::tpy::readonly_form_t<T> factory) : factory(factory) {}
 
     // def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> create_wrapper(std::string_view text) {

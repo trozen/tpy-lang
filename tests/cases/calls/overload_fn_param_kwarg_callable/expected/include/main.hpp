@@ -29,7 +29,7 @@ template<typename T, typename U, typename __F0>
   }
 ::tpy::val_or_ref_t<U> reduce(const std::vector<T>& xs, __F0&& func, ::tpy::param_val_or_ref_t<U> init) {
     // return init
-    return init;
+    return ::tpy::param_to_return<U>(init);
 }
 // @dispatch
 // def reduce[T](xs: list[T], func: Fn[[T, T], T]) -> T:  # tpyc: ok

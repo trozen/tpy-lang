@@ -16,7 +16,7 @@ void main();
 // class Blob:
 struct Blob {
     // data: bytes
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
 
     // def __init__(self, v: BytesView) -> None:
     explicit Blob(std::span<const uint8_t> v);
@@ -30,6 +30,6 @@ inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
 
 
 // def __init__(self, v: BytesView) -> None:
-inline Blob::Blob(std::span<const uint8_t> v) : data(::tpy::bytes_copy(v)) {}
+inline Blob::Blob(std::span<const uint8_t> v) : data(::tpy::Bytes(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -7,12 +7,132 @@
 
 namespace tpyapp::main {
 
+// class Appendable(Protocol):
+template<typename T>
+concept Appendable = requires(T& t) {
+    { t.append(std::declval<int32_t>()) } -> std::convertible_to<void>;
+};
+
+// class Readable(Protocol):
+template<typename T>
+concept Readable = requires(const T& t) {
+    { t.size() } -> std::convertible_to<int32_t>;
+};
+
+// class Sized(Protocol):
+template<typename T>
+concept Sized = requires(const T& t) {
+    { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
+};
+
+struct Bin;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
+// class Bin:
+struct Bin {
+    // total: Int32
+    int32_t total;
+
+    // def __init__(self) -> None:
+    Bin();
+
+    // def append(self, v: Int32) -> None:
+    void append(int32_t v);
+
+    // @readonly
+    // def size(self) -> Int32:
+    int32_t size() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bin";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bin& obj) {
+    ::tpy::print_object_default(os, "Bin", obj);
+    return os;
+}
+
+
+// def __init__(self) -> None:
+inline Bin::Bin() : total(0) {}
+
+// def append(self, v: Int32) -> None:
+inline void Bin::append(int32_t v) {
+    // self.total += v
+    this->total = ::tpy::add_check<int32_t>(this->total, v);
+}
+
+// @readonly
+// def size(self) -> Int32:
+inline int32_t Bin::size() const {
+    // return self.total
+    return this->total;
+}
+template<Appendable T>
+inline auto bump_each(::tpy::borrow_frame_param_t<T> obj, int32_t count) {
+    // # the bare-`T` slot, MUTATED through its bound's method
+    // obj.append(1)
+    obj.append(1);
+    // i: Int32 = 0
+    int32_t i = 0;
+    return ::tpy::make_generator<int32_t>(
+        [&obj, count, i]() mutable -> std::optional<int32_t> {
+            while ((i < count)) {
+                auto __val = i;
+                // i += 1
+                i = ::tpy::add_check<int32_t>(i, 1);
+                return std::optional<int32_t>(__val);
+            }
+            return std::nullopt;
+        }
+    );
+}
+
+template<Readable T>
+inline auto size_each(const T& obj, int32_t count) {
+    // # the `readonly[T]` slot: `const T&` at every instantiation -- still a
+    // # reference (the capture rule), but const, so only a @readonly method is
+    // # callable through it and `obj.append(1)` here would not compile
+    // i: Int32 = 0
+    int32_t i = 0;
+    return ::tpy::make_generator<int32_t>(
+        [&obj, count, i]() mutable -> std::optional<int32_t> {
+            while ((i < count)) {
+                auto __val = (::tpy::add_check<int32_t>(obj.size(), i));
+                // i += 1
+                i = ::tpy::add_check<int32_t>(i, 1);
+                return std::optional<int32_t>(__val);
+            }
+            return std::nullopt;
+        }
+    );
+}
+
+template<Sized T>
+inline auto len_each(const T& obj, int32_t count) {
+    // # the same slot at a VALUE instantiation: `const T&` is a reference at str
+    // # too, never the view -- which is what makes the peephole's `[&obj]`
+    // # capture bind the caller's object rather than a parameter that dies with
+    // # the factory. Fed a NAMED local, because an rvalue here is not hoisted
+    // # into a caller temp (BUGS.md#readonly-tparam-slot-skips-arg-temp).
+    // i: Int32 = 0
+    int32_t i = 0;
+    return ::tpy::make_generator<int32_t>(
+        [&obj, count, i]() mutable -> std::optional<int32_t> {
+            while ((i < count)) {
+                auto __val = (::tpy::add_check<int32_t>(::tpy::__len__(obj), i));
+                // i += 1
+                i = ::tpy::add_check<int32_t>(i, 1);
+                return std::optional<int32_t>(__val);
+            }
+            return std::nullopt;
+        }
+    );
+}
+
 template<typename T>
-inline auto repeat(::tpy::param_val_or_ref_t<T> value, int32_t count) {
+inline auto repeat(::tpy::borrow_frame_param_t<T> value, int32_t count) {
     // i: Int32 = 0
     int32_t i = 0;
     return ::tpy::make_generator<T>(

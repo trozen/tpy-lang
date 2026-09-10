@@ -23,13 +23,13 @@ void test_non_literal_str();
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     // return x
-    return x;
+    return ::tpy::param_to_return<T>(x);
 }
 // def first[T](a: T, b: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return a
-    return a;
+    return ::tpy::param_to_return<T>(a);
 }
 
 void __tpy_init();

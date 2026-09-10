@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::BigInt literals();
-::tpy::BigInt owned_source(const std::string& s);
+::tpy::BigInt owned_source(const ::tpy::String& s);
 ::tpy::BigInt view_reads(const std::tuple<std::string, std::string>& src);
 void main();
 

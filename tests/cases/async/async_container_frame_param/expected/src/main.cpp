@@ -32,7 +32,7 @@ namespace tpyapp::main {
 
 
 // async def fill_buf(b: bytearray) -> Int32:  # tpyc: ok
-__coro_fill_buf fill_buf(std::vector<uint8_t>& b) {
+__coro_fill_buf fill_buf(::tpy::ByteArray& b) {
     return __coro_fill_buf(b);
 }
 
@@ -107,7 +107,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         // # The coroutine mutates through its captured param; the caller's own
         // # object must show the change, which a by-value frame capture would hide.
         // b = bytearray(b"a")
-        b.emplace(::tpy::bytes_copy(::tpy::bytes_literal("a", 1)));
+        b.emplace(::tpy::ByteArray(::tpy::bytes_literal("a", 1)));
         // print(await fill_buf(b), len(b))
         __sub_0.emplace((*b));
         __state = S_RESUME_0;

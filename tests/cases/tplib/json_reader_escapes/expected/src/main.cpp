@@ -134,7 +134,7 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_roundtrip() {
     // w.array_end()
     w.array_end();
     // json = w.finish()
-    std::string json = w.finish();
+    ::tpy::String json = w.finish();
     // reader = JsonReader(json)
     ::tpystd::tplib::json::parser::JsonReader reader = ::tpystd::tplib::json::parser::JsonReader(json);
     // reader.read_array_start()

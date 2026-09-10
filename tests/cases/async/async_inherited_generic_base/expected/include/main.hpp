@@ -40,12 +40,12 @@ struct Box {
 
     // def __init__(self, v: T) -> None:
     Box() = default;
-    explicit Box(const T& v) : v(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
 
     // def put(self, v: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> v) {
         // self.v = v
-        this->v = v;
+        this->v = ::tpy::param_to_storage<T>(v);
     }
 
     __coro_Box_fetch<T> fetch();
@@ -68,7 +68,7 @@ struct Guard {
 
     // def __init__(self, val: T) -> None:
     Guard() = default;
-    explicit Guard(const T& val) : val(val), entered(0) {}
+    explicit Guard(::tpy::readonly_form_t<T> val) : val(val), entered(0) {}
 
     __coro_Guard___aenter__<T> __aenter__();
 
@@ -94,7 +94,7 @@ struct Counter {
 
     // def __init__(self, limit: Int32, seed: T) -> None:
     Counter() = default;
-    explicit Counter(int32_t limit, const T& seed) : cur(0), limit(limit), seed(seed) {}
+    explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed) : cur(0), limit(limit), seed(seed) {}
 
     // def __aiter__(self) -> "Counter[T]":
     Counter<T>& __aiter__() {

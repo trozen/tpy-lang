@@ -23,7 +23,7 @@ struct Channel {
 
     // def __init__(self, item: T) -> None:
     Channel() = default;
-    explicit Channel(const T& item) : item(item) {}
+    explicit Channel(::tpy::readonly_form_t<T> item) : item(item) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Channel";
 };
 

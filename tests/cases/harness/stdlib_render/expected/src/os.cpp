@@ -401,7 +401,7 @@ void close(int64_t fd) {
 }
 
 // def read(fd: Int64, n: Int64) -> Own[bytes]:
-std::vector<uint8_t> read(int64_t fd, int64_t n) {
+::tpy::Bytes read(int64_t fd, int64_t n) {
     // return _read_fd(fd, n)
     return ::tpy::stdlib::os::read_fd(fd, n);
 }
@@ -469,7 +469,7 @@ bool access(std::string_view path, int64_t mode) {
 }
 
 // def urandom(n: Int64) -> Own[bytes]:
-std::vector<uint8_t> urandom(int64_t n) {
+::tpy::Bytes urandom(int64_t n) {
     // return _urandom(n)
     return ::tpy::stdlib::os::urandom(n);
 }

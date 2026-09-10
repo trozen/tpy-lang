@@ -21,7 +21,7 @@ struct Util {
     template<typename T>
     static ::tpy::val_or_ref_t<T> second(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
         // return b
-        return b;
+        return ::tpy::param_to_return<T>(b);
     }
     static constexpr std::string_view __tpy_class_name__ = "helpers.Util";
 };

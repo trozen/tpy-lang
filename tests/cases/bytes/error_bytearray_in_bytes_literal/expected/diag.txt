@@ -1,0 +1,1 @@
+main.py:9: error: List literal element 1 has type bytearray, incompatible with annotated element type bytes

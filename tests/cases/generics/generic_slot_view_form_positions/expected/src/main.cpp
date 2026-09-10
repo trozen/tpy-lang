@@ -47,7 +47,7 @@ bool peek_str(const std::vector<std::string>& xs, std::string_view v) {
 }
 
 // def peek_bytes(xs: list[bytes], v: readonly[bytes]) -> bool:
-bool peek_bytes(const std::vector<std::vector<uint8_t>>& xs, std::span<const uint8_t> v) {
+bool peek_bytes(const std::vector<::tpy::Bytes>& xs, std::span<const uint8_t> v) {
     // # The monomorphic twin of peek[bytes]: `readonly[bytes]` is still the span.
     // for x in xs:
     auto& __obj_0 = xs;
@@ -69,16 +69,14 @@ bool peek_bytes(const std::vector<std::vector<uint8_t>>& xs, std::span<const uin
 void free_function(std::string_view k) {
     // # free function: a `str` PARAM is a view
     // print("free_function", has_item(NAMES, k), has_item_str(NAMES, k))  # tpyc: ok
-    std::string __tmp_2 = std::string(k);
-    std::cout << "free_function" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), __tmp_2)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+    std::cout << "free_function" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
 }
 
 // def ctor_arg(k: str) -> None:
 void ctor_arg(std::string_view k) {
     // # ctor arg: the generic record's `explicit Boxed(const T&)` slot
     // b = Boxed[str](k)  # tpyc: ok
-    std::string __tmp_3 = std::string(k);
-    Boxed<std::string> b = Boxed<std::string>(__tmp_3);
+    Boxed<std::string> b = Boxed<std::string>(k);
     // print("ctor_arg", b.v == k, k == k)
     std::cout << "ctor_arg" << " " << ::tpy::print_bool((b.v == k)) << " " << ::tpy::print_bool((k == k)) << "\n";
 }
@@ -120,13 +118,9 @@ void comprehension(const std::vector<std::string>& ks) {
 std::expected<bool, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // # generator body
-        // r = has_item(NAMES, k)  # tpyc: ok -- `yield has_item(..)` direct: BUGS.md#resumable-arg-temp-no-flush
-        std::string __tmp_4 = std::string(k);
-        r = has_item<std::string>((*NAMES), __tmp_4);
-        // yield r
+        // yield has_item(NAMES, k)  # tpyc: ok -- direct, no two-step needed
         __state = S_RESUME_0;
-        return r;
+        return has_item<std::string>((*NAMES), k);
     }
     case S_RESUME_0: {
         // yield has_item_str(NAMES, k)
@@ -162,12 +156,11 @@ __gen_gen_body gen_body(std::string_view k) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        // r = has_item(NAMES, k)  # tpyc: ok -- `return has_item(..)` direct: BUGS.md#resumable-arg-temp-no-flush
-        std::string __tmp_5 = std::string(k);
-        r = has_item<std::string>((*NAMES), __tmp_5);
-        // return r and has_item_str(NAMES, k)
+        // # direct, no two-step needed: the instantiated body takes `str`'s own
+        // # forms, so nothing has to be materialized into a temp here
+        // return has_item(NAMES, k) and has_item_str(NAMES, k)  # tpyc: ok
         __state = S_DONE;
-        bool __tpy_async_ret = (r && has_item_str((*NAMES), k));
+        bool __tpy_async_ret = (has_item<std::string>((*NAMES), k) && has_item_str((*NAMES), k));
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -187,8 +180,7 @@ void closure(std::string_view k) {
     auto inner = [&k]() -> bool {
         // # closure: `k` is captured from the enclosing signature, still a view
         // return has_item(NAMES, k)  # tpyc: ok
-        std::string __tmp_6 = std::string(k);
-        return has_item<std::string>((*NAMES), __tmp_6);
+        return has_item<std::string>((*NAMES), k);
     };
     // print("closure", inner(), has_item_str(NAMES, k))
     std::cout << "closure" << " " << ::tpy::print_bool(inner()) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
@@ -205,8 +197,7 @@ void match_arm(std::string_view k) {
     case 1: {
         // # match arm
         // print("match_arm", has_item(NAMES, k), has_item_str(NAMES, k))  # tpyc: ok
-        std::string __tmp_7 = std::string(k);
-        std::cout << "match_arm" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), __tmp_7)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+        std::cout << "match_arm" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
         break;
     }
     // case _:
@@ -223,8 +214,7 @@ void cond_operand(std::string_view k, bool flag) {
     // # conditional operand: the temp banks into the short-circuit region
     // print("cond_operand", flag or has_item(NAMES, k),  # tpyc: ok
     // flag or has_item_str(NAMES, k))
-    std::optional<std::string> __tmp_8;
-    std::cout << "cond_operand" << " " << ::tpy::print_bool((flag || (__tmp_8.emplace(std::string(k)), has_item<std::string>((*NAMES), (*__tmp_8))))) << " " << ::tpy::print_bool((flag || has_item_str((*NAMES), k))) << "\n";
+    std::cout << "cond_operand" << " " << ::tpy::print_bool((flag || has_item<std::string>((*NAMES), k))) << " " << ::tpy::print_bool((flag || has_item_str((*NAMES), k))) << "\n";
 }
 
 // def with_body(k: str) -> None:
@@ -235,8 +225,7 @@ void with_body(std::string_view k) {
     try {
         // # context-manager body
         // print("with_body", has_item(NAMES, k), has_item_str(NAMES, k))  # tpyc: ok
-        std::string __tmp_9 = std::string(k);
-        std::cout << "with_body" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), __tmp_9)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+        std::cout << "with_body" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -257,8 +246,7 @@ void try_finally(std::string_view k) {
         try {
             // # try body
             // print("try_finally", has_item(NAMES, k), has_item_str(NAMES, k))  # tpyc: ok
-            std::string __tmp_10 = std::string(k);
-            std::cout << "try_finally" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), __tmp_10)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
+            std::cout << "try_finally" << " " << ::tpy::print_bool(has_item<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
         } catch (...) {
             // print("try_finally", "done")
             std::cout << "try_finally" << " " << "done" << "\n";
@@ -275,8 +263,7 @@ void try_finally(std::string_view k) {
 std::expected<bool, MyErr> er_body(std::string_view k) {
     // # @error_return body
     // return has_item(NAMES, k)  # tpyc: ok
-    std::string __tmp_11 = std::string(k);
-    return has_item<std::string>((*NAMES), __tmp_11);
+    return has_item<std::string>((*NAMES), k);
 }
 
 // @error_return(MyErr)
@@ -291,23 +278,50 @@ std::expected<bool, MyErr> er_body_str(std::string_view k) {
 void bytes_positions(std::span<const uint8_t> k) {
     // # the bytes family at the same slot, whose resolved slot is a MUTABLE ref
     // keys = [b"a", b"b"]
-    std::vector<std::vector<uint8_t>> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
+    std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
     // print("bytes_value", has_item(keys, k))  # tpyc: ok
-    std::vector<uint8_t> __tmp_12 = ::tpy::bytes_copy(k);
-    std::cout << "bytes_value" << " " << ::tpy::print_bool(has_item<std::vector<uint8_t>>(keys, __tmp_12)) << "\n";
+    std::cout << "bytes_value" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, k)) << "\n";
 }
 
 // def readonly_slot(k: str, b: bytes) -> None:
 void readonly_slot(std::string_view k, std::span<const uint8_t> b) {
-    // # readonly[T] free function, str and bytes, each beside its twin
+    // # readonly[T] free function, str and bytes, each beside its twin: the const
+    // # slot is `readonly_form_t<T>`, which at a view family IS the view
     // keys = [b"a", b"b"]
-    std::vector<std::vector<uint8_t>> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
+    std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
     // print("readonly_slot", peek(NAMES, k), peek_str(NAMES, k))  # tpyc: ok
-    std::string __tmp_13 = std::string(k);
-    std::cout << "readonly_slot" << " " << ::tpy::print_bool(peek<std::string>((*NAMES), __tmp_13)) << " " << ::tpy::print_bool(peek_str((*NAMES), k)) << "\n";
+    std::cout << "readonly_slot" << " " << ::tpy::print_bool(peek<std::string>((*NAMES), k)) << " " << ::tpy::print_bool(peek_str((*NAMES), k)) << "\n";
     // print("readonly_slot", peek(keys, b), peek_bytes(keys, b))  # tpyc: ok
-    std::vector<uint8_t> __tmp_14 = ::tpy::bytes_copy(b);
-    std::cout << "readonly_slot" << " " << ::tpy::print_bool(peek<std::vector<uint8_t>>(keys, __tmp_14)) << " " << ::tpy::print_bool(peek_bytes(keys, b)) << "\n";
+    std::cout << "readonly_slot" << " " << ::tpy::print_bool(peek<::tpy::Bytes>(keys, b)) << " " << ::tpy::print_bool(peek_bytes(keys, b)) << "\n";
+}
+
+// def while_cond(k: str) -> None:
+void while_cond(std::string_view k) {
+    // # A compound `while` condition has no statement to hoist a temp into, which
+    // # is why all three seams used to reject here. None of them needs a temp now:
+    // # the free call's slot, the (readonly-inferred) METHOD's and the
+    // # CONSTRUCTOR's all resolve to the caller's own read form.
+    // n = 0
+    int32_t n = 0;
+    // while has_item(NAMES, k) and n < 1:  # tpyc: ok
+    while ((has_item<std::string>((*NAMES), k) && (n < 1))) {
+        // n += 1
+        n = ::tpy::add_check<int32_t>(n, 1);
+    }
+    // box = Labels[str]("a")
+    Labels<std::string> box = Labels<std::string>("a");
+    // while box.has(k) and n < 2:  # tpyc: ok
+    while ((box.has(k) && (n < 2))) {
+        // n += 1
+        n = ::tpy::add_check<int32_t>(n, 1);
+    }
+    // while Labels[str](k).has("a") and n < 3:  # tpyc: ok
+    while ((Labels<std::string>(k).has("a") && (n < 3))) {
+        // n += 1
+        n = ::tpy::add_check<int32_t>(n, 1);
+    }
+    // print("while_cond", n, has_item_str(NAMES, k))
+    std::cout << "while_cond" << " " << n << " " << ::tpy::print_bool(has_item_str((*NAMES), k)) << "\n";
 }
 
 // def inverse(k: str, n: int) -> None:
@@ -334,13 +348,15 @@ void inverse(std::string_view k, const ::tpy::BigInt& n) {
 void main() {
     // free_function("a")
     free_function("a");
+    // while_cond("a")
+    while_cond("a");
     // Holder().method("a")
     Holder().method("a");
     // ctor_arg("a")
     ctor_arg("a");
     // comprehension(["a", "z"])
-    std::vector<std::string> __tmp_15 = {"a", "z"};
-    comprehension(__tmp_15);
+    std::vector<std::string> __tmp_1 = {"a", "z"};
+    comprehension(__tmp_1);
     // for g in gen_body("a"):
     {
         auto __src_0 = gen_body("a");

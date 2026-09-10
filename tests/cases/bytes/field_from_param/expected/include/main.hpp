@@ -19,7 +19,7 @@ void main();
 // class Packet:
 struct Packet {
     // self.data = data
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
     explicit Packet(std::span<const uint8_t> data);
@@ -36,7 +36,7 @@ struct MultiField {
     // self.name = name
     std::string name;
     // self.payload = payload
-    std::vector<uint8_t> payload;
+    ::tpy::Bytes payload;
 
     // def __init__(self, name: str, payload: bytes) -> None:
     explicit MultiField(std::string_view name, std::span<const uint8_t> payload);
@@ -50,9 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const MultiField& obj) {
 
 
 // def __init__(self, data: bytes) -> None:
-inline Packet::Packet(std::span<const uint8_t> data) : data(::tpy::bytes_copy(data)) {}
+inline Packet::Packet(std::span<const uint8_t> data) : data(::tpy::Bytes(data)) {}
 
 // def __init__(self, name: str, payload: bytes) -> None:
-inline MultiField::MultiField(std::string_view name, std::span<const uint8_t> payload) : name(name), payload(::tpy::bytes_copy(payload)) {}
+inline MultiField::MultiField(std::string_view name, std::span<const uint8_t> payload) : name(name), payload(::tpy::Bytes(payload)) {}
 void __tpy_init();
 } // namespace tpyapp::main

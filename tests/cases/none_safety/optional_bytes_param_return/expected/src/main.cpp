@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // # Value-repr Optional[bytes] routed through THIR (the bytes twin of Optional[str]):
 // # the None-test and the return sinks (None -> nullopt, bytes-literal -> owned,
-// # param -> the view->owned bytes_copy shim). Truthiness/print stay AST (BUGS.md).
+// # param -> the view->owned `bytes` constructor). Truthiness/print stay AST (BUGS.md).
 // def is_absent(b: bytes | None) -> bool:
 bool is_absent(std::optional<std::span<const uint8_t>> b) {
     // return b is None
@@ -14,7 +14,7 @@ bool is_absent(std::optional<std::span<const uint8_t>> b) {
 }
 
 // def pick(keep: bool) -> bytes | None:
-std::optional<std::vector<uint8_t>> pick(bool keep) {
+std::optional<::tpy::Bytes> pick(bool keep) {
     // if keep:
     if (keep) {
         // return b"data"
@@ -25,9 +25,9 @@ std::optional<std::vector<uint8_t>> pick(bool keep) {
 }
 
 // def forward(b: bytes | None) -> bytes | None:
-std::optional<std::vector<uint8_t>> forward(std::optional<std::span<const uint8_t>> b) {
+std::optional<::tpy::Bytes> forward(std::optional<std::span<const uint8_t>> b) {
     // return b
-    return b ? std::make_optional(::tpy::bytes_copy(*b)) : std::nullopt;
+    return b ? std::make_optional(::tpy::Bytes(*b)) : std::nullopt;
 }
 
 // def main() -> None:

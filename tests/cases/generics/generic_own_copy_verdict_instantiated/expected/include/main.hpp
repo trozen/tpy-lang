@@ -63,7 +63,7 @@ int32_t outer_fwd(::tpy::param_val_or_ref_t<U> v);
 template<::tpy::ValueType T>
 int32_t value_bound(::tpy::param_val_or_ref_t<T> v);
 template<::tpy::ValueType T>
-int32_t value_bound_readonly(const T& v);
+int32_t value_bound_readonly(::tpy::readonly_form_t<T> v);
 template<::tpy::ValueType T>
 int32_t boxed_bound(const GBox<T>& v);
 int32_t boxed_bound_twin(const GBox<int32_t>& v);
@@ -152,12 +152,12 @@ struct Holder {
 
     // def __init__(self, v: T) -> None:
     Holder() = default;
-    explicit Holder(const T& v) : item(v) {}
+    explicit Holder(::tpy::readonly_form_t<T> v) : item(v) {}
 
     // def store(self, v: T) -> None:
     void store(::tpy::param_val_or_ref_t<T> v) {
         // self.item = v  # tpyc: warning(/may copy T into field/)
-        this->item = v;
+        this->item = ::tpy::param_to_storage<T>(v);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -213,7 +213,7 @@ struct GenBase {
 
     // def __init__(self, v: T) -> None:
     GenBase() = default;
-    explicit GenBase(const T& v) : item(v) {}
+    explicit GenBase(::tpy::readonly_form_t<T> v) : item(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenBase";
 };
 
@@ -258,7 +258,7 @@ struct GBox {
 
     // def __init__(self, v: T) -> None:
     GBox() = default;
-    explicit GBox(const T& v) : item(v) {}
+    explicit GBox(::tpy::readonly_form_t<T> v) : item(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";
 };
 
@@ -281,15 +281,15 @@ struct Shadowed {
 
     // def __init__(self, v: T) -> None:
     Shadowed() = default;
-    explicit Shadowed(const T& v) : item(v) {}
+    explicit Shadowed(::tpy::readonly_form_t<T> v) : item(v) {}
 
     // def keep[T: ValueType](self, v: T) -> Int32:
-    int32_t keep(const T& v) const
+    int32_t keep(::tpy::readonly_form_t<T> v) const
       requires ::tpy::ValueType<T> {
         // xs: list[T] = []
         std::vector<T> xs = std::vector<T>{};
         // xs.append(v)  # tpyc: ok
-        xs.push_back(v);
+        xs.push_back(::tpy::param_to_storage<T>(v));
         // return len(xs)
         return ::tpy::__len__(xs);
     }
@@ -308,7 +308,7 @@ struct GenMid : GenBase<T> {
 
     // def __init__(self, v: T) -> None:
     GenMid() = default;
-    explicit GenMid(const T& v) : GenBase<T>(v) {}
+    explicit GenMid(::tpy::readonly_form_t<T> v) : GenBase<T>(v) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenMid";
 };
 
@@ -364,7 +364,7 @@ template <typename T>
         // xs: list[T] = []
         xs.emplace(std::vector<T>{});
         // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-        (*xs).push_back(v);
+        (*xs).push_back(::tpy::param_to_storage<T>(v));
         // return len(xs)
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__((*xs));
@@ -441,7 +441,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slot<T>::__next__() {
         // xs: list[T] = []
         xs.emplace(std::vector<T>{});
         // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-        (*xs).push_back(v);
+        (*xs).push_back(::tpy::param_to_storage<T>(v));
         // yield len(xs)
         __state = S_RESUME_0;
         return ::tpy::__len__((*xs));
@@ -500,7 +500,7 @@ int32_t free_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -519,7 +519,7 @@ int32_t two_instantiations(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -532,7 +532,7 @@ int32_t closure_slot(::tpy::param_val_or_ref_t<T> v) {
     // def inner() -> None:
     auto inner = [&v, &xs]() {
         // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-        xs.push_back(v);
+        xs.push_back(::tpy::param_to_storage<T>(v));
     };
     // inner()
     inner();
@@ -550,7 +550,7 @@ int32_t with_slot(::tpy::param_val_or_ref_t<T> v) {
     auto g = __ctx_1.__enter__();
     try {
         // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-        xs.push_back(v);
+        xs.push_back(::tpy::param_to_storage<T>(v));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -574,14 +574,14 @@ int32_t try_slot(::tpy::param_val_or_ref_t<T> v) {
     {
         try {
             // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-            xs.push_back(v);
+            xs.push_back(::tpy::param_to_storage<T>(v));
         } catch (...) {
             // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-            xs.push_back(v);
+            xs.push_back(::tpy::param_to_storage<T>(v));
             throw;
         }
         // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-        xs.push_back(v);
+        xs.push_back(::tpy::param_to_storage<T>(v));
     }
     // return len(xs)
     return ::tpy::__len__(xs);
@@ -598,7 +598,7 @@ int32_t match_slot(::tpy::param_val_or_ref_t<T> v, int32_t tag) {
     // case 1:
     case 1: {
         // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-        xs.push_back(v);
+        xs.push_back(::tpy::param_to_storage<T>(v));
         break;
     }
     // case _:
@@ -618,7 +618,7 @@ std::expected<int32_t, Missing> er_slot(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -629,7 +629,7 @@ int32_t inner_fwd(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -648,7 +648,7 @@ int32_t value_bound(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: ok
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -660,11 +660,11 @@ int32_t value_bound(::tpy::param_val_or_ref_t<T> v) {
 // # `ctor.mil_field.tuple.name`, so the case pins the shape that does.)
 // def value_bound_readonly[T: ValueType](v: readonly[T]) -> Int32:
 template<::tpy::ValueType T>
-int32_t value_bound_readonly(const T& v) {
+int32_t value_bound_readonly(::tpy::readonly_form_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: ok
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -732,7 +732,7 @@ int32_t value_only(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -744,7 +744,7 @@ int32_t never_used(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }
@@ -756,7 +756,7 @@ int32_t bounded_copyable(::tpy::param_val_or_ref_t<T> v) {
     // xs: list[T] = []
     std::vector<T> xs = std::vector<T>{};
     // xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    xs.push_back(v);
+    xs.push_back(::tpy::param_to_storage<T>(v));
     // return len(xs)
     return ::tpy::__len__(xs);
 }

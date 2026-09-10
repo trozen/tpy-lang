@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def make_greeting(name: str) -> str:
 std::string make_greeting(std::string_view name) {
     // result = "hello " + name  # tpyc: type(String)
-    std::string result = (::tpy::str_concat("hello ", name));
+    ::tpy::String result = (::tpy::str_concat("hello ", name));
     // return result
     return result;
 }

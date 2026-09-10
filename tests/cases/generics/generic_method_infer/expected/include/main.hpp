@@ -21,13 +21,13 @@ struct Box {
 
     // def __init__(self, val: T):
     Box() = default;
-    explicit Box(const T& val) : val(val) {}
+    explicit Box(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def transform[U](self, other: U) -> U:
     template<typename U>
-    ::tpy::val_or_cref_t<U> transform(const U& other) const {
+    ::tpy::val_or_cref_t<U> transform(::tpy::readonly_form_t<U> other) const {
         // return other
-        return other;
+        return ::tpy::param_to_return<U>(other);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };

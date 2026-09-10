@@ -58,7 +58,7 @@ void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigI
 }
 
 // def bytes_reads(x: bytes | Indexed, index: int) -> None:
-void bytes_reads(const std::variant<Indexed*, std::vector<uint8_t>*> x, const ::tpy::BigInt& index) {
+void bytes_reads(const std::variant<Indexed*, ::tpy::Bytes*> x, const ::tpy::BigInt& index) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -89,8 +89,8 @@ void bytes_reads(const std::variant<Indexed*, std::vector<uint8_t>*> x, const ::
     }
     }
     // if isinstance(x, bytes):
-    if (std::holds_alternative<std::vector<uint8_t>*>(x)) {
-        auto& __x = *std::get<std::vector<uint8_t>*>(x);
+    if (std::holds_alternative<::tpy::Bytes*>(x)) {
+        auto& __x = *std::get<::tpy::Bytes*>(x);
         // print("bytes-isinstance", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "bytes-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n";
     }
@@ -98,7 +98,7 @@ void bytes_reads(const std::variant<Indexed*, std::vector<uint8_t>*> x, const ::
 
 // # BUGS.md#bytes-value-union-boundary-rejects blocks callers; this body still builds.
 // def bytes_value_union(x: bytes | Int32) -> None:
-void bytes_value_union(const ::tpy::Union<int32_t, std::vector<uint8_t>>& x) {
+void bytes_value_union(const ::tpy::Union<int32_t, ::tpy::Bytes>& x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -118,7 +118,7 @@ void bytes_value_union(const ::tpy::Union<int32_t, std::vector<uint8_t>>& x) {
 }
 
 // def bytearray_reads(x: bytearray | Int32, index: int) -> None:
-void bytearray_reads(const std::variant<int32_t*, std::vector<uint8_t>*> x, const ::tpy::BigInt& index) {
+void bytearray_reads(const std::variant<int32_t*, ::tpy::ByteArray*> x, const ::tpy::BigInt& index) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -147,8 +147,8 @@ void bytearray_reads(const std::variant<int32_t*, std::vector<uint8_t>*> x, cons
     }
     }
     // if isinstance(x, bytearray):
-    if (std::holds_alternative<std::vector<uint8_t>*>(x)) {
-        auto& __x = *std::get<std::vector<uint8_t>*>(x);
+    if (std::holds_alternative<::tpy::ByteArray*>(x)) {
+        auto& __x = *std::get<::tpy::ByteArray*>(x);
         // print("bytearray-isinstance", x[0], x[-1], x[index])  # tpyc: ok
         std::cout << "bytearray-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n";
         // try:
@@ -224,7 +224,7 @@ void monomorphic_read(int32_t marker) {
 }
 
 // def tuple_reads(x: bytearray | Int32) -> None:
-void tuple_reads(const std::variant<int32_t*, std::vector<uint8_t>*> x) {
+void tuple_reads(const std::variant<int32_t*, ::tpy::ByteArray*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -273,13 +273,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
         continue;
     }
     case S_RESUME_0: {
-        auto& __x = *std::get<std::vector<uint8_t>*>(x);
+        auto& __x = *std::get<::tpy::ByteArray*>(x);
         // yield x[-1]  # tpyc: ok
         __state = S_RESUME_1;
         return static_cast<int32_t>(::tpy::bytes_getitem(__x, -1));
     }
     case S_RESUME_1: {
-        auto& __x = *std::get<std::vector<uint8_t>*>(x);
+        auto& __x = *std::get<::tpy::ByteArray*>(x);
         __state = S_JOIN_0;
         continue;
     }
@@ -298,7 +298,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
 
 
 // def generate(x: bytearray | Int32) -> Iterator[Int32]:
-__gen_generate generate(std::variant<int32_t*, std::vector<uint8_t>*> x) {
+__gen_generate generate(std::variant<int32_t*, ::tpy::ByteArray*> x) {
     return __gen_generate(x);
 }
 
@@ -336,7 +336,7 @@ __gen_generate generate(std::variant<int32_t*, std::vector<uint8_t>*> x) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        auto& __x = *std::get<std::vector<uint8_t>*>(x);
+        auto& __x = *std::get<::tpy::ByteArray*>(x);
         // return first + x[-1]  # tpyc: ok
         __state = S_DONE;
         int32_t __tpy_async_ret = static_cast<int32_t>((::tpy::add_check<uint8_t>(first, ::tpy::bytes_getitem(__x, -1))));
@@ -349,13 +349,13 @@ __gen_generate generate(std::variant<int32_t*, std::vector<uint8_t>*> x) {
 
 
 // async def async_read(x: bytearray | Int32) -> Int32:
-__coro_async_read async_read(std::variant<int32_t*, std::vector<uint8_t>*> x) {
+__coro_async_read async_read(std::variant<int32_t*, ::tpy::ByteArray*> x) {
     return __coro_async_read(x);
 }
 
 // # Comprehension: each element consumes the scalar, not the original union.
 // def comprehension(x: bytearray | Int32) -> None:
-void comprehension(const std::variant<int32_t*, std::vector<uint8_t>*> x) {
+void comprehension(const std::variant<int32_t*, ::tpy::ByteArray*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -470,7 +470,7 @@ void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x) {
 // # Error-return body: the normal result remains a scalar value.
 // @error_return(Err)
 // def error_read(x: bytearray | Int32) -> Int32:
-std::expected<int32_t, Err> error_read(const std::variant<int32_t*, std::vector<uint8_t>*> x) {
+std::expected<int32_t, Err> error_read(const std::variant<int32_t*, ::tpy::ByteArray*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -600,9 +600,9 @@ void record_read(const std::variant<Indexed*, int32_t*> x) {
 }
 
 // def make_buffer() -> Own[bytearray | Int32]:
-::tpy::Union<int32_t, std::vector<uint8_t>> make_buffer() {
+::tpy::Union<int32_t, ::tpy::ByteArray> make_buffer() {
     // buffer = bytearray(b"abc")
-    std::vector<uint8_t> buffer = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    ::tpy::ByteArray buffer = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     // return buffer
     return buffer;
 }
@@ -620,15 +620,15 @@ void main() {
     // text: str | Int32 = "abc"
     ::tpy::Union<int32_t, std::string> text = "abc";
     // buffer = make_buffer()
-    ::tpy::Union<int32_t, std::vector<uint8_t>> __slot_1 = make_buffer();
-    std::variant<int32_t*, std::vector<uint8_t>*> buffer = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<int32_t, ::tpy::ByteArray> __slot_1 = make_buffer();
+    std::variant<int32_t*, ::tpy::ByteArray*> buffer = ::tpy::to_ptr_variant(__slot_1);
     // index = int("1")
     ::tpy::BigInt index = ::tpy::BigInt::from_str("1");
     // string_reads(text, index)
     string_reads(text, index);
     // bytes_reads(b"abc", index)
-    std::vector<uint8_t> __tmp_1 = ::tpy::bytes_literal_owned("abc", 3);
-    bytes_reads(std::variant<Indexed*, std::vector<uint8_t>*>{&__tmp_1}, index);
+    ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("abc", 3);
+    bytes_reads(std::variant<Indexed*, ::tpy::Bytes*>{&__tmp_1}, index);
     // bytearray_reads(buffer, index)
     bytearray_reads(buffer, index);
     // capture_reads(text, True)

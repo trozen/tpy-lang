@@ -22,7 +22,7 @@ std::string joins(std::string_view a, ::tpy::varargs<const std::string> parts) {
 }
 
 // def total_len(a: bytes, *parts: bytes) -> Int32:
-int32_t total_len(std::span<const uint8_t> a, ::tpy::varargs<const std::vector<uint8_t>> parts) {
+int32_t total_len(std::span<const uint8_t> a, ::tpy::varargs<const ::tpy::Bytes> parts) {
     // n = len(a)
     int32_t n = ::tpy::__len__(a);
     // for p in parts:
@@ -75,8 +75,8 @@ std::string from_str_view(std::string_view sv) {
 // def from_bytes_view(bv: BytesView) -> Int32:
 int32_t from_bytes_view(std::span<const uint8_t> bv) {
     // return total_len(b"x", bv)         # view arg into *parts: bytes
-    std::array<const std::vector<uint8_t>, 1> __tmp_3{::tpy::bytes_copy(bv)};
-    return total_len(::tpy::bytes_literal("x", 1), ::tpy::varargs<const std::vector<uint8_t>>(__tmp_3));
+    std::array<const ::tpy::Bytes, 1> __tmp_3{::tpy::Bytes(bv)};
+    return total_len(::tpy::bytes_literal("x", 1), ::tpy::varargs<const ::tpy::Bytes>(__tmp_3));
 }
 
 // def loop_var_into_join(names: list[str]) -> None:
@@ -126,7 +126,7 @@ void main() {
     // print(from_bytes_view(b"hello"))   # 6
     std::cout << from_bytes_view(::tpy::bytes_literal("hello", 5)) << "\n";
     // owned = "a" + "b"
-    std::string owned = (::tpy::str_concat("a", "b"));
+    ::tpy::String owned = (::tpy::str_concat("a", "b"));
     // print(joins("p", owned, "q"))      # owned + literal args (no view)
     std::array<const std::string, 2> __tmp_6{owned, "q"};
     std::cout << joins("p", ::tpy::varargs<const std::string>(__tmp_6)) << "\n";

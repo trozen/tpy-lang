@@ -55,7 +55,7 @@ template<typename T>
 std::vector<T> twice(::tpy::param_val_or_ref_t<T> a) {
     // # tpyc: warning(/may copy T into owned storage/) warning(/may copy T into owned storage/)
     // return [a, a]   # a copyable `T` element renders bare
-    return {a, a};
+    return {::tpy::param_to_storage<T>(a), ::tpy::param_to_storage<T>(a)};
 }
 
 void __tpy_init();

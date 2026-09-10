@@ -20,7 +20,7 @@ extern std::vector<uint32_t>* _SHA256_K;
 inline constexpr std::string_view __name__ = "hashlib";
 
 uint32_t _load_be32(std::span<const uint8_t> data, int32_t off);
-void _pack_be32(std::vector<uint8_t>& out, uint32_t v);
+void _pack_be32(::tpy::ByteArray& out, uint32_t v);
 SHA256 sha256(std::span<const uint8_t> data = {});
 
 // class SHA256:
@@ -28,7 +28,7 @@ struct SHA256 {
     // h: list[UInt32]
     std::vector<uint32_t> h;
     // buffer: bytearray
-    std::vector<uint8_t> buffer;
+    ::tpy::ByteArray buffer;
     // length: UInt64
     uint64_t length;
     // digest_size: Int32
@@ -51,7 +51,7 @@ struct SHA256 {
     void _process_block(std::span<const uint8_t> data, int32_t off);
 
     // def digest(self) -> bytes:
-    std::vector<uint8_t> digest() const;
+    ::tpy::Bytes digest() const;
 
     // def hexdigest(self) -> str:
     std::string hexdigest() const;

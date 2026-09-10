@@ -71,7 +71,7 @@ struct Bar {
 
     // def __init__(self, factory: T) -> None:
     Bar() = default;
-    explicit Bar(const T& factory) : factory(factory) {}
+    explicit Bar(::tpy::readonly_form_t<T> factory) : factory(factory) {}
 
     // def create_foo(self) -> Own[Foo]:
     Foo create_foo() {

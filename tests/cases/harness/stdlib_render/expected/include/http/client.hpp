@@ -26,7 +26,7 @@ struct _Connection;
 template<typename T>
 concept ___Connection_Concept__ = requires(T& t) {
     { t.connect() } -> std::convertible_to<void>;
-    { t.request(std::declval<std::string>(), std::declval<std::string>(), std::declval<std::optional<std::vector<uint8_t>>>(), std::declval<std::optional<::tpy::ordered_map<std::string, std::string>>>()) } -> std::convertible_to<void>;
+    { t.request(std::declval<std::string>(), std::declval<std::string>(), std::declval<std::optional<::tpy::Bytes>>(), std::declval<std::optional<::tpy::ordered_map<std::string, std::string>>>()) } -> std::convertible_to<void>;
     { t.getresponse() } -> std::convertible_to<HTTPResponse>;
     { t.close() } -> std::convertible_to<void>;
 };
@@ -59,7 +59,7 @@ int32_t _hex_val(int32_t c);
 ::tpy::BigInt _digits_to_int(std::string_view s);
 ::tpy::BigInt _parse_chunk_size(std::span<const uint8_t> line);
 ::tpy::BigInt _content_length(std::string_view method, std::optional<std::span<const uint8_t>> body);
-std::vector<uint8_t> _build_request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port);
+::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port);
 
 // class HTTPException(Exception):
 struct HTTPException : ::tpy::Exception {
@@ -67,7 +67,7 @@ struct HTTPException : ::tpy::Exception {
     // # Explicit __init__ + String param: compiler-gap workaround for
     // # exception subclasses (StrView default-arg on a user ctor).
     // def __init__(self, message: String = "") -> None:
-    explicit HTTPException(const std::string& message = "");
+    explicit HTTPException(const ::tpy::String& message = "");
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<HTTPException>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -132,10 +132,10 @@ struct HTTPResponse {
     bool _check_close() const;
 
     // def read(self, amt: Int32 = -1) -> bytes:
-    std::vector<uint8_t> read(int32_t amt = -1);
+    ::tpy::Bytes read(int32_t amt = -1);
 
     // def _read_chunked(self, amt: Int32) -> bytes:
-    std::vector<uint8_t> _read_chunked(int32_t amt);
+    ::tpy::Bytes _read_chunked(int32_t amt);
 
     // def _next_chunk(self) -> bool:
     bool _next_chunk();
@@ -257,7 +257,7 @@ inline std::ostream& operator<<(std::ostream& os, const HTTPSConnection& obj) {
 struct BadStatusLine : HTTPException {
 
     // def __init__(self, line: String = "") -> None:
-    explicit BadStatusLine(const std::string& line = "");
+    explicit BadStatusLine(const ::tpy::String& line = "");
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<BadStatusLine>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -274,7 +274,7 @@ inline std::ostream& operator<<(std::ostream& os, const BadStatusLine& obj) {
 struct UnknownProtocol : HTTPException {
 
     // def __init__(self, version: String = "") -> None:
-    explicit UnknownProtocol(const std::string& version = "");
+    explicit UnknownProtocol(const ::tpy::String& version = "");
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<UnknownProtocol>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -316,7 +316,7 @@ namespace tpystd::http::client {
 // # Explicit __init__ + String param: compiler-gap workaround for
 // # exception subclasses (StrView default-arg on a user ctor).
 // def __init__(self, message: String = "") -> None:
-inline HTTPException::HTTPException(const std::string& message) : ::tpy::Exception(message) {}
+inline HTTPException::HTTPException(const ::tpy::String& message) : ::tpy::Exception(message) {}
 
 // def begin(self) -> None:
 inline void HTTPResponse::begin() {
@@ -446,7 +446,7 @@ inline void HTTPConnection::request(std::string_view method, std::string_view ur
     this->_method = method;
     // data = _build_request(method, url, body, headers, self.host,
     // self.port, HTTP_PORT)
-    std::vector<uint8_t> data = _build_request(method, url, body ? std::make_optional(::tpy::bytes_copy(*body)) : std::nullopt, headers, this->host, this->port, HTTP_PORT);
+    ::tpy::Bytes data = _build_request(method, url, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, headers, this->host, this->port, HTTP_PORT);
     // if self.sock is None:
     if ((!this->sock.has_value())) {
         // raise HTTPException("Connection not established")
@@ -508,7 +508,7 @@ inline void HTTPSConnection::request(std::string_view method, std::string_view u
     this->_method = method;
     // data = _build_request(method, url, body, headers, self.host,
     // self.port, HTTPS_PORT)
-    std::vector<uint8_t> data = _build_request(method, url, body ? std::make_optional(::tpy::bytes_copy(*body)) : std::nullopt, headers, this->host, this->port, HTTPS_PORT);
+    ::tpy::Bytes data = _build_request(method, url, body ? std::make_optional(::tpy::Bytes(*body)) : std::nullopt, headers, this->host, this->port, HTTPS_PORT);
     // if self._tls is None:
     if ((!this->_tls.has_value())) {
         // raise HTTPException("Connection not established")
@@ -545,9 +545,9 @@ inline void HTTPSConnection::close() {
 }
 
 // def __init__(self, line: String = "") -> None:
-inline BadStatusLine::BadStatusLine(const std::string& line) : HTTPException(line) {}
+inline BadStatusLine::BadStatusLine(const ::tpy::String& line) : HTTPException(line) {}
 
 // def __init__(self, version: String = "") -> None:
-inline UnknownProtocol::UnknownProtocol(const std::string& version) : HTTPException(version) {}
+inline UnknownProtocol::UnknownProtocol(const ::tpy::String& version) : HTTPException(version) {}
 void __tpy_init();
 } // namespace tpystd::http::client

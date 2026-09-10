@@ -74,10 +74,10 @@ template<::tpystd::tpy::Comparable T>
     // if a < b:
     if ((a < b)) {
         // return a
-        return a;
+        return ::tpy::param_to_return<T>(a);
     }
     // return b
-    return b;
+    return ::tpy::param_to_return<T>(b);
 }
 
 void __tpy_init();

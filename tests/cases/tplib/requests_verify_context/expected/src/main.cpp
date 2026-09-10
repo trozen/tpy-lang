@@ -35,7 +35,7 @@ void main() {
     // # String(): a bare str view arg doesn't auto-coerce into the bool|str
     // # variant param yet (it does once it's a union-typed local, as in curl.py).
     // custom = _ssl_context_for(String(CA_PATH))
-    ::tpystd::ssl::SSLContext custom = ::tpystd::tplib::requests::_ssl_context_for(std::string(CA_PATH));
+    ::tpystd::ssl::SSLContext custom = ::tpystd::tplib::requests::_ssl_context_for(::tpy::String(CA_PATH));
     // # A custom CA file adds trust but keeps verification on.
     // print(custom.verify_mode == ssl.CERT_REQUIRED, custom.check_hostname)
     std::cout << ::tpy::print_bool((custom.verify_mode == ::tpystd::ssl::CERT_REQUIRED)) << " " << ::tpy::print_bool(custom.check_hostname) << "\n";

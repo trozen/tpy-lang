@@ -1,8 +1,8 @@
 # Ext-only: the compiled extension enforces the declared `bytes` type at the
 # boundary (PyBytes_AsStringAndSize), while the TPy source leaves the annotation
 # unchecked. A non-bytes argument is a TypeError -- notably a `str` and a
-# `bytearray` (a mutable buffer that shares bytes' C++ representation but is not
-# accepted by value) -- only against the built .so.
+# `bytearray` (a mutable buffer, not accepted by value) -- only against the
+# built .so.
 import bytes_vals as m
 
 

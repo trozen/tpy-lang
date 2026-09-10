@@ -90,7 +90,7 @@ struct JsonWriter {
     void write_null();
 
     // def finish(self) -> String:
-    std::string finish() const;
+    ::tpy::String finish() const;
 
     // def _write_escaped(self, s: str) -> None:
     void _write_escaped(std::string_view s);
@@ -347,7 +347,7 @@ inline void JsonWriter::write_null() {
 }
 
 // def finish(self) -> String:
-inline std::string JsonWriter::finish() const {
+inline ::tpy::String JsonWriter::finish() const {
     // return self._buf
     return this->_buf;
 }

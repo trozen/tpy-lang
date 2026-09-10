@@ -38,11 +38,11 @@ void free_positions() {
 
 // def view_source(k: str) -> None:
 void view_source(std::string_view k) {
-    // # A `str` PARAM reads as a view, and the generic slot is spelled off the
-    // # owning type -- the temp here is the materialized copy, not a binding aid.
+    // # A `str` PARAM reads as a view, and the generic slot resolves to that same
+    // # view (`param_val_or_ref_t<std::string>`), so it binds bare -- no temp,
+    // # exactly as the monomorphic twin's slot does.
     // print("view", anyslot("view", k))  # tpyc: ok
-    std::string __tmp_1 = std::string(k);
-    std::cout << "view" << " " << ::tpy::print_bool(anyslot<std::string>("view", __tmp_1)) << "\n";
+    std::cout << "view" << " " << ::tpy::print_bool(anyslot<std::string>("view", k)) << "\n";
 }
 
 // def ref_rvalue() -> None:
@@ -54,8 +54,8 @@ void ref_rvalue() {
     // # other half of the reference-type rule (the alias is observed in
     // # `ref_lvalue`, whose source is a name).
     // print("ref_rvalue", anyslot("ref", mk_cell()))  # tpyc: ok
-    Cell __tmp_2 = mk_cell();
-    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(anyslot<Cell>("ref", __tmp_2)) << "\n";
+    Cell __tmp_1 = mk_cell();
+    std::cout << "ref_rvalue" << " " << ::tpy::print_bool(anyslot<Cell>("ref", __tmp_1)) << "\n";
 }
 
 // def ref_lvalue() -> None:
@@ -305,8 +305,8 @@ void generator_factory() {
     int32_t out = 0;
     // for v in repeat(42, 2):  # tpyc: ok
     {
-        int32_t __tmp_3 = 42;
-        auto __src_0 = repeat<int32_t>(__tmp_3, 2);
+        int32_t __tmp_2 = 42;
+        auto __src_0 = repeat<int32_t>(__tmp_2, 2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

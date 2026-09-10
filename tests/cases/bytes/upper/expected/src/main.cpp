@@ -17,9 +17,9 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("123abc", 6))) << "\n";
     // # bytearray too
     // ba = bytearray(b"mixed Case")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("mixed Case", 10));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("mixed Case", 10));
     // print(ba.upper())             # bytearray(b'MIXED CASE')
-    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_upper(ba)) << "\n";
+    std::cout << ::tpy::ByteArrayPrinter(::tpy::bytearray_upper(ba)) << "\n";
     // # BytesView (from slice)
     // print(b"hello world"[0:5].upper())   # b'HELLO'
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello world", 11), ::tpy::BasicSlice{0, 5}))) << "\n";

@@ -41,7 +41,7 @@ std::string pick_str(const std::vector<std::string>& argv) {
     // # optional<vector> is a separate pre-existing AST bug, not this test's
     // # subject -- here we exercise the None-test + narrowed deref of the local.
     // acc: bytes | None = None
-    std::optional<std::vector<uint8_t>> acc = std::nullopt;
+    std::optional<::tpy::Bytes> acc = std::nullopt;
     // if n > 0:
     if ((n > 0)) {
         // acc = b"hello"
@@ -50,7 +50,7 @@ std::string pick_str(const std::vector<std::string>& argv) {
     // assert acc is not None
     if (!((acc.has_value()))) ::tpy::raise_assertion_error();
     // head: bytes = acc
-    std::vector<uint8_t> head = (*acc);
+    ::tpy::Bytes head = (*acc);
     // return len(head)
     return ::tpy::BigInt(::tpy::__len__(head));
 }

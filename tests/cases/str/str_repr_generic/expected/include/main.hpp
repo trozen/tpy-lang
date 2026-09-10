@@ -43,7 +43,7 @@ struct Wrapper {
 
     // def __init__(self, value: T) -> None:
     Wrapper() = default;
-    explicit Wrapper(const T& value) : value(value) {}
+    explicit Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
 
     // def __str__(self) -> str:
     std::string __str__() const {

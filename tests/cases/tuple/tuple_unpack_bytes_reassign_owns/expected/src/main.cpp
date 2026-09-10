@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // # bytes sibling: a bytes tuple-unpack target reassigned in a loop owns its
 // # element (a span into the per-iteration tuple temp would dangle).
 // def split_b(b: bytes) -> tuple[bytes, bytes]:
-std::tuple<std::vector<uint8_t>, std::vector<uint8_t>> split_b(std::span<const uint8_t> b) {
+std::tuple<::tpy::Bytes, ::tpy::Bytes> split_b(std::span<const uint8_t> b) {
     // n = len(b) // 2
     int32_t n = (::tpy::div_floor<int32_t>(::tpy::__len__(b), 2));
     // return (b[:n], b[n:])
-    return std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>{::tpy::bytes_copy(::tpy::bytes_slice(b, ::tpy::BasicSlice{std::nullopt, n})), ::tpy::bytes_copy(::tpy::bytes_slice(b, ::tpy::BasicSlice{n, std::nullopt}))};
+    return std::tuple<::tpy::Bytes, ::tpy::Bytes>{::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{std::nullopt, n})), ::tpy::Bytes(::tpy::bytes_slice(b, ::tpy::BasicSlice{n, std::nullopt}))};
 }
 
 // def main() -> None:
 void main() {
     // head = b"abcdefghijklmnop"
-    std::vector<uint8_t> head = ::tpy::bytes_literal_owned("abcdefghijklmnop", 16);
+    ::tpy::Bytes head = ::tpy::bytes_literal_owned("abcdefghijklmnop", 16);
     // acc = 0
     int32_t acc = 0;
     // while len(head) > 1:

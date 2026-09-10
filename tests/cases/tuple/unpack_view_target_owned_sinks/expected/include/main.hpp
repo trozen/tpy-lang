@@ -11,10 +11,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::BigInt take(std::string s);
 std::string first_of(const std::tuple<std::string, std::string>& src);
-std::vector<uint8_t> first_bytes(const std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>& src);
-::tpy::BigInt take_bytes(std::vector<uint8_t> b);
-::tpy::BigInt bytes_elements(const std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>& src);
-std::vector<uint8_t> bytes_accumulate(const std::tuple<std::vector<uint8_t>, std::vector<uint8_t>>& t);
+::tpy::Bytes first_bytes(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src);
+::tpy::BigInt take_bytes(::tpy::Bytes b);
+::tpy::BigInt bytes_elements(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src);
+::tpy::Bytes bytes_accumulate(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& t);
 ::tpy::BigInt elements(const std::tuple<std::string, std::string>& src);
 ::tpy::BigInt own_arg(const std::tuple<std::string, std::string>& src);
 std::string accumulate(const std::tuple<std::string, std::string>& t);

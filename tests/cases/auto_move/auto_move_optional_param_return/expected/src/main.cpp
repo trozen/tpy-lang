@@ -16,7 +16,7 @@ Payload unwrap_record(std::optional<Payload> x) {
 }
 
 // def unwrap_string(x: Optional[String]) -> String:
-std::string unwrap_string(std::optional<std::string> x) {
+::tpy::String unwrap_string(std::optional<::tpy::String> x) {
     // if x is not None:
     if ((x.has_value())) {
         // return x
@@ -38,7 +38,7 @@ std::string unwrap_string(std::optional<std::string> x) {
 }
 
 // def unwrap_string_with_print(x: Optional[String]) -> String:
-std::string unwrap_string_with_print(std::optional<std::string> x) {
+::tpy::String unwrap_string_with_print(std::optional<::tpy::String> x) {
     // if x is not None:
     if ((x.has_value())) {
         // print(x)  # non-last use -- should NOT move

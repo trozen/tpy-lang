@@ -11,13 +11,14 @@ from .typesys import (
     NominalType, PtrType, OptionalType, OwnType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     is_integer_type, unwrap_readonly, AnyType, same_nominal_symbol_loose,
+    BYTES,
 )
 from .type_def_registry import (
     is_array, is_span, is_list, is_dict, is_set, int_traits_of,
     is_fixed_int_type, is_big_int_type, is_float64_type, is_float32_type,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
-    is_basic_slice_type, is_slice_type,
+    is_basic_slice_type, is_slice_type, view_to_owned_conv,
 )
 
 
@@ -165,6 +166,14 @@ class Coercion:
     # Other element coercions are C++-implicit or applied by the element codegen,
     # so they must NOT be materialized here (it would double-convert).
     materialize_at_aggregate_element: bool = False
+    # Admitted only where the destination BORROWS what it is handed: the rule
+    # binds the source's buffer instead of copying it, so at an owning sink
+    # (a field, a container element, an `Own[...]` slot, or any sink that is
+    # not a plain argument) the program has to spell the copy. `contexts`
+    # cannot express this -- the owning verdict is not a context: a borrowing
+    # parameter, an `Own[...]` parameter and a container element all arrive
+    # here as CoercionContext.ARG.
+    borrow_only: bool = False
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
 
 
@@ -313,7 +322,7 @@ COERCIONS: list[Coercion] = [
         name="char_to_string",
         from_type=is_char_type,
         to_type=is_string_type,
-        codegen=lambda e, _a, _b, _c: f"std::string(1, {e})",
+        codegen=lambda e, _a, _b, _c: f"::tpy::String(1, {e})",
     ),
     # Char to StrView coercion
     Coercion(
@@ -323,14 +332,13 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"::tpy::char_to_str({e})",
     ),
 
-    # String <-> str (both lower to std::string in non-ARG contexts, but `str`
-    # params lower to std::string_view at ARG). string -> str is always safe
-    # (std::string implicitly converts to std::string_view). str -> String
-    # materializes at ARG (where str is string_view and String is const
-    # std::string& / std::string) and is identity elsewhere (both std::string).
-    # The ARG wrap skips plain string literals -- `"foo"` is const char* which
-    # binds to const std::string& directly, so `std::string("foo")` is only a
-    # cosmetic change. Non-literal sources (names, calls, slices) need the wrap.
+    # String <-> str. `String` derives from `std::string`, so String -> str (and
+    # -> StrView) is C++-implicit in every position. str -> String materializes
+    # at ARG (where `str` renders a view and the `String` slot is
+    # `const ::tpy::String&`) and is a C++-implicit copy elsewhere. The ARG wrap
+    # skips plain string literals -- `"foo"` is a `const char*`, which the
+    # `String` slot converts from directly. Non-literal sources (names, calls,
+    # slices) need the wrap.
     Coercion(
         name="string_to_str",
         from_type=is_string_type,
@@ -343,7 +351,7 @@ COERCIONS: list[Coercion] = [
         to_type=is_string_type,
         codegen=lambda e, _a, _b, c: (
             e if c != CoercionContext.ARG or (e.startswith('"') and e.endswith('"'))
-            else f"std::string({e})"
+            else f"::tpy::String({e})"
         ),
     ),
 
@@ -365,7 +373,7 @@ COERCIONS: list[Coercion] = [
         name="strview_to_string",
         from_type=is_str_view_type,
         to_type=is_string_type,
-        codegen=lambda e, _a, _b, _c: f"std::string({e})",
+        codegen=lambda e, _a, _b, _c: f"::tpy::String({e})",
         protocol_safe=True,
     ),
     # StrView -> str. At ARG position plain `str` params lower to
@@ -411,17 +419,20 @@ COERCIONS: list[Coercion] = [
         ),
     ),
 
-    # bytearray <-> bytes identity coercions (both map to std::vector<uint8_t>)
+    # bytearray -> bytes at a BORROWING `bytes` parameter only: that slot is a
+    # span view, which a ByteArray satisfies with no copy. At an owning sink
+    # the row does not apply, so the mismatch is reported and the copy has to
+    # be written out -- neither buffer type converts to the other and CPython
+    # copies at neither, so a silent copy would hand the program a private
+    # buffer where CPython shares one. The `bytes` -> `bytearray` direction
+    # has no row at all: an immutable buffer cannot back a mutable slot in
+    # any position.
     Coercion(
         name="bytearray_to_bytes",
         from_type=is_bytearray_type,
         to_type=is_bytes_type,
+        borrow_only=True,
         protocol_safe=True,
-    ),
-    Coercion(
-        name="bytes_to_bytearray",
-        from_type=is_bytes_type,
-        to_type=is_bytearray_type,
     ),
 
     # bytes/bytearray -> BytesView (safe implicit, vector -> span)
@@ -441,14 +452,14 @@ COERCIONS: list[Coercion] = [
         name="bytesview_to_bytes",
         from_type=is_bytes_view_type,
         to_type=is_bytes_type,
-        codegen=lambda e, _a, _b, _c: f"::tpy::bytes_copy({e})",
+        codegen=lambda e, _a, b, _c: f"{view_to_owned_conv(b)}({e})",
         protocol_safe=True,
     ),
     Coercion(
         name="bytesview_to_bytearray",
         from_type=is_bytes_view_type,
         to_type=is_bytearray_type,
-        codegen=lambda e, _a, _b, _c: f"::tpy::bytes_copy({e})",
+        codegen=lambda e, _a, b, _c: f"{view_to_owned_conv(b)}({e})",
         protocol_safe=True,
     ),
 
@@ -525,8 +536,18 @@ COERCIONS: list[Coercion] = [
 ]
 
 
-def resolve_coercion(actual: TpyType, expected: TpyType, ctx: CoercionContext) -> Optional[Coercion]:
-    """Find a coercion rule that converts actual to expected in the given context."""
+def resolve_coercion(actual: TpyType, expected: TpyType,
+                     ctx: Optional[CoercionContext],
+                     sink_owns: bool = False) -> Optional[Coercion]:
+    """Find a coercion rule that converts actual to expected in the given context.
+
+    `ctx` is None when the caller knows of no context. A row that names the
+    contexts it applies in is a positive admission, so it does not apply under
+    an unknown one.
+
+    `sink_owns` is the caller's verdict that the destination owns what it is
+    handed rather than borrowing it; a `borrow_only` row is not admitted there.
+    """
     # PERF TODO: linear scan over ~39 rules, each evaluating two Python-level
     # predicates (from_type / to_type) plus an optional type_match. When primitive
     # subclasses were collapsed to NominalType singletons, from_type / to_type
@@ -536,6 +557,32 @@ def resolve_coercion(actual: TpyType, expected: TpyType, ctx: CoercionContext) -
     # (spanlike_to_span_arg, DEREF_COERCION) would cut per-call cost >10x.
     # Not worth doing until a profile shows dispatch in the top costs.
     for coercion in COERCIONS:
+        if coercion.contexts is not None and ctx not in coercion.contexts:
+            continue
+        if coercion.borrow_only and sink_owns:
+            continue
+        if coercion.from_type(actual) and coercion.to_type(expected):
+            if coercion.type_match(actual, expected):
+                return coercion
+    return None
+
+
+def borrow_only_veto(actual: TpyType, expected: TpyType,
+                     ctx: Optional[CoercionContext],
+                     sink_owns: bool) -> Optional[Coercion]:
+    """The row that converts this pair, but only where the destination borrows,
+    asked at a destination that OWNS.
+
+    Not-None means the value can be handed over at a borrowing position and
+    this position is not one, so what the program is missing is the copy.
+    `resolve_coercion` refuses the same row; this reports WHY, so the mismatch
+    can say what to write.
+    """
+    if not sink_owns:
+        return None
+    for coercion in COERCIONS:
+        if not coercion.borrow_only:
+            continue
         if coercion.contexts is not None and ctx not in coercion.contexts:
             continue
         if coercion.from_type(actual) and coercion.to_type(expected):
@@ -688,9 +735,8 @@ def _any_storage_form(
       std::string copy when the source is already a std::string variable
       is accepted; correctness over micro-efficiency.
 
-    - Bytes-like view/span sources are converted to the owning
-      `std::vector<uint8_t>`; bytes/bytearray at value positions are
-      already vectors and pass through.
+    - Bytes-like view/span sources are converted to the owning buffer;
+      bytes/bytearray at value positions already own theirs and pass through.
 
     - Container literals reach codegen as raw brace-init expressions
       (`{1, 2, 3}`); make_any's argument deduction can't pick a type
@@ -709,10 +755,11 @@ def _any_storage_form(
     if is_str_view_type(actual) or is_str_type(actual) or is_string_type(actual):
         return f"std::string({e})"
     if is_bytes_view_type(actual):
-        return f"::tpy::bytes_copy({e})"
+        # A view has no owned type of its own; the family's is `bytes`.
+        return f"{view_to_owned_conv(BYTES)}({e})"
     if is_bytes_type(actual) or is_bytearray_type(actual):
         if c == CoercionContext.ARG:
-            return f"::tpy::bytes_copy({e})"
+            return f"{view_to_owned_conv(actual)}({e})"
         return e
     if is_list(actual) or is_dict(actual) or is_set(actual):
         cpp = actual.to_cpp()

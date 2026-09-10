@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def consume(b: Own[bytearray]) -> Int32:  # tpyc: warning(/never consumed/)
-int32_t consume(std::vector<uint8_t>&& b) {
+int32_t consume(::tpy::ByteArray&& b) {
     // b.append(90)                 # the owned buffer is mutable in the callee
     b.push_back(90);
     // return len(b)                # the bare Own[bytearray] name read
@@ -34,7 +34,7 @@ int32_t consume_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& bs) {
 // def main() -> None:
 void main() {
     // ba = bytearray(b"abc")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     // print(consume(ba))  # tpyc: ok
     std::cout << consume(std::move(ba)) << "\n";
     // ls: list[Int32] = [1, 2]

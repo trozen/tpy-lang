@@ -5,9 +5,9 @@
  * erase and the dict key reads) takes its key as a READ-ONLY argument, so it
  * arrives in the read form -- `std::string_view` or a bare `const char[N]`
  * literal for a stored `std::string`, `std::span<const uint8_t>` for a stored
- * `std::vector<uint8_t>` -- while the container stores the owned form. These
- * helpers compare and hash a key in the STORED type's domain, so a lookup
- * never builds an element to find one.
+ * `tpy::Bytes` / `tpy::ByteArray` -- while the container stores the owned
+ * form. These helpers compare and hash a key in the STORED type's domain, so a
+ * lookup never builds an element to find one.
  *
  * `key_hash` / `key_equal` are the hash and equality of both `ordered_set`
  * and `ordered_map`, which is also why neither container needs a `std::hash`
@@ -29,6 +29,8 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+#include "buffer_types.hpp"
 
 namespace tpy {
 
@@ -57,7 +59,8 @@ inline constexpr bool is_std_tuple<std::tuple<Ts...>> = true;
 // that).
 template<typename X>
 concept byte_range_key =
-    std::same_as<std::remove_cvref_t<X>, std::vector<std::uint8_t>>
+    std::same_as<std::remove_cvref_t<X>, Bytes>
+    || std::same_as<std::remove_cvref_t<X>, ByteArray>
     || std::same_as<std::remove_cvref_t<X>, std::span<const std::uint8_t>>;
 
 // A bare string literal (`const char[N]`, the form a member call's literal
@@ -102,6 +105,7 @@ consteval bool key_hash_nothrow() {
     if constexpr (byte_range_key<U>
                   || c_string_key<U>
                   || std::same_as<std::remove_cvref_t<U>, std::string>
+                  || std::same_as<std::remove_cvref_t<U>, String>
                   || std::same_as<std::remove_cvref_t<U>, std::string_view>) {
         return true;
     } else if constexpr (detail::is_std_tuple<std::remove_cvref_t<U>>) {
@@ -124,6 +128,7 @@ std::size_t key_hash_value(const U& v) noexcept(key_hash_nothrow<U>()) {
                          : std::hash<std::string_view>{}(std::string_view(
                                reinterpret_cast<const char*>(v.data()), v.size()));
     } else if constexpr (std::same_as<std::remove_cvref_t<U>, std::string>
+                         || std::same_as<std::remove_cvref_t<U>, String>
                          || std::same_as<std::remove_cvref_t<U>, std::string_view>
                          || c_string_key<U>) {
         // [basic.string.hash] guarantees a string and its view hash alike, so
@@ -164,10 +169,10 @@ struct key_equal {
 // type by construction above.
 template<typename T, typename U>
 concept lookup_key_for =
-    (std::same_as<T, std::string>
+    ((std::same_as<T, std::string> || std::same_as<T, String>)
      && (std::same_as<std::remove_cvref_t<U>, std::string_view>
          || c_string_key<U>))
-    || (std::same_as<T, std::vector<std::uint8_t>>
+    || ((std::same_as<T, Bytes> || std::same_as<T, ByteArray>)
         && std::same_as<std::remove_cvref_t<U>, std::span<const std::uint8_t>>);
 
 // A literal key resolves to the transparent path, not to the owned overload:
@@ -181,5 +186,7 @@ static_assert(lookup_key_for<std::string, const char*>);
 static_assert(lookup_key_for<std::string, std::string_view>);
 static_assert(!lookup_key_for<std::string, std::string>,
               "the stored form is not a key spelling -- it is the element");
+static_assert(lookup_key_for<String, std::string_view>);
+static_assert(lookup_key_for<Bytes, std::span<const std::uint8_t>>);
 
 }  // namespace tpy

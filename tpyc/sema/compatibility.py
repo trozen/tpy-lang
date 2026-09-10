@@ -38,7 +38,7 @@ from ..parse import (
     TpyAwait, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
-from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
+from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
 from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
@@ -316,6 +316,47 @@ class TypeCompatibility:
             loc,
         )
 
+    @staticmethod
+    def _sink_owns_its_value(
+        expected: TpyType, coercion_ctx: 'CoercionContext | None',
+        target_is_storage_form: bool,
+    ) -> bool:
+        """Whether the slot OWNS what it is handed, rather than borrowing it.
+
+        `target_is_storage_form` is the caller's own statement that the
+        destination is a field or a container element, which is the storage
+        half of the question -- so it is read here rather than re-derived from
+        the context, and a literal element that fails to set it is a hole in
+        the owning verdict as much as in the address-take one. `Own[...]` is
+        the second owning face. Of the remaining KNOWN contexts only a plain
+        argument borrows; an unknown context is treated as borrowing so a sink
+        this cannot see stays admitted rather than wrongly rejected.
+        """
+        if target_is_storage_form or isinstance(expected, OwnType):
+            return True
+        return (coercion_ctx is not None
+                and coercion_ctx is not CoercionContext.ARG)
+
+    def _conversion_hint(
+        self, actual: TpyType, expected: TpyType,
+        coercion_ctx: 'CoercionContext | None', sink_owns: bool,
+    ) -> str:
+        """`-- write 'T(...)' around it`, for the one mismatch where a copy is
+        exactly what is missing.
+
+        A borrow-only row means the value BINDS at a borrowing destination;
+        arriving at an owning one, all it lacks is the copy, and spelling the
+        destination type around it is the copy. Every other mismatch is left
+        alone: a pair with no such row needs a conversion, a parse or a
+        different value, none of which this sentence would describe.
+        The spelling is the destination type's own display name, so no pair of
+        types is named here.
+        """
+        if borrow_only_veto(actual, expected, coercion_ctx, sink_owns) is None:
+            return ""
+        target = unwrap_ref_type(unwrap_own(unwrap_readonly(expected)))
+        return f" -- write '{target}(...)' around it"
+
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
         loc: SourceLocation | None = None,
@@ -436,6 +477,7 @@ class TypeCompatibility:
         is_return: bool = False,
         coercion_ctx: CoercionContext | None = None,
         target_is_storage_form: bool = False,
+        sink_owns: bool | None = None,
     ) -> CompatResult:
         """Core type compatibility check.
 
@@ -445,6 +487,13 @@ class TypeCompatibility:
         container element (value-storage form). Used to suppress address-
         take mutation marking that only applies to borrow-form destinations
         (params/locals/returns); storage-form assignments copy the value.
+
+        sink_owns: whether this destination owns what it is handed. Decided
+        once at the outermost level, where an `Own[...]` is still visible,
+        and handed down as the recursion peels wrappers; a borrow-only
+        coercion row is not admitted at an owning destination. Deriving it
+        again at the leaf would read a stripped `Own[...]` as a borrowing
+        sink. None means "not decided yet" -- derive it here.
         """
         # Resolve NominalType self-references from recursive union members.
         # e.g. NominalType("Tree") -> UnionType, and also inside containers:
@@ -452,6 +501,10 @@ class TypeCompatibility:
         # Uses seen-set guard to prevent infinite recursion.
         actual = self._resolve_recursive_refs(actual)
         expected = self._resolve_recursive_refs(expected)
+
+        if sink_owns is None:
+            sink_owns = self._sink_owns_its_value(
+                expected, coercion_ctx, target_is_storage_form)
 
         # OwnType from name lookup (implicit owned local) should not
         # shortcircuit the Own[T] coercion path -- that path emits copy
@@ -494,13 +547,13 @@ class TypeCompatibility:
                     f"'{expected}' is expected in {context}{detail}", loc)
             return self._check_compat(
                 unwrap_send_sync(actual), expected.wrapped, context, loc,
-                source_expr, is_return, coercion_ctx, target_is_storage_form)
+                source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
         if isinstance(actual, (SendType, SyncType)):
             # Marker-typed value into an unmarked slot: the marker only adds
             # a guarantee, so it converts freely to the bare type.
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr,
-                is_return, coercion_ctx, target_is_storage_form)
+                is_return, coercion_ctx, target_is_storage_form, sink_owns)
         # CallableType (Fn and Callable): inner param/return types may carry
         # Own/Ref qualifiers from FI that don't affect callable contract compatibility.
         if (is_callable_type(actual)
@@ -527,7 +580,7 @@ class TypeCompatibility:
                     self.ctx.set_expr_type(source_expr, resolved)
                 return self._check_compat(
                     resolved, expected, context, loc, source_expr,
-                    is_return, coercion_ctx, target_is_storage_form)
+                    is_return, coercion_ctx, target_is_storage_form, sink_owns)
             return CompatError(
                 f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
                 f"arguments; call a constraining method first or add explicit type arguments",
@@ -540,19 +593,20 @@ class TypeCompatibility:
         if isinstance(expected, RefType):
             return self._check_compat(
                 unwrap_ref_type(actual), expected.wrapped, context, loc,
-                source_expr, is_return, coercion_ctx, target_is_storage_form)
+                source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
         # Strip Ref from actual too (Ref[T] is compatible with T)
         if isinstance(actual, RefType):
             return self._check_compat(
                 actual.wrapped, expected, context, loc,
-                source_expr, is_return, coercion_ctx, target_is_storage_form)
+                source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)
         if isinstance(expected, ReadonlyType):
             actual_inner = unwrap_readonly(actual)
             return self._check_compat(
-                actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form
+                actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
+                sink_owns
             )
 
         # readonly[T] -> T: error for non-value types (stripping const is unsafe)
@@ -577,7 +631,8 @@ class TypeCompatibility:
                         loc,
                     )
             return self._check_compat(
-                actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form
+                actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
+                sink_owns
             )
 
         # None -> Optional[T] / Ptr[T] / Ptr[readonly[T]]: always compatible
@@ -651,7 +706,7 @@ class TypeCompatibility:
         # Union[A, B] -> Union[A, B, C]: each actual member must match some expected member
         if isinstance(actual, UnionType) and isinstance(expected, UnionType):
             for member in actual.members:
-                result = self._check_compat(member, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
+                result = self._check_compat(member, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if isinstance(result, CompatError):
                     return result
             return None
@@ -679,18 +734,18 @@ class TypeCompatibility:
                     and isinstance(actual_unwrapped, (UnionType, RecursiveAliasInstanceType))):
                 return self._check_compat(
                     actual_unwrapped, expected, context, loc, source_expr,
-                    is_return, coercion_ctx, target_is_storage_form)
+                    is_return, coercion_ctx, target_is_storage_form, sink_owns)
             a_info = numeric_info(actual_unwrapped)
             for member in union_members:
                 if not _is_natural_union_member(actual_unwrapped, a_info, member):
                     continue
-                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
+                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if not isinstance(result, CompatError):
                     return result
             for member in union_members:
                 if _is_natural_union_member(actual_unwrapped, a_info, member):
                     continue
-                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
+                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if not isinstance(result, CompatError):
                     return result
             # A concrete container variable whose elements would each fit a union
@@ -748,11 +803,10 @@ class TypeCompatibility:
             # inner, since the inner check can't see that the wrappers share
             # a C++ representation.
             if isinstance(actual_inner, OptionalType):
-                ctx_for_coerce = coercion_ctx or context
-                if isinstance(ctx_for_coerce, CoercionContext):
-                    whole = resolve_coercion(actual_inner, expected, ctx_for_coerce)
-                    if whole is not None:
-                        return whole
+                whole = resolve_coercion(actual_inner, expected,
+                                         coercion_ctx, sink_owns)
+                if whole is not None:
+                    return whole
             # Optional[T] -> Optional[Own[T]]: ownership transfer wrapped in
             # Optional (e.g. returning an owned `Foo | None` local as
             # `Own[Foo] | None`). Compare the INNERS so the bare T -> Own[T]
@@ -765,10 +819,10 @@ class TypeCompatibility:
                     and not isinstance(actual_inner.inner, OwnType)):
                 inner_result = self._check_compat(
                     actual_inner.inner, expected.inner, context, loc,
-                    source_expr, is_return, coercion_ctx, target_is_storage_form)
+                    source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if inner_result is None:
                     return None
-            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
+            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
             # Rewrap inner-mismatch errors with the declared Optional types so
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
@@ -1086,7 +1140,7 @@ class TypeCompatibility:
             if warned_ptr_repr_tuple:
                 return self._check_compat(actual, ew, context, loc,
                                           source_expr, is_return,
-                                          coercion_ctx, target_is_storage_form)
+                                          coercion_ctx, target_is_storage_form, sink_owns)
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
             # Only applies when record names differ (different types, not parametric covariance).
@@ -1095,11 +1149,11 @@ class TypeCompatibility:
                     and actual.name != expected.wrapped.name):
                 return CompatError(
                     f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
-            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
+            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
-            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
+            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
 
         # Tuple-to-tuple: same length, element-wise compatible
         if isinstance(actual, TupleType) and isinstance(expected, TupleType):
@@ -1109,10 +1163,17 @@ class TypeCompatibility:
                     f"(different tuple lengths)", loc
                 )
             for i, (a, e) in enumerate(zip(actual.element_types, expected.element_types)):
+                # A tuple ELEMENT is an owning storage slot whatever position
+                # the tuple itself sits at: the tuple holds its elements by
+                # value, so a borrowing tuple parameter still owns each one.
+                # Forwarding the parent's flag judged a buffer element at a
+                # tuple ARGUMENT to be borrowing and let a bytearray reach a
+                # `bytes` element with no diagnostic at all.
                 result = self._check_compat(
                     a, e, f"{context} (tuple element {i})", loc,
                     source_expr=source_expr, is_return=is_return,
-                    coercion_ctx=coercion_ctx, target_is_storage_form=target_is_storage_form
+                    coercion_ctx=coercion_ctx, target_is_storage_form=True,
+                    sink_owns=True,
                 )
                 if isinstance(result, CompatError):
                     return result
@@ -1212,7 +1273,7 @@ class TypeCompatibility:
                     result = self._check_compat(
                         actual_elem, e_elem,
                         context, loc, source_expr, is_return, coercion_ctx,
-                        target_is_storage_form=True,
+                        target_is_storage_form=True, sink_owns=True,
                     )
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
@@ -1370,8 +1431,8 @@ class TypeCompatibility:
             if is_bytes_category(actual):
                 return None
 
-        ctx = coercion_ctx or context
-        coercion = resolve_coercion(actual, expected, ctx)
+        ctx = coercion_ctx
+        coercion = resolve_coercion(actual, expected, ctx, sink_owns)
         if coercion is None:
             # Inheritance: Child -> Ptr[Parent] / Ptr[readonly[Parent]] (address-of with upcast).
             # `_is_covariant_target` covers both class inheritance (Child -> Ptr[ParentRecord])
@@ -1454,7 +1515,10 @@ class TypeCompatibility:
                     coercion = DEREF_COERCION
         if coercion is None:
             e, a = disambiguated_pair(expected, actual)
-            return CompatError(f"Type mismatch in {context}: expected {e}, got {a}", loc)
+            return CompatError(
+                f"Type mismatch in {context}: expected {e}, got {a}"
+                f"{self._conversion_hint(actual, expected, ctx, sink_owns)}",
+                loc)
 
         if isinstance(actual, PendingListType) and is_span(expected):
             info = self.ctx.list_literals.get(actual.literal_id)
@@ -2253,7 +2317,7 @@ class TypeCompatibility:
                 # values, no address-take fires for pointer-repr Optional).
                 result = self._check_compat(
                     a_arg, e_resolved, context, loc, None, is_return, coercion_ctx,
-                    target_is_storage_form=True,
+                    target_is_storage_form=True, sink_owns=True,
                 )
                 if isinstance(result, CompatError):
                     return False

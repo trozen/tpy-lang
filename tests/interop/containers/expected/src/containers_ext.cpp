@@ -198,7 +198,7 @@ PyObject *containers__byte_lengths_pywrap(PyObject *self, PyObject *args, PyObje
     PyObject *a0 = nullptr;
     if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:byte_lengths", __kwlist, &a0)) return nullptr;
     try {
-        std::vector<std::vector<uint8_t>> __p0 = ::tpy::interop::list_from_py<std::vector<uint8_t>>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<std::vector<uint8_t>>(__e0); });
+        std::vector<::tpy::Bytes> __p0 = ::tpy::interop::list_from_py<::tpy::Bytes>(a0, [](::tpy::cpy::PyObject *__e0) { return ::tpy::interop::from_py<::tpy::Bytes>(__e0); });
         return ::tpy::interop::list_to_py(::tpyapp::containers::byte_lengths(__p0), [](const ::tpy::BigInt &__o0) { return ::tpy::interop::to_py(__o0); });
     } catch (const ::tpy::BaseException &__e) {
         ::tpy::interop::set_py_err_from(__e);

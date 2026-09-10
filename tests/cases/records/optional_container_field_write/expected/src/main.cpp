@@ -10,7 +10,7 @@ int32_t read_bound(Slot& s) {
     // # lifts through `optional_to_ptr` into a plain local, so the narrowed
     // # binding ALIASES the field and `grow()` is visible through it.
     // d = s.b  # tpyc: ok
-    std::vector<uint8_t>* d = ::tpy::optional_to_ptr(s.b);
+    ::tpy::ByteArray* d = ::tpy::optional_to_ptr(s.b);
     // if d is None:
     if ((d == nullptr)) {
         // return -1
@@ -25,7 +25,7 @@ int32_t read_bound(Slot& s) {
 // def local_source(s: Slot) -> None:
 void local_source(Slot& s) {
     // v = bytearray(b"ab")
-    std::vector<uint8_t> v = ::tpy::bytes_copy(::tpy::bytes_literal("ab", 2));
+    ::tpy::ByteArray v = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // s.b = v  # tpyc: ok
     s.b = std::move(v);
 }
@@ -46,7 +46,7 @@ void main() {
     // print(s.size())
     std::cout << s.size() << "\n";
     // owned = bytearray(b"xyz")
-    std::vector<uint8_t> owned = ::tpy::bytes_copy(::tpy::bytes_literal("xyz", 3));
+    ::tpy::ByteArray owned = ::tpy::ByteArray(::tpy::bytes_literal("xyz", 3));
     // s.take(owned)
     s.take(std::move(owned));
     // print(s.size())
@@ -56,7 +56,7 @@ void main() {
     // print(s.size())
     std::cout << s.size() << "\n";
     // borrowed = bytearray(b"q")
-    std::vector<uint8_t> borrowed = ::tpy::bytes_copy(::tpy::bytes_literal("q", 1));
+    ::tpy::ByteArray borrowed = ::tpy::ByteArray(::tpy::bytes_literal("q", 1));
     // s.copy_in(borrowed)
     s.copy_in(borrowed);
     // print(s.size())

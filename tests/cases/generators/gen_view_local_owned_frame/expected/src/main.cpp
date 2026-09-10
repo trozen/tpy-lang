@@ -127,7 +127,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
 
 
 // def blob_slices(blobs: list[bytes]) -> Iterator[Int32]:
-__gen_blob_slices blob_slices(std::vector<std::vector<uint8_t>>& blobs) {
+__gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs) {
     return __gen_blob_slices(blobs);
 }
 
@@ -191,7 +191,7 @@ void main() {
     }
     // for n in blob_slices([b"xy", b"z"]):
     {
-        std::vector<std::vector<uint8_t>> __tmp_1 = {::tpy::bytes_literal_owned("xy", 2), ::tpy::bytes_literal_owned("z", 1)};
+        std::vector<::tpy::Bytes> __tmp_1 = {::tpy::bytes_literal_owned("xy", 2), ::tpy::bytes_literal_owned("z", 1)};
         auto __src_4 = blob_slices(__tmp_1);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {

@@ -16,7 +16,7 @@ std::string or_chain(std::vector<std::string>& c, const std::vector<std::string>
 std::string and_chain(std::vector<std::string>& c, std::vector<std::string>& d);
 std::string nested(const std::vector<std::string>& c, std::vector<std::string>& d, const std::vector<std::string>& e, bool cond);
 std::string field_arm(Rec& r, const Rec& t, bool cond);
-::tpy::BigInt bytes_ternary(std::vector<std::vector<uint8_t>>& c, const std::vector<std::vector<uint8_t>>& d, bool cond);
+::tpy::BigInt bytes_ternary(std::vector<::tpy::Bytes>& c, const std::vector<::tpy::Bytes>& d, bool cond);
 void main();
 
 // # A str/bytes local from a COMPOUND view source (ternary / and-or / nested) over

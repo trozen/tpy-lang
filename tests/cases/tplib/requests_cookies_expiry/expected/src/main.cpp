@@ -4,13 +4,13 @@
 namespace tpyapp::main {
 
 // PAST = b"Thu, 01 Jan 1970 00:00:00 GMT"        # RFC 1123, in the past
-std::vector<uint8_t> PAST;
+::tpy::Bytes PAST;
 // FUTURE = b"Fri, 31 Dec 2099 23:59:59 GMT"      # RFC 1123, far future
-std::vector<uint8_t> FUTURE;
+::tpy::Bytes FUTURE;
 // RFC850_PAST = b"Sunday, 06-Nov-94 08:49:37 GMT"  # RFC 850 (2-digit year), past
-std::vector<uint8_t> RFC850_PAST;
+::tpy::Bytes RFC850_PAST;
 // ASCTIME = b"Sun Nov  6 08:49:37 1994"          # asctime form -- not parsed
-std::vector<uint8_t> ASCTIME;
+::tpy::Bytes ASCTIME;
 // # A `now` past the 2099 Expires above, to force that expiry to fire.
 // AFTER_2099 = 4200000000.0
 double AFTER_2099{};

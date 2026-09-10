@@ -19,7 +19,7 @@ struct Box {
 
     // def __init__(self, value: T):
     Box() = default;
-    explicit Box(const T& value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
     static constexpr std::string_view __tpy_class_name__ = "container.Box";
 };
 

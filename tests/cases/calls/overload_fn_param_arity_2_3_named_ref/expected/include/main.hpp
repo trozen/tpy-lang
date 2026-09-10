@@ -30,7 +30,7 @@ template<typename T, typename U, typename __F0>
   }
 ::tpy::val_or_ref_t<U> f(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init) {
     // return init
-    return init;
+    return ::tpy::param_to_return<U>(init);
 }
 // @dispatch
 // def f[T](g: Fn[[T, T], T], a: list[T]) -> T:  # tpyc: ok

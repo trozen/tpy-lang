@@ -1,0 +1,2 @@
+func_ref hello
+func_ref 2

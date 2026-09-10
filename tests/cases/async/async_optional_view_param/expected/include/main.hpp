@@ -25,7 +25,7 @@ void main();
 struct __coro_first_bytes {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<std::vector<uint8_t>> b;
+    std::optional<::tpy::Bytes> b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -35,7 +35,7 @@ struct __coro_first_bytes {
     };
 
     __coro_first_bytes(std::optional<std::span<const uint8_t>> b_)
-        : __state(S_INITIAL), __cancel_pending(false), b(b_ ? std::make_optional(::tpy::bytes_copy(*b_)) : std::nullopt) {}
+        : __state(S_INITIAL), __cancel_pending(false), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -61,7 +61,7 @@ struct __coro_make_bytes {
     __coro_make_bytes()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<std::vector<uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::ByteArray> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_make_bytes&) {
@@ -116,7 +116,7 @@ struct __coro_drive {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::frame_slot<std::vector<int32_t>> xs;
-    ::tpy::frame_slot<std::vector<uint8_t>> ba;
+    ::tpy::frame_slot<::tpy::ByteArray> ba;
     ::tpy::frame_slot<std::array<int32_t, 3>> arr;
     ::tpy::frame_slot<std::vector<::tpystd::tplib::box::Box<int32_t>>> bs;
     std::optional<__coro_make_list> __sub_0;

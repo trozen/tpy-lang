@@ -133,7 +133,7 @@ void main() {
     // tmp = os.getcwd()
     std::string tmp = ::tpy::stdlib::os::getcwd();
     // root = tmp + "/tpy_oswalk_onerror_tree"
-    std::string root = (::tpy::str_concat(tmp, "/tpy_oswalk_onerror_tree"));
+    ::tpy::String root = (::tpy::str_concat(tmp, "/tpy_oswalk_onerror_tree"));
     // if os.path.exists(root):
     if (::tpy::stdlib::os::path_exists(root)) {
         // teardown(root)

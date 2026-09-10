@@ -29,7 +29,7 @@ void main() {
     // print(z.buf[0])
     std::cout << static_cast<int>(::tpy::bytes_getitem(z.buf, 0)) << "\n";
     // src = bytearray(b"xy")
-    std::vector<uint8_t> src = ::tpy::bytes_copy(::tpy::bytes_literal("xy", 2));
+    ::tpy::ByteArray src = ::tpy::ByteArray(::tpy::bytes_literal("xy", 2));
     // c = Copied(src)
     Copied c = Copied(src);
     // print(len(c.buf))

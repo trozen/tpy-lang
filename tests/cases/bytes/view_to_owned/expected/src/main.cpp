@@ -13,7 +13,7 @@ void process(std::span<const uint8_t> data) {
     // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
     // c = data + b"!"  # concat -> owned
-    std::vector<uint8_t> c = (::tpy::bytes_concat(data, ::tpy::bytes_literal_owned("!", 1)));
+    ::tpy::Bytes c = (::tpy::bytes_concat(data, ::tpy::bytes_literal_owned("!", 1)));
     // print(c)
     std::cout << ::tpy::BytesPrinter(c) << "\n";
 }
@@ -21,7 +21,7 @@ void process(std::span<const uint8_t> data) {
 // def augassign(data: bytes) -> None:
 void augassign(std::span<const uint8_t> data) {
     // b = data         # starts as view
-    std::vector<uint8_t> b = ::tpy::bytes_copy(data);
+    ::tpy::Bytes b = ::tpy::Bytes(data);
     // b += b"!"        # augassign promotes to owned
     b = ::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1));
     // print(b)

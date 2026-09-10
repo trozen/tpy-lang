@@ -4,7 +4,7 @@
 namespace tpyapp::pkg::amod {
 
 // _A: bytes = b"AAAA"
-std::vector<uint8_t> _A;
+::tpy::Bytes _A;
 
 // def a_first() -> Int32:
 int32_t a_first() {

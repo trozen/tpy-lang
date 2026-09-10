@@ -42,7 +42,7 @@ void shuffle(std::vector<T>& seq);
 int32_t randrange(int32_t stop);
 int32_t randrange(int32_t start, int32_t stop);
 int32_t randrange(int32_t start, int32_t stop, int32_t step);
-std::vector<uint8_t> randbytes(int32_t n);
+::tpy::Bytes randbytes(int32_t n);
 double uniform(double a, double b);
 double triangular(double low = 0.0, double high = 1.0, std::optional<double> mode = std::nullopt);
 double gauss(double mu, double sigma);
@@ -116,7 +116,7 @@ struct Random {
     int32_t randrange(int32_t start, int32_t stop, int32_t step);
 
     // def randbytes(self, n: Int32) -> bytes:
-    std::vector<uint8_t> randbytes(int32_t n);
+    ::tpy::Bytes randbytes(int32_t n);
 
     // # ---------- Sequence helpers ----------
     // def choice[T](self, seq: list[T]) -> T:

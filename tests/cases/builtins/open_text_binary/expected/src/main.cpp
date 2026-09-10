@@ -35,7 +35,7 @@ void main() {
     // br = open_binary(bpath)
     ::tpy::BinaryFile br = ::tpy::builtin_open_binary(bpath);
     // data = br.read()
-    std::vector<uint8_t> data = br.read();
+    ::tpy::Bytes data = br.read();
     // br.close()
     br.close();
     // print(len(data))

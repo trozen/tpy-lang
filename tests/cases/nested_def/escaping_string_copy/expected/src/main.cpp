@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_greeter(name: str) -> Callable[[], None]:
 std::function<void()> make_greeter(std::string_view name) {
     // owned_name = String(name)
-    std::string owned_name = std::string(name);
+    ::tpy::String owned_name = ::tpy::String(name);
     // def greet() -> None:  # tpyc: warning(/copies local 'owned_name'.*used after closure/)
     auto greet = [owned_name]() {
         // print("Hello, " + owned_name)

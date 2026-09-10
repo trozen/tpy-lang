@@ -4,19 +4,19 @@
 namespace tpyapp::bytes_vals {
 
 
-std::vector<uint8_t> echo(std::span<const uint8_t> data) {
-    return ::tpy::bytes_copy(data);
+::tpy::Bytes echo(std::span<const uint8_t> data) {
+    return ::tpy::Bytes(data);
 }
 
-std::vector<uint8_t> make_own() {
+::tpy::Bytes make_own() {
     return ::tpy::bytes_literal_owned("owned", 5);
 }
 
-std::vector<uint8_t> cat(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+::tpy::Bytes cat(std::span<const uint8_t> a, std::span<const uint8_t> b) {
     return (::tpy::bytes_concat(a, b));
 }
 
-std::vector<uint8_t> shout(std::span<const uint8_t> data) {
+::tpy::Bytes shout(std::span<const uint8_t> data) {
     return ::tpy::bytes_upper(data);
 }
 

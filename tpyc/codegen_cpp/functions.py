@@ -51,6 +51,38 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .protocols import ProtocolGenerator, ProtocolParamInfo
 
+def _borrow_frame_param_cpp(func: 'TpyFunction | None', ptype: TpyType,
+                            own: TpyType, cpp_pname: str) -> 'str | None':
+    """The C++ slot for a bare-`T` param of a callee whose FRAME borrows it
+    past the statement, or None when this is not that param.
+
+    A generator factory is that callee: the simple-generator peephole captures
+    the slot by reference (`[&value]`, a capture form decided on the open `T` --
+    BUGS.md#simple-generator-captures-open-t-param-by-reference), so the slot
+    has to be a reference at every instantiation for the capture to bind the
+    CALL SITE's object rather than a parameter object that dies with the
+    factory. That reference rule is the whole of what this position changes;
+    the const axis is still the annotation's:
+
+    - a plain `T` takes `borrow_frame_param_t<T>` -- mutable for a reference
+      type, const for a value type -- so this is a FORM, not a const decision:
+      it needs no mutation fact, and a body that writes through the slot writes
+      through to the caller, as at the monomorphic twin.
+    - a `readonly[T]` takes `const T&` at every instantiation. NOT
+      `readonly_form_t<T>`, which the sibling positions spell: that one is
+      derived from `param_val_or_ref_t`, so at `str` / `bytes` it resolves to
+      the view -- the one form the capture rule forbids here.
+    """
+    if func is None or not getattr(func, "is_generator", False):
+        return None
+    bare = unwrap_ref_type(ptype)
+    if not isinstance(unwrap_readonly(bare), TypeParamRef):
+        return None
+    if isinstance(bare, ReadonlyType):
+        return f"const {own.to_cpp()}& {cpp_pname}"
+    return f"::tpy::borrow_frame_param_t<{own.to_cpp()}> {cpp_pname}"
+
+
 def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
     """Best-effort concrete type for a default expression, for overload narrowing.
 
@@ -488,18 +520,24 @@ class FunctionGenerator:
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
             else:
                 is_pvu = self.ctx.is_ptr_variant_union(own)
-                decision = decide_param_const(
-                    ptype,
-                    index=i,
-                    pname=pname,
-                    mutated_params=mutated_params,
-                    addr_escapes_params=addr_escapes_params,
-                    reassigned_params=reassigned_params,
-                    is_ptr_variant_union=is_pvu,
-                    const_params=const_params,
-                    use_readonly_params=use_readonly_params,
-                )
-                part = self._emit_param_with_decision(decision, is_pvu, own, ptype, cpp_pname)
+                frame_slot = _borrow_frame_param_cpp(func, ptype, own,
+                                                     cpp_pname)
+                if frame_slot is not None:
+                    part = frame_slot
+                else:
+                    decision = decide_param_const(
+                        ptype,
+                        index=i,
+                        pname=pname,
+                        mutated_params=mutated_params,
+                        addr_escapes_params=addr_escapes_params,
+                        reassigned_params=reassigned_params,
+                        is_ptr_variant_union=is_pvu,
+                        const_params=const_params,
+                        use_readonly_params=use_readonly_params,
+                    )
+                    part = self._emit_param_with_decision(
+                        decision, is_pvu, own, ptype, cpp_pname)
             # Own[T] where T is a class-level type param: std::type_identity_t is
             # redundant (T is already bound, T&& is a plain rvalue ref, not forwarding).
             # Only function-level type params need the deduction guard.

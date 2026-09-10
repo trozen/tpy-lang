@@ -22,7 +22,7 @@ void drop_from_record(Labels<int32_t, 4>& box, int32_t k);
 void drop_str_param(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view k);
 void drop_str_local(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al);
 void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view src);
-void drop_bytes(::tpystd::tplib::array_list::ArrayList<std::vector<uint8_t>, 4>& al, std::span<const uint8_t> k);
+void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, std::span<const uint8_t> k);
 bool has_str(Labels<std::string, 4>& box, std::string_view k);
 template<::tpystd::tpy::Equatable T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
@@ -41,8 +41,7 @@ struct Labels {
     // def add(self, value: T) -> None:
     void add(::tpy::param_val_or_ref_t<T> value) {
         // self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
-        T __tmp_1 = value;
-        this->items.append(std::move(__tmp_1));
+        this->items.append(::tpy::param_to_storage<T>(value));
     }
 
     // def drop(self, value: T) -> None:
@@ -53,7 +52,7 @@ struct Labels {
     }
 
     // def has(self, value: T) -> bool:
-    bool has(const T& value) const {
+    bool has(::tpy::readonly_form_t<T> value) const {
         // # A readonly method spells the slot `const T&` -- the SECOND generic
         // # parameter spelling, distinct from `param_val_or_ref_t<T>`.
         // for it in self.items:
@@ -64,7 +63,7 @@ struct Labels {
             if (!__r_1.has_value()) break;
             const auto& it = ::tpy::unwrap_ref(*__r_1);
             // if it == value:
-            if ((it == value)) {
+            if (::tpy::eq(it, value)) {
                 // return True
                 return true;
             }
@@ -126,8 +125,7 @@ inline void StrLabels::add(std::string_view value) {
 // def drop(self, value: str) -> None:
 inline void StrLabels::drop(std::string_view value) {
     // self.items.remove(value)
-    std::string __tmp_2 = std::string(value);
-    this->items.remove(__tmp_2);
+    this->items.remove(value);
 }
 
 // def has(self, value: str) -> bool:
@@ -158,7 +156,7 @@ bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& x = *__beg_0;
         // if x == v:
-        if ((x == v)) {
+        if (::tpy::eq(x, v)) {
             // return True
             return true;
         }

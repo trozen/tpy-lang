@@ -12,6 +12,8 @@
 #include <tuple>
 #include <vector>
 
+#include "tpy/buffer_types.hpp"
+
 namespace tpy::stdlib::os {
 
 std::string getcwd();
@@ -85,7 +87,7 @@ std::string user_home(std::string_view name);
 // returns the count written.
 int64_t open_fd(std::string_view path, int64_t flags, int64_t mode);
 void close_fd(int64_t fd);
-std::vector<uint8_t> read_fd(int64_t fd, int64_t n);
+::tpy::Bytes read_fd(int64_t fd, int64_t n);
 int64_t write_fd(int64_t fd, std::span<const uint8_t> data);
 int64_t lseek_fd(int64_t fd, int64_t pos, int64_t how);
 std::tuple<int64_t, int64_t> pipe_fd();
@@ -100,7 +102,7 @@ void chmod_path(std::string_view path, int64_t mode);
 void chown_path(std::string_view path, int64_t uid, int64_t gid);
 void utime_path(std::string_view path, double atime, double mtime);
 bool access_path(std::string_view path, int64_t mode);
-std::vector<uint8_t> urandom(int64_t n);
+::tpy::Bytes urandom(int64_t n);
 
 // open()/lseek()/access() flag, whence, and mode constants, exposed to TPy via
 // native_global. Sourced from the real macros so the platform-varying values

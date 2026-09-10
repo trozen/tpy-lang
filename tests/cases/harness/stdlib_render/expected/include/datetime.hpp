@@ -270,7 +270,7 @@ struct timezone {
     timedelta utcoffset(std::optional<datetime> dt) const;
 
     // def tzname(self, dt: "datetime | None") -> String:
-    std::string tzname(std::optional<datetime> dt) const;
+    ::tpy::String tzname(std::optional<datetime> dt) const;
 
     // def dst(self, dt: "datetime | None") -> timedelta | None:
     std::optional<timedelta> dst(std::optional<datetime> dt) const;
@@ -355,7 +355,7 @@ struct ZoneInfo {
 
     // @property
     // def key(self) -> String:
-    std::string key() const;
+    ::tpy::String key() const;
 
     // def utcoffset(self, dt: "datetime | None") -> timedelta | None:
     std::optional<timedelta> utcoffset(std::optional<datetime> dt) const;
@@ -1167,7 +1167,7 @@ inline timedelta timezone::utcoffset(std::optional<datetime> dt) const {
 }
 
 // def tzname(self, dt: "datetime | None") -> String:
-inline std::string timezone::tzname(std::optional<datetime> dt) const {
+inline ::tpy::String timezone::tzname(std::optional<datetime> dt) const {
     // if self._name_id != 0:
     if ((this->_name_id != 0)) {
         // return tz_intern.name_at(self._name_id)
@@ -1254,7 +1254,7 @@ inline ZoneInfo::ZoneInfo(std::string_view key) {
 
 // @property
 // def key(self) -> String:
-inline std::string ZoneInfo::key() const {
+inline ::tpy::String ZoneInfo::key() const {
     // return hinnant_date.zone_key(self._zid)
     return ::tpy::stdlib::datetime::zone_key(this->_zid);
 }
@@ -1982,7 +1982,7 @@ inline std::string datetime::isoformat(std::string_view sep, std::string_view ti
     // s = (f"{self.year:04d}-{self.month:02d}-{self.day:02d}{sep}"
     // + _format_time(self.hour, self.minute, self.second,
     // self.microsecond, timespec))
-    std::string s = (::tpy::str_concat(std::format("{:04d}-{:02d}-{:02d}{}", this->year(), this->month(), this->day(), sep), ::tpystd::_datetime_fmt::_format_time(this->hour(), this->minute(), this->second(), this->microsecond(), timespec)));
+    ::tpy::String s = (::tpy::str_concat(std::format("{:04d}-{:02d}-{:02d}{}", this->year(), this->month(), this->day(), sep), ::tpystd::_datetime_fmt::_format_time(this->hour(), this->minute(), this->second(), this->microsecond(), timespec)));
     // if self._tz_kind() != 0:
     if ((this->_tz_kind() != 0)) {
         // s = s + _offset_str(self._utcoffset_us(int(self.fold)), ":")

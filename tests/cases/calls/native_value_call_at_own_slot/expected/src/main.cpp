@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def take(b: Own[bytes]) -> Int32:
-int32_t take(std::vector<uint8_t> b) {
+int32_t take(::tpy::Bytes b) {
     // return len(b)
     return ::tpy::__len__(b);
 }
@@ -14,7 +14,7 @@ int32_t take(std::vector<uint8_t> b) {
 void f(std::span<const uint8_t> v) {
     // # A bytes method result at an owning parameter.
     // print(take(v.strip()))
-    std::cout << take(::tpy::bytes_copy(::tpy::bytes_strip_view(v))) << "\n";
+    std::cout << take(::tpy::Bytes(::tpy::bytes_strip_view(v))) << "\n";
 }
 
 // def main() -> None:

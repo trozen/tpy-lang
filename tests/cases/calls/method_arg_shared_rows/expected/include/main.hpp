@@ -60,7 +60,7 @@ struct Sink {
     void store_width(int32_t w);
 
     // def store_blob(self, b: Own[bytes]) -> None:
-    void store_blob(std::vector<uint8_t> b);
+    void store_blob(::tpy::Bytes b);
 
     // def soak(self, row: readonly[list[float]]) -> None:
     void soak(const std::vector<double>& row);
@@ -98,7 +98,7 @@ inline void Sink::store_width(int32_t w) {
 }
 
 // def store_blob(self, b: Own[bytes]) -> None:
-inline void Sink::store_blob(std::vector<uint8_t> b) {
+inline void Sink::store_blob(::tpy::Bytes b) {
     // self.n = len(b)
     this->n = ::tpy::BigInt(::tpy::__len__(b));
 }

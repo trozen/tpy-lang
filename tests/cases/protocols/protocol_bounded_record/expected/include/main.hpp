@@ -35,19 +35,19 @@ struct SortedPair {
 
     // def __init__(self, a: T, b: T) -> None:
     SortedPair() = default;
-    explicit SortedPair(const T& a, const T& b) {
+    explicit SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) {
         // if a < b:
         if ((a < b)) {
             // self.first = a
-            this->first = a;
+            this->first = ::tpy::param_to_storage<T>(a);
             // self.second = b
-            this->second = b;
+            this->second = ::tpy::param_to_storage<T>(b);
         // else:
         } else {
             // self.first = b
-            this->first = b;
+            this->first = ::tpy::param_to_storage<T>(b);
             // self.second = a
-            this->second = a;
+            this->second = ::tpy::param_to_storage<T>(a);
         }
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.SortedPair";

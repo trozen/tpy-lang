@@ -45,13 +45,13 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // blobs: list[bytes] = []
-    std::vector<std::vector<uint8_t>> blobs = std::vector<std::vector<uint8_t>>{};
+    std::vector<::tpy::Bytes> blobs = std::vector<::tpy::Bytes>{};
     // data = b"pq"
     std::span<const uint8_t> data = ::tpy::bytes_literal("pq", 2);
     // # A bytes NAME at `list[bytes].append`'s Own[bytes] slot -- the
     // # `bytes_owned_name` cell; `data` still reads its own value afterwards.
     // blobs.append(data)  # tpyc: ok
-    blobs.push_back(::tpy::bytes_copy(data));
+    blobs.push_back(::tpy::Bytes(data));
     // picks: list[Color] = []
     std::vector<Color> picks = std::vector<Color>{};
     // c = Color.BLUE

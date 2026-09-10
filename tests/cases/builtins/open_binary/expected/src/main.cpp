@@ -20,7 +20,7 @@ void main() {
     // r = open(path, "rb")
     ::tpy::BinaryFile r = ::tpy::builtin_open_binary(path, "rb");
     // data = r.read()
-    std::vector<uint8_t> data = r.read();
+    ::tpy::Bytes data = r.read();
     // r.close()
     r.close();
     // print(len(data))
@@ -46,7 +46,7 @@ void main() {
     __ctx_1.__exit__({}, nullptr, {});
     // # Context manager read
     // with open(path, "rb") as f2:
-    std::vector<uint8_t> data2;
+    ::tpy::Bytes data2;
     auto __ctx_2 = ::tpy::builtin_open_binary(path, "rb");
     auto& f2 = __ctx_2.__enter__();
     try {
@@ -82,7 +82,7 @@ void main() {
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
     // with open(path, "rb") as f4:
-    std::vector<uint8_t> data3;
+    ::tpy::Bytes data3;
     auto __ctx_4 = ::tpy::builtin_open_binary(path, "rb");
     auto& f4 = __ctx_4.__enter__();
     try {
@@ -120,11 +120,11 @@ void main() {
     // r2 = open(path, "rb")
     ::tpy::BinaryFile r2 = ::tpy::builtin_open_binary(path, "rb");
     // first = r2.readline()
-    std::vector<uint8_t> first = r2.readline();
+    ::tpy::Bytes first = r2.readline();
     // second = r2.readline()
-    std::vector<uint8_t> second = r2.readline();
+    ::tpy::Bytes second = r2.readline();
     // third = r2.readline()
-    std::vector<uint8_t> third = r2.readline();
+    ::tpy::Bytes third = r2.readline();
     // r2.close()
     r2.close();
     // print(len(first), len(second), len(third))
@@ -132,7 +132,7 @@ void main() {
     // r3 = open(path, "rb")
     ::tpy::BinaryFile r3 = ::tpy::builtin_open_binary(path, "rb");
     // lines = r3.readlines()
-    std::vector<std::vector<uint8_t>> lines = r3.readlines();
+    std::vector<::tpy::Bytes> lines = r3.readlines();
     // r3.close()
     r3.close();
     // print(len(lines))

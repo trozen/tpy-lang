@@ -24,12 +24,12 @@ struct Base {
 
     // def __init__(self, first: T, second: U) -> None:
     Base() = default;
-    explicit Base(const T& first, const U& second) : first(first), second(second) {}
+    explicit Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second) : first(first), second(second) {}
 
     // def set_first(self, v: T) -> None:
     void set_first(::tpy::param_val_or_ref_t<T> v) {
         // self.first = v
-        this->first = v;
+        this->first = ::tpy::param_to_storage<T>(v);
     }
 
     // def get_first(self) -> T:
@@ -58,9 +58,9 @@ struct Middle : Base<T, int32_t> {
 
     // def __init__(self, first: T, second: Int32) -> None:
     Middle() = default;
-    explicit Middle(const T& first, int32_t second) {
+    explicit Middle(::tpy::readonly_form_t<T> first, int32_t second) {
         // self.first = first
-        this->first = first;
+        this->first = ::tpy::param_to_storage<T>(first);
         // self.second = second
         this->second = second;
     }
@@ -81,9 +81,9 @@ struct Leaf : Middle<T> {
 
     // def __init__(self, first: T, second: Int32, extra: str) -> None:
     Leaf() = default;
-    explicit Leaf(const T& first, int32_t second, std::string_view extra) : extra(extra) {
+    explicit Leaf(::tpy::readonly_form_t<T> first, int32_t second, std::string_view extra) : extra(extra) {
         // self.first = first
-        this->first = first;
+        this->first = ::tpy::param_to_storage<T>(first);
         // self.second = second
         this->second = second;
     }

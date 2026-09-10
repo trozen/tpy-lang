@@ -32,7 +32,7 @@ struct __coro_server {
     bool __cancel_pending;
     ::tpystd::socket::socket& sock;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
-    std::vector<uint8_t> data;
+    ::tpy::Bytes data;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_0;
     std::optional<::tpystd::asyncio::_SockSendAll> __sub_1;
 
@@ -62,7 +62,7 @@ struct __coro_client {
     bool __cancel_pending;
     ::tpystd::socket::socket& sock;
     ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
-    std::vector<uint8_t> reply;
+    ::tpy::Bytes reply;
     std::optional<::tpystd::asyncio::_SockSendAll> __sub_0;
     std::optional<::tpystd::asyncio::_SockRecv> __sub_1;
 

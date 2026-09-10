@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main():
 void main() {
     // tmp = os.getcwd() + "/tpy_os_fs_dir"
-    std::string tmp = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_os_fs_dir"));
+    ::tpy::String tmp = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_os_fs_dir"));
     // os.mkdir(tmp)
     ::tpystd::os::mkdir(tmp);
     // os.chdir(tmp)

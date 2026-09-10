@@ -21,11 +21,11 @@ struct Wrapper {
 
     // def __init__(self, val: T):
     Wrapper() = default;
-    explicit Wrapper(const T& val) : val(val) {}
+    explicit Wrapper(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def is_less[U: Comparable](self, a: U, b: U) -> bool:
     template<::tpystd::tpy::Comparable U>
-    bool is_less(const U& a, const U& b) const {
+    bool is_less(::tpy::readonly_form_t<U> a, ::tpy::readonly_form_t<U> b) const {
         // return a < b
         return (a < b);
     }

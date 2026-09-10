@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def make() -> Own[bytearray]:
-std::vector<uint8_t> make() {
+::tpy::ByteArray make() {
     // return bytearray(b"hi")
-    return ::tpy::bytes_copy(::tpy::bytes_literal("hi", 2));
+    return ::tpy::ByteArray(::tpy::bytes_literal("hi", 2));
 }
 
 // def first_param(b: bytearray) -> bytearray:
-std::vector<uint8_t>& first_param(std::vector<uint8_t>& b) {
+::tpy::ByteArray& first_param(::tpy::ByteArray& b) {
     // return b
     return b;
 }
@@ -21,7 +21,7 @@ void main() {
     // print(len(make()))
     std::cout << ::tpy::__len__(make()) << "\n";
     // ba = bytearray(b"abc")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("abc", 3));
     // print(len(first_param(ba)))
     std::cout << ::tpy::__len__(first_param(ba)) << "\n";
 }

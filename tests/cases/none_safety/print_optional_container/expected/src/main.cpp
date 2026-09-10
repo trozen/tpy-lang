@@ -29,9 +29,9 @@ void show_bytes_param(std::optional<std::span<const uint8_t>> b) {
 }
 
 // def show_bytearray_param(b: bytearray | None) -> None:
-void show_bytearray_param(const std::vector<uint8_t>* b) {
+void show_bytearray_param(const ::tpy::ByteArray* b) {
     // print(b)
-    std::cout << ::tpy::print_optional<::tpy::ByteArrayPrinter, std::vector<uint8_t>>(b) << "\n";
+    std::cout << ::tpy::print_optional<::tpy::ByteArrayPrinter, ::tpy::ByteArray>(b) << "\n";
 }
 
 // def main() -> None:
@@ -46,7 +46,7 @@ void main() {
     // init_elems: set[Int32] = {3, 4}
     ::tpy::ordered_set<int32_t> init_elems = ::tpy::ordered_set<int32_t>({3, 4});
     // init_buf = bytearray(b"yo")
-    std::vector<uint8_t> init_buf = ::tpy::bytes_copy(::tpy::bytes_literal("yo", 2));
+    ::tpy::ByteArray init_buf = ::tpy::ByteArray(::tpy::bytes_literal("yo", 2));
     // Bag(init_items, init_by_key, init_elems, b"hi", init_buf).show_fields()
     Bag(&(init_items), &(init_by_key), &(init_elems), ::tpy::bytes_literal_owned("hi", 2), &(init_buf)).show_fields();
     // # None on all five inners
@@ -78,7 +78,7 @@ void main() {
     // show_bytes_param(None)
     show_bytes_param(std::nullopt);
     // buf = bytearray(b"ok")
-    std::vector<uint8_t> buf = ::tpy::bytes_copy(::tpy::bytes_literal("ok", 2));
+    ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("ok", 2));
     // show_bytearray_param(buf)
     show_bytearray_param(&(buf));
     // show_bytearray_param(None)

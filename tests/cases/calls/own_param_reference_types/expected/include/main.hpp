@@ -13,7 +13,7 @@ using ::tpystd::tplib::box::Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(std::vector<uint8_t>&& b);
+int32_t consume(::tpy::ByteArray&& b);
 int32_t consume_list(std::vector<int32_t>&& xs);
 int32_t consume_boxes(std::vector<::tpystd::tplib::box::Box<int32_t>>&& bs);
 void main();

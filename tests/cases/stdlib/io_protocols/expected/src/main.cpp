@@ -20,7 +20,7 @@ void main() {
     // bsink = io.BytesIO()
     ::tpystd::io::BytesIO bsink = ::tpystd::io::BytesIO();
     // emit_bytes(bsink, [b"abc", b"def"])
-    std::vector<std::vector<uint8_t>> __tmp_2 = {::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)};
+    std::vector<::tpy::Bytes> __tmp_2 = {::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)};
     emit_bytes(bsink, __tmp_2);
     // print("bsink-bytes:", bsink.getvalue())
     std::cout << "bsink-bytes:" << " " << ::tpy::BytesPrinter(bsink.getvalue()) << "\n";

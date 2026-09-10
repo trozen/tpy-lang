@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "buffer_types.hpp"
 #include "core.hpp"
 
 #include <cerrno>
@@ -193,15 +194,15 @@ public:
     BinaryFile(const BinaryFile&) = delete;
     BinaryFile& operator=(const BinaryFile&) = delete;
 
-    std::vector<uint8_t> read(int32_t size = -1) {
+    Bytes read(int32_t size = -1) {
         if (!flags_.readable) raise_os_error("read(): file not opened for reading");
         if (size < 0) {
-            return std::vector<uint8_t>(
+            return Bytes(
                 std::istreambuf_iterator<char>(fs_),
                 std::istreambuf_iterator<char>()
             );
         }
-        std::vector<uint8_t> buf(static_cast<size_t>(size));
+        Bytes buf(static_cast<size_t>(size));
         fs_.read(reinterpret_cast<char*>(buf.data()), size);
         const std::streamsize got = fs_.gcount();
         buf.resize(static_cast<size_t>(got));
@@ -211,25 +212,25 @@ public:
         return buf;
     }
 
-    std::vector<uint8_t> readline() {
+    Bytes readline() {
         if (!flags_.readable) raise_os_error("readline(): file not opened for reading");
         std::string line;
         if (!std::getline(fs_, line)) {
             return {};
         }
-        std::vector<uint8_t> result(line.begin(), line.end());
+        Bytes result(line.begin(), line.end());
         if (!fs_.eof()) {
             result.push_back('\n');
         }
         return result;
     }
 
-    std::vector<std::vector<uint8_t>> readlines() {
+    std::vector<Bytes> readlines() {
         if (!flags_.readable) raise_os_error("readlines(): file not opened for reading");
-        std::vector<std::vector<uint8_t>> lines;
+        std::vector<Bytes> lines;
         std::string line;
         while (std::getline(fs_, line)) {
-            std::vector<uint8_t> row(line.begin(), line.end());
+            Bytes row(line.begin(), line.end());
             if (!fs_.eof()) row.push_back('\n');
             lines.push_back(std::move(row));
         }

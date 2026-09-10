@@ -32,6 +32,10 @@
 // Type traits (no dependencies)
 #include "type_traits.hpp"
 
+// The owning str/bytes buffer classes and their trait rows (depends on
+// type_traits); must precede every header that names them.
+#include "buffer_types.hpp"
+
 // Range utilities (no dependencies)
 #include "ranges.hpp"
 

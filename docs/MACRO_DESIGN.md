@@ -408,7 +408,7 @@ virtual dispatch, no reflection, no field table lookups at runtime.
 
 - **Buffer type**: `bytearray` (Pythonic) vs `Span[UInt8]` (zero-copy, existing
   TPy type) vs `list[UInt8]` (simple but slow). Probably `bytearray` as the
-  API type, backed by `std::vector<uint8_t>` in C++.
+  API type, backed by `::tpy::Bytes` in C++.
 - **Streaming**: should `encode()` accept an output buffer/writer for zero-copy
   serialization, or always return a new buffer? Could offer both:
   `encode() -> bytearray` and `encode_into(buf: Span[UInt8]) -> Int32` (returns

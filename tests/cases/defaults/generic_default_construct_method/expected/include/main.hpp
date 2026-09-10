@@ -21,12 +21,12 @@ struct Container {
 
     // def __init__(self, val: T) -> None:
     Container() = default;
-    explicit Container(const T& val) : val(val) {}
+    explicit Container(::tpy::readonly_form_t<T> val) : val(val) {}
 
     // def get_or_default(self, fallback: T = T()) -> T:
-    ::tpy::val_or_cref_t<T> get_or_default(const T& fallback = T{}) const {
+    ::tpy::val_or_cref_t<T> get_or_default(::tpy::readonly_form_t<T> fallback = T{}) const {
         // return fallback
-        return fallback;
+        return ::tpy::param_to_return<T>(fallback);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };

@@ -101,7 +101,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW1YTB", 8), false, ::tpy::bytes_literal_owned("L", 1))) << "\n";
     // # bytearray input: accepted via span coercion.
     // ba: bytearray = bytearray(b"Man")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("Man", 3));
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("Man", 3));
     // print(b64encode(ba))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(ba)) << "\n";
     // # encodebytes: MIME-style 76-char line wrap + trailing newline.
@@ -120,7 +120,7 @@ void main() {
     // # bytes/bytearray inputs share the code path; verify with a standard
     // # bytearray through urlsafe too.
     // print(urlsafe_b64encode(bytearray(b"\xfb\xff")))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::bytes_copy(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::ByteArray(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n";
     // # str input on decoders (CPython accepts ASCII str; encoders don't).
     // print(b64decode("TWFu"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(std::string_view("TWFu"))) << "\n";
