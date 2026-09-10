@@ -20,8 +20,8 @@ void teardown(std::string_view base) {
 
 // def main():
 void main() {
-    // base = "/tmp/tpy_os_error_exact"
-    std::string_view base = "/tmp/tpy_os_error_exact";
+    // base = "tpy_os_error_exact"
+    std::string_view base = "tpy_os_error_exact";
     // teardown(base)
     teardown(base);
     // os.mkdir(base)
@@ -106,7 +106,7 @@ void __tpy_init() {
     // # str(e) is "[Errno N] strerror[: 'filename'[ -> 'filename2']]", .errno
     // # compares against the errno module's constants, .filename/.filename2 echo
     // # the arguments as given. Paths passed as literals echo verbatim in the
-    // # message (no realpath), so the /tmp base is host-stable.
+    // # message (no realpath), so relative names are host-stable.
     // import errno
     ::tpystd::errno_mod::__tpy_init();
     // import os

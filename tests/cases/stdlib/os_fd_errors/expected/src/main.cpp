@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-// _MISSING = "/tmp/tpy_nope_missing_xyz"
+// _MISSING = "tpy_nope_missing_xyz"
 std::string _MISSING;
 
 // def main():
@@ -75,8 +75,8 @@ void __tpy_init() {
     // # (caught, so output is deterministic). Byte-compared against CPython.
     // import os
     ::tpystd::os::__tpy_init();
-    // _MISSING = "/tmp/tpy_nope_missing_xyz"
-    _MISSING = "/tmp/tpy_nope_missing_xyz";
+    // _MISSING = "tpy_nope_missing_xyz"
+    _MISSING = "tpy_nope_missing_xyz";
     // main()
     main();
 }

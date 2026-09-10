@@ -7,8 +7,8 @@ namespace tpyapp::main {
 // # Test that open() panics for unsupported mode strings
 // def main() -> None:
 void main() {
-    // f = open("/tmp/tpy_test_badmode.txt", "z")
-    ::tpy::TextFile f = ::tpy::builtin_open_mode("/tmp/tpy_test_badmode.txt", "z");
+    // f = open("tpy_test_badmode.txt", "z")
+    ::tpy::TextFile f = ::tpy::builtin_open_mode("tpy_test_badmode.txt", "z");
     // f.close()
     f.close();
 }

@@ -8,8 +8,8 @@ namespace tpyapp::main {
 void main() {
     // print(os.path.normcase("/A/b.TXT"))
     std::cout << ::tpystd::os::path::normcase("/A/b.TXT") << "\n";
-    // tmp = os.path.realpath("/tmp")
-    std::string tmp = ::tpy::stdlib::os::path_realpath("/tmp");
+    // tmp = os.getcwd()
+    std::string tmp = ::tpy::stdlib::os::getcwd();
     // d = tmp + "/tpy_ospath_roundout"
     std::string d = (::tpy::str_concat(tmp, "/tpy_ospath_roundout"));
     // if os.path.exists(d):

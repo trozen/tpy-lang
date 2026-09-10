@@ -25,10 +25,10 @@ def main():
     print("umask", old >= 0, restored == 0o27)  # the second call returns 0o27
 
     # unlink is os.remove
-    with open("/tmp/tpy_os_sysinfo_t", "w") as fh:
+    with open("tpy_os_sysinfo_t", "w") as fh:
         fh.write("x")
-    os.unlink("/tmp/tpy_os_sysinfo_t")
-    print("unlink", not os.path.exists("/tmp/tpy_os_sysinfo_t"))
+    os.unlink("tpy_os_sysinfo_t")
+    print("unlink", not os.path.exists("tpy_os_sysinfo_t"))
 
 
 main()

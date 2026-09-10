@@ -7,8 +7,8 @@ namespace tpyapp::main {
 // # Test open() builtin: write, read, readlines, readline, with statement
 // def main() -> None:
 void main() {
-    // path = "/tmp/tpy_test_open_basic.txt"
-    std::string_view path = "/tmp/tpy_test_open_basic.txt";
+    // path = "tpy_test_open_basic.txt"
+    std::string_view path = "tpy_test_open_basic.txt";
     // # Write to file
     // w = open(path, "w")
     ::tpy::TextFile w = ::tpy::builtin_open_mode(path, "w");

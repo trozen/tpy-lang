@@ -1,6 +1,6 @@
 # Test open() binary mode: write/read round-trip, readline/readlines, context manager
 def main() -> None:
-    path = "/tmp/tpy_test_open_binary.bin"
+    path = "tpy_test_open_binary.bin"
 
     # Write binary data
     w = open(path, "wb")

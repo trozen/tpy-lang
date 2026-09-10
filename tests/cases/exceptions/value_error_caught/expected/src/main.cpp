@@ -104,8 +104,8 @@ void main() {
     // try:
     {
         try {
-            // f = open("/tmp/anything", "z")
-            ::tpy::TextFile f = ::tpy::builtin_open_mode("/tmp/anything", "z");
+            // f = open("anything", "z")
+            ::tpy::TextFile f = ::tpy::builtin_open_mode("anything", "z");
         } catch (const ::tpy::ValueError& e) {
             // print("caught:", str(e))
             std::cout << "caught:" << " " << std::string(::tpy::__str__(e)) << "\n";

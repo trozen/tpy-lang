@@ -1,7 +1,7 @@
 makedirs: True True
 listdir: a,one.txt,two.txt
 symlink: True True True
-readlink: /tmp/tpy_os_mutate/one.txt
+readlink: one.txt
 rename: True False
 replace: True False
 torn down: False

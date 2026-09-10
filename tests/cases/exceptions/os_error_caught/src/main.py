@@ -8,7 +8,7 @@
 
 
 def main() -> None:
-    path = "/tmp/tpy_test_os_error_caught.tmp"
+    path = "tpy_test_os_error_caught.tmp"
 
     # Seed the file with some content for read-mode tests.
     with open(path, "w") as f:

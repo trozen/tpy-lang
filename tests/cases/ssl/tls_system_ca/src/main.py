@@ -33,9 +33,9 @@ AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
 -----END PRIVATE KEY-----
 """
 
-CERT_PATH: Final[str] = "/tmp/tpy_test_ssl_sysca_cert.pem"
-KEY_PATH: Final[str] = "/tmp/tpy_test_ssl_sysca_key.pem"
-GARBAGE_PATH: Final[str] = "/tmp/tpy_test_ssl_sysca_garbage.pem"
+CERT_PATH: Final[str] = "tpy_test_ssl_sysca_cert.pem"
+KEY_PATH: Final[str] = "tpy_test_ssl_sysca_key.pem"
+GARBAGE_PATH: Final[str] = "tpy_test_ssl_sysca_garbage.pem"
 
 
 def write_fixtures() -> None:

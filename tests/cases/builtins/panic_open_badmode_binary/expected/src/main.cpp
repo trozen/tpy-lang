@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // f = open_binary("/tmp/tpy_test_badmode.bin", "zb")
-    ::tpy::BinaryFile f = ::tpy::builtin_open_binary("/tmp/tpy_test_badmode.bin", "zb");
+    // f = open_binary("tpy_test_badmode.bin", "zb")
+    ::tpy::BinaryFile f = ::tpy::builtin_open_binary("tpy_test_badmode.bin", "zb");
     // f.close()
     f.close();
 }

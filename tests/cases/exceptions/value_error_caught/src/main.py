@@ -66,7 +66,7 @@ def main() -> None:
 
     # open() with invalid mode.
     try:
-        f = open("/tmp/anything", "z")
+        f = open("anything", "z")
     except ValueError as e:
         print("caught:", str(e))
 

@@ -2,7 +2,7 @@
 # str(e) is "[Errno N] strerror[: 'filename'[ -> 'filename2']]", .errno
 # compares against the errno module's constants, .filename/.filename2 echo
 # the arguments as given. Paths passed as literals echo verbatim in the
-# message (no realpath), so the /tmp base is host-stable.
+# message (no realpath), so relative names are host-stable.
 import errno
 import os
 
@@ -15,7 +15,7 @@ def teardown(base: str) -> None:
 
 
 def main():
-    base = "/tmp/tpy_os_error_exact"
+    base = "tpy_os_error_exact"
     teardown(base)
     os.mkdir(base)
     os.mkdir(base + "/d")

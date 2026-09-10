@@ -174,9 +174,9 @@ TPy-core changes.
   `GetMaxX`, `GetMaxY`. All drawing is pure TPy against a packed-
   Int32 RGB pixel buffer (the TP7 16-color palette resolves to
   `0xRRGGBB` literals at SetColor time). `CloseGraph` dumps the
-  canvas to a P3 PPM (`out.ppm` in the program's cwd, which is
-  the per-case build dir under `__tpyc__/` -- gitignored, never
-  snapshotted). Tests read pixels back via `GetPixel` and
+  canvas to a P3 PPM (`out.ppm` in the program's cwd, which under
+  the test harness is a per-run scratch dir removed after the run
+  -- never snapshotted). Tests read pixels back via `GetPixel` and
   snapshot the text output only.
 - **`Graph` unit, Tier B** (M20, shipped): pen state (`MoveTo`,
   `LineTo`, `GetX`, `GetY`); text rendering (`OutTextXY`,

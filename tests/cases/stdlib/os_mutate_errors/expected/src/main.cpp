@@ -25,8 +25,8 @@ void teardown(std::string_view base) {
 
 // def main():
 void main() {
-    // base = "/tmp/tpy_os_mutate_err"
-    std::string_view base = "/tmp/tpy_os_mutate_err";
+    // base = "tpy_os_mutate_err"
+    std::string_view base = "tpy_os_mutate_err";
     // teardown(base)
     teardown(base);
     // os.mkdir(base)

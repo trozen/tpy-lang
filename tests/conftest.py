@@ -11,6 +11,7 @@ import json
 import os
 import atexit
 import re
+import contextlib
 import shutil
 import subprocess
 import sys
@@ -683,6 +684,22 @@ def get_stdlib_cache() -> _StdlibCache | None:
     return _stdlib_cache
 
 
+@contextlib.contextmanager
+def _scratch_cwd():
+    """A fresh, empty working directory for one program run.
+
+    Cases write their fixture files by relative name, so this is what keeps
+    two cases -- or the exec and cpy runs of one case -- from ever sharing a
+    file: every run gets its own directory and nothing it leaves behind is
+    seen by the next one.
+    """
+    d = tempfile.mkdtemp(prefix="tpy-case-")
+    try:
+        yield Path(d)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
@@ -696,12 +713,14 @@ def run_cpython(src_file: Path) -> str:
     # this, the cpy phase is non-deterministic across developer terminals.
     env["COLUMNS"] = "80"
 
-    result = subprocess.run(
-        [sys.executable, str(src_file)],
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    with _scratch_cwd() as cwd:
+        result = subprocess.run(
+            [sys.executable, str(src_file)],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=str(cwd),
+        )
 
     if result.returncode != 0:
         stderr_text = _filter_lib_traceback(result.stderr)
@@ -2190,15 +2209,13 @@ def build_and_run(build_dir: Path, module_name: str,
     case_input = build_dir.parent / "src" / "input.txt"
     if case_input.exists():
         stdin_input = case_input.read_text()
-    # Run with cwd=build_dir so any files the program writes via a
-    # relative path (e.g. Pascal `Assign(f, 'out.txt')`) land in the
-    # gitignored build directory rather than the test runner's cwd.
-    result = subprocess.run(
-        [str(exe_file)],
-        input=stdin_input,
-        cwd=str(build_dir),
-        capture_output=True, text=True,
-    )
+    with _scratch_cwd() as cwd:
+        result = subprocess.run(
+            [str(exe_file)],
+            input=stdin_input,
+            cwd=str(cwd),
+            capture_output=True, text=True,
+        )
     return RunResult(
         success=(result.returncode == 0),
         stdout=result.stdout,

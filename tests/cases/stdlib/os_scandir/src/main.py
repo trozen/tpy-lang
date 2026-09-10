@@ -1,5 +1,5 @@
 # os.scandir + DirEntry (name / is_dir / is_file / is_symlink / stat). Builds a
-# fresh /tmp tree (subdir, a 2-byte file, a symlink to it) so both phases start
+# fresh tree in the run's scratch cwd (subdir, a 2-byte file, a symlink to it) so both phases start
 # clean; entries are sorted since scandir order is unspecified. The symlink case
 # exercises the d_type -> stat follow path (is_file follows, is_symlink doesn't).
 # Byte-compared against CPython.
@@ -20,14 +20,14 @@ def teardown(base: str) -> None:
 
 
 def main():
-    base = "/tmp/tpy_os_scandir"
+    base = "tpy_os_scandir"
     teardown(base)
     os.mkdir(base)
     os.mkdir(base + "/sub")
     os.mkdir(base + "/empty")
     with open(base + "/f.txt", "w") as fh:
         fh.write("hi")
-    os.symlink(base + "/f.txt", base + "/lnk")
+    os.symlink("f.txt", base + "/lnk")
 
     rows: list[str] = []
     size = 0

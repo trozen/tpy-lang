@@ -130,8 +130,8 @@ void teardown(std::string_view root) {
 
 // def main() -> None:
 void main() {
-    // tmp = os.path.realpath("/tmp")
-    std::string tmp = ::tpy::stdlib::os::path_realpath("/tmp");
+    // tmp = os.getcwd()
+    std::string tmp = ::tpy::stdlib::os::getcwd();
     // root = tmp + "/tpy_oswalk_onerror_tree"
     std::string root = (::tpy::str_concat(tmp, "/tpy_oswalk_onerror_tree"));
     // if os.path.exists(root):
@@ -161,8 +161,8 @@ void main() {
     }
     // teardown(root)
     teardown(root);
-    // missing = "/tmp/tpy_oswalk_onerror_missing"
-    std::string_view missing = "/tmp/tpy_oswalk_onerror_missing";
+    // missing = "tpy_oswalk_onerror_missing"
+    std::string_view missing = "tpy_oswalk_onerror_missing";
     // # Count is computed before printing -- a side-effecting print arg would
     // # interleave differently under TPy's cout-chain lowering vs CPython.
     // n1 = yields(missing, report)

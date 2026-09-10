@@ -6,7 +6,7 @@ import os
 def main() -> None:
     print(os.path.normcase("/A/b.TXT"))
 
-    tmp = os.path.realpath("/tmp")
+    tmp = os.getcwd()
     d = tmp + "/tpy_ospath_roundout"
     if os.path.exists(d):
         os.rmdir(d)

@@ -30,8 +30,8 @@ void teardown(std::string_view base) {
 
 // def main():
 void main() {
-    // base = "/tmp/tpy_os_stat"
-    std::string_view base = "/tmp/tpy_os_stat";
+    // base = "tpy_os_stat"
+    std::string_view base = "tpy_os_stat";
     // teardown(base)
     teardown(base);
     // os.mkdir(base)
@@ -74,8 +74,8 @@ void main() {
     std::cout << "getctime:" << " " << ::tpy::print_bool((::tpy::stdlib::os::path_getctime((::tpy::str_concat(base, "/f.txt"))) == st.st_ctime)) << "\n";
     // print("dir-is-dir:", os.stat(base).st_mode & 0o170000 == 0o040000)
     std::cout << "dir-is-dir:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::stat(base).st_mode & 61440)) == 16384)) << "\n";
-    // os.symlink(base + "/f.txt", base + "/lnk")
-    ::tpy::stdlib::os::symlink((::tpy::str_concat(base, "/f.txt")), (::tpy::str_concat(base, "/lnk")));
+    // os.symlink("f.txt", base + "/lnk")
+    ::tpy::stdlib::os::symlink("f.txt", (::tpy::str_concat(base, "/lnk")));
     // print("lstat-is-link:", os.lstat(base + "/lnk").st_mode & 0o170000 == 0o120000)
     std::cout << "lstat-is-link:" << " " << ::tpy::print_bool(((static_cast<int64_t>(::tpystd::os::lstat((::tpy::str_concat(base, "/lnk"))).st_mode & 61440)) == 40960)) << "\n";
     // print("stat-follows-link:", os.stat(base + "/lnk").st_size == 5)

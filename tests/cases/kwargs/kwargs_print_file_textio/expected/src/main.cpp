@@ -8,8 +8,8 @@ namespace tpyapp::main {
 // # direct-ostream path (no streambuf adapter).
 // def main() -> None:
 void main() {
-    // path = "/tmp/tpy_test_print_file_textio.txt"
-    std::string_view path = "/tmp/tpy_test_print_file_textio.txt";
+    // path = "tpy_test_print_file_textio.txt"
+    std::string_view path = "tpy_test_print_file_textio.txt";
     // f = open(path, "w")
     ::tpy::TextFile f = ::tpy::builtin_open_mode(path, "w");
     // print("hello", "file", 42, file=f)

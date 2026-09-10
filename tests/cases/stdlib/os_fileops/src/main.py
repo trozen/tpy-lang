@@ -1,11 +1,11 @@
 # os.link (hardlink), truncate, ftruncate, fsync. Builds + tears down
-# a /tmp file so both phases start clean. Byte-compared against CPython.
+# a scratch file so both phases start clean. Byte-compared against CPython.
 import os
 
 
 def main():
-    p = "/tmp/tpy_os_fileops"
-    ln = "/tmp/tpy_os_fileops_ln"
+    p = "tpy_os_fileops"
+    ln = "tpy_os_fileops_ln"
     if os.path.exists(ln):
         os.remove(ln)
     if os.path.exists(p):

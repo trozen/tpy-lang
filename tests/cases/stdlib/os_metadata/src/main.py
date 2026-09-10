@@ -5,7 +5,7 @@ import os
 
 
 def main():
-    p = "/tmp/tpy_os_metadata"
+    p = "tpy_os_metadata"
     if os.path.exists(p):
         os.remove(p)
     with open(p, "w") as fh:
@@ -15,7 +15,7 @@ def main():
     print("mode", oct(os.stat(p).st_mode & 0o777))   # 0o640
     print("access", os.access(p, os.F_OK), os.access(p, os.R_OK),
           os.access(p, os.W_OK), os.access(p, os.X_OK))   # True True True False
-    print("missing", os.access("/tmp/tpy_nope_xyz", os.F_OK))   # False
+    print("missing", os.access("tpy_nope_xyz", os.F_OK))   # False
 
     os.utime(p, (1000000000.0, 1500000000.0))
     st = os.stat(p)

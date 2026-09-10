@@ -42,8 +42,8 @@ void teardown(std::string_view base) {
 
 // def main():
 void main() {
-    // base = "/tmp/tpy_os_mutate"
-    std::string_view base = "/tmp/tpy_os_mutate";
+    // base = "tpy_os_mutate"
+    std::string_view base = "tpy_os_mutate";
     // teardown(base)
     teardown(base);
     // os.mkdir(base)
@@ -80,8 +80,8 @@ void main() {
     // # controlled dir -> the full listing is deterministic ("a" + the two files)
     // print("listdir:", ",".join(sorted(os.listdir(base))))
     std::cout << "listdir:" << " " << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir(base))) << "\n";
-    // os.symlink(base + "/one.txt", base + "/lnk")
-    ::tpy::stdlib::os::symlink((::tpy::str_concat(base, "/one.txt")), (::tpy::str_concat(base, "/lnk")));
+    // os.symlink("one.txt", base + "/lnk")
+    ::tpy::stdlib::os::symlink("one.txt", (::tpy::str_concat(base, "/lnk")));
     // print("symlink:", islink(base + "/lnk"), lexists(base + "/lnk"),
     // isfile(base + "/lnk"))   # isfile follows the link -> True
     std::cout << "symlink:" << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(base, "/lnk")))) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile((::tpy::str_concat(base, "/lnk")))) << "\n";
@@ -114,7 +114,7 @@ void __tpy_init() {
     initialized = true;
 
     // # os mutating ops: mkdir/makedirs/listdir(controlled dir)/symlink/rename/
-    // # replace/remove/rmdir. Builds + tears down a fresh /tmp tree so both phases
+    // # replace/remove/rmdir. Builds + tears down a fresh scratch tree so both phases
     // # start clean; byte-compared against CPython.
     // import os
     ::tpystd::os::__tpy_init();

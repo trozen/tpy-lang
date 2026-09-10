@@ -56,17 +56,22 @@ path = "tpyc/_build_hook.py"
 
 # Allowlist exactly what a wheel-from-sdist build needs, so stray
 # working-tree files (untracked scratch, local tool configs) can never
-# leak into a published artifact.
+# leak into a published artifact. `only-include` rather than `include`:
+# `include` only filters, hatchling still walks the whole tree (a tree
+# with every test case built holds >100k files, and under a saturated
+# full-suite run that walk has exceeded the packaging test's budget),
+# while `only-include` walks just these paths. Excludes and .gitignore
+# still apply within them.
 [tool.hatch.build.targets.sdist]
-include = [
-    "/tpyc",
-    "/runtime",
-    "/lib/tpy",
-    "/docs/TPY_FOR_AGENTS.md",
-    "/docs/LANGUAGE_FEATURES.md",
-    "/docs/STDLIB_ROADMAP.md",
-    "/README.md",
-    "/RELEASE_NOTES.md",
+only-include = [
+    "tpyc",
+    "runtime",
+    "lib/tpy",
+    "docs/TPY_FOR_AGENTS.md",
+    "docs/LANGUAGE_FEATURES.md",
+    "docs/STDLIB_ROADMAP.md",
+    "README.md",
+    "RELEASE_NOTES.md",
 ]
 
 # Stamp _buildinfo.py for sdist too, so wheel-from-sdist (uv build's
@@ -77,12 +82,6 @@ path = "tpyc/_build_hook.py"
 
 [tool.hatch.build.targets.sdist.force-include]
 "tpyc/_buildinfo.py" = "tpyc/_buildinfo.py"
-# lib/cpy/tplib is a symlink to lib/tpy/tplib; hatchling's sdist walk
-# follows symlinks and dedups directories by inode, so whichever path it
-# visits first consumes the inode and the real lib/tpy/tplib gets pruned
-# as "already seen" (order-dependent, silent). Force-include bypasses
-# the walk entirely.
-"lib/tpy/tplib" = "lib/tpy/tplib"
 
 [tool.pyright]
 extraPaths = ["lib/cpy"]

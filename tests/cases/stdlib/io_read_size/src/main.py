@@ -45,7 +45,7 @@ def protocol_params() -> None:
 
 
 def file_read_size() -> None:
-    tpath = "/tmp/tpy_test_io_read_size.txt"
+    tpath = "tpy_test_io_read_size.txt"
     with open(tpath, "w") as f:
         f.write("abcdefghij")
     with open(tpath) as r:
@@ -55,7 +55,7 @@ def file_read_size() -> None:
         print("file-rest:", r.read())            # "" (already at EOF)
         print("file-eof:", "[" + r.read(5) + "]")  # []
 
-    bpath = "/tmp/tpy_test_io_read_size.bin"
+    bpath = "tpy_test_io_read_size.bin"
     with open(bpath, "wb") as bf:
         bf.write(b"0123456789")
     with open(bpath, "rb") as br:

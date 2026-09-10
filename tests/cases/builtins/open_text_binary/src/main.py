@@ -2,8 +2,8 @@
 from tpy import open_text, open_binary
 
 def main() -> None:
-    tpath = "/tmp/tpy_test_open_text_binary.txt"
-    bpath = "/tmp/tpy_test_open_text_binary.bin"
+    tpath = "tpy_test_open_text_binary.txt"
+    bpath = "tpy_test_open_text_binary.bin"
 
     # open_text with explicit mode
     w = open_text(tpath, "w")

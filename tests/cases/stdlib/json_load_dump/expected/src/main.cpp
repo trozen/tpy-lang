@@ -39,8 +39,8 @@ void dump_to_stringio() {
 void file_roundtrip() {
     // v = json.loads('{"list": [10, 20], "flag": false, "label": "x"}')
     ::tpystd::json::JsonValue v = ::tpystd::json::loads("{\"list\": [10, 20], \"flag\": false, \"label\": \"x\"}");
-    // path = "/tmp/tpy_test_json_load_dump.json"
-    std::string_view path = "/tmp/tpy_test_json_load_dump.json";
+    // path = "tpy_test_json_load_dump.json"
+    std::string_view path = "tpy_test_json_load_dump.json";
     // with open(path, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(path, "w");
     ::tpy::TextFile* f = &(__ctx_1.__enter__());

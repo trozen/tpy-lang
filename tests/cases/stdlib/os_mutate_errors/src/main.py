@@ -15,7 +15,7 @@ def teardown(base: str) -> None:
 
 
 def main():
-    base = "/tmp/tpy_os_mutate_err"
+    base = "tpy_os_mutate_err"
     teardown(base)
     os.mkdir(base)
     os.mkdir(base + "/sub")

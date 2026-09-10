@@ -13,8 +13,8 @@ namespace tpyapp::main {
 // # CPython's terse "not readable"/"not writable"); test carries no_cpython.txt.
 // def main() -> None:
 void main() {
-    // path = "/tmp/tpy_test_os_error_caught.tmp"
-    std::string_view path = "/tmp/tpy_test_os_error_caught.tmp";
+    // path = "tpy_test_os_error_caught.tmp"
+    std::string_view path = "tpy_test_os_error_caught.tmp";
     // # Seed the file with some content for read-mode tests.
     // with open(path, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(path, "w");

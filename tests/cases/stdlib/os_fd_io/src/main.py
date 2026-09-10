@@ -1,11 +1,11 @@
 # Low-level fd I/O: open/write/close, open/lseek (all three whence)/read/fstat,
-# pipe, dup, dup2. Uses the real O_*/SEEK_* constants. Builds + tears down a /tmp
+# pipe, dup, dup2. Uses the real O_*/SEEK_* constants. Builds + tears down a scratch
 # file so both phases start clean. Byte-compared against CPython.
 import os
 
 
 def main():
-    p = "/tmp/tpy_os_fd_io"
+    p = "tpy_os_fd_io"
     if os.path.exists(p):
         os.remove(p)
 

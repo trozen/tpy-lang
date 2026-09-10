@@ -6,8 +6,10 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // tmp = os.path.realpath("/tmp")
-    std::string tmp = ::tpy::stdlib::os::path_realpath("/tmp");
+    // tmp = os.getcwd() + "/tpy_os_fs_dir"
+    std::string tmp = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_os_fs_dir"));
+    // os.mkdir(tmp)
+    ::tpystd::os::mkdir(tmp);
     // os.chdir(tmp)
     ::tpy::stdlib::os::chdir(tmp);
     // print(os.getcwd() == tmp)
@@ -69,9 +71,8 @@ void __tpy_init() {
     initialized = true;
 
     // # os filesystem layer (getcwd/chdir/listdir/getenv). Output is kept
-    // # host-independent: /tmp is a symlink on macOS (-> /private/tmp), so getcwd
-    // # is compared against realpath("/tmp") rather than printed, keeping CPython
-    // # byte-parity on both Linux and macOS.
+    // # host-independent: the run's scratch cwd differs per run, so getcwd is
+    // # compared against a path built from it rather than printed.
     // import os
     ::tpystd::os::__tpy_init();
     // main()

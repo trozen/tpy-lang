@@ -99,7 +99,7 @@ def order_ok(root: str) -> bool:
 
 
 def main() -> None:
-    tmp = os.path.realpath("/tmp")
+    tmp = os.getcwd()
     root = tmp + "/tpy_oswalk_case"
     if os.path.exists(root):
         teardown(root)

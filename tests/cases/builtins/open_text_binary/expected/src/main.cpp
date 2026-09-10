@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // tpath = "/tmp/tpy_test_open_text_binary.txt"
-    std::string_view tpath = "/tmp/tpy_test_open_text_binary.txt";
-    // bpath = "/tmp/tpy_test_open_text_binary.bin"
-    std::string_view bpath = "/tmp/tpy_test_open_text_binary.bin";
+    // tpath = "tpy_test_open_text_binary.txt"
+    std::string_view tpath = "tpy_test_open_text_binary.txt";
+    // bpath = "tpy_test_open_text_binary.bin"
+    std::string_view bpath = "tpy_test_open_text_binary.bin";
     // # open_text with explicit mode
     // w = open_text(tpath, "w")
     ::tpy::TextFile w = ::tpy::builtin_open_mode(tpath, "w");

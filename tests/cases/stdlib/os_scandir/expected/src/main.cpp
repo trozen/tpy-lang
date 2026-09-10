@@ -35,8 +35,8 @@ void teardown(std::string_view base) {
 
 // def main():
 void main() {
-    // base = "/tmp/tpy_os_scandir"
-    std::string_view base = "/tmp/tpy_os_scandir";
+    // base = "tpy_os_scandir"
+    std::string_view base = "tpy_os_scandir";
     // teardown(base)
     teardown(base);
     // os.mkdir(base)
@@ -61,8 +61,8 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // os.symlink(base + "/f.txt", base + "/lnk")
-    ::tpy::stdlib::os::symlink((::tpy::str_concat(base, "/f.txt")), (::tpy::str_concat(base, "/lnk")));
+    // os.symlink("f.txt", base + "/lnk")
+    ::tpy::stdlib::os::symlink("f.txt", (::tpy::str_concat(base, "/lnk")));
     // rows: list[str] = []
     std::vector<std::string> rows = std::vector<std::string>{};
     // size = 0
@@ -119,7 +119,7 @@ void __tpy_init() {
     initialized = true;
 
     // # os.scandir + DirEntry (name / is_dir / is_file / is_symlink / stat). Builds a
-    // # fresh /tmp tree (subdir, a 2-byte file, a symlink to it) so both phases start
+    // # fresh tree in the run's scratch cwd (subdir, a 2-byte file, a symlink to it) so both phases start
     // # clean; entries are sorted since scandir order is unspecified. The symlink case
     // # exercises the d_type -> stat follow path (is_file follows, is_symlink doesn't).
     // # Byte-compared against CPython.

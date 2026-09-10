@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // missing = "/tmp/tpy_os_stat_missing_xyz"
-    std::string_view missing = "/tmp/tpy_os_stat_missing_xyz";
+    // missing = "tpy_os_stat_missing_xyz"
+    std::string_view missing = "tpy_os_stat_missing_xyz";
     // try:
     {
         try {

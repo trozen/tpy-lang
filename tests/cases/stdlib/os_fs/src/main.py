@@ -1,12 +1,12 @@
 # os filesystem layer (getcwd/chdir/listdir/getenv). Output is kept
-# host-independent: /tmp is a symlink on macOS (-> /private/tmp), so getcwd
-# is compared against realpath("/tmp") rather than printed, keeping CPython
-# byte-parity on both Linux and macOS.
+# host-independent: the run's scratch cwd differs per run, so getcwd is
+# compared against a path built from it rather than printed.
 import os
 
 
 def main():
-    tmp = os.path.realpath("/tmp")
+    tmp = os.getcwd() + "/tpy_os_fs_dir"
+    os.mkdir(tmp)
     os.chdir(tmp)
     print(os.getcwd() == tmp)
 

@@ -1,5 +1,5 @@
 # os.listdir() with no argument defaults to the current directory (CPython
-# listdir(path=".")). Builds a fresh /tmp tree, chdir into it, and lists with no
+# listdir(path=".")). Builds a fresh tree in the scratch cwd, chdir into it, and lists with no
 # arg. Byte-compared against CPython.
 import os
 
@@ -13,7 +13,7 @@ def teardown(base: str) -> None:
 
 
 def main():
-    base = "/tmp/tpy_os_listdir_default"
+    base = "tpy_os_listdir_default"
     teardown(base)
     os.mkdir(base)
     for n in ["a.txt", "b.txt"]:

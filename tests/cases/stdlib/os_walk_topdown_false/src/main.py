@@ -76,7 +76,7 @@ def teardown(root: str) -> None:
 
 
 def main() -> None:
-    root = os.path.realpath("/tmp") + "/tpy_oswalk_bu_tree"
+    root = os.getcwd() + "/tpy_oswalk_bu_tree"
     if os.path.exists(root):
         teardown(root)
     build(root)
@@ -86,7 +86,7 @@ def main() -> None:
     print("post-order ok:", order_ok(root))
     teardown(root)
 
-    missing = "/tmp/tpy_oswalk_bu_missing"
+    missing = "tpy_oswalk_bu_missing"
     # onerror fires once on the unscannable top, then 0 yields.
     n1 = yields(missing, report)
     print("named yields:", n1)

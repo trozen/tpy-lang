@@ -11,8 +11,8 @@ class Item:
 
 def test_roundtrip() -> None:
     item = Item("widget", 42, True)
-    item.save_json("/tmp/_tpy_test_json_io.json")
-    loaded = Item.load_json("/tmp/_tpy_test_json_io.json")
+    item.save_json("_tpy_test_json_io.json")
+    loaded = Item.load_json("_tpy_test_json_io.json")
     print(loaded.name)
     print(loaded.count)
     print(loaded.active)
@@ -20,24 +20,24 @@ def test_roundtrip() -> None:
 
 def test_pretty() -> None:
     item = Item("gadget", 7, False)
-    item.save_json("/tmp/_tpy_test_json_io2.json", indent=2)
-    loaded = Item.load_json("/tmp/_tpy_test_json_io2.json")
+    item.save_json("_tpy_test_json_io2.json", indent=2)
+    loaded = Item.load_json("_tpy_test_json_io2.json")
     print(loaded.name)
     print(item == loaded)
 
 def test_try_load() -> None:
-    Item("ok", 1, True).save_json("/tmp/_tpy_test_json_io3.json")
+    Item("ok", 1, True).save_json("_tpy_test_json_io3.json")
     try:
-        c = Item.try_load_json("/tmp/_tpy_test_json_io3.json")
+        c = Item.try_load_json("_tpy_test_json_io3.json")
         print(c.name)
     except JsonError as e:
         print("error: " + e.message)
 
 def test_try_load_bad() -> None:
-    with open("/tmp/_tpy_test_json_io_bad.json", "w") as f:
+    with open("_tpy_test_json_io_bad.json", "w") as f:
         f.write("{bad json}")
     try:
-        c = Item.try_load_json("/tmp/_tpy_test_json_io_bad.json")
+        c = Item.try_load_json("_tpy_test_json_io_bad.json")
         print(c.name)
     except JsonError as e:
         print("caught: " + e.message)

@@ -27,8 +27,8 @@ void teardown(std::string_view base) {
 
 // def main():
 void main() {
-    // base = "/tmp/tpy_os_listdir_default"
-    std::string_view base = "/tmp/tpy_os_listdir_default";
+    // base = "tpy_os_listdir_default"
+    std::string_view base = "tpy_os_listdir_default";
     // teardown(base)
     teardown(base);
     // os.mkdir(base)
@@ -76,7 +76,7 @@ void __tpy_init() {
     initialized = true;
 
     // # os.listdir() with no argument defaults to the current directory (CPython
-    // # listdir(path=".")). Builds a fresh /tmp tree, chdir into it, and lists with no
+    // # listdir(path=".")). Builds a fresh tree in the scratch cwd, chdir into it, and lists with no
     // # arg. Byte-compared against CPython.
     // import os
     ::tpystd::os::__tpy_init();

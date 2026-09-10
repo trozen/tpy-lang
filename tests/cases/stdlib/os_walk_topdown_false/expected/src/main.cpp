@@ -197,8 +197,8 @@ void teardown(std::string_view root) {
 
 // def main() -> None:
 void main() {
-    // root = os.path.realpath("/tmp") + "/tpy_oswalk_bu_tree"
-    std::string root = (::tpy::str_concat(::tpy::stdlib::os::path_realpath("/tmp"), "/tpy_oswalk_bu_tree"));
+    // root = os.getcwd() + "/tpy_oswalk_bu_tree"
+    std::string root = (::tpy::str_concat(::tpy::stdlib::os::getcwd(), "/tpy_oswalk_bu_tree"));
     // if os.path.exists(root):
     if (::tpy::stdlib::os::path_exists(root)) {
         // teardown(root)
@@ -219,8 +219,8 @@ void main() {
     std::cout << "post-order ok:" << " " << ::tpy::print_bool(order_ok(root)) << "\n";
     // teardown(root)
     teardown(root);
-    // missing = "/tmp/tpy_oswalk_bu_missing"
-    std::string_view missing = "/tmp/tpy_oswalk_bu_missing";
+    // missing = "tpy_oswalk_bu_missing"
+    std::string_view missing = "tpy_oswalk_bu_missing";
     // # onerror fires once on the unscannable top, then 0 yields.
     // n1 = yields(missing, report)
     ::tpy::BigInt n1 = yields(missing, report);

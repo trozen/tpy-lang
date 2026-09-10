@@ -49,7 +49,7 @@ def teardown(root: str) -> None:
 
 
 def main() -> None:
-    tmp = os.path.realpath("/tmp")
+    tmp = os.getcwd()
     root = tmp + "/tpy_oswalk_onerror_tree"
     if os.path.exists(root):
         teardown(root)
@@ -61,7 +61,7 @@ def main() -> None:
         print("lambda:", r)
     teardown(root)
 
-    missing = "/tmp/tpy_oswalk_onerror_missing"
+    missing = "tpy_oswalk_onerror_missing"
 
     # Count is computed before printing -- a side-effecting print arg would
     # interleave differently under TPy's cout-chain lowering vs CPython.

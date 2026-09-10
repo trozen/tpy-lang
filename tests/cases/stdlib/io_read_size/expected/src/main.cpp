@@ -58,8 +58,8 @@ void protocol_params() {
 
 // def file_read_size() -> None:
 void file_read_size() {
-    // tpath = "/tmp/tpy_test_io_read_size.txt"
-    std::string_view tpath = "/tmp/tpy_test_io_read_size.txt";
+    // tpath = "tpy_test_io_read_size.txt"
+    std::string_view tpath = "tpy_test_io_read_size.txt";
     // with open(tpath, "w") as f:
     auto __ctx_1 = ::tpy::builtin_open_mode(tpath, "w");
     auto& f = __ctx_1.__enter__();
@@ -100,8 +100,8 @@ void file_read_size() {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
-    // bpath = "/tmp/tpy_test_io_read_size.bin"
-    std::string_view bpath = "/tmp/tpy_test_io_read_size.bin";
+    // bpath = "tpy_test_io_read_size.bin"
+    std::string_view bpath = "tpy_test_io_read_size.bin";
     // with open(bpath, "wb") as bf:
     auto __ctx_3 = ::tpy::builtin_open_binary(bpath, "wb");
     auto& bf = __ctx_3.__enter__();

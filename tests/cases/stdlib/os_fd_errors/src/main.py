@@ -3,7 +3,7 @@
 # (caught, so output is deterministic). Byte-compared against CPython.
 import os
 
-_MISSING = "/tmp/tpy_nope_missing_xyz"
+_MISSING = "tpy_nope_missing_xyz"
 
 
 def main():

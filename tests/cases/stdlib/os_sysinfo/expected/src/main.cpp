@@ -30,8 +30,8 @@ void main() {
     // print("umask", old >= 0, restored == 0o27)  # the second call returns 0o27
     std::cout << "umask" << " " << ::tpy::print_bool((old >= 0)) << " " << ::tpy::print_bool((restored == 23)) << "\n";
     // # unlink is os.remove
-    // with open("/tmp/tpy_os_sysinfo_t", "w") as fh:
-    auto __ctx_1 = ::tpy::builtin_open_mode("/tmp/tpy_os_sysinfo_t", "w");
+    // with open("tpy_os_sysinfo_t", "w") as fh:
+    auto __ctx_1 = ::tpy::builtin_open_mode("tpy_os_sysinfo_t", "w");
     auto& fh = __ctx_1.__enter__();
     try {
         // fh.write("x")
@@ -46,10 +46,10 @@ void main() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
-    // os.unlink("/tmp/tpy_os_sysinfo_t")
-    ::tpystd::os::unlink("/tmp/tpy_os_sysinfo_t");
-    // print("unlink", not os.path.exists("/tmp/tpy_os_sysinfo_t"))
-    std::cout << "unlink" << " " << ::tpy::print_bool((!(::tpy::stdlib::os::path_exists("/tmp/tpy_os_sysinfo_t")))) << "\n";
+    // os.unlink("tpy_os_sysinfo_t")
+    ::tpystd::os::unlink("tpy_os_sysinfo_t");
+    // print("unlink", not os.path.exists("tpy_os_sysinfo_t"))
+    std::cout << "unlink" << " " << ::tpy::print_bool((!(::tpy::stdlib::os::path_exists("tpy_os_sysinfo_t")))) << "\n";
 }
 
 void __tpy_init() {

@@ -39,8 +39,8 @@ AHavwkRqu8crpAaMoNVIsMxEtP9yXT/7crk2Jpju9JqnkjzM/iLZ5gbq
 -----END PRIVATE KEY-----
 """
 
-CERT_PATH: Final[str] = "/tmp/tpy_test_https_cert.pem"
-KEY_PATH: Final[str] = "/tmp/tpy_test_https_key.pem"
+CERT_PATH: Final[str] = "tpy_test_https_client_cert.pem"
+KEY_PATH: Final[str] = "tpy_test_https_client_key.pem"
 
 
 def write_fixtures() -> None:

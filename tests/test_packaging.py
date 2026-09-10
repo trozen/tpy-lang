@@ -1,9 +1,10 @@
 """Packaging smoke: the built sdist must contain every lib/tpy file.
 
 Guards against hatchling's sdist walk silently dropping a package: it follows
-symlinks and dedups directories by inode, so lib/cpy/tplib (a symlink to
-lib/tpy/tplib) can consume the inode and get the real package pruned -- see
-the force-include note in pyproject.toml.
+symlinks and dedups directories by inode, so a walk that reaches lib/cpy/tplib
+(a symlink to lib/tpy/tplib) first can consume the inode and get the real
+package pruned. pyproject.toml's `only-include` keeps lib/cpy out of the walk;
+this test is what notices if that ever stops being true.
 """
 
 import shutil

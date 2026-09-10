@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // p = "/tmp/tpy_os_fd_io"
-    std::string_view p = "/tmp/tpy_os_fd_io";
+    // p = "tpy_os_fd_io"
+    std::string_view p = "tpy_os_fd_io";
     // if os.path.exists(p):
     if (::tpy::stdlib::os::path_exists(p)) {
         // os.remove(p)
@@ -83,7 +83,7 @@ void __tpy_init() {
     initialized = true;
 
     // # Low-level fd I/O: open/write/close, open/lseek (all three whence)/read/fstat,
-    // # pipe, dup, dup2. Uses the real O_*/SEEK_* constants. Builds + tears down a /tmp
+    // # pipe, dup, dup2. Uses the real O_*/SEEK_* constants. Builds + tears down a scratch
     // # file so both phases start clean. Byte-compared against CPython.
     // import os
     ::tpystd::os::__tpy_init();

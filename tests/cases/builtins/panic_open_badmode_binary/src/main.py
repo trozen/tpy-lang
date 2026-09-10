@@ -2,7 +2,7 @@
 from tpy import open_binary
 
 def main() -> None:
-    f = open_binary("/tmp/tpy_test_badmode.bin", "zb")
+    f = open_binary("tpy_test_badmode.bin", "zb")
     f.close()
 
 main()

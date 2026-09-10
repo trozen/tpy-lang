@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // p = "/tmp/tpy_os_metadata"
-    std::string_view p = "/tmp/tpy_os_metadata";
+    // p = "tpy_os_metadata"
+    std::string_view p = "tpy_os_metadata";
     // if os.path.exists(p):
     if (::tpy::stdlib::os::path_exists(p)) {
         // os.remove(p)
@@ -36,8 +36,8 @@ void main() {
     // print("access", os.access(p, os.F_OK), os.access(p, os.R_OK),
     // os.access(p, os.W_OK), os.access(p, os.X_OK))   # True True True False
     std::cout << "access" << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_f_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_r_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_w_ok)) << " " << ::tpy::print_bool(::tpystd::os::access(p, ::tpy::stdlib::os::kc_x_ok)) << "\n";
-    // print("missing", os.access("/tmp/tpy_nope_xyz", os.F_OK))   # False
-    std::cout << "missing" << " " << ::tpy::print_bool(::tpystd::os::access("/tmp/tpy_nope_xyz", ::tpy::stdlib::os::kc_f_ok)) << "\n";
+    // print("missing", os.access("tpy_nope_xyz", os.F_OK))   # False
+    std::cout << "missing" << " " << ::tpy::print_bool(::tpystd::os::access("tpy_nope_xyz", ::tpy::stdlib::os::kc_f_ok)) << "\n";
     // os.utime(p, (1000000000.0, 1500000000.0))
     ::tpystd::os::utime(p, std::tuple<double, double>{1000000000.0, 1500000000.0});
     // st = os.stat(p)

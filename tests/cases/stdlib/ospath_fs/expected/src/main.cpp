@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // tmp = os.path.realpath("/tmp")
-    std::string tmp = ::tpy::stdlib::os::path_realpath("/tmp");
+    // tmp = os.getcwd()
+    std::string tmp = ::tpy::stdlib::os::getcwd();
     // f = tmp + "/tpy_ospath_fs.txt"
     std::string f = (::tpy::str_concat(tmp, "/tpy_ospath_fs.txt"));
     // with open(f, "w") as fh:
@@ -57,11 +57,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # os.path filesystem predicates + abspath, over fixed temp fixtures. All paths
-    // # go through realpath("/tmp") (a real directory on both Linux and macOS, where
-    // # /tmp itself is a symlink to /private/tmp) so the predicates and abspath stay
-    // # host-independent: islink(dir) is False on both, and getcwd-relative abspath is
-    // # compared against the canonical dir rather than printed.
+    // # os.path filesystem predicates + abspath, over fixtures in the run's scratch
+    // # cwd. Paths are built from getcwd() (already canonical, no symlink component)
+    // # so the predicates and abspath stay host-independent: islink(dir) is False,
+    // # and cwd-relative abspath is compared against the dir rather than printed.
     // import os
     ::tpystd::os::__tpy_init();
     // from os.path import exists, lexists, isfile, isdir, islink, getsize, abspath

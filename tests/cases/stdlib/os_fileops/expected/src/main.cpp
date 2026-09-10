@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // p = "/tmp/tpy_os_fileops"
-    std::string_view p = "/tmp/tpy_os_fileops";
-    // ln = "/tmp/tpy_os_fileops_ln"
-    std::string_view ln = "/tmp/tpy_os_fileops_ln";
+    // p = "tpy_os_fileops"
+    std::string_view p = "tpy_os_fileops";
+    // ln = "tpy_os_fileops_ln"
+    std::string_view ln = "tpy_os_fileops_ln";
     // if os.path.exists(ln):
     if (::tpy::stdlib::os::path_exists(ln)) {
         // os.remove(ln)
@@ -66,7 +66,7 @@ void __tpy_init() {
     initialized = true;
 
     // # os.link (hardlink), truncate, ftruncate, fsync. Builds + tears down
-    // # a /tmp file so both phases start clean. Byte-compared against CPython.
+    // # a scratch file so both phases start clean. Byte-compared against CPython.
     // import os
     ::tpystd::os::__tpy_init();
     // main()

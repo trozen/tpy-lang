@@ -18,7 +18,7 @@ def teardown(base: str) -> None:
 
 
 def main():
-    base = "/tmp/tpy_os_stat"
+    base = "tpy_os_stat"
     teardown(base)
     os.mkdir(base)
     with open(base + "/f.txt", "w") as fh:
@@ -38,7 +38,7 @@ def main():
 
     print("dir-is-dir:", os.stat(base).st_mode & 0o170000 == 0o040000)
 
-    os.symlink(base + "/f.txt", base + "/lnk")
+    os.symlink("f.txt", base + "/lnk")
     print("lstat-is-link:", os.lstat(base + "/lnk").st_mode & 0o170000 == 0o120000)
     print("stat-follows-link:", os.stat(base + "/lnk").st_size == 5)
     print("samefile-self:", samefile(base + "/f.txt", base + "/f.txt"))

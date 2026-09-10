@@ -24,7 +24,7 @@ def dump_to_stringio() -> None:
 
 def file_roundtrip() -> None:
     v = json.loads('{"list": [10, 20], "flag": false, "label": "x"}')
-    path = "/tmp/tpy_test_json_load_dump.json"
+    path = "tpy_test_json_load_dump.json"
     with open(path, "w") as f:
         json.dump(v, f, sort_keys=True)
     with open(path) as f:

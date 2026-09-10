@@ -21,7 +21,7 @@ Ddslcyu0U0qfufOT/QbqMaDSyosTTmLteQ==
 -----END CERTIFICATE-----
 """
 
-CA_PATH: Final[str] = "/tmp/tpy_test_verify_ca.pem"
+CA_PATH: Final[str] = "tpy_test_verify_ca.pem"
 
 
 def main() -> None:

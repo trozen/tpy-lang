@@ -1,5 +1,5 @@
 # os mutating ops: mkdir/makedirs/listdir(controlled dir)/symlink/rename/
-# replace/remove/rmdir. Builds + tears down a fresh /tmp tree so both phases
+# replace/remove/rmdir. Builds + tears down a fresh scratch tree so both phases
 # start clean; byte-compared against CPython.
 import os
 from os.path import isdir, isfile, islink, lexists, exists
@@ -20,7 +20,7 @@ def teardown(base: str) -> None:
 
 
 def main():
-    base = "/tmp/tpy_os_mutate"
+    base = "tpy_os_mutate"
     teardown(base)
 
     os.mkdir(base)
@@ -34,7 +34,7 @@ def main():
     # controlled dir -> the full listing is deterministic ("a" + the two files)
     print("listdir:", ",".join(sorted(os.listdir(base))))
 
-    os.symlink(base + "/one.txt", base + "/lnk")
+    os.symlink("one.txt", base + "/lnk")
     print("symlink:", islink(base + "/lnk"), lexists(base + "/lnk"),
           isfile(base + "/lnk"))   # isfile follows the link -> True
     print("readlink:", os.readlink(base + "/lnk"))

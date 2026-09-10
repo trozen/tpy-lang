@@ -8,10 +8,10 @@ namespace tpyapp::main {
 void test_roundtrip() {
     // item = Item("widget", 42, True)
     Item item = Item("widget", 42, true);
-    // item.save_json("/tmp/_tpy_test_json_io.json")
-    item.save_json("/tmp/_tpy_test_json_io.json");
-    // loaded = Item.load_json("/tmp/_tpy_test_json_io.json")
-    Item loaded = Item::load_json("/tmp/_tpy_test_json_io.json");
+    // item.save_json("_tpy_test_json_io.json")
+    item.save_json("_tpy_test_json_io.json");
+    // loaded = Item.load_json("_tpy_test_json_io.json")
+    Item loaded = Item::load_json("_tpy_test_json_io.json");
     // print(loaded.name)
     std::cout << loaded.name << "\n";
     // print(loaded.count)
@@ -26,10 +26,10 @@ void test_roundtrip() {
 void test_pretty() {
     // item = Item("gadget", 7, False)
     Item item = Item("gadget", 7, false);
-    // item.save_json("/tmp/_tpy_test_json_io2.json", indent=2)
-    item.save_json("/tmp/_tpy_test_json_io2.json", 2);
-    // loaded = Item.load_json("/tmp/_tpy_test_json_io2.json")
-    Item loaded = Item::load_json("/tmp/_tpy_test_json_io2.json");
+    // item.save_json("_tpy_test_json_io2.json", indent=2)
+    item.save_json("_tpy_test_json_io2.json", 2);
+    // loaded = Item.load_json("_tpy_test_json_io2.json")
+    Item loaded = Item::load_json("_tpy_test_json_io2.json");
     // print(loaded.name)
     std::cout << loaded.name << "\n";
     // print(item == loaded)
@@ -38,15 +38,15 @@ void test_pretty() {
 
 // def test_try_load() -> None:
 void test_try_load() {
-    // Item("ok", 1, True).save_json("/tmp/_tpy_test_json_io3.json")
-    Item("ok", 1, true).save_json("/tmp/_tpy_test_json_io3.json");
+    // Item("ok", 1, True).save_json("_tpy_test_json_io3.json")
+    Item("ok", 1, true).save_json("_tpy_test_json_io3.json");
     // try:
     std::optional<Item> c;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
-        // c = Item.try_load_json("/tmp/_tpy_test_json_io3.json")
+        // c = Item.try_load_json("_tpy_test_json_io3.json")
         {
-            auto __try_tmp_4 = Item::try_load_json("/tmp/_tpy_test_json_io3.json");
+            auto __try_tmp_4 = Item::try_load_json("_tpy_test_json_io3.json");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
             c = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
@@ -66,8 +66,8 @@ void test_try_load() {
 
 // def test_try_load_bad() -> None:
 void test_try_load_bad() {
-    // with open("/tmp/_tpy_test_json_io_bad.json", "w") as f:
-    auto __ctx_4 = ::tpy::builtin_open_mode("/tmp/_tpy_test_json_io_bad.json", "w");
+    // with open("_tpy_test_json_io_bad.json", "w") as f:
+    auto __ctx_4 = ::tpy::builtin_open_mode("_tpy_test_json_io_bad.json", "w");
     auto& f = __ctx_4.__enter__();
     try {
         // f.write("{bad json}")
@@ -86,9 +86,9 @@ void test_try_load_bad() {
     std::optional<Item> c;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
-        // c = Item.try_load_json("/tmp/_tpy_test_json_io_bad.json")
+        // c = Item.try_load_json("_tpy_test_json_io_bad.json")
         {
-            auto __try_tmp_6 = Item::try_load_json("/tmp/_tpy_test_json_io_bad.json");
+            auto __try_tmp_6 = Item::try_load_json("_tpy_test_json_io_bad.json");
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
             c = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
