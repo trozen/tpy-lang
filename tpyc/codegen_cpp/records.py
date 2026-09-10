@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
     AutoReadonlyType, AutoOwnType, FinalType, ClassVarType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
-    unwrap_readonly, unwrap_optional_own, unwrap_send_sync,
+    unwrap_readonly, unwrap_optional_own, unwrap_send_sync, unwrap_qualifiers,
     get_covariant_params, PtrType,
     bare_name, qualify_shadowed_nominals,
     del_suppresses_default_ctor, type_value_init_indeterminate,
@@ -73,6 +73,18 @@ def _body_has_literal_throw(stmts: list[TpyStmt]) -> bool:
         if any(_body_has_literal_throw(b) for b in s.sub_bodies()):
             return True
     return False
+
+
+def _overload_impl_names(record: TpyRecord) -> set[str]:
+    """Names whose callable signatures are the members of an overload set.
+
+    A def of such a name that is not itself a member is the trailing
+    implementation (or an @auto_readonly clone of it): its body lives in the
+    members' specializations and it is never emitted as-is, so no operator
+    driver may delegate to it. One rule for operator[], the friend operators
+    and operator(), so the three cannot drift.
+    """
+    return {m.name for m in record.methods if m.is_overload_stub}
 
 
 def _split_readonly_clone_pair(methods: list) -> tuple | None:
@@ -1507,54 +1519,35 @@ class RecordGenerator:
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator[] for subscript read syntax.
 
-        For readonly __getitem__: dual overloads (const + non-const) matching
-        the method itself. Writes go through ::tpy::__setitem__.
-        For non-readonly __getitem__: non-const only (method mutates self).
-        For @overload __getitem__: generate operator[] for each stub.
-        For @auto_readonly __getitem__ clone pairs: const first, then mutable,
-        one per clone (no duplicate).
+        The callable signatures are the members of an overload set when the
+        record has one (`@overload` stubs, each specialized off the trailing
+        implementation, or self-contained `@dispatch` variants) and the plain
+        `__getitem__` defs otherwise; the trailing implementation and its
+        clones never get an operator, their bodies live in the members.
+        Every candidate then goes through the same grouping: per index type,
+        an @auto_readonly clone pair emits const first then mutable, a single
+        def emits by its own const-ness. Writes go through ::tpy::__setitem__.
         """
-        # Gather all non-stub __getitem__ implementations.
-        # @auto_readonly cloning produces two: one mutable, one const.
-        getitem_impls = [
+        impl_names = _overload_impl_names(record)
+        candidates = [
             m for m in record.methods
-            if m.name == "__getitem__" and not m.is_overload_stub
+            if m.name == "__getitem__"
+            and (m.is_overload_stub or m.name not in impl_names)
         ]
-
-        if not getitem_impls:
+        if not candidates:
             return
-
-        # Check if this __getitem__ has @overload stubs (use first impl for lookup)
-        overload_stubs = self.ctx.analyzer.overload_groups.get(id(getitem_impls[0]))
-        if overload_stubs:
-            self._gen_overload_subscript_operators(out, overload_stubs, record.name)
-            return
-        # auto_readonly clone pair: const operator first, then mutable.
-        pair = _split_readonly_clone_pair(getitem_impls)
-        if pair is not None:
-            const_impl, mutable_impl = pair
-            self._gen_const_subscript_operator(out, const_impl, record.name)
-            self._gen_mutable_subscript_operator(out, mutable_impl, record.name)
-            return
-        self._gen_single_subscript_operator(out, getitem_impls[0], record.name)
-
-    def _gen_overload_subscript_operators(self, out: TextIO, stubs: list,
-                                          record_name: str) -> None:
-        """Generate operator[] for @overload __getitem__, handling auto_readonly clone pairs.
-
-        Stubs may include mutable+const clone pairs (from @overload @auto_readonly).
-        For each unique parameter type: if both mutable and const clones exist, generate
-        const first then mutable; otherwise delegate to _gen_single_subscript_operator.
-        """
-        # Group stubs by their first parameter type to detect clone pairs.
-        # Use param type string as key since TpyType equality works correctly.
+        # Group by the index type to detect @auto_readonly clone pairs: the
+        # clones carry the key projected per side (readonly[T] on the const
+        # clone, Ref[T] on a mutable clone whose key escapes through the
+        # return), so key on the bare type.
         by_param: dict[str, list] = defaultdict(list)
-        for stub in stubs:
+        for stub in candidates:
             if stub.params:
-                key = str(stub.params[0][1])
+                key = str(unwrap_qualifiers(stub.params[0][1]))
                 by_param[key].append(stub)
             else:
-                self._gen_single_subscript_operator(out, stub, record_name)
+                self._gen_single_subscript_operator(out, stub, record.name)
+        record_name = record.name
 
         for param_type_str, group in by_param.items():
             pair = _split_readonly_clone_pair(group)
@@ -1625,6 +1618,7 @@ class RecordGenerator:
         This enables user records to conform to C++ concepts that use operator syntax
         (e.g., `t + other`, `t < other`) rather than method calls (e.g., `t.__add__(other)`).
         """
+        impl_names = _overload_impl_names(record)
         for method in record.methods:
             if not method.params:
                 continue  # Binary operators need at least one parameter
@@ -1647,13 +1641,11 @@ class RecordGenerator:
             if method.name in ("__floordiv__", "__rfloordiv__"):
                 continue
 
-            # An @overload group's impl is not emitted as-is (the per-stub
-            # specializations carry its body), so it must not get a friend
-            # operator either -- its param is the operand union, and emitting an
-            # operator for it would forward to a `__op__(variant)` method that
-            # was specialized away. The stubs' operators cover every emitted
-            # signature. Mirrors the same guard in _gen_call_operator.
-            if self.ctx.analyzer.overload_groups.get(id(method)):
+            # The trailing implementation of an overload set is not emitted
+            # as-is (its param is the operand union, specialized away into the
+            # members), so it gets no friend operator; the members' cover
+            # every emitted signature.
+            if method.name in impl_names and not method.is_overload_stub:
                 continue
 
             param_name, param_type = method.params[0]
@@ -1687,14 +1679,14 @@ class RecordGenerator:
 
         Enables obj(args) syntax and std::invocable concept conformance.
         """
+        impl_names = _overload_impl_names(record)
         for method in record.methods:
             if method.name != "__call__":
                 continue
-            # An @overload group's impl is not emitted as-is (the per-stub
-            # specializations carry its body), so it must not get an
-            # operator() either -- the stubs' delegations cover every
-            # emitted __call__ signature, with matching const-ness.
-            if self.ctx.analyzer.overload_groups.get(id(method)):
+            # The trailing implementation of an overload set is not emitted
+            # as-is, so it gets no operator(); the members' delegations cover
+            # every emitted __call__ signature, with matching const-ness.
+            if method.name in impl_names and not method.is_overload_stub:
                 continue
             # Mirror the method emit for both axes: the const-projected return
             # (a readonly __call__ returning a borrow returns const&) and the

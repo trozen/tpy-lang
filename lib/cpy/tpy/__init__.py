@@ -622,12 +622,30 @@ def _callable_arity_of_value(value) -> int | None:
     return n
 
 
+def _param_hints(func) -> dict:
+    """Resolved annotations, one at a time: a stub module's `from __future__
+    import annotations` leaves strings, and one unresolvable annotation
+    (a PEP 695 type param, `auto_readonly[T]`) must not discard the plain
+    class annotations next to it, or dispatch degrades to arity alone."""
+    try:
+        return _typing.get_type_hints(func)
+    except Exception:
+        pass
+    hints = {}
+    globalns = getattr(func, "__globals__", {})
+    for name, ann in getattr(func, "__annotations__", {}).items():
+        if isinstance(ann, str):
+            try:
+                ann = eval(ann, globalns)
+            except Exception:
+                continue
+        hints[name] = ann
+    return hints
+
+
 def _type_matches(func, args: tuple) -> bool:
     """Check if positional args match the function's type annotations."""
-    try:
-        hints = _typing.get_type_hints(func)
-    except Exception:
-        return True  # can't resolve hints -- accept on arity alone
+    hints = _param_hints(func)
     params = list(_inspect.signature(func).parameters.keys())
     for i, arg in enumerate(args):
         if i >= len(params):

@@ -7833,7 +7833,7 @@ Key difference from Python Pydantic:
 
 Builtin method calls go through overload resolution in sema, which attaches `resolved_function_info` to the AST node. Codegen then uses this resolved info.
 
-**Note**: `__getitem__` and binary operators (`__add__`, `__sub__`, ... and their reflected forms) support multi-overload dispatch via per-stub operator generation: each `@overload` stub emits its own concrete C++ `operator[]` / `operatorOP`, and each `@dispatch` variant its own `operatorOP` (a `@dispatch` `__getitem__` set gets no `operator[]` yet -- `BUGS.md#dispatch-getitem-no-subscript-operator`), and C++ overload resolution selects by operand type. The `@overload` *implementation* signature (whose parameter is the operand union) is deliberately not emitted as an operator -- its body is specialized into the per-stub operators. `__setitem__` codegen still falls back to registry lookup without `resolved_function_info`, which works because it is single-overload today.
+**Note**: `__getitem__` and binary operators (`__add__`, `__sub__`, ... and their reflected forms) support multi-overload dispatch via per-stub operator generation: each `@overload` stub / `@dispatch` variant emits its own concrete C++ `operator[]` / `operatorOP`, and C++ overload resolution selects by operand type. The `@overload` *implementation* signature (whose parameter is the operand union) is deliberately not emitted as an operator -- its body is specialized into the per-stub operators. `__setitem__` codegen still falls back to registry lookup without `resolved_function_info`, which works because it is single-overload today.
 
 ### Integer Range Tracking (Working)
 

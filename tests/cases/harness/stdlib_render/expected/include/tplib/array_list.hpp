@@ -269,9 +269,9 @@ struct ArrayList {
         return static_cast<int32_t>(this->_size);
     }
 
-    // @overload
+    // @dispatch
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> auto_readonly[T]: ...
+    // def __getitem__(self, index: Int32) -> auto_readonly[T]:
     ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
         // ui = UInt32.trunc(index)
         uint32_t ui = static_cast<uint32_t>(index);
@@ -281,9 +281,9 @@ struct ArrayList {
         return this->_storage.load(ui);
     }
 
-    // @overload
+    // @dispatch
     // @auto_readonly
-    // def __getitem__(self, index: Int32) -> auto_readonly[T]: ...
+    // def __getitem__(self, index: Int32) -> auto_readonly[T]:
     ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
         // ui = UInt32.trunc(index)
         uint32_t ui = static_cast<uint32_t>(index);
@@ -293,17 +293,17 @@ struct ArrayList {
         return this->_storage.load(ui);
     }
 
-    // @overload
+    // @dispatch
     // @auto_readonly
-    // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]: ...
+    // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
     std::span<T> __getitem__(::tpy::BasicSlice index) {
         // return self.__span__()[index]
         return ::tpy::list_slice(this->__span__(), index);
     }
 
-    // @overload
+    // @dispatch
     // @auto_readonly
-    // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]: ...
+    // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
     std::span<const T> __getitem__(::tpy::BasicSlice index) const {
         // return self.__span__()[index]
         return ::tpy::list_slice(this->__span__(), index);

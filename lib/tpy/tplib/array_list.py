@@ -3,8 +3,8 @@
 #
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
-from typing import MutableSequence, Iterable, overload
-from tpy import Int32, UInt32, Own, Ptr, Span, Spannable, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, auto_readonly, basic_slice
+from typing import MutableSequence, Iterable
+from tpy import Int32, UInt32, Own, Ptr, Span, Spannable, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, auto_readonly, basic_slice, dispatch
 from tpy.mem import UninitArrayStorage
 
 
@@ -118,22 +118,17 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
     def __len__(self) -> Int32:
         return Int32.trunc(self._size)
 
-    @overload
+    @dispatch
     @auto_readonly
-    def __getitem__(self, index: Int32) -> auto_readonly[T]: ...
+    def __getitem__(self, index: Int32) -> auto_readonly[T]:
+        ui = UInt32.trunc(index)
+        assert ui < self._size
+        return self._storage.load(ui)
 
-    @overload
+    @dispatch
     @auto_readonly
-    def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]: ...
-
-    @auto_readonly
-    def __getitem__(self, index: Int32 | basic_slice) -> auto_readonly[T] | Span[auto_readonly[T]]:
-        if isinstance(index, basic_slice):
-            return self.__span__()[index]
-        else:
-            ui = UInt32.trunc(index)
-            assert ui < self._size
-            return self._storage.load(ui)
+    def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
+        return self.__span__()[index]
 
     def __setitem__(self, index: Int32, value: Own[T]) -> None:
         ui = UInt32.trunc(index)
