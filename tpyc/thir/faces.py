@@ -378,7 +378,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "try.return_tier",              # a return-tier try lowered (admission)
     # Pointer-variant union-slot lifts (lowering).
     "unionlift.none",               # `pv{std::monostate{}}`
-    "unionlift.const_wrap",         # `ptr_variant_to_const(...)`
+    "unionlift.const_wrap",         # `as_const()` / `to_const_ptr_variant`
     "unionlift.member",             # `pv{&(name)}`
     "unionlift.ctor_temp",          # ctor rvalue temp + `pv{&__tmp_N}`
     "unionlift.bytes_literal_temp", # owned-bytes literal temp + `pv{&__tmp_N}`
@@ -2533,7 +2533,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # ... and the owned-inner `Optional[str/bytes]` element target: the
     # same value copy, registered VIEW-kind.
     "stmt.tuple_unpack.value_opt_view_target",
-    # Own[A | B] element target: `std::variant<A*, B*> p =
+    # Own[A | B] element target: `::tpy::Union<A*, B*> p =
     # ::tpy::to_ptr_variant(std::get<i>(__tup));` -- the per-element lift.
     "stmt.tuple_unpack.ptr_variant_target",
     # A recursive-wrapper element target: `Tree<int32_t>& a =

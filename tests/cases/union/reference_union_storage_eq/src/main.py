@@ -49,7 +49,43 @@ class Cat:
         return self.n == other.n
 
 
+# `__ne__` INVERTED on purpose. A CONTAINER `!=` never reaches it -- CPython
+# answers Py_NE from the first index whose items are not `==`, and the
+# vector's rewritten `!=` does the same -- so the two languages agree here
+# precisely because neither consults it. The union's own `operator!=` does
+# call it; that row lives in `union/value_union_cross_alternative_eq`, the
+# only case where a union `!=` is reachable directly.
+class Tag:
+    n: Int32
+
+    def __init__(self, n: Int32) -> None:
+        self.n = n
+
+    def __eq__(self, other: "Tag") -> bool:
+        if not isinstance(other, Tag):
+            return False
+        return self.n == other.n
+
+    def __ne__(self, other: "Tag") -> bool:
+        if not isinstance(other, Tag):
+            return True
+        return self.n == other.n
+
+
+class Mark:
+    n: Int32
+
+    def __init__(self, n: Int32) -> None:
+        self.n = n
+
+    def __eq__(self, other: "Mark") -> bool:
+        if not isinstance(other, Mark):
+            return False
+        return self.n == other.n
+
+
 type Pet = Dog | Cat
+type Labelled = Tag | Mark
 # A record beside numeric alternatives: the pack whose cross-alternative
 # answer the bare variant got wrong. `float` rather than the `Float64`
 # spelling of the same type, which an alias body rejects
@@ -67,6 +103,10 @@ def mixed_list_eq(xs: list[Mixed], ys: list[Mixed]) -> bool:  # free function
 
 def pet_list_eq(xs: list[Pet], ys: list[Pet]) -> bool:  # free function
     return xs == ys  # tpyc: ok
+
+
+def tag_list_ne(xs: list[Labelled], ys: list[Labelled]) -> bool:  # free function
+    return xs != ys  # tpyc: ok
 
 
 class Kennel:
@@ -205,6 +245,10 @@ def main() -> None:
     d3: list[Pet] = [Dog(2)]
     c1: list[Pet] = [Cat(1)]
     print("record same alternative", pet_list_eq(d1, d2), pet_list_eq(d1, d3))
+    t1: list[Labelled] = [Tag(1)]
+    t2: list[Labelled] = [Tag(1)]
+    t3: list[Labelled] = [Tag(2)]
+    print("container ne", tag_list_ne(t1, t2), tag_list_ne(t1, t3))
     print("record cross alternative", pet_list_eq(d1, c1))
     pd1: dict[str, Pet] = {"k": Dog(3)}
     pd2: dict[str, Pet] = {"k": Dog(3)}

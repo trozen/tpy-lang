@@ -12,7 +12,7 @@ namespace tpyapp::main {
         s.emplace(Shelter());
         __coro_arg_0.emplace(Dog());
         // print(await s.describe(Dog()))
-        __sub_0.emplace((*s), std::variant<Cat*, Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace((*s), ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
@@ -25,7 +25,7 @@ namespace tpyapp::main {
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1.emplace(Cat());
         // print(await s.describe(Cat()))
-        __sub_1.emplace((*s), std::variant<Cat*, Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace((*s), ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
     }
@@ -69,14 +69,14 @@ __coro_main main() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         // if isinstance(a, Dog):
-        if (std::holds_alternative<Dog*>(a)) {
-            auto& __a = *std::get<Dog*>(a);
+        if (std::holds_alternative<const Dog*>(a)) {
+            auto& __a = *std::get<const Dog*>(a);
             // return "dog"
             __state = S_DONE;
             std::string __tpy_async_ret = "dog";
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
-        auto& __a = *std::get<Cat*>(a);
+        auto& __a = *std::get<const Cat*>(a);
         // return "cat"
         __state = S_DONE;
         std::string __tpy_async_ret = "cat";

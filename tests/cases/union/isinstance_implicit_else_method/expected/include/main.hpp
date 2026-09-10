@@ -12,7 +12,7 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt show(std::variant<Cat*, Dog*> x);
+::tpy::BigInt show(::tpy::Union<Cat*, Dog*> x);
 void main();
 
 // # Method call (not just field access) through an implicit-else union narrowing:

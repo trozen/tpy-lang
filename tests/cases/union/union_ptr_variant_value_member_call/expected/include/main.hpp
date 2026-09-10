@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::Bytes make_bytes(std::string_view s);
 std::string make_str(std::string_view s);
-std::string show(const std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> v);
+std::string show(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*> v);
 void main();
 
 void __tpy_init();

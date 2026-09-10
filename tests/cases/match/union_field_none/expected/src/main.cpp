@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(w: Wrapper | Other) -> str:
-std::string describe(const std::variant<Other*, Wrapper*> w) {
+std::string describe(::tpy::Union<const Other*, const Wrapper*> w) {
     // match w:
     auto& __match_subject_1 = w;
     switch (__match_subject_1.index()) {
@@ -43,13 +43,13 @@ __match_end_2:;
 void main() {
     // print(describe(Wrapper(None)))
     Wrapper __tmp_1 = Wrapper(std::nullopt);
-    std::cout << describe(std::variant<Other*, Wrapper*>{&__tmp_1}) << "\n";
+    std::cout << describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_1}) << "\n";
     // print(describe(Wrapper("hi")))
     Wrapper __tmp_2 = Wrapper("hi");
-    std::cout << describe(std::variant<Other*, Wrapper*>{&__tmp_2}) << "\n";
+    std::cout << describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_2}) << "\n";
     // print(describe(Other(1)))
     Other __tmp_3 = Other(::tpy::BigInt(1));
-    std::cout << describe(std::variant<Other*, Wrapper*>{&__tmp_3}) << "\n";
+    std::cout << describe(::tpy::Union<const Other*, const Wrapper*>{&__tmp_3}) << "\n";
 }
 
 void __tpy_init() {

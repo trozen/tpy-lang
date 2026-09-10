@@ -34,17 +34,17 @@ int32_t describe(::tpy::Union<A, B>&& u) {
 }
 
 // def borrow_union(u: A | B) -> Int32:
-int32_t borrow_union(const std::variant<A*, B*> u) {
+int32_t borrow_union(::tpy::Union<const A*, const B*> u) {
     // if isinstance(u, A):
-    if (std::holds_alternative<A*>(u)) {
-        auto& __u = *std::get<A*>(u);
+    if (std::holds_alternative<const A*>(u)) {
+        auto& __u = *std::get<const A*>(u);
         // return u.x
         return __u.x;
     }
-    auto& __u = *std::get<B*>(u);
+    auto& __u = *std::get<const B*>(u);
     // if isinstance(u, B):
     if (true) {
-        auto& __u = *std::get<B*>(u);
+        auto& __u = *std::get<const B*>(u);
         // return u.y
         return __u.y;
     }
@@ -57,7 +57,7 @@ int32_t forward_to_borrow(::tpy::Union<A, B>&& u) {
     // # Forwarding the storage-form variant param into a pointer-variant
     // # slot needs to_ptr_variant; the bare value-variant doesn't convert.
     // return borrow_union(u)
-    return borrow_union(::tpy::to_ptr_variant(u));
+    return borrow_union(::tpy::to_const_ptr_variant(u));
 }
 
 // def test_body_isinstance_narrowing() -> None:

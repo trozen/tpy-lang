@@ -22,7 +22,7 @@ void main() {
     // # live object (a silent copy at the print boundary would print Counter(1)).
     // u: Counter | str = Counter(1)
     ::tpy::Union<Counter, std::string> __slot_1 = Counter(1);
-    std::variant<Counter*, std::string*> u = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Counter*, std::string*> u = ::tpy::to_ptr_variant(__slot_1);
     // print(u)  # tpyc: ok
     std::cout << ::tpy::__str__(u) << "\n";
     // print(str(u))  # tpyc: ok

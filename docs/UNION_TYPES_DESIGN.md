@@ -42,6 +42,7 @@ def area(s: Shape) -> float:
 | **Phase 11** | `assert isinstance(x, T)` codegen for unions | **Done** |
 | **Phase 12** | Assignment narrowing: `v: A \| B = Rect(...)` narrows `v` to `Rect` for field/method access | **Done** |
 | **Phase 13** | While-loop isinstance narrowing: `while isinstance(v, T)` extracts inside loop body | **Done** |
+| **Phase 14** | Equality `==`/`!=` (and the ordering ops) on a union at a BORROW position, through the POINTEE with identity as the fallback -- owned by `::tpy::Union<A*, B*>`, not by the compiler | **Done** |
 
 ### Future Extensions
 
@@ -49,7 +50,7 @@ def area(s: Shape) -> float:
 |---------|--------|-------|
 | Equality / ordering at a union STORAGE position | **Done** | Phase 9 above. Every union at a storage position renders `::tpy::Union<...>` -- a value union everywhere, a reference union at a field, a container element, an `Own` slot or a return -- a `std::variant` that declares all six comparison operators over a per-alternative-pair leaf, so the compare emits the bare `(a == b)` and every container inherits the rule through its own operator. The leaf is the monomorphic twin's answer per pair; an unorderable pair raises `TypeError` at runtime. See `docs/LANGUAGE_FEATURES.md` under Union/Optional |
 | `Equatable` / `Hashable` conformance for a union | Not designed | A union has no equality at the TYPE level, so a union against one of its own members, `in` over `list[union]`, and a union dict key all still reject -- `BUGS.md#value-union-no-equatable-conformance` |
-| Equality / ordering on a BORROWED reference union | Not designed | `==` between two pointer-variant unions is a loud reject, so no answer is observed today. The type is where the operator belongs, along with the identity fallback Python uses for a record that defines no `__eq__` -- representable only at a borrow position, where the pointer IS the object. Queued in `TODO.md` |
+| Equality / ordering on a BORROWED reference union | **Done** | Phase 14 above. The borrow form is `::tpy::Union<A*, B*>` -- the same type over a pointer alternative pack, which declares all six operators over a per-alternative-PAIR pointer leaf: it recurses into the same value leaf on the POINTEES, and falls back to IDENTITY for a same-type pair whose type defines no `__eq__` -- Python's own fallback, representable only here, because at a borrow position the pointer IS the object. Both operands must be bound as the borrow form; a storage operand against a borrow one still rejects |
 | Deferred union init | Not designed | `x: A \| B` without initializer, assigned in branches |
 | `isinstance(x, (A, B))` tuple form | Design only | Narrow to subset of union |
 | Exhaustiveness checking | Design only | isinstance chains + match/case (B3) |
@@ -63,9 +64,10 @@ def area(s: Shape) -> float:
 
 No known semantic gaps. Non-value unions use a two-layer representation:
 - **Storage** (fields, containers, rvalue slots): `::tpy::Union<Dog, Cat>` (value variant -- the type that owns Python's comparison rule, the same one a value union spells)
-- **Reference** (params, returns, locals): `std::variant<Dog*, Cat*>` (pointer variant)
+- **Reference** (params, returns, locals): `::tpy::Union<Dog*, Cat*>` (borrow form -- the same type, whose pointer alternatives make it compare through the pointee)
 
 This enables zero-copy returns. Conversion between layers uses `::tpy::to_ptr_variant()`.
+A union whose members are all `Ptr[T]` has no second layer: its alternatives are already borrowed references, so the one spelling `::tpy::Union<A*, B*>` is both its storage and its borrow form, and it compares through the pointee like any other pointer pack. No carve-out in the renderer -- the alternatives carry the fact.
 Value-type unions (`Int32 | str`) use `::tpy::Union<int32_t, std::string>` everywhere.
 
 ## Design Principles

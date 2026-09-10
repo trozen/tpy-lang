@@ -17,9 +17,9 @@ void copy_field(Holder& dst, const Holder& src) {
 }
 
 // def cycle(v: A | B | None) -> A | B | None:
-std::variant<std::monostate, A*, B*> cycle(std::variant<std::monostate, A*, B*> v) {
+::tpy::Union<std::monostate, A*, B*> cycle(::tpy::Union<std::monostate, A*, B*> v) {
     // w: A | B | None = None
-    std::variant<std::monostate, A*, B*> w = std::monostate{};
+    ::tpy::Union<std::monostate, A*, B*> w = std::monostate{};
     // w = v
     w = v;
     // w = None
@@ -31,7 +31,7 @@ std::variant<std::monostate, A*, B*> cycle(std::variant<std::monostate, A*, B*> 
 }
 
 // def pick_none() -> A | B | None:
-std::variant<std::monostate, A*, B*> pick_none() {
+::tpy::Union<std::monostate, A*, B*> pick_none() {
     // return None
     return std::monostate{};
 }
@@ -39,7 +39,7 @@ std::variant<std::monostate, A*, B*> pick_none() {
 // def describe(h: Holder) -> str:
 std::string describe(const Holder& h) {
     // u = h.u
-    std::variant<std::monostate, const A*, const B*> u = ::tpy::to_const_ptr_variant(h.u);
+    ::tpy::Union<std::monostate, const A*, const B*> u = ::tpy::to_const_ptr_variant(h.u);
     // if u is None:
     if ((std::holds_alternative<std::monostate>(u))) {
         // return "none"
@@ -63,13 +63,13 @@ void main() {
     // b = B(9)
     B b = B(9);
     // start: A | B | None = a
-    std::variant<std::monostate, A*, B*> start{&(a)};
+    ::tpy::Union<std::monostate, A*, B*> start{&(a)};
     // src = Holder(start)
-    Holder src = Holder(start);
+    Holder src = Holder(start.as_const());
     // empty: A | B | None = None
-    std::variant<std::monostate, A*, B*> empty = std::monostate{};
+    ::tpy::Union<std::monostate, A*, B*> empty = std::monostate{};
     // dst = Holder(empty)
-    Holder dst = Holder(empty);
+    Holder dst = Holder(empty.as_const());
     // print(describe(src))
     std::cout << describe(src) << "\n";
     // print(describe(dst))
@@ -79,9 +79,9 @@ void main() {
     // print(describe(dst))
     std::cout << describe(dst) << "\n";
     // alt: A | B | None = b
-    std::variant<std::monostate, A*, B*> alt{&(b)};
+    ::tpy::Union<std::monostate, A*, B*> alt{&(b)};
     // src2 = Holder(alt)
-    Holder src2 = Holder(alt);
+    Holder src2 = Holder(alt.as_const());
     // copy_field(dst, src2)
     copy_field(dst, src2);
     // print(describe(dst))
@@ -91,7 +91,7 @@ void main() {
     // print(describe(dst))
     std::cout << describe(dst) << "\n";
     // got = cycle(start)
-    std::variant<std::monostate, A*, B*> got = cycle(start);
+    ::tpy::Union<std::monostate, A*, B*> got = cycle(start);
     // if got is None:
     if ((std::holds_alternative<std::monostate>(got))) {
         // print("cycle lost it")
@@ -102,7 +102,7 @@ void main() {
         std::cout << "cycle kept it" << "\n";
     }
     // p = pick_none()
-    std::variant<std::monostate, A*, B*> p = pick_none();
+    ::tpy::Union<std::monostate, A*, B*> p = pick_none();
     // if p is None:
     if ((std::holds_alternative<std::monostate>(p))) {
         // print("picked none")

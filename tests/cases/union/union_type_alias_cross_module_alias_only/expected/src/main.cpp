@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(s: Shape) -> str:
-std::string describe(const std::variant<::tpyapp::shapes::Circle*, ::tpyapp::shapes::Rect*> s) {
+std::string describe(::tpy::Union<const ::tpyapp::shapes::Circle*, const ::tpyapp::shapes::Rect*> s) {
     // return "shape"
     return "shape";
 }

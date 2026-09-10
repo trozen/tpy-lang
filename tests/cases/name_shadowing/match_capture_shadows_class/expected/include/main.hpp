@@ -13,7 +13,7 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t pick(std::variant<Item*, Other*> v);
+int32_t pick(::tpy::Union<Item*, Other*> v);
 void main();
 
 // class Registry:

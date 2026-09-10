@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def greet(pet: Dog | Cat) -> None:
-void greet(const std::variant<Cat*, Dog*> pet) {
+void greet(::tpy::Union<const Cat*, const Dog*> pet) {
     // if isinstance(pet, Dog):
-    if (std::holds_alternative<Dog*>(pet)) {
-        auto& __pet = *std::get<Dog*>(pet);
+    if (std::holds_alternative<const Dog*>(pet)) {
+        auto& __pet = *std::get<const Dog*>(pet);
         // print(pet.name)
         std::cout << __pet.name << "\n";
     } else {
         // elif isinstance(pet, Cat):
         if (true) {
-            auto& __pet = *std::get<Cat*>(pet);
+            auto& __pet = *std::get<const Cat*>(pet);
             // print(pet.name)
             std::cout << __pet.name << "\n";
         }
@@ -26,16 +26,16 @@ void main() {
     // # Rvalue to free function param
     // greet(Dog("Rex"))
     Dog __tmp_1 = Dog("Rex");
-    greet(std::variant<Cat*, Dog*>{&__tmp_1});
+    greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     // greet(Cat("Whiskers"))
     Cat __tmp_2 = Cat("Whiskers");
-    greet(std::variant<Cat*, Dog*>{&__tmp_2});
+    greet(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
     // # Rvalue to constructor param
     // p = Pen(Dog("Buddy"))
     Dog __tmp_3 = Dog("Buddy");
-    Pen p = Pen(std::variant<Cat*, Dog*>{&__tmp_3});
+    Pen p = Pen(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
     // r = p.pet
-    std::variant<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
+    ::tpy::Union<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
     // if isinstance(r, Dog):
     if (std::holds_alternative<Dog*>(r)) {
         auto& __r = *std::get<Dog*>(r);
@@ -45,9 +45,9 @@ void main() {
     // # Rvalue to method param
     // p.set_pet(Cat("Mittens"))
     Cat __tmp_4 = Cat("Mittens");
-    p.set_pet(std::variant<Cat*, Dog*>{&__tmp_4});
+    p.set_pet(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
     // r2 = p.pet
-    std::variant<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
+    ::tpy::Union<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
     // if isinstance(r2, Cat):
     if (std::holds_alternative<Cat*>(r2)) {
         auto& __r2 = *std::get<Cat*>(r2);

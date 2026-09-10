@@ -14,8 +14,8 @@ struct D;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string pick(const std::variant<A*, B*, C*, D*> x);
-::tpy::BigInt value(const std::variant<A*, B*, C*, D*> x);
+std::string pick(::tpy::Union<const A*, const B*, const C*, const D*> x);
+::tpy::BigInt value(::tpy::Union<const A*, const B*, const C*, const D*> x);
 void main();
 
 // @dataclass

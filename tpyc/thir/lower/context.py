@@ -970,7 +970,7 @@ class _LowerCtx:
                  "deref_view_spelled", "forwarded_map",
                  "movable_locals",
                  "sema_movable_locals",
-                 "params",
+                 "params", "capture_funcs",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
                  "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
@@ -1155,7 +1155,13 @@ class _LowerCtx:
                 # F1-record pointee routes reads (_unrouted_binding_read).
                 self.pointers.add(pname)
                 self.optional_locals.add(pname)
-        # Names BOUND as `std::variant<A*, B*>` -- codegen's
+        # The enclosing functions a nested def captures names FROM,
+        # outermost first. A capture's borrow is decided where the name is
+        # DEFINED, so a predicate keyed on the enclosing signature (the
+        # param const verdicts) has to ask that function and not `func`,
+        # which inside a lambda is the nested one.
+        self.capture_funcs: tuple = ()
+        # Names BOUND as `::tpy::Union<A*, B*>` -- codegen's
         # `ctx.ptr_variant_locals`, which is a BINDING set, not a type
         # verdict: a ptr-variant-typed union reaching a name through a
         # container element / loop variable still binds the value variant.

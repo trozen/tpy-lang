@@ -37,5 +37,6 @@ ge True
 nan le False False
 nan ge False False
 value record lt TypeError
+custom_ne True False True
 unorderable TypeError TypeError TypeError TypeError
 str_int_eq False True True

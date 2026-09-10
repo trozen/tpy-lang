@@ -60,7 +60,7 @@ class LocalBinding(Enum):
       * `STORAGE_TUPLE_ALIAS` -- `auto&& name = <lvalue storage tuple>` aliasing a
                              pointer-repr tuple's storage; single-assignment.
                              Decided by `is_storage_tuple_alias_decl`.
-      * `PTR_VARIANT`     -- `std::variant<[const] A*, [const] B*>` pointer-variant
+      * `PTR_VARIANT`     -- `::tpy::Union<[const] A*, [const] B*>` pointer-variant
                              local of a non-value union: a bare copy of a
                              borrow-form source, or a `to_[const_]ptr_variant` lift
                              of a value-variant lvalue (a union field); reseatable.
@@ -79,7 +79,7 @@ class LocalBinding(Enum):
 
 
 def is_ptr_variant_union(t: TpyType) -> bool:
-    """A non-value union lowered to `std::variant<A*, B*>` (pointer variant).
+    """A non-value union lowered to `::tpy::Union<A*, B*>` (pointer variant).
 
     Pure type query -- `CodeGenContext.is_ptr_variant_union` delegates here so the
     binding classifier and codegen share one definition.

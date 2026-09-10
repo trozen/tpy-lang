@@ -15,7 +15,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string pointer_arm(std::variant<std::monostate, Cat*, Dog*> pet = {});
+std::string pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*> pet = {});
 void main();
 
 // @dataclass(frozen=True)

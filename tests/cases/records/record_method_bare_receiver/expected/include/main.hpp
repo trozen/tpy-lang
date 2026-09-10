@@ -14,7 +14,7 @@ struct FancyCounter;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t combine(Counter& a, const Counter& b);
-int32_t narrowed_receiver(std::variant<Counter*, Label*> v);
+int32_t narrowed_receiver(::tpy::Union<Counter*, Label*> v);
 int32_t inherited(FancyCounter& f, int32_t k);
 void main();
 

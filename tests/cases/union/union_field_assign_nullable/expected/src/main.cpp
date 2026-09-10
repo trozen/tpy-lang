@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def identity(pet: Dog | Cat | None) -> Dog | Cat | None:
-std::variant<std::monostate, Cat*, Dog*> identity(std::variant<std::monostate, Cat*, Dog*> pet) {
+::tpy::Union<std::monostate, Cat*, Dog*> identity(::tpy::Union<std::monostate, Cat*, Dog*> pet) {
     // return pet
     return pet;
 }
@@ -15,17 +15,17 @@ void main() {
     // d = Dog("Rex")
     Dog d = Dog("Rex");
     // init_pet: Dog | Cat | None = d
-    std::variant<std::monostate, Cat*, Dog*> init_pet{&(d)};
+    ::tpy::Union<std::monostate, Cat*, Dog*> init_pet{&(d)};
     // s = Shelter(init_pet)
-    Shelter s = Shelter(init_pet);
+    Shelter s = Shelter(init_pet.as_const());
     // # Assign from pointer-variant local
     // new_pet: Dog | Cat | None = Cat("Whiskers")
     ::tpy::Union<std::monostate, Cat, Dog> __slot_1 = Cat("Whiskers");
-    std::variant<std::monostate, Cat*, Dog*> new_pet = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<std::monostate, Cat*, Dog*> new_pet = ::tpy::to_ptr_variant(__slot_1);
     // s.pet = new_pet
     s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(new_pet);
     // p = s.pet
-    std::variant<std::monostate, Cat*, Dog*> p = ::tpy::to_ptr_variant(s.pet);
+    ::tpy::Union<std::monostate, Cat*, Dog*> p = ::tpy::to_ptr_variant(s.pet);
     // if p is not None:
     if ((!std::holds_alternative<std::monostate>(p))) {
         // if isinstance(p, Cat):
@@ -39,7 +39,7 @@ void main() {
     // s.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
     s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(identity(new_pet));
     // p2 = s.pet
-    std::variant<std::monostate, Cat*, Dog*> p2 = ::tpy::to_ptr_variant(s.pet);
+    ::tpy::Union<std::monostate, Cat*, Dog*> p2 = ::tpy::to_ptr_variant(s.pet);
     // if p2 is not None:
     if ((!std::holds_alternative<std::monostate>(p2))) {
         // if isinstance(p2, Cat):
@@ -53,7 +53,7 @@ void main() {
     // s.pet = None  # tpyc: warning(/Mutation.*while borrowed/)
     s.pet = std::monostate{};
     // p3 = s.pet
-    std::variant<std::monostate, Cat*, Dog*> p3 = ::tpy::to_ptr_variant(s.pet);
+    ::tpy::Union<std::monostate, Cat*, Dog*> p3 = ::tpy::to_ptr_variant(s.pet);
     // if p3 is None:
     if ((std::holds_alternative<std::monostate>(p3))) {
         // print("cleared")
@@ -62,11 +62,11 @@ void main() {
     // # Assign again from pointer-variant local
     // another: Dog | Cat | None = Dog("Buddy")
     ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
-    std::variant<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
     // s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
     s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(another);
     // p4 = s.pet
-    std::variant<std::monostate, Cat*, Dog*> p4 = ::tpy::to_ptr_variant(s.pet);
+    ::tpy::Union<std::monostate, Cat*, Dog*> p4 = ::tpy::to_ptr_variant(s.pet);
     // if p4 is not None:
     if ((!std::holds_alternative<std::monostate>(p4))) {
         // if isinstance(p4, Dog):

@@ -21,10 +21,10 @@ struct __coro_via_ref;
 struct __coro_via_mixed;
 struct __coro_main;
 
-__coro_via_union via_union(std::variant<Cat*, Dog*> a);
+__coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a);
 __coro_via_optional via_optional(Dog* a);
 __coro_via_ref via_ref(Dog& a);
-__coro_via_mixed via_mixed(std::string_view tag, std::variant<Cat*, Dog*> a);
+__coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const Dog*> a);
 __coro_main main();
 
 // class Dog:
@@ -63,7 +63,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct __coro_via_union {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -72,7 +72,7 @@ struct __coro_via_union {
         S_DONE = 2,
     };
 
-    __coro_via_union(std::variant<Cat*, Dog*> a_)
+    __coro_via_union(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
@@ -136,7 +136,7 @@ struct __coro_via_mixed {
     int32_t __state;
     bool __cancel_pending;
     std::string tag;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -145,7 +145,7 @@ struct __coro_via_mixed {
         S_DONE = 2,
     };
 
-    __coro_via_mixed(std::string_view tag_, std::variant<Cat*, Dog*> a_)
+    __coro_via_mixed(std::string_view tag_, ::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)), a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);

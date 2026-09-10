@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // # Disambiguate Box[str] vs Box[Int32] using field type sub-patterns
 // def unwrap(x: Box[str] | Box[Int32]) -> str:
-std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
+std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -32,7 +32,7 @@ std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
 
 // # Type pattern without as-binding (just disambiguation)
 // def describe(x: Box[str] | Box[Int32]) -> str:
-std::string describe(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
+std::string describe(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -55,7 +55,7 @@ std::string describe(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
 }
 
 // def mixed(x: Pair[str] | Pair[Int32]) -> str:
-std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x) {
+std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -85,28 +85,28 @@ std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x) {
 void main() {
     // a: Box[str] | Box[Int32] = Box("hello")
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_1 = Box<std::string>("hello");
-    std::variant<Box<int32_t>*, Box<std::string>*> a = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Box<int32_t>*, Box<std::string>*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: Box[str] | Box[Int32] = Box(42)
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_2 = Box<int32_t>(42);
-    std::variant<Box<int32_t>*, Box<std::string>*> b = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Box<int32_t>*, Box<std::string>*> b = ::tpy::to_ptr_variant(__slot_2);
     // print(unwrap(a))
-    std::cout << unwrap(a) << "\n";
+    std::cout << unwrap(a.as_const()) << "\n";
     // print(unwrap(b))
-    std::cout << unwrap(b) << "\n";
+    std::cout << unwrap(b.as_const()) << "\n";
     // print(describe(a))
-    std::cout << describe(a) << "\n";
+    std::cout << describe(a.as_const()) << "\n";
     // print(describe(b))
-    std::cout << describe(b) << "\n";
+    std::cout << describe(b.as_const()) << "\n";
     // c: Pair[str] | Pair[Int32] = Pair("abc", "xyz")
     ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_3 = Pair<std::string>("abc", "xyz");
-    std::variant<Pair<int32_t>*, Pair<std::string>*> c = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Pair<int32_t>*, Pair<std::string>*> c = ::tpy::to_ptr_variant(__slot_3);
     // d: Pair[str] | Pair[Int32] = Pair(99, "end")
     ::tpy::Union<Pair<int32_t>, Pair<std::string>> __slot_4 = Pair<int32_t>(99, "end");
-    std::variant<Pair<int32_t>*, Pair<std::string>*> d = ::tpy::to_ptr_variant(__slot_4);
+    ::tpy::Union<Pair<int32_t>*, Pair<std::string>*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(mixed(c))
-    std::cout << mixed(c) << "\n";
+    std::cout << mixed(c.as_const()) << "\n";
     // print(mixed(d))
-    std::cout << mixed(d) << "\n";
+    std::cout << mixed(d.as_const()) << "\n";
 }
 
 void __tpy_init() {

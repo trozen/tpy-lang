@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def bump(p: A | B, h: Holder, c: bool) -> None:
-void bump(std::variant<A*, B*> p, Holder& h, bool c) {
+void bump(::tpy::Union<A*, B*> p, Holder& h, bool c) {
     // t = p if c else h.pet
-    std::variant<A*, B*> t = ((c) ? (p) : (::tpy::to_ptr_variant(h.pet)));
+    ::tpy::Union<A*, B*> t = ((c) ? (p) : (::tpy::to_ptr_variant(h.pet)));
     // if isinstance(t, A):
     if (std::holds_alternative<A*>(t)) {
         auto& __t = *std::get<A*>(t);
@@ -27,17 +27,17 @@ void bump(std::variant<A*, B*> p, Holder& h, bool c) {
 void main() {
     // h = Holder(B(7))
     B __tmp_1 = B(::tpy::BigInt(7));
-    Holder h = Holder(std::variant<A*, B*>{&__tmp_1});
+    Holder h = Holder(::tpy::Union<const A*, const B*>{&__tmp_1});
     // param = A(3)
     A param = A(::tpy::BigInt(3));
     // bump(param, h, True)         # param (ptr-variant) arm
-    bump(std::variant<A*, B*>{&(param)}, h, true);
+    bump(::tpy::Union<A*, B*>{&(param)}, h, true);
     // print(param.x)               # 103 -- visible on caller's object
     std::cout << param.x << "\n";
     // bump(param, h, False)        # field (value-variant) arm
-    bump(std::variant<A*, B*>{&(param)}, h, false);
+    bump(::tpy::Union<A*, B*>{&(param)}, h, false);
     // pet = h.pet
-    std::variant<A*, B*> pet = ::tpy::to_ptr_variant(h.pet);
+    ::tpy::Union<A*, B*> pet = ::tpy::to_ptr_variant(h.pet);
     // if isinstance(pet, B):
     if (std::holds_alternative<B*>(pet)) {
         auto& __pet = *std::get<B*>(pet);

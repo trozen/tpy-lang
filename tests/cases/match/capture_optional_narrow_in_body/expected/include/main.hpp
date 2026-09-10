@@ -12,7 +12,7 @@ struct Test;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(const std::variant<Build*, Test*> s);
+void describe(::tpy::Union<const Build*, const Test*> s);
 void main();
 
 // class Build:

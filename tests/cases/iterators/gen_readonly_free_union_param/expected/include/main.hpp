@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_codes;
 
-__gen_codes codes(std::variant<const Cat*, const Dog*> a);
+__gen_codes codes(::tpy::Union<const Cat*, const Dog*> a);
 void main();
 
 // class Dog:
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // Generator: codes
 struct __gen_codes : public ::tpy::next_iter_mixin<__gen_codes, ::tpy::BigInt> {
     int32_t __state;
-    std::variant<const Cat*, const Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -57,7 +57,7 @@ struct __gen_codes : public ::tpy::next_iter_mixin<__gen_codes, ::tpy::BigInt> {
         S_DONE = 5,
     };
 
-    __gen_codes(std::variant<const Cat*, const Dog*> a_)
+    __gen_codes(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

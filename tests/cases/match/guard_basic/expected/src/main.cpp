@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
-std::string describe(const std::variant<Cat*, Dog*> a) {
+std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -58,24 +58,24 @@ __match_end_2:;
 void main() {
     // d1: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
-    std::variant<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
     // d2: Dog | Cat = Dog("Buddy")
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("Buddy");
-    std::variant<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
     // c1: Dog | Cat = Cat("Whiskers")
     ::tpy::Union<Cat, Dog> __slot_3 = Cat("Whiskers");
-    std::variant<Cat*, Dog*> c1 = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Cat*, Dog*> c1 = ::tpy::to_ptr_variant(__slot_3);
     // c2: Dog | Cat = Cat("Luna")
     ::tpy::Union<Cat, Dog> __slot_4 = Cat("Luna");
-    std::variant<Cat*, Dog*> c2 = ::tpy::to_ptr_variant(__slot_4);
+    ::tpy::Union<Cat*, Dog*> c2 = ::tpy::to_ptr_variant(__slot_4);
     // print(describe(d1))
-    std::cout << describe(d1) << "\n";
+    std::cout << describe(d1.as_const()) << "\n";
     // print(describe(d2))
-    std::cout << describe(d2) << "\n";
+    std::cout << describe(d2.as_const()) << "\n";
     // print(describe(c1))
-    std::cout << describe(c1) << "\n";
+    std::cout << describe(c1.as_const()) << "\n";
     // print(describe(c2))
-    std::cout << describe(c2) << "\n";
+    std::cout << describe(c2.as_const()) << "\n";
 }
 
 void __tpy_init() {

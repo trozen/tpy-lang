@@ -18,9 +18,9 @@ struct BoolHolder;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string opt_wrapper(const Wrapper* w);
-std::string or_nested(const std::variant<Tag*, Wrapper*> x);
-std::string deep3(const std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> x);
-std::string positional_nested(const std::variant<Box<int32_t>*, Box<std::string>*> x);
+std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x);
+std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<std::string>>>*> x);
+std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x);
 std::string nested_pos_extract(const Wrapper& w);
 std::string guard_combo(const Wrapper& w);
 std::string check_float(const FloatHolder& h);
@@ -81,7 +81,7 @@ struct Wrapper {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
-    explicit Wrapper(const std::variant<Cat*, Dog*> pet);
+    explicit Wrapper(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -178,7 +178,7 @@ inline std::string Dog::__repr__() const {
 }
 
 // def __init__(self, pet: Cat | Dog) -> None:
-inline Wrapper::Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
+inline Wrapper::Wrapper(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, label: str) -> None:
 inline Tag::Tag(std::string_view label) : label(label) {}

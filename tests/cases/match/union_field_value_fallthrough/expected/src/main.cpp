@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
-std::string describe(const std::variant<Cat*, Dog*> a) {
+std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -59,7 +59,7 @@ __match_end_2:;
 }
 
 // def either(a: Dog | Cat) -> str:
-std::string either(const std::variant<Cat*, Dog*> a) {
+std::string either(::tpy::Union<const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -97,28 +97,28 @@ __match_end_2:;
 void main() {
     // print(describe(Dog(4)))
     Dog __tmp_1 = Dog(::tpy::BigInt(4));
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_1}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     // print(describe(Dog(3)))
     Dog __tmp_2 = Dog(::tpy::BigInt(3));
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_2}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
     // print(describe(Dog(2)))
     Dog __tmp_3 = Dog(::tpy::BigInt(2));
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_3}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
     // print(describe(Cat("rex")))
     Cat __tmp_4 = Cat("rex");
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_4}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n";
     // print(describe(Cat("x")))
     Cat __tmp_5 = Cat("x");
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_5}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_5}) << "\n";
     // print(either(Dog(4)))
     Dog __tmp_6 = Dog(::tpy::BigInt(4));
-    std::cout << either(std::variant<Cat*, Dog*>{&__tmp_6}) << "\n";
+    std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_6}) << "\n";
     // print(either(Dog(2)))
     Dog __tmp_7 = Dog(::tpy::BigInt(2));
-    std::cout << either(std::variant<Cat*, Dog*>{&__tmp_7}) << "\n";
+    std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_7}) << "\n";
     // print(either(Cat("x")))
     Cat __tmp_8 = Cat("x");
-    std::cout << either(std::variant<Cat*, Dog*>{&__tmp_8}) << "\n";
+    std::cout << either(::tpy::Union<const Cat*, const Dog*>{&__tmp_8}) << "\n";
 }
 
 void __tpy_init() {

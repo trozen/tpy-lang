@@ -23,11 +23,11 @@ struct __gen_nested_shadow;
 struct __coro_a_guarded;
 struct __coro_amain;
 
-__gen_guarded guarded(std::variant<Cat*, Dog*> a);
-__gen_guarded_cond guarded_cond(std::variant<Cat*, Dog*> a, bool flag);
+__gen_guarded guarded(::tpy::Union<const Cat*, const Dog*> a);
+__gen_guarded_cond guarded_cond(::tpy::Union<const Cat*, const Dog*> a, bool flag);
 __gen_nested nested(Holder& h);
 __gen_nested_shadow nested_shadow(Holder& h);
-__coro_a_guarded a_guarded(std::variant<Cat*, Dog*> a);
+__coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a);
 __coro_amain amain();
 void main();
 
@@ -69,7 +69,7 @@ struct Holder {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
-    explicit Holder(const std::variant<Cat*, Dog*> pet);
+    explicit Holder(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 struct __coro_a_guarded {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -92,7 +92,7 @@ struct __coro_a_guarded {
         S_DONE = 2,
     };
 
-    __coro_a_guarded(std::variant<Cat*, Dog*> a_)
+    __coro_a_guarded(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -135,7 +135,7 @@ struct __coro_amain {
 // Generator: guarded
 struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
     int32_t __state;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t v;
 
     enum : int32_t {
@@ -147,7 +147,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_guarded(std::variant<Cat*, Dog*> a_)
+    __gen_guarded(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -161,7 +161,7 @@ struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, int32_t> {
 // Generator: guarded_cond
 struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, int32_t> {
     int32_t __state;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     bool flag;
     int32_t v;
 
@@ -174,7 +174,7 @@ struct __gen_guarded_cond : public ::tpy::next_iter_mixin<__gen_guarded_cond, in
         S_DONE = 5,
     };
 
-    __gen_guarded_cond(std::variant<Cat*, Dog*> a_, bool flag_)
+    __gen_guarded_cond(::tpy::Union<const Cat*, const Dog*> a_, bool flag_)
         : __state(S_INITIAL), a(a_), flag(std::move(flag_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -247,6 +247,6 @@ inline Cat::Cat(int32_t lives) : lives(lives) {}
 inline Dog::Dog(int32_t lives) : lives(lives) {}
 
 // def __init__(self, pet: Cat | Dog) -> None:
-inline Holder::Holder(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
+inline Holder::Holder(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 void __tpy_init();
 } // namespace tpyapp::main

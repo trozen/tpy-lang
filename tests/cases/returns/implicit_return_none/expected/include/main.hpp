@@ -20,7 +20,7 @@ struct __coro_main_coro;
 
 std::optional<int32_t> find(int32_t n);
 std::optional<Point> pick(int32_t n);
-std::variant<std::monostate, Point*, Tag*> choose(Point& p, Tag& t, int32_t flag);
+::tpy::Union<std::monostate, Point*, Tag*> choose(Point& p, Tag& t, int32_t flag);
 __coro_afind afind(int32_t n);
 __coro_main_coro main_coro();
 void main();

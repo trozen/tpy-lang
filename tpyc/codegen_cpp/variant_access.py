@@ -4,7 +4,7 @@ TurboPython unions lower to one of four C++ shapes:
 
 - **Value variant**: `std::variant<A, B, ...>` -- members are value-typed,
   variant stores them by value. Field / container / Own slot form.
-- **Pointer variant**: `std::variant<A*, B*, ...>` -- members are non-value
+- **Pointer variant**: `::tpy::Union<A*, B*, ...>` -- members are non-value
   reference types; the variant carries borrowed pointers. Param / local /
   return form.
 - **Wrapper struct**: `struct Tree { std::variant<...> value; }` -- emitted
@@ -63,7 +63,7 @@ class VariantAccess:
     """
     base_expr: str              # C++ expression that yields the variant or its wrapper
     typ: TpyType | None         # TPy type of `base_expr`; None disables wrapper indirection
-    is_ptr_variant: bool        # runtime form is `std::variant<T*, U*, ...>`
+    is_ptr_variant: bool        # runtime form is `::tpy::Union<T*, U*, ...>`
     is_const: bool = False      # const propagation for ptr-variant get (`std::get<const T*>(...)`)
 
     # --- Access expressions --------------------------------------------

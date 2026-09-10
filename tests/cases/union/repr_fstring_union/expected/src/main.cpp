@@ -30,7 +30,7 @@ void main() {
     ::tpy::Union<int32_t, std::string> b = make_su();
     // c = make_3u()
     ::tpy::Union<int32_t, Point, std::string> __slot_1 = make_3u();
-    std::variant<int32_t*, Point*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<int32_t*, Point*, std::string*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(repr(a))
     std::cout << ::tpy::repr_of(a) << "\n";
     // print(repr(b))

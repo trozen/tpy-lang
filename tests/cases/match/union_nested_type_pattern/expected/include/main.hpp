@@ -12,9 +12,9 @@ template<typename T> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x);
-std::string describe(const std::variant<Box<int32_t>*, Box<std::string>*> x);
-std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x);
+std::string unwrap(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x);
+std::string describe(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x);
+std::string mixed(::tpy::Union<const Pair<int32_t>*, const Pair<std::string>*> x);
 void main();
 
 // class Box[T]:

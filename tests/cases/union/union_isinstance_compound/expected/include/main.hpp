@@ -12,11 +12,11 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt test_and_rhs(const std::variant<A*, B*> v);
-::tpy::BigInt test_and_true(const std::variant<A*, B*> v);
-bool test_or_rhs(const std::variant<A*, B*> v);
-::tpy::BigInt test_negation(const std::variant<A*, B*> v);
-::tpy::BigInt test_multi_var(const std::variant<A*, B*> a, const std::variant<A*, B*> b);
+::tpy::BigInt test_and_rhs(::tpy::Union<const A*, const B*> v);
+::tpy::BigInt test_and_true(::tpy::Union<const A*, const B*> v);
+bool test_or_rhs(::tpy::Union<const A*, const B*> v);
+::tpy::BigInt test_negation(::tpy::Union<const A*, const B*> v);
+::tpy::BigInt test_multi_var(::tpy::Union<const A*, const B*> a, ::tpy::Union<const A*, const B*> b);
 void main();
 
 // # isinstance in compound conditions: and/or, negation, multi-variable

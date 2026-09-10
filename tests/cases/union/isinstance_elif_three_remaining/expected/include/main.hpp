@@ -13,7 +13,7 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt pick(const std::variant<A*, B*, C*> v);
+::tpy::BigInt pick(::tpy::Union<const A*, const B*, const C*> v);
 void main();
 
 // # Inverse of the exhaustive-elif fix: a 3-member union where if/elif rule out

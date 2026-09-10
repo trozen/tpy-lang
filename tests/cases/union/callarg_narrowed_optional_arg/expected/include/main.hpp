@@ -14,9 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take_opt(const A* o);
 void bump_opt(A* o);
-int32_t read_narrowed(std::variant<A*, B*> u);
-int32_t mutate_narrowed(std::variant<A*, B*> u);
-int32_t inline_narrowed(std::variant<A*, B*> u);
+int32_t read_narrowed(::tpy::Union<A*, B*> u);
+int32_t mutate_narrowed(::tpy::Union<A*, B*> u);
+int32_t inline_narrowed(::tpy::Union<A*, B*> u);
 void main();
 
 // class A:

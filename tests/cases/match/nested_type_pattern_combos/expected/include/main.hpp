@@ -14,8 +14,8 @@ struct Tagged;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::string>>*> x);
-std::string union_subj_union_field(const std::variant<Container*, int32_t*> x);
+std::string nested_param(::tpy::Union<const Box<Box<int32_t>>*, const Box<Box<std::string>>*> x);
+std::string union_subj_union_field(::tpy::Union<const Container*, const int32_t*> x);
 std::string union_field_param(const Outer& o);
 void double_union(const std::vector<Tagged>& items);
 void main();
@@ -61,7 +61,7 @@ struct Outer {
     ::tpy::Union<Box<int32_t>, Box<std::string>> item;
 
     // def __init__(self, item: Box[str] | Box[Int32]) -> None:
-    explicit Outer(const std::variant<Box<int32_t>*, Box<std::string>*> item);
+    explicit Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 inline Container::Container(const ::tpy::Union<int32_t, std::string>& value) : value(value) {}
 
 // def __init__(self, item: Box[str] | Box[Int32]) -> None:
-inline Outer::Outer(const std::variant<Box<int32_t>*, Box<std::string>*> item) : item(::tpy::to_value_variant<::tpy::Union<Box<int32_t>, Box<std::string>>>(item)) {}
+inline Outer::Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> item) : item(::tpy::to_value_variant<::tpy::Union<Box<int32_t>, Box<std::string>>>(item)) {}
 
 // def __init__(self, label: str, inner: str | Int32) -> None:
 inline Tagged::Tagged(std::string_view label, const ::tpy::Union<int32_t, std::string>& inner) : label(label), inner(inner) {}

@@ -203,6 +203,7 @@ from .predicates import (
     _eligible_wrapper_union,
     _eligible_ptr_value,
     _eligible_scalar,
+    _eligible_ptr_union_either,
     _eligible_ptr_union_wide,
     _eligible_value_union,
     _union_member_ctor_slot,
@@ -5081,7 +5082,7 @@ def _union_elem_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                                analyzer) -> bool:
     """A UNION-element tuple PARAM name at the same union-element tuple slot
     (`read_second(pair)`): such a param is bound in borrow form
-    (`const std::tuple<std::variant<const Cat*, const Dog*>, int32_t>&`) --
+    (`const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>&`) --
     there is no storage-form binding of it to distinguish, because a union
     element never enters `borrow_form_tuple_locals`/`storage_tuple_locals`
     (it has no pointer-repr element) -- so the arg renders BARE. The family
@@ -5905,8 +5906,8 @@ def _union_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     falls to the default bare-name render (a value union's `const
     std::variant<...>&` binds directly; a pointer variant copies by value) --
     or, for a DEEP-CONST pointer-variant slot (a `readonly[...]` annotation
-    or the callee's `deep_const_borrow_params` verdict), the
-    `ptr_variant_to_const` wrap, keyed at lowering on the same
+    or the callee's `const_borrow_params` verdict), the
+    const-conversion wrap, keyed at lowering on the same
     verdict -- so admission here is readonly-blind. A member-valued arg (a
     scalar name, a float literal, a record rvalue) hoists a temp -- the
     arg-temp rows where the position flushes, a reject otherwise; the
@@ -5924,13 +5925,10 @@ def _union_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     value_union = _eligible_value_union(pt)
     ut = value_union
     if ut is None:
-        ut = _eligible_ptr_union(pt, analyzer)
-        if ut is None:
-            # WIDE member class for the bare same-union NAME pass: the
-            # by-value variant copy is member-shape-blind (`f(v)` on
-            # `v: int | set[int]`), so container/str members ride too --
-            # the ptr-union decl arm's rationale.
-            ut = _eligible_ptr_union_wide(pt, analyzer)
+        # The WIDE member class rides too: the by-value variant copy is
+        # member-shape-blind (`f(v)` on `v: int | set[int]`), so
+        # container/str members pass -- the ptr-union decl arm's rationale.
+        ut = _eligible_ptr_union_either(pt, analyzer)
         if ut is None:
             return False
     if not isinstance(a, TpyName) or a.name not in locals_:
@@ -5958,11 +5956,10 @@ def _own_union_storage_name_arg(a: TpyExpr, ptype: TpyType | None,
     """A NAME bound `Own[union]` (the STORAGE `std::variant<A, B>` binding,
     the VALUE_VARIANT form) into a non-Own same-union slot in
     pointer-variant form: the `needs_to_ptr_variant_lift` arm --
-    `borrow_union(::tpy::to_ptr_variant(u))`. The ONE fact shared by gate
-    and render row. A deep-const / readonly slot stays out (the const
-    lift spelling is unwitnessed)."""
-    if readonly_target:
-        return None
+    `borrow_union(::tpy::to_ptr_variant(u))`, or `to_const_ptr_variant` at a
+    deep-const slot. The ONE fact shared by gate and render row; the slot's
+    const-ness picks the helper at the render and decides nothing here, so
+    `readonly_target` is carried for the caller rather than consulted."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -7041,7 +7038,7 @@ def _union_member_lift_arg(a: TpyExpr, ptype: TpyType | None,
     a `None` literal (`pv{std::monostate{}}`) or a member-typed record NAME
     (`pv{&(name)}` -- never a temp: names are never rvalue sources) into a
     non-Own pointer-variant slot. A deep-const slot (a `readonly[...]`
-    annotation or the callee's `deep_const_borrow_params` verdict) takes the
+    annotation or the callee's `const_borrow_params` verdict) takes the
     same lift with the const-pointee variant spelling, decided at
     lowering, so admission is const-blind. A record RVALUE (`take(A(n))`)
     hoists a named temp -> reject. A narrowed subject is admitted here too
@@ -11567,7 +11564,7 @@ def _r_union_bytes_literal_temp(req: _ArgReq) -> bool:
 def _r_union_pass_deep_const(req: _ArgReq) -> bool:
     # The shared `union_pass_through` shape RESTRICTED by the callee's
     # deep-const-borrow verdict: at a dcbp slot the arg takes the
-    # `ptr_variant_to_const` wrap, which the method loop only threads for an
+    # const-conversion wrap, which the method loop only threads for an
     # un-narrowed NAME. Guard and predicate in the ladder's order -- the
     # pass-through test runs first -- so it is one row, not the shared cell
     # under an `extra`.
@@ -11576,8 +11573,8 @@ def _r_union_pass_deep_const(req: _ArgReq) -> bool:
         return False
     overload, index = req.overload, req.index
     dcbp = (overload is not None
-            and overload.deep_const_borrow_params
-            and index in overload.deep_const_borrow_params)
+            and overload.const_borrow_params
+            and index in overload.const_borrow_params)
     return (not dcbp
             or (isinstance(req.a, TpyName) and req.a.name not in req.narrowed))
 
@@ -12379,7 +12376,7 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("method_value_union", _r_method_value_union),
         # A member ctor RVALUE into a POINTER-variant method slot
         # (`p.set_pet(Cat("Mittens"))` -> `Cat __tmp_N = Cat("Mittens");
-        # p.set_pet(std::variant<Cat*, Dog*>{&__tmp_N});`) -- the
+        # p.set_pet(::tpy::Union<Cat*, Dog*>{&__tmp_N});`) -- the
         # free-call ladder's row, lowered through the same
         # `_lower_union_arg_lift`. Temp-hoisting, so the method loop
         # threads its flush for this slot too.
@@ -12392,7 +12389,7 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # A same-union NAME into a POINTER-variant method slot passes
         # bare when the callee's param carries no deep-const verdict
         # (`p.set_pet(new_pet)`); a dcbp slot takes the
-        # ptr_variant_to_const wrap (unionlift.const_wrap -- the
+        # const-conversion wrap (unionlift.const_wrap -- the
         # method loop threads readonly_target), un-narrowed NAMES only
         # (a narrowed name binds the member, so it is not a same-union
         # source at all and this row is not its route).

@@ -46,7 +46,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_codes::__next__() {
 
 
 // def codes(a: Dog | Cat) -> Iterator[int]:
-__gen_codes codes(std::variant<const Cat*, const Dog*> a) {
+__gen_codes codes(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_codes(a);
 }
 
@@ -54,10 +54,10 @@ __gen_codes codes(std::variant<const Cat*, const Dog*> a) {
 void main() {
     // pet: Dog | Cat = Dog()
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
-    std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for v in codes(pet):
     {
-        auto __src_0 = codes(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet));
+        auto __src_0 = codes(pet.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

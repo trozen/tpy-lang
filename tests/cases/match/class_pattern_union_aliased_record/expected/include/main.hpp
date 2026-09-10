@@ -15,7 +15,7 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt pick(const std::variant<Other*, Point*> p);
+::tpy::BigInt pick(::tpy::Union<const Other*, const Point*> p);
 ::tpy::BigInt use_foreign(const ::tpyapp::shapes::Point& p);
 void main();
 

@@ -12,7 +12,7 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show(const std::variant<Cat*, Dog*> a);
+void show(::tpy::Union<const Cat*, const Dog*> a);
 void main();
 
 // # OwnType must be stripped from element types in list literals so that

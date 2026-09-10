@@ -13,9 +13,9 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string known(const std::variant<Bird*, Cat*, Dog*> a);
-int32_t tag(std::variant<Bird*, Cat*, Dog*> a, std::string_view t);
-std::string read(const std::variant<Bird*, Cat*, Dog*> a);
+std::string known(::tpy::Union<const Bird*, const Cat*, const Dog*> a);
+int32_t tag(::tpy::Union<Bird*, Cat*, Dog*> a, std::string_view t);
+std::string read(::tpy::Union<const Bird*, const Cat*, const Dog*> a);
 void main();
 
 // @dataclass

@@ -11,9 +11,9 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string test_and_flag(const std::variant<std::monostate, Dog*, int32_t*> v, bool flag);
-std::string test_and_isinstance(const std::variant<std::monostate, Dog*, int32_t*> v);
-std::string test_or(const std::variant<std::monostate, Dog*, int32_t*> v, const std::variant<std::monostate, Dog*, int32_t*> w);
+std::string test_and_flag(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, bool flag);
+std::string test_and_isinstance(::tpy::Union<std::monostate, const Dog*, const int32_t*> v);
+std::string test_or(::tpy::Union<std::monostate, const Dog*, const int32_t*> v, ::tpy::Union<std::monostate, const Dog*, const int32_t*> w);
 void main();
 
 // class Dog:

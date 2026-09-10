@@ -183,7 +183,10 @@ void print_list_contents(std::ostream& os, Iter begin, Iter end) {
 }
 
 // A Union prints as its active alternative, found by the same index dispatch
-// its comparisons use (value_compare.hpp): a visit -- even over one operand --
+// its comparisons use (value_compare.hpp). One row serves both packs with no
+// branch: a BORROW pack's leaf is a pointer, which lands on the `T*` row
+// above and prints the referent (or "None" for a null slot), so the borrow
+// form needs no body of its own. a visit -- even over one operand --
 // calls through a table of function pointers the optimiser is not obliged to
 // fold, and this chain is plain `if` tests with a direct call at each leaf. An
 // operand that is valueless by exception matches no index and falls off the

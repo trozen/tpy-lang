@@ -36,7 +36,7 @@ __coro_bump bump(A& a) {
         // t = asyncio.create_task(bump(a))
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(bump((*a)))));
         // print(await h.show(a))
-        __sub_0.emplace((*h), std::variant<const A*, const B*>{&((*a))});
+        __sub_0.emplace((*h), ::tpy::Union<const A*, const B*>{&((*a))});
         __state = S_RESUME_0;
         continue;
     }
@@ -62,7 +62,7 @@ __coro_bump bump(A& a) {
         // b = B()
         b.emplace(B());
         // print(await p.show(b))
-        __sub_2.emplace((*p), std::variant<const A*, const B*>{&((*b))});
+        __sub_2.emplace((*p), ::tpy::Union<const A*, const B*>{&((*b))});
         __state = S_RESUME_2;
         continue;
     }

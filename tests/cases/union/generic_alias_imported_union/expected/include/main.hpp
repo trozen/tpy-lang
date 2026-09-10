@@ -13,7 +13,7 @@ using ::tpyapp::lib::B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<::tpyapp::lib::A*, ::tpyapp::lib::B*> e);
+std::string describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*> e);
 void main();
 
 void __tpy_init();

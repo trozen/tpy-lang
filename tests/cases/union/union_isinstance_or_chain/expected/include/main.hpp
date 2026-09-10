@@ -13,10 +13,10 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string two_member(const std::variant<A*, B*> v);
-std::string three_member(const std::variant<A*, B*, C*> v);
-std::string and_chain(const std::variant<A*, B*> v, bool flag);
-std::string negated_or(const std::variant<A*, B*> v);
+std::string two_member(::tpy::Union<const A*, const B*> v);
+std::string three_member(::tpy::Union<const A*, const B*, const C*> v);
+std::string and_chain(::tpy::Union<const A*, const B*> v, bool flag);
+std::string negated_or(::tpy::Union<const A*, const B*> v);
 void main();
 
 // # or-chain isinstance: isinstance(v, A) or isinstance(v, B) must emit

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def send(url: str, data: bytes | dict[str, str] | None) -> None:
-void send(std::string_view url, std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data) {
+void send(std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -36,14 +36,14 @@ void send(std::string_view url, std::variant<std::monostate, ::tpy::Bytes*, ::tp
 void main() {
     // send("http://api.test/login", {"user": "ann", "pw": "s3cret"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"user", "ann"}, {"pw", "s3cret"}});
-    send("http://api.test/login", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1});
+    send("http://api.test/login", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1});
     // empty: dict[str, str] = {}   # empty literal can't be inferred against the union
     ::tpy::ordered_map<std::string, std::string> empty = ::tpy::ordered_map<std::string, std::string>();
     // send("http://api.test/empty", empty)
-    send("http://api.test/empty", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(empty)});
+    send("http://api.test/empty", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&(empty)});
     // send("http://api.test/raw", b"raw-bytes")
     ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("raw-bytes", 9);
-    send("http://api.test/raw", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
+    send("http://api.test/raw", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
 }
 
 void __tpy_init() {

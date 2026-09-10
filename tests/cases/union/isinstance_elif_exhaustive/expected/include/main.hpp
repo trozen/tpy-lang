@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt by_field(const std::variant<Cat*, Dog*> pet);
-::tpy::BigInt by_method(std::variant<Cat*, Dog*> pet);
+::tpy::BigInt by_field(::tpy::Union<const Cat*, const Dog*> pet);
+::tpy::BigInt by_method(::tpy::Union<Cat*, Dog*> pet);
 void main();
 
 // # A 2-member union exhausted by an if/elif: the elif's isinstance folds to a

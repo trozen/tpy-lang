@@ -13,7 +13,7 @@ struct B;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::tuple<::tpy::Union<A, B>, int32_t> pair();
-int32_t borrow(const std::variant<A*, B*> u);
+int32_t borrow(::tpy::Union<const A*, const B*> u);
 void main();
 
 // class A:

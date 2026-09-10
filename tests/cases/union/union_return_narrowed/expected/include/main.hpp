@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<Cat*, Dog*> ensure_dog(std::variant<Cat*, Dog*> pet);
-std::variant<Cat*, Dog*> pick_first_dog(std::variant<Cat*, Dog*> a, std::variant<Cat*, Dog*> b);
+::tpy::Union<Cat*, Dog*> ensure_dog(::tpy::Union<Cat*, Dog*> pet);
+::tpy::Union<Cat*, Dog*> pick_first_dog(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b);
 void main();
 
 // class Dog:

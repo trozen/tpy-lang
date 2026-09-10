@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<Cat*, Dog*> a);
-std::string classify(const std::variant<Cat*, Dog*> a);
+std::string describe(::tpy::Union<const Cat*, const Dog*> a);
+std::string classify(::tpy::Union<const Cat*, const Dog*> a);
 void main();
 
 // # match/case with wildcard and capture patterns

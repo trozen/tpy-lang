@@ -54,7 +54,7 @@ struct Canvas {
     ::tpy::Union<Circle, Square> _shape;
 
     // def __init__(self, s: Circle | Square) -> None:
-    explicit Canvas(const std::variant<Circle*, Square*> s);
+    explicit Canvas(::tpy::Union<const Circle*, const Square*> s);
 
     // @property
     // def shape(self) -> Circle | Square:
@@ -79,7 +79,7 @@ inline Circle::Circle(int32_t r) : radius(r) {}
 inline Square::Square(int32_t s) : side(s) {}
 
 // def __init__(self, s: Circle | Square) -> None:
-inline Canvas::Canvas(const std::variant<Circle*, Square*> s) : _shape(::tpy::to_value_variant<::tpy::Union<Circle, Square>>(s)) {}
+inline Canvas::Canvas(::tpy::Union<const Circle*, const Square*> s) : _shape(::tpy::to_value_variant<::tpy::Union<Circle, Square>>(s)) {}
 
 // @property
 // def shape(self) -> Circle | Square:

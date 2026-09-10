@@ -12,7 +12,7 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt show(const std::variant<Cat*, Dog*> x);
+::tpy::BigInt show(::tpy::Union<const Cat*, const Dog*> x);
 void main();
 
 // # isinstance narrowing where the remaining member is reached via implicit

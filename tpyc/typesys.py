@@ -3585,12 +3585,13 @@ class UnionType(TpyType):
             "std::monostate" if is_void_like_type(m) else m.to_cpp()
             for m in self.members
         ]
-        # Every union at a STORAGE position spells the TPy type that owns
-        # Python's comparison rule -- the bare variant compares the
-        # alternative INDEX first, which is wrong for a reference union's
-        # container element just as it is for a value union's. The borrow
-        # form is the pointer variant (`to_cpp_ptr_variant`), which is a
-        # different question and keeps the bare spelling.
+        # Every union spells the TPy type that owns Python's comparison
+        # rule -- the bare variant compares the alternative INDEX first,
+        # which is wrong for a reference union's container element just as
+        # it is for a value union's. One head at every position: the
+        # ALTERNATIVES say whether this is the owning or the borrowing form,
+        # and a union whose own members are all `Ptr[T]` needs no carve-out
+        # because its alternatives already say "borrowed".
         return f"::tpy::Union<{', '.join(cpp_members)}>"
 
     def has_none_member(self) -> bool:
@@ -3617,13 +3618,18 @@ class UnionType(TpyType):
         """Whether this union uses pointer-variant repr for params/returns/locals.
 
         True when any non-None member is not a value type (e.g. Dog | Cat with records).
-        Pointer variants use std::variant<Dog*, Cat*> instead of the storage
-        form ::tpy::Union<Dog, Cat>.
+        Pointer variants use ::tpy::Union<Dog*, Cat*> instead of the
+        storage form ::tpy::Union<Dog, Cat>.
         """
         return not self.is_value_type()
 
     def to_cpp_ptr_variant(self) -> str:
-        """Return the pointer-variant type: std::variant<Dog*, Cat*>.
+        """Return the borrow-form type: ::tpy::Union<Dog*, Cat*>.
+
+        The TPy type that owns Python's comparison rule AT A BORROW (through
+        the pointee, identity when the pointee defines no `__eq__`), and that
+        carries the borrow/storage verdict itself rather than leaving the
+        runtime to infer it from the alternative shapes.
 
         Monostate members (None) stay as std::monostate.
         Does not use type aliases (aliases are for value variants only).
@@ -3633,16 +3639,16 @@ class UnionType(TpyType):
             else f"{m.to_cpp()}*"
             for m in self.members
         ]
-        return f"std::variant<{', '.join(cpp_members)}>"
+        return f"::tpy::Union<{', '.join(cpp_members)}>"
 
     def to_cpp_const_ptr_variant(self) -> str:
-        """Return the const pointer-variant type: std::variant<const Dog*, const Cat*>."""
+        """Return the read-borrow form: ::tpy::Union<const Dog*, const Cat*>."""
         cpp_members = [
             "std::monostate" if is_void_like_type(m)
             else f"const {m.to_cpp()}*"
             for m in self.members
         ]
-        return f"std::variant<{', '.join(cpp_members)}>"
+        return f"::tpy::Union<{', '.join(cpp_members)}>"
 
     def to_cpp_param_type(self) -> str:
         # A recursive-alias wrapper is a single nominal struct, not a
@@ -3666,10 +3672,11 @@ class UnionType(TpyType):
         if self.needs_wrapper():
             return f"const {self.to_cpp()}& {name}"
         if self.uses_pointer_repr():
-            # Shallow const: const on the variant, not on the pointers.
-            # Constructors and non-mutated params use this for efficiency
-            # without changing the pointer types (which would break callers).
-            return f"const {self.to_cpp_ptr_variant()} {name}"
+            # DEEP const: the const belongs on the pointees. On the by-value
+            # borrow union itself it would freeze the union and nothing it
+            # points at, and a const-bound source could not reach the slot at
+            # all.
+            return f"{self.to_cpp_const_ptr_variant()} {name}"
         return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_return(self) -> str:
@@ -3839,7 +3846,7 @@ class TupleType(TpyType):
         (record / list / dict / set; non-null).
 
         Excludes UnionType elements: a pointer-variant union (`Dog | Cat`)
-        borrows as `std::variant<A*, B*>` and a recursive-union wrapper as
+        borrows as `::tpy::Union<A*, B*>` and a recursive-union wrapper as
         `X&` -- neither is a bare `T*`, and both keep their own borrow form and
         conversion path rather than routing through tuple_to_pointer /
         tuple_to_storage."""
@@ -3850,7 +3857,7 @@ class TupleType(TpyType):
             peeled = unwrap_readonly(unwrap_ref_type(e))
             # TypeParamRef keeps its `val_or_ref_t<T>` proxy (resolved at C++
             # instantiation); a recursive-union wrapper keeps its nominal `X&`
-            # form; a (pointer-variant) union keeps `std::variant<A*,B*>`.
+            # form; a (pointer-variant) union keeps `::tpy::Union<A*,B*>`.
             if isinstance(peeled, (UnionType, TypeParamRef)):
                 return False
             if peeled.needs_wrapper():
@@ -3894,7 +3901,7 @@ class TupleType(TpyType):
         A non-value element borrows as a bare pointer `T*` / `const T*` (a
         reference can't be a `std::tuple` member, and pointer form is both
         constructible and aliasing). A pointer-variant union borrows as the
-        const pointer variant `std::variant<const A*, B const*>`: std::variant
+        const pointer variant `::tpy::Union<const A*, B const*>`: std::variant
         has no mutable->const converting ctor, so this form must match the
         call-site slot exactly (const is the read-borrow form). OptionalType of
         a non-value inner already lowers to `T*` via its own `to_cpp_return`.
@@ -5700,11 +5707,13 @@ class FunctionInfo:
     # addr_escapes_params. None = not yet computed (consumers fall back to
     # mutable spellings). Distinguished from sema facts (mutated_params,
     # return_borrows_from): these never feed back into mutation analysis.
-    # Populated on the RAW fi only; the public accessors below forward
+    # Populated on the RAW fi only; the public accessor below forwards
     # through `root`, so a substituted fi transparently reads the raw
     # fi's verdict -- writers go through `set_const_borrow_verdict`.
+    # ONE set: the signature spelling and the inner surface answer together
+    # for every type (`decide_param_const` returns both bools equal), so a
+    # second set could only ever disagree by accident.
     _const_borrow_params: Optional[frozenset[int]] = None
-    _deep_const_borrow_params: Optional[frozenset[int]] = None
     # Send/Sync frame facts (docs/SEND_SYNC_DESIGN.md OQ3). frame_type is the
     # memoized own-slot classification, computed lazily by sema/frame_traits.py
     # from the raw materials below (lazy because awaited sub-frames may
@@ -5733,16 +5742,10 @@ class FunctionInfo:
     def const_borrow_params(self) -> Optional[frozenset[int]]:
         return self.root._const_borrow_params
 
-    @property
-    def deep_const_borrow_params(self) -> Optional[frozenset[int]]:
-        return self.root._deep_const_borrow_params
-
-    def set_const_borrow_verdict(self, sig: frozenset[int],
-                                 deep: frozenset[int]) -> None:
+    def set_const_borrow_verdict(self, sig: frozenset[int]) -> None:
         """Store the per-param const ABI verdict on THIS fi (the raw fi --
         `populate_const_borrow_params` runs before any substitution)."""
         self._const_borrow_params = sig
-        self._deep_const_borrow_params = deep
 
     @property
     def has_fstr_param(self) -> bool:

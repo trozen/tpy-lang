@@ -19,7 +19,7 @@ namespace tpyapp::main {
 void main() {
     // v = get(True)
     ::tpy::Union<Bag, ::tpy::BigInt> __slot_1 = get(true);
-    std::variant<Bag*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Bag*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, Bag):
     if (std::holds_alternative<Bag*>(v)) {
         auto& __v = *std::get<Bag*>(v);

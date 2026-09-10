@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def wrap_dog(d: Dog) -> Dog | Cat:
-std::variant<Cat*, Dog*> wrap_dog(Dog& d) {
+::tpy::Union<Cat*, Dog*> wrap_dog(Dog& d) {
     // return d
     return &(d);
 }
 
 // def wrap_cat(c: Cat) -> Dog | Cat:
-std::variant<Cat*, Dog*> wrap_cat(Cat& c) {
+::tpy::Union<Cat*, Dog*> wrap_cat(Cat& c) {
     // return c
     return &(c);
 }
@@ -21,7 +21,7 @@ void main() {
     // d = Dog("Rex", 5)
     Dog d = Dog("Rex", 5);
     // result = wrap_dog(d)
-    std::variant<Cat*, Dog*> result = wrap_dog(d);
+    ::tpy::Union<Cat*, Dog*> result = wrap_dog(d);
     // if isinstance(result, Dog):
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
@@ -31,7 +31,7 @@ void main() {
     // c = Cat("Whiskers", 9)
     Cat c = Cat("Whiskers", 9);
     // result2 = wrap_cat(c)
-    std::variant<Cat*, Dog*> result2 = wrap_cat(c);
+    ::tpy::Union<Cat*, Dog*> result2 = wrap_cat(c);
     // if isinstance(result2, Cat):
     if (std::holds_alternative<Cat*>(result2)) {
         auto& __result2 = *std::get<Cat*>(result2);

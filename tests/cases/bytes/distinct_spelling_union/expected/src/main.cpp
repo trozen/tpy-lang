@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def bytes_or_bytearray(u: bytes | bytearray) -> Int32:
-int32_t bytes_or_bytearray(const std::variant<::tpy::ByteArray*, ::tpy::Bytes*> u) {
+int32_t bytes_or_bytearray(::tpy::Union<const ::tpy::ByteArray*, const ::tpy::Bytes*> u) {
     // # bytes and bytearray: the pair that could not be told apart at all. Not
     // # CALLED: BUGS.md#bytes-member-arg-not-lifted-into-union
     // if isinstance(u, bytearray):  # tpyc: ok
-    if (std::holds_alternative<::tpy::ByteArray*>(u)) {
-        auto& __u = *std::get<::tpy::ByteArray*>(u);
+    if (std::holds_alternative<const ::tpy::ByteArray*>(u)) {
+        auto& __u = *std::get<const ::tpy::ByteArray*>(u);
         // return 10 + len(u)
         return (::tpy::add_check<int32_t>(10, ::tpy::__len__(__u)));
     }
-    auto& __u = *std::get<::tpy::Bytes*>(u);
+    auto& __u = *std::get<const ::tpy::Bytes*>(u);
     // return 20 + len(u)
     return (::tpy::add_check<int32_t>(20, ::tpy::__len__(__u)));
 }
@@ -28,15 +28,15 @@ int32_t str_or_string_slot(const ::tpy::Union<::tpy::String, std::string>& u) {
 }
 
 // def list_or_bytes(u: list[UInt8] | bytes) -> Int32:
-int32_t list_or_bytes(const std::variant<::tpy::Bytes*, std::vector<uint8_t>*> u) {
+int32_t list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*> u) {
     // # list[UInt8] keeps the plain buffer spelling, so it is distinct too
     // if isinstance(u, bytes):  # tpyc: ok
-    if (std::holds_alternative<::tpy::Bytes*>(u)) {
-        auto& __u = *std::get<::tpy::Bytes*>(u);
+    if (std::holds_alternative<const ::tpy::Bytes*>(u)) {
+        auto& __u = *std::get<const ::tpy::Bytes*>(u);
         // return 50 + len(u)
         return (::tpy::add_check<int32_t>(50, ::tpy::__len__(__u)));
     }
-    auto& __u = *std::get<std::vector<uint8_t>*>(u);
+    auto& __u = *std::get<const std::vector<uint8_t>*>(u);
     // return 60 + len(u)
     return (::tpy::add_check<int32_t>(60, ::tpy::__len__(__u)));
 }
@@ -59,7 +59,7 @@ void main() {
     // # the subject that runs: each member reaches its own arm
     // print("union", list_or_bytes(xs), list_or_bytes(b"ijk"))
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("ijk", 3);
-    std::cout << "union" << " " << list_or_bytes(std::variant<::tpy::Bytes*, std::vector<uint8_t>*>{&(xs)}) << " " << list_or_bytes(std::variant<::tpy::Bytes*, std::vector<uint8_t>*>{&__tmp_1}) << "\n";
+    std::cout << "union" << " " << list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&(xs)}) << " " << list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*>{&__tmp_1}) << "\n";
 }
 
 void __tpy_init() {

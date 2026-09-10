@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def classify(a: Dog | Cat, strict: bool) -> str:
-std::string classify(const std::variant<Cat*, Dog*> a, bool strict) {
+std::string classify(::tpy::Union<const Cat*, const Dog*> a, bool strict) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -61,7 +61,7 @@ __match_end_2:;
 }
 
 // def as_guard(a: Dog | Cat) -> str:
-std::string as_guard(const std::variant<Cat*, Dog*> a) {
+std::string as_guard(::tpy::Union<const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -106,29 +106,29 @@ __match_end_2:;
 void main() {
     // d1: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
-    std::variant<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
     // d2: Dog | Cat = Dog("Buddy")
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("Buddy");
-    std::variant<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
     // c: Dog | Cat = Cat("Luna")
     ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
-    std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_3);
     // print(classify(d1, True))
-    std::cout << classify(d1, true) << "\n";
+    std::cout << classify(d1.as_const(), true) << "\n";
     // print(classify(d2, True))
-    std::cout << classify(d2, true) << "\n";
+    std::cout << classify(d2.as_const(), true) << "\n";
     // print(classify(d2, False))
-    std::cout << classify(d2, false) << "\n";
+    std::cout << classify(d2.as_const(), false) << "\n";
     // print(classify(c, True))
-    std::cout << classify(c, true) << "\n";
+    std::cout << classify(c.as_const(), true) << "\n";
     // print(classify(c, False))
-    std::cout << classify(c, false) << "\n";
+    std::cout << classify(c.as_const(), false) << "\n";
     // print(as_guard(d1))
-    std::cout << as_guard(d1) << "\n";
+    std::cout << as_guard(d1.as_const()) << "\n";
     // print(as_guard(d2))
-    std::cout << as_guard(d2) << "\n";
+    std::cout << as_guard(d2.as_const()) << "\n";
     // print(as_guard(c))
-    std::cout << as_guard(c) << "\n";
+    std::cout << as_guard(c.as_const()) << "\n";
 }
 
 void __tpy_init() {

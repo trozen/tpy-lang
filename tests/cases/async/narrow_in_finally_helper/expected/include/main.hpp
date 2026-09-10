@@ -22,11 +22,11 @@ struct __gen_g_assert;
 struct __gen_g_post_if;
 struct __coro_amain;
 
-__coro_a_assert a_assert(std::variant<Cat*, Dog*> a);
-__coro_a_post_if a_post_if(std::variant<Cat*, Dog*> a);
-__coro_a_nested a_nested(std::variant<Cat*, Dog*> a, std::variant<Cat*, Dog*> b);
-__gen_g_assert g_assert(std::variant<Cat*, Dog*> a);
-__gen_g_post_if g_post_if(std::variant<Cat*, Dog*> a);
+__coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a);
+__coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a);
+__coro_a_nested a_nested(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b);
+__gen_g_assert g_assert(::tpy::Union<Cat*, Dog*> a);
+__gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a);
 __coro_amain amain();
 void main();
 
@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct __coro_a_assert {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -81,7 +81,7 @@ struct __coro_a_assert {
         S_DONE = 4,
     };
 
-    __coro_a_assert(std::variant<Cat*, Dog*> a_)
+    __coro_a_assert(::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
 
     __coro_a_assert(__coro_a_assert&&) = default;
@@ -111,7 +111,7 @@ struct __coro_a_assert {
 struct __coro_a_post_if {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -122,7 +122,7 @@ struct __coro_a_post_if {
         S_DONE = 4,
     };
 
-    __coro_a_post_if(std::variant<Cat*, Dog*> a_)
+    __coro_a_post_if(::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
 
     __coro_a_post_if(__coro_a_post_if&&) = default;
@@ -152,8 +152,8 @@ struct __coro_a_post_if {
 struct __coro_a_nested {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::variant<Cat*, Dog*> a;
-    std::variant<Cat*, Dog*> b;
+    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -166,7 +166,7 @@ struct __coro_a_nested {
         S_DONE = 6,
     };
 
-    __coro_a_nested(std::variant<Cat*, Dog*> a_, std::variant<Cat*, Dog*> b_)
+    __coro_a_nested(::tpy::Union<Cat*, Dog*> a_, ::tpy::Union<Cat*, Dog*> b_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_), b(b_) {}
 
     __coro_a_nested(__coro_a_nested&&) = default;
@@ -231,7 +231,7 @@ struct __coro_amain {
 // Generator: g_assert
 struct __gen_g_assert : public ::tpy::next_iter_mixin<__gen_g_assert, std::string> {
     ::tpy::frame_state __state;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -241,7 +241,7 @@ struct __gen_g_assert : public ::tpy::next_iter_mixin<__gen_g_assert, std::strin
         S_DONE = 4,
     };
 
-    __gen_g_assert(std::variant<Cat*, Dog*> a_)
+    __gen_g_assert(::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     __gen_g_assert(__gen_g_assert&&) = default;
@@ -270,7 +270,7 @@ struct __gen_g_assert : public ::tpy::next_iter_mixin<__gen_g_assert, std::strin
 // Generator: g_post_if
 struct __gen_g_post_if : public ::tpy::next_iter_mixin<__gen_g_post_if, std::string> {
     ::tpy::frame_state __state;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -280,7 +280,7 @@ struct __gen_g_post_if : public ::tpy::next_iter_mixin<__gen_g_post_if, std::str
         S_DONE = 4,
     };
 
-    __gen_g_post_if(std::variant<Cat*, Dog*> a_)
+    __gen_g_post_if(::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     __gen_g_post_if(__gen_g_post_if&&) = default;

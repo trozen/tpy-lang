@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // b = Box(Dog("rex"))
     Dog __tmp_1 = Dog("rex");
-    Box b = Box(std::variant<Cat*, Dog*>{&__tmp_1});
+    Box b = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     // for s in b.describe():
     {
         auto __src_0 = b.describe();
@@ -25,7 +25,7 @@ void main() {
     std::cout << "--" << "\n";
     // b2 = Box(Cat(9))
     Cat __tmp_2 = Cat(::tpy::BigInt(9));
-    Box b2 = Box(std::variant<Cat*, Dog*>{&__tmp_2});
+    Box b2 = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
     // for s in b2.describe():
     {
         auto __src_2 = b2.describe();

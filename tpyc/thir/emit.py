@@ -688,9 +688,9 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
 def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
     # The temp-free pointer-variant arms: the monostate member for a None
     # literal, the address-of lift for a member-typed name (deref prepends the
-    # pointer-local/receiver `(*...)`), and the mutable->const conversion for
-    # an already-union
-    # name into a deep-const slot (const_wrap). variant_cpp was fixed at
+    # pointer-local/receiver `(*...)`), and the const conversion for an
+    # already-union name into a deep-const slot (const_wrap, whose spelling
+    # lowering picked from the source's binding). variant_cpp was fixed at
     # lowering (const-pointee spelling for a deep-const slot).
     if e.value is None:
         return f"{e.variant_cpp}{{std::monostate{{}}}}"
@@ -703,8 +703,10 @@ def _emit_union_arg_lift(e: THIRUnionArgLift, state: _EmitState) -> str:
         return f"{e.variant_cpp}{{&{name}}}"
     if e.deref:
         inner = f"(*{inner})"
+    if e.const_wrap == "storage":
+        return f"::tpy::to_const_ptr_variant({inner})"
     if e.const_wrap:
-        return f"::tpy::ptr_variant_to_const<{e.variant_cpp}>({inner})"
+        return f"{inner}.as_const()"
     return f"{e.variant_cpp}{{&({inner})}}"
 
 

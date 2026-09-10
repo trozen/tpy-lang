@@ -1,0 +1,25 @@
+free_fn eq True False False
+free_fn ne False True
+ordering lt gt eq
+constructor True False
+method True False
+readonly method True False
+local True False
+comprehension 2
+generator True
+closure True
+with True
+try True
+error_return True
+match True
+async True
+identity True False False
+identity ne False True
+custom_ne True False True
+only_ne False False False True
+readonly mixed True False
+const local True False
+none ne True False
+nocopy True False
+value members True False
+mutate through borrow 2 False

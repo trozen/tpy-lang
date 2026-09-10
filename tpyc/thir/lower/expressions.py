@@ -232,6 +232,7 @@ from .predicates import (
     _eligible_wrapper_union,
     _module_var_recv,
     _param_is_const,
+    _const_verdict_func,
     _param_is_deep_const,
     _ARITH_OPS,
     _BITWISE_OPS,
@@ -502,6 +503,8 @@ from .predicates import (
     _union_none_name,
     _union_none_field,
     _container_compare_pair,
+    _ptr_union_compare_pair,
+    _ptr_union_const_wrap,
     _union_compare_pair,
     _record_compare_pair,
     _record_dunder_operand_pair,
@@ -3720,6 +3723,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 or (_tparam_value(_unwrap_own(lt))
                     and _tparam_value(_unwrap_own(rt)))
                 or _union_compare_pair(lt, rt)
+                or _ptr_union_compare_pair(e, lt, rt, lc, declared,
+                                           analyzer)
                 or (_container_compare_pair(e.op, lt, rt, analyzer)
                     and _witness("binop.container_eq"))
                 or (e.op in ("==", "!=") and _any_compare_pair(lt, rt))
@@ -4789,13 +4794,14 @@ def _narrow_subject_is_ptr(var: str, u: UnionType, lc: '_LowerCtx') -> bool:
 def _narrow_subject_const(var: str, lc: '_LowerCtx') -> bool:
     """Whether a pointer-variant narrowing SUBJECT spells const pointees: a
     const local (the U2 field-lift chain), or a param the function's
-    deep-const verdict (`deep_const_borrow_params` -- the inferred
+    deep-const verdict (`const_borrow_params` -- the inferred
     discriminant-only-use fact that also deep-consts the signature's variant
     spelling) applies to. Shared by the isinstance condition and every
     narrowed-member `std::get` template arg, so the renders cannot drift."""
     if var in lc.const_locals:
         return True
-    return _param_is_deep_const(var, lc.func, lc.analyzer, lc.record_name)
+    return _param_is_deep_const(var, _const_verdict_func(var, lc),
+                                lc.analyzer, lc.record_name)
 
 
 def _poly_cast_context(var: str, lc: '_LowerCtx',
@@ -8053,6 +8059,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     e, lc.analyzer.registry.get_record_for_type(rtype))
             args = []
             raw_ctor_fi = _raw_record_ctor_fi(rtype, lc.analyzer)
+            # The callee's deep-const verdict, read the way every other call
+            # position reads it. Without it a member lift renders mutable
+            # pointees into a const-pointee ctor slot -- the same arg, the
+            # same slot, one position that did not ask.
+            ctor_dcbp = _ctor_deep_const_params(fi)
             for i, (a, p) in enumerate(zip(e.args, eff_params)):
                 if not _record_ctor_arg_supported(
                         a, p.type, i, fi, lc, declared, use):
@@ -8164,7 +8175,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         a, p.type, lc, declared,
                         temp_args=temp_args and flush_slot,
                         nested_temps=temp_args,
-                        protocol_slots=True))
+                        protocol_slots=True,
+                        readonly_target=i in ctor_dcbp))
             return THIRCtorCall(
                 result_type=rtype, type_cpp=type_cpp,
                 args=tuple(args), brace_init=brace_ctor,
@@ -8740,14 +8752,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # Args lower against their param slots: a str literal in a Char slot
         # renders as a char literal, a bytes literal into a bytes/BytesView
         # slot takes the static-span pin, a union-slot arg reads the
-        # callee's deep-const verdict (`deep_const_borrow_params`) for the
+        # callee's deep-const verdict (`const_borrow_params`) for the
         # const-pointee spelling. A `len` call bypasses the arity gate, so
         # it lowers slot-less there. Provided args pair the LEADING params
         # (the zip truncates): the arity gate admits omitted trailing
         # defaults.
         params = (fi.params if fi is not None
                   and len(fi.params) >= len(e.args) else None)
-        dcbp = fi.root.deep_const_borrow_params if fi is not None else None
+        dcbp = fi.root.const_borrow_params if fi is not None else None
         # The callee's emit kind: the same classification validation admitted
         # on (`_free_callee_kind`) -- cross-module spelling on callee_cpp,
         # a C++ @native symbol on native_name (joining the len hardcode),
@@ -9985,9 +9997,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                   and _union_bytes_literal_temp_arg(
                                       a, ptype, lc.analyzer) is not None)))
             # The deep-const verdict rides into the union const-wrap arm
-            # (`z.names(other)` -> `ptr_variant_to_const<...>(other)`), like
+            # (`z.names(other)` -> `other.as_const()`), like
             # the free-call loop. Read it off the RAW method fi: the
-            # call-site substituted copy drops deep_const_borrow_params
+            # call-site substituted copy drops const_borrow_params
             # (substitute_method_type_params does not carry it), so a
             # generic receiver's inferred verdict lives only on the raw fi
             # -- the same source the arg gate checks. The `fi` fallback is
@@ -9995,8 +10007,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # overload, so gate and arm both read the resolved setter fi.
             dcbp_fi = raw_method_fi if raw_method_fi is not None else fi
             ro_slot = bool(dcbp_fi is not None
-                           and dcbp_fi.deep_const_borrow_params
-                           and index in dcbp_fi.deep_const_borrow_params)
+                           and dcbp_fi.const_borrow_params
+                           and index in dcbp_fi.const_borrow_params)
             # A protocol slot on a USER-record method takes the same
             # protocol / @dynamic pre-arms as the free-call loop
             # (`canvas().draw(square(4))` -> the `Adapter<shape, square>
@@ -12403,7 +12415,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     substituted slot."""
     analyzer = lc.analyzer
     root, subst = _generic_root_subst(e, analyzer)
-    dcbp = root.deep_const_borrow_params
+    dcbp = root.const_borrow_params
     # A callee whose FRAME borrows the slot past the statement keeps the
     # named temp whatever the instantiation resolves to.
     borrowing_frame = _borrowing_frame_callee(root)
@@ -12912,12 +12924,14 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                if plain_kind else None)
     if ou_slot is not None:
         # An Own[union] storage-variant NAME at a ptr-variant slot: the
-        # to_ptr_variant lift over the bare name read.
+        # to_ptr_variant lift over the bare name read, or its const-pointee
+        # sibling when the slot is deep-const.
         _witness("arg.own_union_storage_name")
         return THIRFormConvert(
             result_type=ou_slot,
             value=_lower_expr(a, lc, declared,
                               use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+            is_const=readonly_target,
             form=Form.BORROW,
             loc=getattr(a, "loc", None))
     bt_mixed = _mixed_own_tuple_name_arg(
@@ -13473,7 +13487,7 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     record name into a pointer-variant union slot takes the union
     inline lift (`_lower_union_arg_lift` -- checked FIRST so a pointer-local
     member name lifts `&((*p))` rather than retagging; `readonly_target`
-    threads the callee's `deep_const_borrow_params` verdict for the
+    threads the callee's `const_borrow_params` verdict for the
     const-pointee spelling); an F2 pointer-local
     record name passed by reference derefs (`take_rec((*p))`, the
     indirect-name render -- only records become pointer-locals, so the
@@ -15276,6 +15290,17 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return lowered
     return _slot_literal_retype(lowered, ptype, lc)
 
+def _ctor_deep_const_params(fi) -> 'frozenset[int]':
+    """The ctor's deep-const parameter indices, or an empty set when the
+    callee carries no verdict (a TypedDict ctor has no FunctionInfo, an
+    un-analyzed one no Phase-2 facts). The free-call loops read
+    `fi.root.const_borrow_params`; a ctor FunctionInfo is its own root,
+    so the same fact is read one hop shorter."""
+    if fi is None:
+        return frozenset()
+    root = getattr(fi, "root", None) or fi
+    return frozenset(getattr(root, "const_borrow_params", None) or ())
+
 def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
                           declared: dict[str, TpyType], *,
                           temp_args: bool) -> list[THIRExpr]:
@@ -15288,6 +15313,7 @@ def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
     analyzer = lc.analyzer
     use = _ExprUse(allow_temps=temp_args)
     ctor_mut = fi.mutated_params or frozenset()
+    dcbp = _ctor_deep_const_params(fi)
     lowered: list[THIRExpr] = []
     for i, (a, p) in enumerate(zip(args, fi.params)):
         if not _record_ctor_arg_supported(a, p.type, i, fi, lc, declared, use):
@@ -15322,7 +15348,8 @@ def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
                 a, p.type, lc, declared,
                 temp_args=temp_args and flush_slot,
                 nested_temps=temp_args,
-                protocol_slots=True))
+                protocol_slots=True,
+                readonly_target=i in dcbp))
     return lowered
 
 def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
@@ -15338,8 +15365,8 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     `pv{&(name)}` with the indirect deref for a pointer-local / `self`
     receiver (`&((*p))` / `&((*this))`, the deref render); an
     already-union name into a DEEP-CONST slot (a `readonly[...]` annotation
-    or `readonly_target`, the threaded `deep_const_borrow_params` verdict)
-    takes the explicit `ptr_variant_to_const` wrap -- and a deep-const slot
+    or `readonly_target`, the threaded `const_borrow_params` verdict)
+    takes the const conversion its binding calls for -- and a deep-const slot
     spells the const-pointee variant throughout. A narrowed subject's C++
     binding is the member-typed extraction alias (`auto& __v =
     *std::get<A*>(v);`), so it takes the member lift its monomorphic twin
@@ -15349,22 +15376,25 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     the union exactly there; a same-union name into a MUTABLE slot renders
     bare the same way."""
     bl = _union_bytes_literal_temp_arg(a, ptype, lc.analyzer)
-    if bl is not None and not readonly_target:
+    if bl is not None:
         # The bytes-literal rvalue at a beyond-the-slice union slot: its own
         # slot check (see the predicate), the same hoist+addr render as the
-        # ctor-temp row.
+        # ctor-temp row. The slot's const-ness picks the variant spelling;
+        # the address of the hoisted temp converts to a const pointee.
         if not temp_args:
             raise ThirUnsupported(
                 "union ctor arg-temp outside a flush position")
         blt = unwrap_ref_type(lc.analyzer.get_expr_type(a))
         _witness("unionlift.bytes_literal_temp")
         return THIRUnionArgLift(
-            result_type=bl, variant_cpp=bl.to_cpp_ptr_variant(),
+            result_type=bl,
+            variant_cpp=(bl.to_cpp_const_ptr_variant() if readonly_target
+                         else bl.to_cpp_ptr_variant()),
             value=_lower_expr(a, lc, declared, use=_RECORD_TEMP_USE),
             temp_cpp=blt.to_cpp(),
             form=Form.BORROW, loc=getattr(a, "loc", None))
     dl = _union_dict_literal_temp_arg(a, ptype, lc.analyzer)
-    if dl is not None and not readonly_target:
+    if dl is not None:
         # The dict-literal sibling of the bytes row: the self-describing
         # literal render inits the typed temp, the variant lifts its
         # address (`::tpy::ordered_map<..> __tmp_N = ..;` + `pv{&__tmp_N}`).
@@ -15374,7 +15404,9 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         dlt = unwrap_ref_type(lc.analyzer.get_expr_type(a))
         _witness("unionlift.dict_literal_temp")
         return THIRUnionArgLift(
-            result_type=dl, variant_cpp=dl.to_cpp_ptr_variant(),
+            result_type=dl,
+            variant_cpp=(dl.to_cpp_const_ptr_variant() if readonly_target
+                         else dl.to_cpp_ptr_variant()),
             value=_lower_expr(a, lc, declared,
                               use=_ExprUse(result=_ExprResultUse.STORAGE)),
             temp_cpp=dlt.to_cpp(),
@@ -15416,18 +15448,20 @@ def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # The `already_union` verdict keys on the C++ DECLARED type,
     # not the (assignment-narrowed) read type: a union-declared name whose read
     # type sema retyped to a member (`x: A | B = A(); f(x)`) is still the variant
-    # in C++, so it renders bare into a mutable slot (or `ptr_variant_to_const`
+    # in C++, so it renders bare into a mutable slot (or a const conversion
     # for a deep-const slot). Only a genuinely member-TYPED name lifts.
     decl = declared.get(a.name)
     decl = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(decl)))
             if decl is not None else None)
     if isinstance(decl, UnionType):
-        if deep_const:
+        wrap = (_ptr_union_const_wrap(a.name, decl, ut, declared, lc)
+                if deep_const else None)
+        if wrap is not None:
             _witness("unionlift.const_wrap")
             return THIRUnionArgLift(
                 result_type=ut, variant_cpp=variant_cpp,
                 value=_lower_expr(a, lc, declared, allow_union_divergent=True),
-                const_wrap=True, form=Form.BORROW, loc=loc)
+                const_wrap=wrap, form=Form.BORROW, loc=loc)
         return None  # bare render at the call-arg tail
     at = lc.analyzer.get_expr_type(a)
     at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))

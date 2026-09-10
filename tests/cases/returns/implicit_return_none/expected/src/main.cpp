@@ -27,7 +27,7 @@ std::optional<Point> pick(int32_t n) {
 }
 
 // def choose(p: Point, t: Tag, flag: Int32) -> Point | Tag | None:
-std::variant<std::monostate, Point*, Tag*> choose(Point& p, Tag& t, int32_t flag) {
+::tpy::Union<std::monostate, Point*, Tag*> choose(Point& p, Tag& t, int32_t flag) {
     // if flag == 1:
     if ((flag == 1)) {
         // return p
@@ -137,7 +137,7 @@ void main() {
     // tg = Tag(2)
     Tag tg = Tag(2);
     // c = choose(pt, tg, 0)
-    std::variant<std::monostate, Point*, Tag*> c = choose(pt, tg, 0);
+    ::tpy::Union<std::monostate, Point*, Tag*> c = choose(pt, tg, 0);
     // print(c is None)
     std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(c))) << "\n";
     // asyncio.run(main_coro())

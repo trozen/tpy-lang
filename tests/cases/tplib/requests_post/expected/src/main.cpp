@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def send(method: str, url: str, data: bytes | dict[str, str] | None,
 // body_json: JsonValue | None,
 // auth: tuple[str, str] | None) -> None:
-void send(std::string_view method, std::string_view url, std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* body_json, std::optional<std::tuple<std::string, std::string>> auth) {
+void send(std::string_view method, std::string_view url, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpystd::json::JsonValue* body_json, std::optional<std::tuple<std::string, std::string>> auth) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -41,16 +41,16 @@ void main() {
     // payload: JsonValue = {"name": "x", "count": 5}
     ::tpystd::json::JsonValue payload = ::tpy::ordered_map<std::string, ::tpystd::json::JsonValue>({{"name", "x"}, {"count", 5}});
     // send("POST", "http://api.test/v1/items", None, payload, None)
-    send("POST", "http://api.test/v1/items", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, &(payload), std::nullopt);
+    send("POST", "http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, &(payload), std::nullopt);
     // send("PUT", "http://api.test/v1/items/1", b"raw-bytes", None, None)
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("raw-bytes", 9);
-    send("PUT", "http://api.test/v1/items/1", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, std::nullopt);
+    send("PUT", "http://api.test/v1/items/1", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, std::nullopt);
     // send("POST", "http://api.test/secure", None, None, ("user", "pw"))
-    send("POST", "http://api.test/secure", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, std::tuple<std::string, std::string>{"user", "pw"});
+    send("POST", "http://api.test/secure", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{std::monostate{}}, nullptr, std::tuple<std::string, std::string>{"user", "pw"});
     // # data=b"" is falsy, so a json= body still fires (json Content-Type + body)
     // send("POST", "http://api.test/empty-data", b"", payload, None)
     ::tpy::Bytes __tmp_2 = ::tpy::Bytes{};
-    send("POST", "http://api.test/empty-data", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2}, &(payload), std::nullopt);
+    send("POST", "http://api.test/empty-data", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2}, &(payload), std::nullopt);
 }
 
 void __tpy_init() {

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(e: Expr) -> str:
-std::string describe(const std::variant<BinOp*, Lit*> e) {
+std::string describe(::tpy::Union<const BinOp*, const Lit*> e) {
     // match e:
     auto& __match_subject_1 = e;
     switch (__match_subject_1.index()) {
@@ -31,9 +31,9 @@ std::string describe(const std::variant<BinOp*, Lit*> e) {
 void main() {
     // a: Expr = Lit(7)
     Expr __slot_1 = Lit(::tpy::BigInt(7));
-    std::variant<BinOp*, Lit*> a = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<BinOp*, Lit*> a = ::tpy::to_ptr_variant(__slot_1);
     // print(describe(a))
-    std::cout << describe(a) << "\n";
+    std::cout << describe(a.as_const()) << "\n";
 }
 
 void __tpy_init() {

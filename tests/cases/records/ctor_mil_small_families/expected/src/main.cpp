@@ -11,7 +11,7 @@ void main() {
     // a = A(1)
     A a = A(1);
     // h = H(a, (a, 2), (3, 4))
-    H h = H(std::variant<A*, B*>{&(a)}, std::tuple<A*, int32_t>{&(a), 2}, std::tuple<int32_t, int32_t>{3, 4});
+    H h = H(::tpy::Union<const A*, const B*>{&(a)}, std::tuple<A*, int32_t>{&(a), 2}, std::tuple<int32_t, int32_t>{3, 4});
     // print(h.items is None, h.ox is None)
     std::cout << ::tpy::print_bool((!h.items.has_value())) << " " << ::tpy::print_bool((!h.ox.has_value())) << "\n";
     // print(h.vu)
@@ -19,11 +19,11 @@ void main() {
     // print(h.un is None)
     std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.un))) << "\n";
     // pu = h.pu
-    std::variant<A*, B*> pu = ::tpy::to_ptr_variant(h.pu);
+    ::tpy::Union<A*, B*> pu = ::tpy::to_ptr_variant(h.pu);
     // print(isinstance(pu, A))
     std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pu)) << "\n";
     // pr = h.pr
-    std::variant<A*, B*> pr = ::tpy::to_ptr_variant(h.pr);
+    ::tpy::Union<A*, B*> pr = ::tpy::to_ptr_variant(h.pr);
     // print(isinstance(pr, A))
     std::cout << ::tpy::print_bool(std::holds_alternative<A*>(pr)) << "\n";
     // print(h.pn is None)
@@ -43,7 +43,7 @@ void main() {
 
 // def __init__(self, pu: A | B, ft: tuple[A, Int32],
 // vt: tuple[Int32, Int32]) -> None:
-H::H(const std::variant<A*, B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt) : items(std::nullopt), ox(std::nullopt), vu(5), un(std::monostate{}), pu(::tpy::to_value_variant<::tpy::Union<A, B>>(pu)), pr(A(3)), pn(std::monostate{}), ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)), vt(vt), tl(std::tuple<int32_t, int32_t>{1, 2}) {}
+H::H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt) : items(std::nullopt), ox(std::nullopt), vu(5), un(std::monostate{}), pu(::tpy::to_value_variant<::tpy::Union<A, B>>(pu)), pr(A(3)), pn(std::monostate{}), ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)), vt(vt), tl(std::tuple<int32_t, int32_t>{1, 2}) {}
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

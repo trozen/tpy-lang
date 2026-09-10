@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def f(v: A | B | C) -> int:
-::tpy::BigInt f(const std::variant<A*, B*, C*> v) {
+::tpy::BigInt f(::tpy::Union<const A*, const B*, const C*> v) {
     // if isinstance(v, A):
-    if (std::holds_alternative<A*>(v)) {
-        auto& __v = *std::get<A*>(v);
+    if (std::holds_alternative<const A*>(v)) {
+        auto& __v = *std::get<const A*>(v);
         // return v.ax
         return __v.ax;
     }
     // # v is B | C here -- not a single member
     // if isinstance(v, B):
-    if (std::holds_alternative<B*>(v)) {
-        auto& __v = *std::get<B*>(v);
+    if (std::holds_alternative<const B*>(v)) {
+        auto& __v = *std::get<const B*>(v);
         // return v.bx
         return __v.bx;
     }
-    auto& __v = *std::get<C*>(v);
+    auto& __v = *std::get<const C*>(v);
     // return v.cx
     return __v.cx;
 }
@@ -28,13 +28,13 @@ namespace tpyapp::main {
 void main() {
     // print(f(A(1)))
     A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << f(std::variant<A*, B*, C*>{&__tmp_1}) << "\n";
+    std::cout << f(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
     // print(f(B(2)))
     B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << f(std::variant<A*, B*, C*>{&__tmp_2}) << "\n";
+    std::cout << f(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
     // print(f(C(3)))
     C __tmp_3 = C(::tpy::BigInt(3));
-    std::cout << f(std::variant<A*, B*, C*>{&__tmp_3}) << "\n";
+    std::cout << f(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
 }
 
 void __tpy_init() {

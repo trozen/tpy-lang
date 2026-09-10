@@ -23,25 +23,25 @@ struct __gen_generate;
 struct __coro_async_read;
 
 void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigInt& index);
-void bytes_reads(const std::variant<Indexed*, ::tpy::Bytes*> x, const ::tpy::BigInt& index);
+void bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*> x, const ::tpy::BigInt& index);
 void bytes_value_union(const ::tpy::Union<int32_t, ::tpy::Bytes>& x);
-void bytearray_reads(const std::variant<int32_t*, ::tpy::ByteArray*> x, const ::tpy::BigInt& index);
+void bytearray_reads(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x, const ::tpy::BigInt& index);
 void capture_reads(const ::tpy::Union<int32_t, std::string>& x, bool allowed);
 template<typename T>
 void generic_read(::tpy::param_val_or_ref_t<T> marker);
 void monomorphic_read(int32_t marker);
-void tuple_reads(const std::variant<int32_t*, ::tpy::ByteArray*> x);
-__gen_generate generate(std::variant<int32_t*, ::tpy::ByteArray*> x);
-__coro_async_read async_read(std::variant<int32_t*, ::tpy::ByteArray*> x);
-void comprehension(const std::variant<int32_t*, ::tpy::ByteArray*> x);
+void tuple_reads(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x);
+__gen_generate generate(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x);
+__coro_async_read async_read(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x);
+void comprehension(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x);
 ::tpy::Union<int32_t, std::string> union_text(bool choose_text);
 void closure(bool choose_text);
 void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x);
-std::expected<int32_t, Err> error_read(const std::variant<int32_t*, ::tpy::ByteArray*> x);
+std::expected<int32_t, Err> error_read(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x);
 void conditional_reads(const ::tpy::Union<int32_t, std::string>& x, Counter& counter);
-void list_read(const std::variant<int32_t*, std::vector<int32_t>*> x);
-void dict_read(const std::variant<int32_t*, ::tpy::ordered_map<int32_t, int32_t>*> x);
-void record_read(const std::variant<Indexed*, int32_t*> x);
+void list_read(::tpy::Union<const int32_t*, const std::vector<int32_t>*> x);
+void dict_read(::tpy::Union<const int32_t*, const ::tpy::ordered_map<int32_t, int32_t>*> x);
+void record_read(::tpy::Union<const Indexed*, const int32_t*> x);
 ::tpy::Union<int32_t, ::tpy::ByteArray> make_buffer();
 ::tpy::Union<int32_t, std::vector<int32_t>> make_list();
 void main();
@@ -140,7 +140,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 struct __coro_async_read {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<int32_t*, ::tpy::ByteArray*> x;
+    ::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x;
     uint8_t first;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -150,7 +150,7 @@ struct __coro_async_read {
         S_DONE = 2,
     };
 
-    __coro_async_read(std::variant<int32_t*, ::tpy::ByteArray*> x_)
+    __coro_async_read(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x_)
         : __state(S_INITIAL), __cancel_pending(false), x(x_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -164,7 +164,7 @@ struct __coro_async_read {
 // Generator: generate
 struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
     int32_t __state;
-    std::variant<int32_t*, ::tpy::ByteArray*> x;
+    ::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -175,7 +175,7 @@ struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
         S_DONE = 5,
     };
 
-    __gen_generate(std::variant<int32_t*, ::tpy::ByteArray*> x_)
+    __gen_generate(::tpy::Union<const int32_t*, const ::tpy::ByteArray*> x_)
         : __state(S_INITIAL), x(x_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

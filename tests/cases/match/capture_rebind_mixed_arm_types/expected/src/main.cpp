@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(a: Cat | Dog) -> str:
-std::string describe(const std::variant<Cat*, Dog*> a) {
+std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -37,10 +37,10 @@ std::string describe(const std::variant<Cat*, Dog*> a) {
 void main() {
     // print(describe(Cat(9)))
     Cat __tmp_1 = Cat(::tpy::BigInt(9));
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_1}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     // print(describe(Dog("Rex")))
     Dog __tmp_2 = Dog("Rex");
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_2}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
 }
 
 void __tpy_init() {

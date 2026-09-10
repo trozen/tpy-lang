@@ -57,7 +57,7 @@ struct W {
     ::tpy::Union<A, B> f;
 
     // def __init__(self, f: A | B) -> None:
-    explicit W(const std::variant<A*, B*> f);
+    explicit W(::tpy::Union<const A*, const B*> f);
 
     // def get_label(self) -> str:
     std::string get_label() const;
@@ -77,7 +77,7 @@ inline A::A(std::string_view x) : x(x) {}
 inline B::B(std::string_view y) : y(y) {}
 
 // def __init__(self, f: A | B) -> None:
-inline W::W(const std::variant<A*, B*> f) : f(::tpy::to_value_variant<::tpy::Union<A, B>>(f)) {}
+inline W::W(::tpy::Union<const A*, const B*> f) : f(::tpy::to_value_variant<::tpy::Union<A, B>>(f)) {}
 
 // def get_label(self) -> str:
 inline std::string W::get_label() const {

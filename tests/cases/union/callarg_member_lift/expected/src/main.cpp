@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def bump(u: A | B) -> None:
-void bump(std::variant<A*, B*> u) {
+void bump(::tpy::Union<A*, B*> u) {
     // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
@@ -20,7 +20,7 @@ void bump(std::variant<A*, B*> u) {
 }
 
 // def bump_counter(u: Counter | A) -> None:
-void bump_counter(std::variant<A*, Counter*> u) {
+void bump_counter(::tpy::Union<A*, Counter*> u) {
     // if isinstance(u, Counter):
     if (std::holds_alternative<Counter*>(u)) {
         auto& __u = *std::get<Counter*>(u);
@@ -30,19 +30,19 @@ void bump_counter(std::variant<A*, Counter*> u) {
 }
 
 // def describe(u: A | B | None) -> Int32:
-int32_t describe(const std::variant<std::monostate, A*, B*> u) {
+int32_t describe(::tpy::Union<std::monostate, const A*, const B*> u) {
     // if u is None:
     if ((std::holds_alternative<std::monostate>(u))) {
         // return -1
         return -1;
     }
     // if isinstance(u, A):
-    if (std::holds_alternative<A*>(u)) {
-        auto& __u = *std::get<A*>(u);
+    if (std::holds_alternative<const A*>(u)) {
+        auto& __u = *std::get<const A*>(u);
         // return u.x
         return __u.x;
     }
-    auto& __u = *std::get<B*>(u);
+    auto& __u = *std::get<const B*>(u);
     // return u.y
     return __u.y;
 }
@@ -50,7 +50,7 @@ int32_t describe(const std::variant<std::monostate, A*, B*> u) {
 // def via_param(a: A) -> Int32:
 int32_t via_param(A& a) {
     // bump(a)
-    bump(std::variant<A*, B*>{&(a)});
+    bump(::tpy::Union<A*, B*>{&(a)});
     // return a.x
     return a.x;
 }
@@ -64,9 +64,9 @@ void main() {
     // print(a.x)  # the callee mutated the caller's object, not a copy
     std::cout << a.x << "\n";
     // print(describe(a))
-    std::cout << describe(std::variant<std::monostate, A*, B*>{&(a)}) << "\n";
+    std::cout << describe(::tpy::Union<std::monostate, const A*, const B*>{&(a)}) << "\n";
     // print(describe(None))
-    std::cout << describe(std::variant<std::monostate, A*, B*>{std::monostate{}}) << "\n";
+    std::cout << describe(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
     // c = Counter(1)
     Counter c = Counter(1);
     // c.bump_via_union()
@@ -90,7 +90,7 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& elem = *__beg_0;
         // bump(elem)
-        bump(std::variant<A*, B*>{&(elem)});
+        bump(::tpy::Union<A*, B*>{&(elem)});
     }
     // print(xs[0].x, xs[1].x)  # loop-var lifts alias the list elements
     std::cout << ::tpy::__getitem__(xs, 0).x << " " << ::tpy::__getitem__(xs, 1).x << "\n";

@@ -13,10 +13,10 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt redundant_same(const std::variant<A*, B*> v);
-::tpy::BigInt dead_other(const std::variant<A*, B*> v);
+::tpy::BigInt redundant_same(::tpy::Union<const A*, const B*> v);
+::tpy::BigInt dead_other(::tpy::Union<const A*, const B*> v);
 ::tpy::BigInt assign_then_check();
-std::string elif_exhaustive(const std::variant<A*, B*, C*> v);
+std::string elif_exhaustive(::tpy::Union<const A*, const B*, const C*> v);
 void main();
 
 // # isinstance() on a variable already narrowed to a concrete type folds to

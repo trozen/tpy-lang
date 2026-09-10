@@ -360,9 +360,9 @@ class AsyncCoroCodegen:
         if record_name:
             _ri = self.ctx.analyzer.registry.get_record(record_name)
             _mfi = _ri.get_method(func.name) if _ri else None
-            return _mfi.deep_const_borrow_params if _mfi else None
+            return _mfi.const_borrow_params if _mfi else None
         _fis = self.ctx.analyzer.registry.get_function(func.name)
-        return _fis[-1].deep_const_borrow_params if _fis else None
+        return _fis[-1].const_borrow_params if _fis else None
 
     def _classify_params(self, func: TpyFunction,
                           record_name: str | None = None
@@ -479,7 +479,7 @@ class AsyncCoroCodegen:
                     field_type = ctor_type = spell.to_cpp_return()
                 else:
                     # Non-value union: the pointer-variant borrow form
-                    # (`std::variant<A*, B*>`) is the shape every other param
+                    # (`::tpy::Union<A*, B*>`) is the shape every other param
                     # boundary uses -- ordinary functions, simple generators,
                     # plain locals. Storing it by value in the frame keeps the
                     # factory's signature in step with what the call site (and

@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t double_(int32_t k);
 int32_t maybe_sum(int32_t k, bool c);
 int32_t maybe_call(int32_t k, bool c);
-std::string tag(const std::variant<A*, B*> u);
+std::string tag(::tpy::Union<const A*, const B*> u);
 void main();
 
 // class A:

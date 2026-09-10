@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // def describe(e: Either[Int32]) -> str:
-std::string describe(const std::variant<::tpyapp::lib::A*, ::tpyapp::lib::B*> e) {
+std::string describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*> e) {
     // if isinstance(e, A):
-    if (std::holds_alternative<::tpyapp::lib::A*>(e)) {
-        auto& __e = *std::get<::tpyapp::lib::A*>(e);
+    if (std::holds_alternative<const ::tpyapp::lib::A*>(e)) {
+        auto& __e = *std::get<const ::tpyapp::lib::A*>(e);
         // return "A"
         return "A";
     }
-    auto& __e = *std::get<::tpyapp::lib::B*>(e);
+    auto& __e = *std::get<const ::tpyapp::lib::B*>(e);
     // return "B"
     return "B";
 }
@@ -21,10 +21,10 @@ std::string describe(const std::variant<::tpyapp::lib::A*, ::tpyapp::lib::B*> e)
 void main() {
     // print(describe(A(Int32(1))))
     ::tpyapp::lib::A __tmp_1 = ::tpyapp::lib::A(1);
-    std::cout << describe(std::variant<::tpyapp::lib::A*, ::tpyapp::lib::B*>{&__tmp_1}) << "\n";
+    std::cout << describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_1}) << "\n";
     // print(describe(B(Int32(2))))
     ::tpyapp::lib::B __tmp_2 = ::tpyapp::lib::B(2);
-    std::cout << describe(std::variant<::tpyapp::lib::A*, ::tpyapp::lib::B*>{&__tmp_2}) << "\n";
+    std::cout << describe(::tpy::Union<const ::tpyapp::lib::A*, const ::tpyapp::lib::B*>{&__tmp_2}) << "\n";
 }
 
 void __tpy_init() {

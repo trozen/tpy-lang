@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def two_member(v: A | B) -> str:
-std::string two_member(const std::variant<A*, B*> v) {
+std::string two_member(::tpy::Union<const A*, const B*> v) {
     // if isinstance(v, A) or isinstance(v, B):
-    if ((std::holds_alternative<A*>(v) || true)) {
+    if ((std::holds_alternative<const A*>(v) || true)) {
         // return "hit"
         return "hit";
     }
-    auto& __v = *std::get<A*>(v);
+    auto& __v = *std::get<const A*>(v);
     // return "miss"
     return "miss";
 }
 
 // def three_member(v: A | B | C) -> str:
-std::string three_member(const std::variant<A*, B*, C*> v) {
+std::string three_member(::tpy::Union<const A*, const B*, const C*> v) {
     // if isinstance(v, A) or isinstance(v, B):
-    if ((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v))) {
+    if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
         // return "ab"
         return "ab";
     }
@@ -28,16 +28,16 @@ std::string three_member(const std::variant<A*, B*, C*> v) {
 }
 
 // def and_chain(v: A | B, flag: bool) -> str:
-std::string and_chain(const std::variant<A*, B*> v, bool flag) {
+std::string and_chain(::tpy::Union<const A*, const B*> v, bool flag) {
     // if isinstance(v, A) and flag:
-    if ((std::holds_alternative<A*>(v) && flag)) {
-        auto& __v = *std::get<A*>(v);
+    if ((std::holds_alternative<const A*>(v) && flag)) {
+        auto& __v = *std::get<const A*>(v);
         // return "a-flag"
         return "a-flag";
     }
     // if isinstance(v, B) and flag:
-    if ((std::holds_alternative<B*>(v) && flag)) {
-        auto& __v = *std::get<B*>(v);
+    if ((std::holds_alternative<const B*>(v) && flag)) {
+        auto& __v = *std::get<const B*>(v);
         // return "b-flag"
         return "b-flag";
     }
@@ -46,10 +46,10 @@ std::string and_chain(const std::variant<A*, B*> v, bool flag) {
 }
 
 // def negated_or(v: A | B) -> str:
-std::string negated_or(const std::variant<A*, B*> v) {
+std::string negated_or(::tpy::Union<const A*, const B*> v) {
     // if not (isinstance(v, A) or isinstance(v, B)):
-    if ((!((std::holds_alternative<A*>(v) || true)))) {
-        auto& __v = *std::get<A*>(v);
+    if ((!((std::holds_alternative<const A*>(v) || true)))) {
+        auto& __v = *std::get<const A*>(v);
         // return "impossible"
         return "impossible";
     }
@@ -61,31 +61,31 @@ std::string negated_or(const std::variant<A*, B*> v) {
 void main() {
     // print(two_member(A(1)))
     A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << two_member(std::variant<A*, B*>{&__tmp_1}) << "\n";
+    std::cout << two_member(::tpy::Union<const A*, const B*>{&__tmp_1}) << "\n";
     // print(two_member(B(2)))
     B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << two_member(std::variant<A*, B*>{&__tmp_2}) << "\n";
+    std::cout << two_member(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
     // print(three_member(A(1)))
     A __tmp_3 = A(::tpy::BigInt(1));
-    std::cout << three_member(std::variant<A*, B*, C*>{&__tmp_3}) << "\n";
+    std::cout << three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
     // print(three_member(B(2)))
     B __tmp_4 = B(::tpy::BigInt(2));
-    std::cout << three_member(std::variant<A*, B*, C*>{&__tmp_4}) << "\n";
+    std::cout << three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
     // print(three_member(C(3)))
     C __tmp_5 = C(::tpy::BigInt(3));
-    std::cout << three_member(std::variant<A*, B*, C*>{&__tmp_5}) << "\n";
+    std::cout << three_member(::tpy::Union<const A*, const B*, const C*>{&__tmp_5}) << "\n";
     // print(and_chain(A(1), True))
     A __tmp_6 = A(::tpy::BigInt(1));
-    std::cout << and_chain(std::variant<A*, B*>{&__tmp_6}, true) << "\n";
+    std::cout << and_chain(::tpy::Union<const A*, const B*>{&__tmp_6}, true) << "\n";
     // print(and_chain(B(2), True))
     B __tmp_7 = B(::tpy::BigInt(2));
-    std::cout << and_chain(std::variant<A*, B*>{&__tmp_7}, true) << "\n";
+    std::cout << and_chain(::tpy::Union<const A*, const B*>{&__tmp_7}, true) << "\n";
     // print(and_chain(A(1), False))
     A __tmp_8 = A(::tpy::BigInt(1));
-    std::cout << and_chain(std::variant<A*, B*>{&__tmp_8}, false) << "\n";
+    std::cout << and_chain(::tpy::Union<const A*, const B*>{&__tmp_8}, false) << "\n";
     // print(negated_or(A(1)))
     A __tmp_9 = A(::tpy::BigInt(1));
-    std::cout << negated_or(std::variant<A*, B*>{&__tmp_9}) << "\n";
+    std::cout << negated_or(::tpy::Union<const A*, const B*>{&__tmp_9}) << "\n";
 }
 
 void __tpy_init() {

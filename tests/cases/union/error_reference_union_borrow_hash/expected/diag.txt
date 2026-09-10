@@ -1,0 +1,1 @@
+main.py:32: error: Type 'Pet' cannot be used as a dict key (not hashable)

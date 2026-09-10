@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // # Primitive + record members
 // def describe(x: Int32 | str | Cat | Dog) -> str:
-std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
+std::string describe(::tpy::Union<const Cat*, const Dog*, const int32_t*, const std::string*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -87,7 +87,7 @@ int32_t depth(const Tree& t) {
 }
 
 // def unbox(x: Int32 | Box[str]) -> str:
-std::string unbox(const std::variant<Box<std::string>*, int32_t*> x) {
+std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -115,24 +115,24 @@ std::string unbox(const std::variant<Box<std::string>*, int32_t*> x) {
 void main() {
     // a: Int32 | str | Cat | Dog = 42
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_1 = 42;
-    std::variant<Cat*, Dog*, int32_t*, std::string*> a = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: Int32 | str | Cat | Dog = "hello"
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_2 = "hello";
-    std::variant<Cat*, Dog*, int32_t*, std::string*> b = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> b = ::tpy::to_ptr_variant(__slot_2);
     // c: Int32 | str | Cat | Dog = Cat("Whiskers")
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_3 = Cat("Whiskers");
-    std::variant<Cat*, Dog*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> c = ::tpy::to_ptr_variant(__slot_3);
     // d: Int32 | str | Cat | Dog = Dog("Rex")
     ::tpy::Union<Cat, Dog, int32_t, std::string> __slot_4 = Dog("Rex");
-    std::variant<Cat*, Dog*, int32_t*, std::string*> d = ::tpy::to_ptr_variant(__slot_4);
+    ::tpy::Union<Cat*, Dog*, int32_t*, std::string*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(describe(a))
-    std::cout << describe(a) << "\n";
+    std::cout << describe(a.as_const()) << "\n";
     // print(describe(b))
-    std::cout << describe(b) << "\n";
+    std::cout << describe(b.as_const()) << "\n";
     // print(describe(c))
-    std::cout << describe(c) << "\n";
+    std::cout << describe(c.as_const()) << "\n";
     // print(describe(d))
-    std::cout << describe(d) << "\n";
+    std::cout << describe(d.as_const()) << "\n";
     // leaf: Tree = 5
     Tree leaf = 5;
     // branch: Tree = [1, 2, 3]
@@ -147,14 +147,14 @@ void main() {
     std::cout << depth(nested) << "\n";
     // e: Int32 | Box[str] = 99
     ::tpy::Union<Box<std::string>, int32_t> __slot_5 = 99;
-    std::variant<Box<std::string>*, int32_t*> e = ::tpy::to_ptr_variant(__slot_5);
+    ::tpy::Union<Box<std::string>*, int32_t*> e = ::tpy::to_ptr_variant(__slot_5);
     // f: Int32 | Box[str] = Box("hello")
     ::tpy::Union<Box<std::string>, int32_t> __slot_6 = Box<std::string>("hello");
-    std::variant<Box<std::string>*, int32_t*> f = ::tpy::to_ptr_variant(__slot_6);
+    ::tpy::Union<Box<std::string>*, int32_t*> f = ::tpy::to_ptr_variant(__slot_6);
     // print(unbox(e))
-    std::cout << unbox(e) << "\n";
+    std::cout << unbox(e.as_const()) << "\n";
     // print(unbox(f))
-    std::cout << unbox(f) << "\n";
+    std::cout << unbox(f.as_const()) << "\n";
 }
 
 void __tpy_init() {

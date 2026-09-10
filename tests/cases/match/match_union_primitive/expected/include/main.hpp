@@ -14,9 +14,9 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x);
+std::string describe(::tpy::Union<const Cat*, const Dog*, const int32_t*, const std::string*> x);
 int32_t depth(const Tree& t);
-std::string unbox(const std::variant<Box<std::string>*, int32_t*> x);
+std::string unbox(::tpy::Union<const Box<std::string>*, const int32_t*> x);
 void main();
 
 // class Cat:

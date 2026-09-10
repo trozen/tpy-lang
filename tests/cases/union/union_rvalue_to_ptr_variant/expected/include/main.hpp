@@ -13,7 +13,7 @@ struct Pen;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet(const std::variant<Cat*, Dog*> pet);
+void greet(::tpy::Union<const Cat*, const Dog*> pet);
 void main();
 
 // # Constructor rvalue passed to pointer-variant union param
@@ -56,10 +56,10 @@ struct Pen {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat) -> None:
-    explicit Pen(const std::variant<Cat*, Dog*> pet);
+    explicit Pen(::tpy::Union<const Cat*, const Dog*> pet);
 
     // def set_pet(self, pet: Dog | Cat) -> None:
-    void set_pet(const std::variant<Cat*, Dog*> pet);
+    void set_pet(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pen";
 };
 
@@ -76,10 +76,10 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat) -> None:
-inline Pen::Pen(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
+inline Pen::Pen(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def set_pet(self, pet: Dog | Cat) -> None:
-inline void Pen::set_pet(const std::variant<Cat*, Dog*> pet) {
+inline void Pen::set_pet(::tpy::Union<const Cat*, const Dog*> pet) {
     // self.pet = pet  # tpyc: warning(/copies/)
     this->pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet);
 }

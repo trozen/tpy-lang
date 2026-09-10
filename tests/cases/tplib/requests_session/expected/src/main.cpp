@@ -64,7 +64,7 @@ void session_post() {
     s._connection = ::tpystd::tplib::box::Box<::tpystd::http::client::HTTPConnection>(std::move(conn));
     // r = s.post("http://api.test/v1/items", b"payload")
     ::tpy::Bytes __tmp_3 = ::tpy::bytes_literal_owned("payload", 7);
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/v1/items", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_3});
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/v1/items", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_3});
     // print(r.status_code)
     std::cout << r.status_code << "\n";
     // print(b.recv(65536))

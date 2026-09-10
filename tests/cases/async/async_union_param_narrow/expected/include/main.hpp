@@ -18,7 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_voice;
 struct __coro_amain;
 
-__coro_voice voice(std::variant<Cat*, Dog*> a);
+__coro_voice voice(::tpy::Union<Cat*, Dog*> a);
 __coro_amain amain();
 
 // class Dog:
@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct __coro_voice {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
 
@@ -64,7 +64,7 @@ struct __coro_voice {
         S_DONE = 3,
     };
 
-    __coro_voice(std::variant<Cat*, Dog*> a_)
+    __coro_voice(::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);

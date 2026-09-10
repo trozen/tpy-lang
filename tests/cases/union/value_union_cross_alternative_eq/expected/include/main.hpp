@@ -19,6 +19,8 @@ struct Circle;
 struct Square;
 struct Fixed;
 struct Zone;
+struct Tagged;
+struct Marked;
 
 extern ::tpy::Union<int32_t, double> A;
 extern ::tpy::Union<int32_t, double> B;
@@ -69,6 +71,7 @@ bool u_gt(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, do
 bool u_ge(const ::tpy::Union<int32_t, double>& a, const ::tpy::Union<int32_t, double>& b);
 bool t_le(double a, double b);
 bool t_ge(double a, double b);
+bool dunder_ne(const ::tpy::Union<Marked, Tagged>& a, const ::tpy::Union<Marked, Tagged>& b);
 std::string value_record_lt(const ::tpy::Union<Fixed, Zone>& a, const ::tpy::Union<Fixed, Zone>& b);
 std::string str_int_cmp(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<int32_t, std::string>& b, int32_t which);
 bool str_int_eq(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<int32_t, std::string>& b);
@@ -286,6 +289,76 @@ template<> struct tpy::is_value_type<::tpyapp::main::Zone> : std::true_type {};
 namespace tpyapp::main {
 
 
+// # `__ne__` INVERTED on purpose: CPython calls a declared `__ne__` rather than
+// # deriving one from `__eq__`, so both rows below disagree with the negation
+// # of `__eq__`. This is the only position where a union's own `operator!=` is
+// # reachable -- a container `!=` answers from the elements' `==` in both
+// # languages (see `union/reference_union_storage_eq`).
+// class Tagged(ValueType):
+struct Tagged {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self, n: Int32) -> None:
+    Tagged() = default;
+    explicit Tagged(int32_t n);
+
+    // def __eq__(self, other: "Tagged") -> bool:
+    bool __eq__(Tagged other) const;
+
+    // def __ne__(self, other: "Tagged") -> bool:
+    bool __ne__(Tagged other) const;
+
+    friend bool operator==(const Tagged& lhs, Tagged other) {
+        return lhs.__eq__(other);
+    }
+
+    friend bool operator!=(const Tagged& lhs, Tagged other) {
+        return lhs.__ne__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
+    ::tpy::print_object_default(os, "Tagged", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Tagged> : std::true_type {};
+
+namespace tpyapp::main {
+
+
+// class Marked(ValueType):
+struct Marked {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self, n: Int32) -> None:
+    Marked() = default;
+    explicit Marked(int32_t n);
+
+    // def __eq__(self, other: "Marked") -> bool:
+    bool __eq__(Marked other) const;
+
+    friend bool operator==(const Marked& lhs, Marked other) {
+        return lhs.__eq__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Marked";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Marked& obj) {
+    ::tpy::print_object_default(os, "Marked", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Marked> : std::true_type {};
+
+namespace tpyapp::main {
+
+
 // Async coroutine: in_async
 struct __coro_in_async {
     int32_t __state;
@@ -438,6 +511,45 @@ inline std::string Zone::__repr__() const {
 inline uint64_t Zone::__hash__() const {
     uint64_t h = ::tpy::__hash__(this->zid);
     return h;
+}
+
+// def __init__(self, n: Int32) -> None:
+inline Tagged::Tagged(int32_t n) : n(n) {}
+
+// def __eq__(self, other: "Tagged") -> bool:
+inline bool Tagged::__eq__(Tagged other) const {
+    // if not isinstance(other, Tagged):
+    if ((!(true))) {
+        // return False
+        return false;
+    }
+    // return self.n == other.n
+    return (this->n == other.n);
+}
+
+// def __ne__(self, other: "Tagged") -> bool:
+inline bool Tagged::__ne__(Tagged other) const {
+    // if not isinstance(other, Tagged):
+    if ((!(true))) {
+        // return True
+        return true;
+    }
+    // return self.n == other.n
+    return (this->n == other.n);
+}
+
+// def __init__(self, n: Int32) -> None:
+inline Marked::Marked(int32_t n) : n(n) {}
+
+// def __eq__(self, other: "Marked") -> bool:
+inline bool Marked::__eq__(Marked other) const {
+    // if not isinstance(other, Marked):
+    if ((!(true))) {
+        // return False
+        return false;
+    }
+    // return self.n == other.n
+    return (this->n == other.n);
 }
 using Shape = ::tpy::Union<Circle, Square>;
 struct ShapeTree {

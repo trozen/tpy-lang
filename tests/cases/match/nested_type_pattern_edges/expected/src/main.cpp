@@ -35,7 +35,7 @@ std::string opt_wrapper(const Wrapper* w) {
 }
 
 // def or_nested(x: Wrapper | Tag) -> str:
-std::string or_nested(const std::variant<Tag*, Wrapper*> x) {
+std::string or_nested(::tpy::Union<const Tag*, const Wrapper*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -80,7 +80,7 @@ __match_end_2:;
 
 // # --- 3 levels deep (type-param disambiguation) ---
 // def deep3(x: Box[Box[Box[str]]] | Box[Box[Box[Int32]]]) -> str:
-std::string deep3(const std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> x) {
+std::string deep3(::tpy::Union<const Box<Box<Box<int32_t>>>*, const Box<Box<Box<std::string>>>*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -106,7 +106,7 @@ std::string deep3(const std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::s
 
 // # --- Positional nested patterns ---
 // def positional_nested(x: Box[str] | Box[Int32]) -> str:
-std::string positional_nested(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
+std::string positional_nested(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -250,11 +250,11 @@ void main() {
     // # Optional
     // a: Wrapper | None = Wrapper(Cat("Luna"))
     Cat __tmp_1 = Cat("Luna");
-    Wrapper __slot_1 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_1});
+    Wrapper __slot_1 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     Wrapper* a = &__slot_1;
     // b: Wrapper | None = Wrapper(Dog("Rex"))
     Dog __tmp_2 = Dog("Rex");
-    Wrapper __slot_2 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_2});
+    Wrapper __slot_2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
     Wrapper* b = &__slot_2;
     // c: Wrapper | None = None
     Wrapper* c = nullptr;
@@ -267,64 +267,64 @@ void main() {
     // # Or-pattern
     // d: Wrapper | Tag = Wrapper(Cat("Luna"))
     Cat __tmp_3 = Cat("Luna");
-    ::tpy::Union<Tag, Wrapper> __slot_3 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_3});
-    std::variant<Tag*, Wrapper*> d = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Tag, Wrapper> __slot_3 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
+    ::tpy::Union<Tag*, Wrapper*> d = ::tpy::to_ptr_variant(__slot_3);
     // e: Wrapper | Tag = Wrapper(Dog("Rex"))
     Dog __tmp_4 = Dog("Rex");
-    ::tpy::Union<Tag, Wrapper> __slot_4 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_4});
-    std::variant<Tag*, Wrapper*> e = ::tpy::to_ptr_variant(__slot_4);
+    ::tpy::Union<Tag, Wrapper> __slot_4 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_4});
+    ::tpy::Union<Tag*, Wrapper*> e = ::tpy::to_ptr_variant(__slot_4);
     // f: Wrapper | Tag = Tag("hello")
     ::tpy::Union<Tag, Wrapper> __slot_5 = Tag("hello");
-    std::variant<Tag*, Wrapper*> f = ::tpy::to_ptr_variant(__slot_5);
+    ::tpy::Union<Tag*, Wrapper*> f = ::tpy::to_ptr_variant(__slot_5);
     // print(or_nested(d))
-    std::cout << or_nested(d) << "\n";
+    std::cout << or_nested(d.as_const()) << "\n";
     // print(or_nested(e))
-    std::cout << or_nested(e) << "\n";
+    std::cout << or_nested(e.as_const()) << "\n";
     // print(or_nested(f))
-    std::cout << or_nested(f) << "\n";
+    std::cout << or_nested(f.as_const()) << "\n";
     // # 3-deep
     // g: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box("abc")))
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_6 = Box<Box<Box<std::string>>>(Box<Box<std::string>>(Box<std::string>("abc")));
-    std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> g = ::tpy::to_ptr_variant(__slot_6);
+    ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> g = ::tpy::to_ptr_variant(__slot_6);
     // h: Box[Box[Box[str]]] | Box[Box[Box[Int32]]] = Box(Box(Box(Int32(99))))
     ::tpy::Union<Box<Box<Box<int32_t>>>, Box<Box<Box<std::string>>>> __slot_7 = Box<Box<Box<int32_t>>>(Box<Box<int32_t>>(Box<int32_t>(99)));
-    std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> h = ::tpy::to_ptr_variant(__slot_7);
+    ::tpy::Union<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::string>>>*> h = ::tpy::to_ptr_variant(__slot_7);
     // print(deep3(g))
-    std::cout << deep3(g) << "\n";
+    std::cout << deep3(g.as_const()) << "\n";
     // print(deep3(h))
-    std::cout << deep3(h) << "\n";
+    std::cout << deep3(h.as_const()) << "\n";
     // # Positional
     // i: Box[str] | Box[Int32] = Box("pos")
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_8 = Box<std::string>("pos");
-    std::variant<Box<int32_t>*, Box<std::string>*> i = ::tpy::to_ptr_variant(__slot_8);
+    ::tpy::Union<Box<int32_t>*, Box<std::string>*> i = ::tpy::to_ptr_variant(__slot_8);
     // j: Box[str] | Box[Int32] = Box(Int32(7))
     ::tpy::Union<Box<int32_t>, Box<std::string>> __slot_9 = Box<int32_t>(7);
-    std::variant<Box<int32_t>*, Box<std::string>*> j = ::tpy::to_ptr_variant(__slot_9);
+    ::tpy::Union<Box<int32_t>*, Box<std::string>*> j = ::tpy::to_ptr_variant(__slot_9);
     // print(positional_nested(i))
-    std::cout << positional_nested(i) << "\n";
+    std::cout << positional_nested(i.as_const()) << "\n";
     // print(positional_nested(j))
-    std::cout << positional_nested(j) << "\n";
+    std::cout << positional_nested(j.as_const()) << "\n";
     // # Nested positional extraction
     // print(nested_pos_extract(Wrapper(Cat("Nala"))))
     Cat __tmp_5 = Cat("Nala");
-    Wrapper __tmp_6 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_5});
+    Wrapper __tmp_6 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_5});
     std::cout << nested_pos_extract(__tmp_6) << "\n";
     // print(nested_pos_extract(Wrapper(Dog("Buddy"))))
     Dog __tmp_7 = Dog("Buddy");
-    Wrapper __tmp_8 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_7});
+    Wrapper __tmp_8 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_7});
     std::cout << nested_pos_extract(__tmp_8) << "\n";
     // # Guard + union field
     // print(guard_combo(Wrapper(Cat("Luna"))))
     Cat __tmp_9 = Cat("Luna");
-    Wrapper __tmp_10 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_9});
+    Wrapper __tmp_10 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_9});
     std::cout << guard_combo(__tmp_10) << "\n";
     // print(guard_combo(Wrapper(Cat("Nala"))))
     Cat __tmp_11 = Cat("Nala");
-    Wrapper __tmp_12 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_11});
+    Wrapper __tmp_12 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_11});
     std::cout << guard_combo(__tmp_12) << "\n";
     // print(guard_combo(Wrapper(Dog("Rex"))))
     Dog __tmp_13 = Dog("Rex");
-    Wrapper __tmp_14 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_13});
+    Wrapper __tmp_14 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_13});
     std::cout << guard_combo(__tmp_14) << "\n";
     // # Primitive types: float, bool
     // print(check_float(FloatHolder(3.14)))

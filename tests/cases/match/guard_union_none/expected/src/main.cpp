@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def f(v: A | B | None, flag: bool) -> None:
-void f(const std::variant<std::monostate, A*, B*> v, bool flag) {
+void f(::tpy::Union<std::monostate, const A*, const B*> v, bool flag) {
     // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
@@ -49,15 +49,15 @@ __match_end_2:;
 void main() {
     // f(A(), True)
     A __tmp_1 = A();
-    f(std::variant<std::monostate, A*, B*>{&__tmp_1}, true);
+    f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}, true);
     // f(A(), False)
     A __tmp_2 = A();
-    f(std::variant<std::monostate, A*, B*>{&__tmp_2}, false);
+    f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}, false);
     // f(None, True)
-    f(std::variant<std::monostate, A*, B*>{std::monostate{}}, true);
+    f(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}, true);
     // f(B(), True)
     B __tmp_3 = B();
-    f(std::variant<std::monostate, A*, B*>{&__tmp_3}, true);
+    f(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_3}, true);
 }
 
 void __tpy_init() {

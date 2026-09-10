@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(s: Build | Test) -> None:
-void describe(const std::variant<Build*, Test*> s) {
+void describe(::tpy::Union<const Build*, const Test*> s) {
     // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
@@ -44,16 +44,16 @@ void describe(const std::variant<Build*, Test*> s) {
 void main() {
     // describe(Build("release", "4"))
     Build __tmp_1 = Build("release", "4");
-    describe(std::variant<Build*, Test*>{&__tmp_1});
+    describe(::tpy::Union<const Build*, const Test*>{&__tmp_1});
     // describe(Build(None, "1"))
     Build __tmp_2 = Build(std::nullopt, "1");
-    describe(std::variant<Build*, Test*>{&__tmp_2});
+    describe(::tpy::Union<const Build*, const Test*>{&__tmp_2});
     // describe(Test("smoke"))
     Test __tmp_3 = Test("smoke");
-    describe(std::variant<Build*, Test*>{&__tmp_3});
+    describe(::tpy::Union<const Build*, const Test*>{&__tmp_3});
     // describe(Test(None))
     Test __tmp_4 = Test(std::nullopt);
-    describe(std::variant<Build*, Test*>{&__tmp_4});
+    describe(::tpy::Union<const Build*, const Test*>{&__tmp_4});
 }
 
 void __tpy_init() {

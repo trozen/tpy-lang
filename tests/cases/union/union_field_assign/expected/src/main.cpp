@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def identity(pet: Dog | Cat) -> Dog | Cat:
-std::variant<Cat*, Dog*> identity(std::variant<Cat*, Dog*> pet) {
+::tpy::Union<Cat*, Dog*> identity(::tpy::Union<Cat*, Dog*> pet) {
     // return pet
     return pet;
 }
@@ -15,17 +15,17 @@ void main() {
     // d = Dog("Rex")
     Dog d = Dog("Rex");
     // init_pet: Dog | Cat = d
-    std::variant<Cat*, Dog*> init_pet{&(d)};
+    ::tpy::Union<Cat*, Dog*> init_pet{&(d)};
     // z = Zoo(init_pet, "v1")
-    Zoo z = Zoo(init_pet, "v1");
+    Zoo z = Zoo(init_pet.as_const(), "v1");
     // # Reassign field from a pointer-variant local
     // new_pet: Dog | Cat = Cat("Whiskers")
     ::tpy::Union<Cat, Dog> __slot_1 = Cat("Whiskers");
-    std::variant<Cat*, Dog*> new_pet = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> new_pet = ::tpy::to_ptr_variant(__slot_1);
     // z.pet = new_pet  # tpyc: warning(/copies/)
     z.pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(new_pet);
     // p = z.pet
-    std::variant<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
+    ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
     // if isinstance(p, Cat):
     if (std::holds_alternative<Cat*>(p)) {
         auto& __p = *std::get<Cat*>(p);
@@ -36,7 +36,7 @@ void main() {
     // z.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
     z.pet = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(identity(new_pet));
     // p2 = z.pet
-    std::variant<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z.pet);
+    ::tpy::Union<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z.pet);
     // if isinstance(p2, Cat):
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
@@ -47,7 +47,7 @@ void main() {
     // z.pet = Dog("Buddy")  # tpyc: warning(/Mutation.*while borrowed/)
     z.pet = Dog("Buddy");
     // p3 = z.pet
-    std::variant<Cat*, Dog*> p3 = ::tpy::to_ptr_variant(z.pet);
+    ::tpy::Union<Cat*, Dog*> p3 = ::tpy::to_ptr_variant(z.pet);
     // if isinstance(p3, Dog):
     if (std::holds_alternative<Dog*>(p3)) {
         auto& __p3 = *std::get<Dog*>(p3);

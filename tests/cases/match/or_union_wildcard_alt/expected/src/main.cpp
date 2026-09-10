@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def feed(a: Dog | Cat | None) -> str:
-std::string feed(std::variant<std::monostate, Cat*, Dog*> a) {
+std::string feed(::tpy::Union<std::monostate, Cat*, Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -33,7 +33,7 @@ std::string feed(std::variant<std::monostate, Cat*, Dog*> a) {
 }
 
 // def only_wildcard_covers(a: Dog | Fox | None) -> str:
-std::string only_wildcard_covers(const std::variant<std::monostate, Dog*, Fox*> a) {
+std::string only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*> a) {
     // # Fox is reachable only through the wildcard alternative. Exhaustiveness
     // # credits an or-group's named alternatives but not its wildcard, so the
     // # match warns even though the group matches everything.
@@ -55,23 +55,23 @@ std::string only_wildcard_covers(const std::variant<std::monostate, Dog*, Fox*> 
 void main() {
     // d: Dog | Cat | None = Dog(5)
     ::tpy::Union<std::monostate, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(5));
-    std::variant<std::monostate, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<std::monostate, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat | None = Cat(7)
     ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(7));
-    std::variant<std::monostate, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<std::monostate, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(feed(d))
     std::cout << feed(d) << "\n";
     // print(feed(c))
     std::cout << feed(c) << "\n";
     // print(feed(None))
-    std::cout << feed(std::variant<std::monostate, Cat*, Dog*>{std::monostate{}}) << "\n";
+    std::cout << feed(::tpy::Union<std::monostate, Cat*, Dog*>{std::monostate{}}) << "\n";
     // print(c.hunger)
     std::cout << (*std::get<Cat*>(c)).hunger << "\n";
     // print(only_wildcard_covers(Fox(3)))
     Fox __tmp_1 = Fox(::tpy::BigInt(3));
-    std::cout << only_wildcard_covers(std::variant<std::monostate, Dog*, Fox*>{&__tmp_1}) << "\n";
+    std::cout << only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{&__tmp_1}) << "\n";
     // print(only_wildcard_covers(None))
-    std::cout << only_wildcard_covers(std::variant<std::monostate, Dog*, Fox*>{std::monostate{}}) << "\n";
+    std::cout << only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*>{std::monostate{}}) << "\n";
 }
 
 void __tpy_init() {

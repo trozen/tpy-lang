@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pick(p: Point | Other) -> int:
-::tpy::BigInt pick(const std::variant<Other*, Point*> p) {
+::tpy::BigInt pick(::tpy::Union<const Other*, const Point*> p) {
     // match p:
     auto& __match_subject_1 = p;
     switch (__match_subject_1.index()) {
@@ -41,10 +41,10 @@ namespace tpyapp::main {
 void main() {
     // print(pick(Point(9)))
     Point __tmp_1 = Point(::tpy::BigInt(9));
-    std::cout << pick(std::variant<Other*, Point*>{&__tmp_1}) << "\n";
+    std::cout << pick(::tpy::Union<const Other*, const Point*>{&__tmp_1}) << "\n";
     // print(pick(Other(4)))
     Other __tmp_2 = Other(::tpy::BigInt(4));
-    std::cout << pick(std::variant<Other*, Point*>{&__tmp_2}) << "\n";
+    std::cout << pick(::tpy::Union<const Other*, const Point*>{&__tmp_2}) << "\n";
     // print(use_foreign(Foreign(7)))
     ::tpyapp::shapes::Point __tmp_3 = ::tpyapp::shapes::Point(::tpy::BigInt(7));
     std::cout << use_foreign(__tmp_3) << "\n";

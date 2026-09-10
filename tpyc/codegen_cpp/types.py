@@ -447,8 +447,9 @@ class TypeResolver:
                 "std::monostate" if is_void_like_type(m) else self.type_to_cpp(m)
                 for m in typ.members
             ]
-            # Mirrors UnionType.to_cpp: the storage form is `::tpy::Union`,
-            # the type that owns Python's comparison rule.
+            # Mirrors UnionType.to_cpp: one head at every position, the
+            # type that owns Python's comparison rule; the ALTERNATIVES say
+            # which form this is.
             return f"::tpy::Union<{', '.join(cpp_members)}>"
         # Resolve PendingViewType to concrete types before codegen
         if isinstance(typ, PendingViewType):
@@ -494,9 +495,9 @@ class TypeResolver:
         return typ.to_cpp_stored()
 
     def type_to_cpp_ptr_variant(self, typ: 'UnionType') -> str:
-        """Return the pointer-variant type with qualified member names.
+        """Return the borrow-form type with qualified member names.
 
-        For non-value unions: std::variant<Dog*, Cat*> with cross-module
+        For non-value unions: ::tpy::Union<Dog*, Cat*> with cross-module
         qualification on member types. Monostate members pass through.
         """
         cpp_members = [
@@ -504,14 +505,14 @@ class TypeResolver:
             else f"{self.type_to_cpp(m)}*"
             for m in typ.members
         ]
-        return f"std::variant<{', '.join(cpp_members)}>"
+        return f"::tpy::Union<{', '.join(cpp_members)}>"
 
     def type_to_cpp_const_ptr_variant(self, typ: 'UnionType') -> str:
-        """Return the const pointer-variant type with qualified member names."""
+        """Return the read-borrow form with qualified member names."""
         cpp_members = [
             "std::monostate" if is_void_like_type(m)
             else f"const {self.type_to_cpp(m)}*"
             for m in typ.members
         ]
-        return f"std::variant<{', '.join(cpp_members)}>"
+        return f"::tpy::Union<{', '.join(cpp_members)}>"
 

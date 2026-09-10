@@ -13,7 +13,7 @@ struct Gamma;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t probe(const std::variant<Alpha*, Beta*, Gamma*> v);
+int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v);
 void main();
 
 // class Alpha:

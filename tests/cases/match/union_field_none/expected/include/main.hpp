@@ -12,7 +12,7 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<Other*, Wrapper*> w);
+std::string describe(::tpy::Union<const Other*, const Wrapper*> w);
 void main();
 
 // # `field=None` on a union subject: the None check must run, not match every

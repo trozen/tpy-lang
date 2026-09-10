@@ -12,7 +12,7 @@ struct Label;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(const std::variant<Label*, Point*> s);
+void describe(::tpy::Union<const Label*, const Point*> s);
 void main();
 
 // @dataclass

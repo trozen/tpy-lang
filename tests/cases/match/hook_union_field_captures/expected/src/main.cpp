@@ -45,13 +45,13 @@ __match_end_2:;
         continue;
     }
     case S_RESUME_0: {
-        auto& __a = *std::get<Cat*>(a);
+        auto& __a = *std::get<const Cat*>(a);
         // yield v + 1
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(v, 1));
     }
     case S_RESUME_1: {
-        auto& __a = *std::get<Cat*>(a);
+        auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;
     }
@@ -70,7 +70,7 @@ __match_end_2:;
 
 
 // def guarded(a: Cat | Dog) -> Iterator[Int32]:
-__gen_guarded guarded(std::variant<Cat*, Dog*> a) {
+__gen_guarded guarded(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_guarded(a);
 }
 
@@ -116,12 +116,12 @@ __match_end_2:;
         continue;
     }
     case S_RESUME_0: {
-        auto& __a = *std::get<Cat*>(a);
+        auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_1: {
-        auto& __a = *std::get<Dog*>(a);
+        auto& __a = *std::get<const Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
@@ -140,7 +140,7 @@ __match_end_2:;
 
 
 // def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[Int32]:
-__gen_guarded_cond guarded_cond(std::variant<Cat*, Dog*> a, bool flag) {
+__gen_guarded_cond guarded_cond(::tpy::Union<const Cat*, const Dog*> a, bool flag) {
     return __gen_guarded_cond(a, flag);
 }
 
@@ -299,7 +299,7 @@ __match_end_2:;
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        auto& __a = *std::get<Cat*>(a);
+        auto& __a = *std::get<const Cat*>(a);
         // return v
         __state = S_DONE;
         int32_t __tpy_async_ret = v;
@@ -312,7 +312,7 @@ __match_end_2:;
 
 
 // async def a_guarded(a: Cat | Dog) -> Int32:
-__coro_a_guarded a_guarded(std::variant<Cat*, Dog*> a) {
+__coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a) {
     return __coro_a_guarded(a);
 }
 
@@ -322,7 +322,7 @@ __coro_a_guarded a_guarded(std::variant<Cat*, Dog*> a) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Cat(5));
         // print(await a_guarded(Cat(5)))
-        __sub_0.emplace(std::variant<Cat*, Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
@@ -335,7 +335,7 @@ __coro_a_guarded a_guarded(std::variant<Cat*, Dog*> a) {
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1.emplace(Dog(1));
         // print(await a_guarded(Dog(1)))
-        __sub_1.emplace(std::variant<Cat*, Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
     }
@@ -365,7 +365,7 @@ void main() {
     // for v in guarded(Cat(5)):
     {
         Cat __tmp_1 = Cat(5);
-        auto __src_0 = guarded(std::variant<Cat*, Dog*>{&__tmp_1});
+        auto __src_0 = guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -378,7 +378,7 @@ void main() {
     // for v in guarded(Dog(9)):
     {
         Dog __tmp_2 = Dog(9);
-        auto __src_2 = guarded(std::variant<Cat*, Dog*>{&__tmp_2});
+        auto __src_2 = guarded(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -391,7 +391,7 @@ void main() {
     // for v in guarded_cond(Cat(9), True):
     {
         Cat __tmp_3 = Cat(9);
-        auto __src_4 = guarded_cond(std::variant<Cat*, Dog*>{&__tmp_3}, true);
+        auto __src_4 = guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}, true);
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();
@@ -404,7 +404,7 @@ void main() {
     // for v in guarded_cond(Dog(2), True):
     {
         Dog __tmp_4 = Dog(2);
-        auto __src_6 = guarded_cond(std::variant<Cat*, Dog*>{&__tmp_4}, true);
+        auto __src_6 = guarded_cond(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}, true);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
         for (;;) {
             auto __r_7 = __itr_6.__next__();
@@ -417,7 +417,7 @@ void main() {
     // for v in nested(Holder(Cat(3))):
     {
         Cat __tmp_5 = Cat(3);
-        Holder __tmp_6 = Holder(std::variant<Cat*, Dog*>{&__tmp_5});
+        Holder __tmp_6 = Holder(::tpy::Union<const Cat*, const Dog*>{&__tmp_5});
         auto __src_8 = nested(__tmp_6);
         auto&& __itr_8 = ::tpy::__iter__(__src_8);
         for (;;) {
@@ -431,7 +431,7 @@ void main() {
     // for v in nested_shadow(Holder(Cat(7))):
     {
         Cat __tmp_7 = Cat(7);
-        Holder __tmp_8 = Holder(std::variant<Cat*, Dog*>{&__tmp_7});
+        Holder __tmp_8 = Holder(::tpy::Union<const Cat*, const Dog*>{&__tmp_7});
         auto __src_10 = nested_shadow(__tmp_8);
         auto&& __itr_10 = ::tpy::__iter__(__src_10);
         for (;;) {

@@ -14,8 +14,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-bool upcast_in_branch(const std::variant<Cat*, Dog*> x);
-bool downcast_in_branch(const std::variant<Cat*, Dog*> x);
+bool upcast_in_branch(::tpy::Union<const Cat*, const Dog*> x);
+bool downcast_in_branch(::tpy::Union<const Cat*, const Dog*> x);
 void main();
 
 // # Inside a narrowing branch, isinstance checks against ancestors or

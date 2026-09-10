@@ -36,7 +36,7 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(std::span<const uint8_t> statu
     // {"Content-Type": "text/plain"})
     ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("{\"x\":1}", 7);
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});
-    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
+    ::tpystd::tplib::requests::Response r = s.post("http://api.test/submit", ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*>{&__tmp_1}, nullptr, nullptr, &(__tmp_2));
     // print(r.status_code, r.url)
     std::cout << r.status_code << " " << r.url << "\n";
     // b.recv(65536)                         # drain hop-0 request

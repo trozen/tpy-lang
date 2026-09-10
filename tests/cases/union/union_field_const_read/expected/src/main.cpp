@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def get_pet_name(z: Zoo) -> str:
 std::string get_pet_name(const Zoo& z) {
     // p = z.pet
-    std::variant<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(z.pet);
+    ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(z.pet);
     // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
@@ -29,7 +29,7 @@ std::string get_pet_name(const Zoo& z) {
 // def get_pet_name_ro(z: Zoo) -> str:
 std::string get_pet_name_ro(const Zoo& z) {
     // p = z.pet
-    std::variant<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(z.pet);
+    ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(z.pet);
     // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
@@ -49,7 +49,7 @@ std::string get_pet_name_ro(const Zoo& z) {
 
 // @readonly
 // def greet_pet(pet: Dog | Cat) -> str:
-std::string greet_pet(std::variant<const Cat*, const Dog*> pet) {
+std::string greet_pet(::tpy::Union<const Cat*, const Dog*> pet) {
     // if isinstance(pet, Dog):
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
@@ -79,7 +79,7 @@ std::string show_dog(const Dog& d) {
 // # by tests/cases/union/error_union_readonly_param_pass.
 // @readonly
 // def forward_pet(pet: Dog | Cat) -> str:
-std::string forward_pet(std::variant<const Cat*, const Dog*> pet) {
+std::string forward_pet(::tpy::Union<const Cat*, const Dog*> pet) {
     // if isinstance(pet, Dog):
     if (std::holds_alternative<const Dog*>(pet)) {
         auto& __pet = *std::get<const Dog*>(pet);
@@ -96,17 +96,17 @@ void main() {
     // d = Dog("Rex")
     Dog d = Dog("Rex");
     // pet: Dog | Cat = d
-    std::variant<Cat*, Dog*> pet{&(d)};
+    ::tpy::Union<Cat*, Dog*> pet{&(d)};
     // z = Zoo(pet, "test")
-    Zoo z = Zoo(pet, "test");
+    Zoo z = Zoo(pet.as_const(), "test");
     // print(get_pet_name(z))
     std::cout << get_pet_name(z) << "\n";
     // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
     // pet2: Dog | Cat = c
-    std::variant<Cat*, Dog*> pet2{&(c)};
+    ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     // z2 = Zoo(pet2, "cats")
-    Zoo z2 = Zoo(pet2, "cats");
+    Zoo z2 = Zoo(pet2.as_const(), "cats");
     // print(get_pet_name(z2))
     std::cout << get_pet_name(z2) << "\n";
     // # @readonly function accessing union field on record
@@ -114,18 +114,18 @@ void main() {
     std::cout << get_pet_name_ro(z) << "\n";
     // # @readonly function with direct union param
     // print(greet_pet(pet))
-    std::cout << greet_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet)) << "\n";
+    std::cout << greet_pet(pet.as_const()) << "\n";
     // # Renaming through the record proves the narrowed member reaching the
     // # readonly callee still aliases `d`, rather than a copy taken at the
     // # union local.
     // print("forward_pet:", forward_pet(pet))
-    std::cout << "forward_pet:" << " " << forward_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet)) << "\n";
+    std::cout << "forward_pet:" << " " << forward_pet(pet.as_const()) << "\n";
     // d.name = "Buddy"
     d.name = "Buddy";
     // print("forward_pet:", forward_pet(pet))
-    std::cout << "forward_pet:" << " " << forward_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet)) << "\n";
+    std::cout << "forward_pet:" << " " << forward_pet(pet.as_const()) << "\n";
     // print("forward_pet:", forward_pet(pet2))
-    std::cout << "forward_pet:" << " " << forward_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet2)) << "\n";
+    std::cout << "forward_pet:" << " " << forward_pet(pet2.as_const()) << "\n";
 }
 
 void __tpy_init() {

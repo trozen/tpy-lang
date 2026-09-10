@@ -13,8 +13,8 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string classify(const std::variant<A*, B*, C*> v);
-int32_t excluded(const std::variant<A*, B*, C*> v);
+std::string classify(::tpy::Union<const A*, const B*, const C*> v);
+int32_t excluded(::tpy::Union<const A*, const B*, const C*> v);
 void main();
 
 // class A:

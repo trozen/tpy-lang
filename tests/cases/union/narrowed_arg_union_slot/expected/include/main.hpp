@@ -16,6 +16,8 @@ struct Err;
 struct Sink;
 struct Guard;
 struct Relay;
+struct Reader;
+struct Tally;
 struct VuBox;
 struct VuSink;
 struct Pt;
@@ -27,31 +29,45 @@ struct __gen_gen_body;
 struct __gen_gen_match;
 struct __coro_async_body;
 struct __coro_async_match;
+struct __gen_gen_total;
+struct __coro_async_total;
 struct __coro_async_main;
 
-void bump(std::variant<A*, B*> u);
-int32_t peek(std::variant<const A*, const B*> u);
-int32_t free(std::variant<A*, B*> v);
-int32_t comprehension(std::variant<A*, B*> v);
-int32_t bump_and_read(std::variant<A*, B*> u);
-int32_t with_body(std::variant<A*, B*> v);
-int32_t try_finally(std::variant<A*, B*> v);
-std::expected<int32_t, Err> error_body(std::variant<A*, B*> v);
-int32_t match_arm(std::variant<A*, B*> v);
-int32_t match_capture(std::variant<A*, B*> v);
-__gen_gen_body gen_body(std::variant<A*, B*> v);
-__gen_gen_match gen_match(std::variant<A*, B*> v);
-__coro_async_body async_body(std::variant<A*, B*> v);
-__coro_async_match async_match(std::variant<A*, B*> v);
-int32_t inline_(std::variant<A*, B*> v);
-int32_t walrus(std::variant<A*, B*> v);
-int32_t readonly_slot(const std::variant<A*, B*> v);
+void bump(::tpy::Union<A*, B*> u);
+int32_t peek(::tpy::Union<const A*, const B*> u);
+int32_t free(::tpy::Union<A*, B*> v);
+int32_t comprehension(::tpy::Union<A*, B*> v);
+int32_t bump_and_read(::tpy::Union<A*, B*> u);
+int32_t with_body(::tpy::Union<A*, B*> v);
+int32_t try_finally(::tpy::Union<A*, B*> v);
+std::expected<int32_t, Err> error_body(::tpy::Union<A*, B*> v);
+int32_t match_arm(::tpy::Union<A*, B*> v);
+int32_t match_capture(::tpy::Union<A*, B*> v);
+__gen_gen_body gen_body(::tpy::Union<A*, B*> v);
+__gen_gen_match gen_match(::tpy::Union<A*, B*> v);
+__coro_async_body async_body(::tpy::Union<A*, B*> v);
+__coro_async_match async_match(::tpy::Union<A*, B*> v);
+int32_t inline_(::tpy::Union<A*, B*> v);
+int32_t walrus(::tpy::Union<A*, B*> v);
+int32_t readonly_slot(::tpy::Union<const A*, const B*> v);
 int32_t loop_var(const std::vector<::tpy::Union<A, B>>& xs);
-int32_t ctor_slot(std::variant<A*, B*> v);
-int32_t str_member(const std::variant<A*, std::string*> v);
-int32_t str_total(const std::variant<A*, std::string*> u);
-std::variant<A*, B*> pick_isinstance(std::variant<A*, B*> v);
-std::variant<A*, B*> pick_match(std::variant<A*, B*> v);
+int32_t ctor_slot(::tpy::Union<A*, B*> v);
+int32_t str_member(::tpy::Union<const A*, const std::string*> v);
+int32_t str_total(::tpy::Union<const A*, const std::string*> u);
+int32_t total(::tpy::Union<const A*, const B*> u);
+int32_t const_member(const A& a);
+int32_t ctor_call_arg(const A& a);
+int32_t own_forward(::tpy::Union<A, B>&& u);
+int32_t loop_const(const std::vector<::tpy::Union<A, B>>& xs);
+__gen_gen_total gen_total(::tpy::Union<const A*, const B*> v);
+__coro_async_total async_total(::tpy::Union<const A*, const B*> v);
+int32_t loop_method(const std::vector<::tpy::Union<A, B>>& xs, Reader& r);
+int32_t closure_narrow(::tpy::Union<const A*, const B*> u);
+int32_t closure_forward(::tpy::Union<const A*, const B*> u);
+int32_t wrap_then_mutate(::tpy::Union<A*, B*> u);
+int32_t forward_union(::tpy::Union<const A*, const B*> u);
+::tpy::Union<A*, B*> pick_isinstance(::tpy::Union<A*, B*> v);
+::tpy::Union<A*, B*> pick_match(::tpy::Union<A*, B*> v);
 int32_t value_union(const ::tpy::Union<int32_t, double>& v);
 int32_t value_union_match(const ::tpy::Union<int32_t, double>& v);
 int32_t vu_total(const ::tpy::Union<int32_t, double>& u);
@@ -123,7 +139,7 @@ struct Sink {
 
     // def __init__(self, u: A | B) -> None:
     Sink() = default;
-    explicit Sink(std::variant<A*, B*> u);
+    explicit Sink(::tpy::Union<A*, B*> u);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
 
@@ -156,17 +172,55 @@ struct Relay {
 
     // def __init__(self, v: A | B) -> None:
     Relay() = default;
-    explicit Relay(std::variant<A*, B*> v);
+    explicit Relay(::tpy::Union<A*, B*> v);
 
     // # method body (the method mutates self, so its union param is not
     // # inferred deep-const)
     // def go(self, v: A | B) -> Int32:
-    int32_t go(std::variant<A*, B*> v);
+    int32_t go(::tpy::Union<A*, B*> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Relay";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Relay& obj) {
     ::tpy::print_object_default(os, "Relay", obj);
+    return os;
+}
+
+// class Reader:
+struct Reader {
+    // base: Int32
+    int32_t base;
+
+    // def __init__(self, base: Int32) -> None:
+    Reader() = default;
+    explicit Reader(int32_t base);
+
+    // # method body: the method mutates nothing, so its narrowed subject binds
+    // # `const A&` and its own union param is deep-const too
+    // def read(self, v: A | B) -> Int32:
+    int32_t read(::tpy::Union<const A*, const B*> v) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Reader";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
+    ::tpy::print_object_default(os, "Reader", obj);
+    return os;
+}
+
+// class Tally:
+struct Tally {
+    // k: Int32
+    int32_t k;
+
+    // # constructor parameter, forwarded to a second deep-const slot
+    // def __init__(self, u: A | B) -> None:
+    Tally() = default;
+    explicit Tally(::tpy::Union<const A*, const B*> u);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
+    ::tpy::print_object_default(os, "Tally", obj);
     return os;
 }
 
@@ -231,7 +285,7 @@ namespace tpyapp::main {
 struct __coro_async_body {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<A*, B*> v;
+    ::tpy::Union<A*, B*> v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -240,7 +294,7 @@ struct __coro_async_body {
         S_DONE = 2,
     };
 
-    __coro_async_body(std::variant<A*, B*> v_)
+    __coro_async_body(::tpy::Union<A*, B*> v_)
         : __state(S_INITIAL), __cancel_pending(false), v(v_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -255,7 +309,7 @@ struct __coro_async_body {
 struct __coro_async_match {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<A*, B*> v;
+    ::tpy::Union<A*, B*> v;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -264,7 +318,7 @@ struct __coro_async_match {
         S_DONE = 2,
     };
 
-    __coro_async_match(std::variant<A*, B*> v_)
+    __coro_async_match(::tpy::Union<A*, B*> v_)
         : __state(S_INITIAL), __cancel_pending(false), v(v_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -275,22 +329,50 @@ struct __coro_async_match {
     }
 };
 
+// Async coroutine: async_total
+struct __coro_async_total {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::Union<const A*, const B*> v;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_async_total(::tpy::Union<const A*, const B*> v_)
+        : __state(S_INITIAL), __cancel_pending(false), v(v_) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_async_total&) {
+        return os << "<coroutine async_total>";
+    }
+};
+
 // Async coroutine: async_main
 struct __coro_async_main {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::frame_slot<A> t;
     ::tpy::frame_slot<A> u;
+    ::tpy::frame_slot<::tpy::Union<A, B>> w;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
+    int32_t __await_lift_2;
     std::optional<__coro_async_body> __sub_0;
     std::optional<__coro_async_match> __sub_1;
+    std::optional<__coro_async_total> __sub_2;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
-        S_DONE = 3,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
     };
 
     __coro_async_main()
@@ -307,7 +389,7 @@ struct __coro_async_main {
 // Generator: gen_body
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     int32_t __state;
-    std::variant<A*, B*> v;
+    ::tpy::Union<A*, B*> v;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -317,7 +399,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_gen_body(std::variant<A*, B*> v_)
+    __gen_gen_body(::tpy::Union<A*, B*> v_)
         : __state(S_INITIAL), v(v_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -331,7 +413,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
 // Generator: gen_match
 struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t> {
     int32_t __state;
-    std::variant<A*, B*> v;
+    ::tpy::Union<A*, B*> v;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -342,7 +424,7 @@ struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t>
         S_DONE = 5,
     };
 
-    __gen_gen_match(std::variant<A*, B*> v_)
+    __gen_gen_match(::tpy::Union<A*, B*> v_)
         : __state(S_INITIAL), v(v_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -350,6 +432,29 @@ struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, int32_t>
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_match&) {
         return os << "<generator gen_match>";
+    }
+};
+
+// Generator: gen_total
+struct __gen_gen_total : public ::tpy::next_iter_mixin<__gen_gen_total, int32_t> {
+    int32_t __state;
+    ::tpy::Union<const A*, const B*> v;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_total(::tpy::Union<const A*, const B*> v_)
+        : __state(S_INITIAL), v(v_) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_total& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_total&) {
+        return os << "<generator gen_total>";
     }
 };
 
@@ -361,7 +466,7 @@ inline A::A(int32_t n) : n(n) {}
 inline B::B(int32_t m) : m(m) {}
 
 // def __init__(self, u: A | B) -> None:
-inline Sink::Sink(std::variant<A*, B*> u) : k(0) {
+inline Sink::Sink(::tpy::Union<A*, B*> u) : k(0) {
     // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
@@ -384,27 +489,27 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 }
 
 // def __init__(self, v: A | B) -> None:
-inline Relay::Relay(std::variant<A*, B*> v) : hits(0) {
+inline Relay::Relay(::tpy::Union<A*, B*> v) : hits(0) {
     // # constructor body
     // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
         // bump(v)  # tpyc: ok
-        bump(std::variant<A*, B*>{&(__v)});
+        bump(::tpy::Union<A*, B*>{&(__v)});
     }
 }
 
 // # method body (the method mutates self, so its union param is not
 // # inferred deep-const)
 // def go(self, v: A | B) -> Int32:
-inline int32_t Relay::go(std::variant<A*, B*> v) {
+inline int32_t Relay::go(::tpy::Union<A*, B*> v) {
     // self.hits = self.hits + 1
     this->hits = (::tpy::add_check<int32_t>(this->hits, 1));
     // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
         // bump(v)  # tpyc: ok
-        bump(std::variant<A*, B*>{&(__v)});
+        bump(::tpy::Union<A*, B*>{&(__v)});
         // return v.n
         return __v.n;
     }
@@ -412,6 +517,28 @@ inline int32_t Relay::go(std::variant<A*, B*> v) {
     // return -1
     return -1;
 }
+
+// def __init__(self, base: Int32) -> None:
+inline Reader::Reader(int32_t base) : base(base) {}
+
+// # method body: the method mutates nothing, so its narrowed subject binds
+// # `const A&` and its own union param is deep-const too
+// def read(self, v: A | B) -> Int32:
+inline int32_t Reader::read(::tpy::Union<const A*, const B*> v) const {
+    // if isinstance(v, A):
+    if (std::holds_alternative<const A*>(v)) {
+        auto& __v = *std::get<const A*>(v);
+        // return self.base + total(v)  # tpyc: ok
+        return (::tpy::add_check<int32_t>(this->base, total(::tpy::Union<const A*, const B*>{&(__v)})));
+    }
+    auto& __v = *std::get<const B*>(v);
+    // return -1
+    return -1;
+}
+
+// # constructor parameter, forwarded to a second deep-const slot
+// def __init__(self, u: A | B) -> None:
+inline Tally::Tally(::tpy::Union<const A*, const B*> u) : k(total(u)) {}
 
 // def __init__(self, base: Int32) -> None:
 inline VuBox::VuBox(int32_t base) : base(base) {}

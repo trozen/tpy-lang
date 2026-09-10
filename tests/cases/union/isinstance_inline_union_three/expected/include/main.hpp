@@ -14,7 +14,7 @@ struct D;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t classify(std::variant<A*, B*, C*, D*> v);
+int32_t classify(::tpy::Union<A*, B*, C*, D*> v);
 void main();
 
 // class A:

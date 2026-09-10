@@ -19,7 +19,7 @@ namespace tpyapp::main {
 void main() {
     // v = pick(True)
     ::tpy::Union<Rec, std::tuple<std::string, ::tpy::BigInt>> __slot_1 = pick(true);
-    std::variant<Rec*, std::tuple<std::string, ::tpy::BigInt>*> v = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Rec*, std::tuple<std::string, ::tpy::BigInt>*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, Rec):
     if (std::holds_alternative<Rec*>(v)) {
         auto& __v = *std::get<Rec*>(v);

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat | Bird, verbose: bool) -> str:
-std::string describe(const std::variant<Bird*, Cat*, Dog*> a, bool verbose) {
+std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool verbose) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -59,7 +59,7 @@ __match_end_2:;
 }
 
 // def find(a: Dog | Cat | Bird) -> str:
-std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
+std::string find(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -123,27 +123,27 @@ __match_end_2:;
 void main() {
     // d: Dog | Cat | Bird = Dog("Rex")
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
-    std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat | Bird = Cat("Luna")
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat("Luna");
-    std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // b: Dog | Cat | Bird = Bird("Tweety")
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
-    std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     // print(describe(d, True))
-    std::cout << describe(d, true) << "\n";
+    std::cout << describe(d.as_const(), true) << "\n";
     // print(describe(d, False))
-    std::cout << describe(d, false) << "\n";
+    std::cout << describe(d.as_const(), false) << "\n";
     // print(describe(c, True))
-    std::cout << describe(c, true) << "\n";
+    std::cout << describe(c.as_const(), true) << "\n";
     // print(describe(b, False))
-    std::cout << describe(b, false) << "\n";
+    std::cout << describe(b.as_const(), false) << "\n";
     // print(find(d))
-    std::cout << find(d) << "\n";
+    std::cout << find(d.as_const()) << "\n";
     // print(find(c))
-    std::cout << find(c) << "\n";
+    std::cout << find(c.as_const()) << "\n";
     // print(find(b))
-    std::cout << find(b) << "\n";
+    std::cout << find(b.as_const()) << "\n";
 }
 
 void __tpy_init() {

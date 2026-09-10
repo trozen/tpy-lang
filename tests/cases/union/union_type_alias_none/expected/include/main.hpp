@@ -12,7 +12,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<std::monostate, Circle*, Rect*> s);
+std::string describe(::tpy::Union<std::monostate, const Circle*, const Rect*> s);
 void main();
 
 // class Circle:

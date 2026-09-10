@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(s: Child | Other) -> None:
-void describe(const std::variant<Child*, Other*> s) {
+void describe(::tpy::Union<const Child*, const Other*> s) {
     // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
@@ -34,14 +34,14 @@ void describe(const std::variant<Child*, Other*> s) {
 void main() {
     // obj: Child | Other = Child(1.0, 2.0, 3.0)
     ::tpy::Union<Child, Other> __slot_1 = Child(1.0, 2.0, 3.0);
-    std::variant<Child*, Other*> obj = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Child*, Other*> obj = ::tpy::to_ptr_variant(__slot_1);
     // describe(obj)
-    describe(obj);
+    describe(obj.as_const());
     // o: Child | Other = Other(9.0)
     ::tpy::Union<Child, Other> __slot_2 = Other(9.0);
-    std::variant<Child*, Other*> o = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Child*, Other*> o = ::tpy::to_ptr_variant(__slot_2);
     // describe(o)
-    describe(o);
+    describe(o.as_const());
 }
 
 void __tpy_init() {

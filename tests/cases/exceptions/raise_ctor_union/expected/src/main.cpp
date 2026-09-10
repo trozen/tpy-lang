@@ -11,7 +11,7 @@ void main() {
         try {
             // raise UErr(A(7))
             A __tmp_1 = A(::tpy::BigInt(7));
-            throw UErr(std::variant<A*, B*>{&__tmp_1});
+            throw UErr(::tpy::Union<const A*, const B*>{&__tmp_1});
         } catch (const UErr& e) {
             // match e.payload:
             auto& __match_subject_1 = e.payload;

@@ -13,6 +13,8 @@ struct Boom;
 struct Guard;
 struct Dog;
 struct Cat;
+struct Tag;
+struct Mark;
 struct Kennel;
 struct Crate;
 
@@ -27,6 +29,7 @@ struct __coro_amain;
 
 bool mixed_list_eq(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
 bool pet_list_eq(const std::vector<::tpy::Union<Cat, Dog>>& xs, const std::vector<::tpy::Union<Cat, Dog>>& ys);
+bool tag_list_ne(const std::vector<::tpy::Union<Mark, Tag>>& xs, const std::vector<::tpy::Union<Mark, Tag>>& ys);
 __gen_gen_eq gen_eq(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
 bool in_closure(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
 __coro_in_async in_async(std::vector<::tpy::Union<Dog, int32_t, double>>& xs, std::vector<::tpy::Union<Dog, int32_t, double>>& ys);
@@ -121,6 +124,65 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
+// # `__ne__` INVERTED on purpose. A CONTAINER `!=` never reaches it -- CPython
+// # answers Py_NE from the first index whose items are not `==`, and the
+// # vector's rewritten `!=` does the same -- so the two languages agree here
+// # precisely because neither consults it. The union's own `operator!=` does
+// # call it; that row lives in `union/value_union_cross_alternative_eq`, the
+// # only case where a union `!=` is reachable directly.
+// class Tag:
+struct Tag {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self, n: Int32) -> None:
+    Tag() = default;
+    explicit Tag(int32_t n);
+
+    // def __eq__(self, other: "Tag") -> bool:
+    bool __eq__(const Tag& other) const;
+
+    // def __ne__(self, other: "Tag") -> bool:
+    bool __ne__(const Tag& other) const;
+
+    friend bool operator==(const Tag& lhs, const Tag& other) {
+        return lhs.__eq__(other);
+    }
+
+    friend bool operator!=(const Tag& lhs, const Tag& other) {
+        return lhs.__ne__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
+    ::tpy::print_object_default(os, "Tag", obj);
+    return os;
+}
+
+// class Mark:
+struct Mark {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self, n: Int32) -> None:
+    Mark() = default;
+    explicit Mark(int32_t n);
+
+    // def __eq__(self, other: "Mark") -> bool:
+    bool __eq__(const Mark& other) const;
+
+    friend bool operator==(const Mark& lhs, const Mark& other) {
+        return lhs.__eq__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mark";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Mark& obj) {
+    ::tpy::print_object_default(os, "Mark", obj);
+    return os;
+}
+
 // class Kennel:
 struct Kennel {
     // flag: bool
@@ -152,7 +214,7 @@ struct Crate {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Pet) -> None:
-    explicit Crate(const std::variant<Cat*, Dog*> pet);
+    explicit Crate(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Crate";
 };
 
@@ -276,6 +338,45 @@ inline bool Cat::__eq__(const Cat& other) const {
     return (this->n == other.n);
 }
 
+// def __init__(self, n: Int32) -> None:
+inline Tag::Tag(int32_t n) : n(n) {}
+
+// def __eq__(self, other: "Tag") -> bool:
+inline bool Tag::__eq__(const Tag& other) const {
+    // if not isinstance(other, Tag):
+    if ((!(true))) {
+        // return False
+        return false;
+    }
+    // return self.n == other.n
+    return (this->n == other.n);
+}
+
+// def __ne__(self, other: "Tag") -> bool:
+inline bool Tag::__ne__(const Tag& other) const {
+    // if not isinstance(other, Tag):
+    if ((!(true))) {
+        // return True
+        return true;
+    }
+    // return self.n == other.n
+    return (this->n == other.n);
+}
+
+// def __init__(self, n: Int32) -> None:
+inline Mark::Mark(int32_t n) : n(n) {}
+
+// def __eq__(self, other: "Mark") -> bool:
+inline bool Mark::__eq__(const Mark& other) const {
+    // if not isinstance(other, Mark):
+    if ((!(true))) {
+        // return False
+        return false;
+    }
+    // return self.n == other.n
+    return (this->n == other.n);
+}
+
 // def __init__(self, xs: list[Mixed], ys: list[Mixed]) -> None:
 inline Kennel::Kennel(const std::vector<::tpy::Union<Dog, int32_t, double>>& xs, const std::vector<::tpy::Union<Dog, int32_t, double>>& ys) : flag((xs == ys)) {}
 
@@ -292,7 +393,8 @@ inline bool Kennel::pet_dict_eq(const ::tpy::ordered_map<std::string, ::tpy::Uni
 }
 
 // def __init__(self, pet: Pet) -> None:
-inline Crate::Crate(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
+inline Crate::Crate(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
+using Labelled = ::tpy::Union<Mark, Tag>;
 using Mixed = ::tpy::Union<Dog, int32_t, double>;
 using Pet = ::tpy::Union<Cat, Dog>;
 

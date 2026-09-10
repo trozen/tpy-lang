@@ -12,7 +12,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t get_radius(const std::variant<Circle*, Rect*> s);
+int32_t get_radius(::tpy::Union<const Circle*, const Rect*> s);
 void main();
 
 // class Circle:

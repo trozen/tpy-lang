@@ -15,7 +15,7 @@ int32_t combine(Counter& a, const Counter& b) {
 }
 
 // def narrowed_receiver(v: Counter | Label) -> Int32:
-int32_t narrowed_receiver(std::variant<Counter*, Label*> v) {
+int32_t narrowed_receiver(::tpy::Union<Counter*, Label*> v) {
     // if isinstance(v, Counter):
     if (std::holds_alternative<Counter*>(v)) {
         auto& __v = *std::get<Counter*>(v);
@@ -52,12 +52,12 @@ void main() {
     // c = Counter(10)
     Counter c = Counter(10);
     // print(narrowed_receiver(c))
-    std::cout << narrowed_receiver(std::variant<Counter*, Label*>{&(c)}) << "\n";
+    std::cout << narrowed_receiver(::tpy::Union<Counter*, Label*>{&(c)}) << "\n";
     // print(c.get())    # 11: mutated through the narrowed alias
     std::cout << c.get() << "\n";
     // print(narrowed_receiver(Label("abc")))
     Label __tmp_1 = Label("abc");
-    std::cout << narrowed_receiver(std::variant<Counter*, Label*>{&__tmp_1}) << "\n";
+    std::cout << narrowed_receiver(::tpy::Union<Counter*, Label*>{&__tmp_1}) << "\n";
     // f = FancyCounter(20)
     FancyCounter f = FancyCounter(20);
     // print(inherited(f, 2))

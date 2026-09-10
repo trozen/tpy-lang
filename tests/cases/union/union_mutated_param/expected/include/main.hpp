@@ -12,8 +12,8 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void rename(std::variant<Cat*, Dog*> pet, std::string_view new_name);
-std::string read_name(const std::variant<Cat*, Dog*> pet);
+void rename(::tpy::Union<Cat*, Dog*> pet, std::string_view new_name);
+std::string read_name(::tpy::Union<const Cat*, const Dog*> pet);
 void test();
 
 // # Union param mutation inference: mutated params stay T& (non-const);

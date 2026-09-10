@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def classify(a: Dog | Cat | Bird, allow: bool) -> str:
-std::string classify(const std::variant<Bird*, Cat*, Dog*> a, bool allow) {
+std::string classify(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool allow) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -98,25 +98,25 @@ std::string small(const ::tpy::BigInt& n, bool allow) {
 void main() {
     // d: Dog | Cat | Bird = Dog(1)
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog(::tpy::BigInt(1));
-    std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat | Bird = Cat(2)
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat(::tpy::BigInt(2));
-    std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // b: Dog | Cat | Bird = Bird(3)
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird(::tpy::BigInt(3));
-    std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     // print(classify(d, True))
-    std::cout << classify(d, true) << "\n";
+    std::cout << classify(d.as_const(), true) << "\n";
     // print(classify(d, False))
-    std::cout << classify(d, false) << "\n";
+    std::cout << classify(d.as_const(), false) << "\n";
     // print(classify(c, True))
-    std::cout << classify(c, true) << "\n";
+    std::cout << classify(c.as_const(), true) << "\n";
     // print(classify(c, False))
-    std::cout << classify(c, false) << "\n";
+    std::cout << classify(c.as_const(), false) << "\n";
     // print(classify(b, True))
-    std::cout << classify(b, true) << "\n";
+    std::cout << classify(b.as_const(), true) << "\n";
     // print(classify(b, False))
-    std::cout << classify(b, false) << "\n";
+    std::cout << classify(b.as_const(), false) << "\n";
     // print(small(1, True))
     std::cout << small(::tpy::BigInt(1), true) << "\n";
     // print(small(2, False))

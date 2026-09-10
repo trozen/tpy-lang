@@ -25,7 +25,7 @@ void bump_opt(A* o) {
 }
 
 // def read_narrowed(u: A | B) -> Int32:
-int32_t read_narrowed(std::variant<A*, B*> u) {
+int32_t read_narrowed(::tpy::Union<A*, B*> u) {
     // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
@@ -38,7 +38,7 @@ int32_t read_narrowed(std::variant<A*, B*> u) {
 }
 
 // def mutate_narrowed(u: A | B) -> Int32:
-int32_t mutate_narrowed(std::variant<A*, B*> u) {
+int32_t mutate_narrowed(::tpy::Union<A*, B*> u) {
     // if isinstance(u, A):
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
@@ -53,7 +53,7 @@ int32_t mutate_narrowed(std::variant<A*, B*> u) {
 }
 
 // def inline_narrowed(u: A | B) -> Int32:
-int32_t inline_narrowed(std::variant<A*, B*> u) {
+int32_t inline_narrowed(::tpy::Union<A*, B*> u) {
     // if isinstance(u, A) and take_opt(u) > 2:
     if ((std::holds_alternative<A*>(u) && (take_opt(&((*std::get<A*>(u)))) > 2))) {
         auto& __u = *std::get<A*>(u);
@@ -69,20 +69,20 @@ void main() {
     // a = A(3)
     A a = A(3);
     // print(read_narrowed(a))
-    std::cout << read_narrowed(std::variant<A*, B*>{&(a)}) << "\n";
+    std::cout << read_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
     // print(mutate_narrowed(a))
-    std::cout << mutate_narrowed(std::variant<A*, B*>{&(a)}) << "\n";
+    std::cout << mutate_narrowed(::tpy::Union<A*, B*>{&(a)}) << "\n";
     // print(a.x)
     std::cout << a.x << "\n";
     // print(read_narrowed(B(9)))
     B __tmp_1 = B(9);
-    std::cout << read_narrowed(std::variant<A*, B*>{&__tmp_1}) << "\n";
+    std::cout << read_narrowed(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
     // print(inline_narrowed(A(5)))
     A __tmp_2 = A(5);
-    std::cout << inline_narrowed(std::variant<A*, B*>{&__tmp_2}) << "\n";
+    std::cout << inline_narrowed(::tpy::Union<A*, B*>{&__tmp_2}) << "\n";
     // print(inline_narrowed(A(1)))
     A __tmp_3 = A(1);
-    std::cout << inline_narrowed(std::variant<A*, B*>{&__tmp_3}) << "\n";
+    std::cout << inline_narrowed(::tpy::Union<A*, B*>{&__tmp_3}) << "\n";
 }
 
 void __tpy_init() {

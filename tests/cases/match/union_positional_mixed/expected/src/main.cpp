@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(s: Point | Label) -> None:
-void describe(const std::variant<Label*, Point*> s) {
+void describe(::tpy::Union<const Label*, const Point*> s) {
     // match s:
     auto& __match_subject_1 = s;
     switch (__match_subject_1.index()) {
@@ -34,14 +34,14 @@ void describe(const std::variant<Label*, Point*> s) {
 void main() {
     // p: Point | Label = Point(1.0, 2.0, 3.0)
     ::tpy::Union<Label, Point> __slot_1 = Point(1.0, 2.0, 3.0);
-    std::variant<Label*, Point*> p = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Label*, Point*> p = ::tpy::to_ptr_variant(__slot_1);
     // describe(p)
-    describe(p);
+    describe(p.as_const());
     // la: Point | Label = Label("hello")
     ::tpy::Union<Label, Point> __slot_2 = Label("hello");
-    std::variant<Label*, Point*> la = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Label*, Point*> la = ::tpy::to_ptr_variant(__slot_2);
     // describe(la)
-    describe(la);
+    describe(la.as_const());
 }
 
 void __tpy_init() {

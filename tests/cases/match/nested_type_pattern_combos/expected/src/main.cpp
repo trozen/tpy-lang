@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // # --- Case 1: type-param x type-param (two levels of generic disambiguation) ---
 // def nested_param(x: Box[Box[str]] | Box[Box[Int32]]) -> str:
-std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::string>>*> x) {
+std::string nested_param(::tpy::Union<const Box<Box<int32_t>>*, const Box<Box<std::string>>*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -31,7 +31,7 @@ std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::str
 }
 
 // def union_subj_union_field(x: Int32 | Container) -> str:
-std::string union_subj_union_field(const std::variant<Container*, int32_t*> x) {
+std::string union_subj_union_field(::tpy::Union<const Container*, const int32_t*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -129,39 +129,39 @@ void main() {
     // # Case 1
     // a1: Box[Box[str]] | Box[Box[Int32]] = Box(Box("hello"))
     ::tpy::Union<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_1 = Box<Box<std::string>>(Box<std::string>("hello"));
-    std::variant<Box<Box<int32_t>>*, Box<Box<std::string>>*> a1 = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Box<Box<int32_t>>*, Box<Box<std::string>>*> a1 = ::tpy::to_ptr_variant(__slot_1);
     // a2: Box[Box[str]] | Box[Box[Int32]] = Box(Box(Int32(42)))
     ::tpy::Union<Box<Box<int32_t>>, Box<Box<std::string>>> __slot_2 = Box<Box<int32_t>>(Box<int32_t>(42));
-    std::variant<Box<Box<int32_t>>*, Box<Box<std::string>>*> a2 = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Box<Box<int32_t>>*, Box<Box<std::string>>*> a2 = ::tpy::to_ptr_variant(__slot_2);
     // print(nested_param(a1))
-    std::cout << nested_param(a1) << "\n";
+    std::cout << nested_param(a1.as_const()) << "\n";
     // print(nested_param(a2))
-    std::cout << nested_param(a2) << "\n";
+    std::cout << nested_param(a2.as_const()) << "\n";
     // # Case 2
     // b1: Int32 | Container = Container("world")
     ::tpy::Union<int32_t, std::string> __tmp_1 = "world";
     ::tpy::Union<Container, int32_t> __slot_3 = Container(__tmp_1);
-    std::variant<Container*, int32_t*> b1 = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Container*, int32_t*> b1 = ::tpy::to_ptr_variant(__slot_3);
     // b2: Int32 | Container = Container(Int32(7))
     ::tpy::Union<int32_t, std::string> __tmp_2 = 7;
     ::tpy::Union<Container, int32_t> __slot_4 = Container(__tmp_2);
-    std::variant<Container*, int32_t*> b2 = ::tpy::to_ptr_variant(__slot_4);
+    ::tpy::Union<Container*, int32_t*> b2 = ::tpy::to_ptr_variant(__slot_4);
     // b3: Int32 | Container = 99
     ::tpy::Union<Container, int32_t> __slot_5 = 99;
-    std::variant<Container*, int32_t*> b3 = ::tpy::to_ptr_variant(__slot_5);
+    ::tpy::Union<Container*, int32_t*> b3 = ::tpy::to_ptr_variant(__slot_5);
     // print(union_subj_union_field(b1))
-    std::cout << union_subj_union_field(b1) << "\n";
+    std::cout << union_subj_union_field(b1.as_const()) << "\n";
     // print(union_subj_union_field(b2))
-    std::cout << union_subj_union_field(b2) << "\n";
+    std::cout << union_subj_union_field(b2.as_const()) << "\n";
     // print(union_subj_union_field(b3))
-    std::cout << union_subj_union_field(b3) << "\n";
+    std::cout << union_subj_union_field(b3.as_const()) << "\n";
     // # Case 3
     // c1 = Outer(Box("abc"))
     Box<std::string> __tmp_3 = Box<std::string>("abc");
-    Outer c1 = Outer(std::variant<Box<int32_t>*, Box<std::string>*>{&__tmp_3});
+    Outer c1 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_3});
     // c2 = Outer(Box(Int32(10)))
     Box<int32_t> __tmp_4 = Box<int32_t>(10);
-    Outer c2 = Outer(std::variant<Box<int32_t>*, Box<std::string>*>{&__tmp_4});
+    Outer c2 = Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*>{&__tmp_4});
     // print(union_field_param(c1))
     std::cout << union_field_param(c1) << "\n";
     // print(union_field_param(c2))

@@ -18,7 +18,7 @@ namespace tpyapp::main {
 void main() {
     // v = get_dict()
     ::tpy::Union<::tpy::ordered_map<std::string, Cell>, ::tpy::BigInt> __slot_1 = get_dict();
-    std::variant<::tpy::ordered_map<std::string, Cell>*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<::tpy::ordered_map<std::string, Cell>*, ::tpy::BigInt*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, dict):
     if (std::holds_alternative<::tpy::ordered_map<std::string, Cell>*>(v)) {
         auto& __v = *std::get<::tpy::ordered_map<std::string, Cell>*>(v);

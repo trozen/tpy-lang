@@ -54,7 +54,7 @@ struct Picker {
 
 
     // def choose(self, d: Dog) -> Dog | Cat:
-    std::variant<const Cat*, const Dog*> choose(const Dog& d) const;
+    ::tpy::Union<const Cat*, const Dog*> choose(const Dog& d) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Picker";
 };
 
@@ -71,7 +71,7 @@ inline Dog::Dog(std::string_view n) : name(n) {}
 inline Cat::Cat(std::string_view n) : name(n) {}
 
 // def choose(self, d: Dog) -> Dog | Cat:
-inline std::variant<const Cat*, const Dog*> Picker::choose(const Dog& d) const {
+inline ::tpy::Union<const Cat*, const Dog*> Picker::choose(const Dog& d) const {
     // return d
     return &(d);
 }

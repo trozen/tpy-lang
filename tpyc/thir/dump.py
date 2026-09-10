@@ -250,7 +250,7 @@ def _expr(e: THIRExpr) -> str:
         if e.value is None:
             inner = "monostate"
         elif e.const_wrap:
-            inner = f"to_const({_expr(e.value)})"
+            inner = f"to_const:{e.const_wrap}({_expr(e.value)})"
         else:
             inner = f"&({'*' if e.deref else ''}{_expr(e.value)})"
         return f"union_lift[{e.variant_cpp}]{{{inner}}}"

@@ -58,7 +58,7 @@ struct Wrapper {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Cat | Dog) -> None:
-    explicit Wrapper(const std::variant<Cat*, Dog*> pet);
+    explicit Wrapper(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -93,7 +93,7 @@ inline Cat::Cat(std::string_view name) : name(name) {}
 inline Dog::Dog(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Cat | Dog) -> None:
-inline Wrapper::Wrapper(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
+inline Wrapper::Wrapper(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, tag: str, value: str | Int32) -> None:
 inline Tagged::Tagged(std::string_view tag, const ::tpy::Union<int32_t, std::string>& value) : tag(tag), value(value) {}

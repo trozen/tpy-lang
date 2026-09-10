@@ -59,7 +59,7 @@ struct Base {
     // # (monostate is the first alternative in both reprs), not `nullptr`.
     // def __init__(self, tag: Int64, pet: Cat | Dog | None = None) -> None:
     Base() = default;
-    explicit Base(int64_t tag, const std::variant<std::monostate, Cat*, Dog*> pet = {});
+    explicit Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Dog*> pet = {});
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -92,7 +92,7 @@ inline Dog::Dog(int64_t n) : n(n) {}
 // # `Cat | Dog | None` is a POINTER-repr union, whose None still spells `{}`
 // # (monostate is the first alternative in both reprs), not `nullptr`.
 // def __init__(self, tag: Int64, pet: Cat | Dog | None = None) -> None:
-inline Base::Base(int64_t tag, const std::variant<std::monostate, Cat*, Dog*> pet) : tag(tag), has_pet((!std::holds_alternative<std::monostate>(pet))) {}
+inline Base::Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Dog*> pet) : tag(tag), has_pet((!std::holds_alternative<std::monostate>(pet))) {}
 
 // def __init__(self, tag: Int64) -> None:
 inline Sub::Sub(int64_t tag) : Base(tag, {}) {}

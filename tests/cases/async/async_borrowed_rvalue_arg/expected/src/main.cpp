@@ -19,14 +19,14 @@ namespace tpyapp::main {
         (void)std::move(__r0).value();
         __sub_0.reset();
         // if isinstance(a, Dog):
-        if (std::holds_alternative<Dog*>(a)) {
-            auto& __a = *std::get<Dog*>(a);
+        if (std::holds_alternative<const Dog*>(a)) {
+            auto& __a = *std::get<const Dog*>(a);
             // return a.name
             __state = S_DONE;
             std::string __tpy_async_ret = __a.name;
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
-        auto& __a = *std::get<Cat*>(a);
+        auto& __a = *std::get<const Cat*>(a);
         // return "cat"
         __state = S_DONE;
         std::string __tpy_async_ret = "cat";
@@ -39,7 +39,7 @@ namespace tpyapp::main {
 
 
 // async def via_union(a: Dog | Cat) -> str:
-__coro_via_union via_union(std::variant<Cat*, Dog*> a) {
+__coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a) {
     return __coro_via_union(a);
 }
 
@@ -125,14 +125,14 @@ __coro_via_ref via_ref(Dog& a) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         // if isinstance(a, Dog):
-        if (std::holds_alternative<Dog*>(a)) {
-            auto& __a = *std::get<Dog*>(a);
+        if (std::holds_alternative<const Dog*>(a)) {
+            auto& __a = *std::get<const Dog*>(a);
             // return tag + ":" + a.name
             __state = S_DONE;
             std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat(tag, ":")), __a.name));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
-        auto& __a = *std::get<Cat*>(a);
+        auto& __a = *std::get<const Cat*>(a);
         // return tag + ":cat"
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat(tag, ":cat"));
@@ -145,7 +145,7 @@ __coro_via_ref via_ref(Dog& a) {
 
 
 // async def via_mixed(tag: str, a: Dog | Cat) -> str:
-__coro_via_mixed via_mixed(std::string_view tag, std::variant<Cat*, Dog*> a) {
+__coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const Dog*> a) {
     return __coro_via_mixed(tag, a);
 }
 
@@ -155,7 +155,7 @@ __coro_via_mixed via_mixed(std::string_view tag, std::variant<Cat*, Dog*> a) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Dog("rex"));
         // print(await via_union(Dog("rex")))
-        __sub_0.emplace(std::variant<Cat*, Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
@@ -168,7 +168,7 @@ __coro_via_mixed via_mixed(std::string_view tag, std::variant<Cat*, Dog*> a) {
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1.emplace(Cat("tom"));
         // print(await via_union(Cat("tom")))
-        __sub_1.emplace(std::variant<Cat*, Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
     }
@@ -236,7 +236,7 @@ __coro_via_mixed via_mixed(std::string_view tag, std::variant<Cat*, Dog*> a) {
         std::cout << __await_lift_5 << "\n";
         __coro_arg_4.emplace(Dog("max"));
         // print(await via_mixed("tag", Dog("max")))
-        __sub_6.emplace("tag", std::variant<Cat*, Dog*>{&((*__coro_arg_4))});
+        __sub_6.emplace("tag", ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_4))});
         __state = S_RESUME_6;
         continue;
     }

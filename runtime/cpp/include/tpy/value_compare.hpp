@@ -24,6 +24,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -72,6 +73,19 @@ concept vc_char_vs_number =
 
 template<typename T>
 concept vc_none = std::same_as<std::remove_cv_t<T>, std::monostate>;
+
+// Whether a union's alternative pack is the BORROW form: every alternative
+// a pointer, plus a monostate for a nullable union's None. One type spells
+// both forms, so this is the fact that separates them -- the read-borrow
+// conversion is offered for this pack only, and a consumer asking "is this
+// the borrow form" asks the PACK rather than guessing at a type name.
+// Per-PAIR leaf selection uses `vc_ptr_alt` below instead: the leaf sees two
+// alternatives, not the pack.
+template<class... Ts>
+inline constexpr bool vc_borrow_pack =
+    sizeof...(Ts) > 0
+    && ((std::is_pointer_v<Ts> || std::same_as<Ts, std::monostate>) && ...)
+    && (std::is_pointer_v<Ts> || ...);
 
 // The visit reached the SAME alternative on both sides. Used by `py_eq`
 // only, to withhold its "values of unrelated types are never equal" answer:
@@ -129,6 +143,39 @@ inline bool py_eq(const A& a, const B& b) {
                       "Answering False here would invent a result Python "
                       "takes from identity.");
         return false;
+    }
+}
+
+// Python INEQUALITY at ONE pair of alternative types -- not `!py_eq`.
+// CPython derives `!=` from `__eq__` only when the type declares no
+// `__ne__`; a declared one is called instead and need not be the negation.
+// C++ mirrors that exactly: a TPy `__ne__` renders `operator!=`, and a type
+// with only `__eq__` gets the C++20 rewritten `!=`, which IS the derivation
+// CPython performs -- so asking for the twin's `!=` gets both answers right,
+// where negating equality got the second one right and the first one wrong.
+// The numeric legs repeat py_eq's widening rather than route through the
+// operator, for the reason py_eq has them at all (a mixed-sign `!=` compares
+// as C++ does, not as Python does); the final fallback is `!py_eq` for the
+// rows where no `!=` exists to ask -- the cross-type row, and the same-type
+// row with no equality at all, whose static_assert must still fire.
+template<typename A, typename B>
+inline bool py_ne(const A& a, const B& b) {
+    if constexpr (vc_char_vs_number<A, B>) {
+        return true;
+    } else if constexpr (vc_mixed_sign<A, B>) {
+        return !std::cmp_equal(a, b);
+    } else if constexpr (vc_bigint<A> && std::is_floating_point_v<B>) {
+        return static_cast<double>(a) != b;
+    } else if constexpr (std::is_floating_point_v<A> && vc_bigint<B>) {
+        return a != static_cast<double>(b);
+    } else if constexpr (vc_bigint<A> && vc_cmp_integer<B>) {
+        return a != vc_to_bigint(b);
+    } else if constexpr (vc_cmp_integer<A> && vc_bigint<B>) {
+        return vc_to_bigint(a) != b;
+    } else if constexpr (requires { { a != b } -> std::convertible_to<bool>; }) {
+        return a != b;
+    } else {
+        return !py_eq(a, b);
     }
 }
 
@@ -209,17 +256,118 @@ inline bool py_cmp(const A& a, const B& b) {
     }
 }
 
+// A BORROWED alternative: the union holds a pointer to the object rather
+// than the object. `std::monostate` is not one -- it is None on either form
+// -- so a pair is borrowed when EITHER side is a pointer.
+template<typename T>
+concept vc_ptr_alt = std::is_pointer_v<std::remove_cv_t<T>>;
+
+// A borrowed alternative's TPy name is the POINTEE's: a diagnostic must
+// never name a C++ pointer.
+template<typename T>
+inline std::string vc_ptr_name() {
+    if constexpr (vc_none<T>) {
+        return type_name<std::monostate>();
+    } else {
+        return type_name<std::remove_cv_t<std::remove_pointer_t<T>>>();
+    }
+}
+
+// Python equality at ONE pair of BORROWED alternatives. Identity is the
+// answer only a borrow position can give: there the pointer IS the object,
+// which is what CPython falls back to for a type that defines no `__eq__`.
+// (At a storage position TPy has copied the object into the slot, so the
+// slot's address is not its identity -- which is why the value leaf refuses
+// to compile for that pair instead of inventing an answer.)
+template<typename A, typename B>
+inline bool py_eq_ptr(const A& a, const B& b) {
+    if constexpr (vc_none<A> && vc_none<B>) {
+        return true;                       // None == None
+    } else if constexpr (vc_none<A> || vc_none<B>) {
+        return false;                      // None == <object>
+    } else {
+        using PA = std::remove_cv_t<std::remove_pointer_t<A>>;
+        using PB = std::remove_cv_t<std::remove_pointer_t<B>>;
+        if constexpr (std::same_as<PA, PB>
+                      && !requires (const PA& x, const PB& y) {
+                             { x == y } -> std::convertible_to<bool>; }) {
+            return static_cast<const void*>(a) == static_cast<const void*>(b);
+        } else {
+            // The VALUE legs, on the pointees -- a borrow form can hold
+            // pointers to value members (`bytearray | Int32`), and `1` vs
+            // `1.0` through such a union is Python-equal.
+            return py_eq(*a, *b);
+        }
+    }
+}
+
+// Python inequality at ONE pair of BORROWED alternatives -- the pointee's
+// own `!=` (see `py_ne`), not the negation of `py_eq_ptr`.
+template<typename A, typename B>
+inline bool py_ne_ptr(const A& a, const B& b) {
+    if constexpr (vc_none<A> && vc_none<B>) {
+        return false;                      // None != None
+    } else if constexpr (vc_none<A> || vc_none<B>) {
+        return true;                       // None != <object>
+    } else {
+        using PA = std::remove_cv_t<std::remove_pointer_t<A>>;
+        using PB = std::remove_cv_t<std::remove_pointer_t<B>>;
+        // Identity only when the pair has NEITHER operator. Gating on `==`
+        // alone would take identity for a record that declares `__ne__` and
+        // no `__eq__`, which CPython answers by calling that `__ne__`.
+        if constexpr (std::same_as<PA, PB>
+                      && !requires (const PA& x, const PB& y) {
+                             { x != y } -> std::convertible_to<bool>; }
+                      && !requires (const PA& x, const PB& y) {
+                             { x == y } -> std::convertible_to<bool>; }) {
+            return static_cast<const void*>(a) != static_cast<const void*>(b);
+        } else {
+            return py_ne(*a, *b);
+        }
+    }
+}
+
+// Python ordering at ONE pair of BORROWED alternatives.
+template<CmpOp Op, typename A, typename B>
+inline bool py_cmp_ptr(const A& a, const B& b) {
+    if constexpr (vc_none<A> || vc_none<B>) {
+        // `None < x` is a TypeError in CPython. Raised here rather than
+        // through `py_cmp` so the message names the pointees, not `Dog*`.
+        raise_type_error("'{}' not supported between instances of '{}' and '{}'",
+                         cmp_op_name(Op), vc_ptr_name<A>(), vc_ptr_name<B>());
+    } else {
+        return py_cmp<Op>(*a, *b);
+    }
+}
+
 // The comparison a union's operator performs, as a template parameter rather
 // than a callable -- the dispatch below takes no function object.
-enum class UnionOp { Eq, Lt, Le, Gt, Ge };
+enum class UnionOp { Eq, Ne, Lt, Le, Gt, Ge };
 
+// ONE leaf for both forms of a union, choosing per alternative PAIR: a pair
+// with a pointer on either side is a borrow and answers through the pointee
+// (identity included), everything else answers by value. Keyed on the
+// alternative TYPES the dispatch reached, not on the pack and not on a guess
+// about the union's spelling -- a mixed pack would still get the right leg
+// per pair. A monostate/monostate pair is None on both forms and the two
+// legs agree on it, so it costs nothing to leave with the value legs.
 template<UnionOp Op, class X, class Y>
 inline bool union_leaf(const X& x, const Y& y) {
-    if constexpr (Op == UnionOp::Eq) return py_eq(x, y);
-    else if constexpr (Op == UnionOp::Lt) return py_cmp<CmpOp::Lt>(x, y);
-    else if constexpr (Op == UnionOp::Le) return py_cmp<CmpOp::Le>(x, y);
-    else if constexpr (Op == UnionOp::Gt) return py_cmp<CmpOp::Gt>(x, y);
-    else return py_cmp<CmpOp::Ge>(x, y);
+    if constexpr (vc_ptr_alt<X> || vc_ptr_alt<Y>) {
+        if constexpr (Op == UnionOp::Eq) return py_eq_ptr(x, y);
+        else if constexpr (Op == UnionOp::Ne) return py_ne_ptr(x, y);
+        else if constexpr (Op == UnionOp::Lt) return py_cmp_ptr<CmpOp::Lt>(x, y);
+        else if constexpr (Op == UnionOp::Le) return py_cmp_ptr<CmpOp::Le>(x, y);
+        else if constexpr (Op == UnionOp::Gt) return py_cmp_ptr<CmpOp::Gt>(x, y);
+        else return py_cmp_ptr<CmpOp::Ge>(x, y);
+    } else {
+        if constexpr (Op == UnionOp::Eq) return py_eq(x, y);
+        else if constexpr (Op == UnionOp::Ne) return py_ne(x, y);
+        else if constexpr (Op == UnionOp::Lt) return py_cmp<CmpOp::Lt>(x, y);
+        else if constexpr (Op == UnionOp::Le) return py_cmp<CmpOp::Le>(x, y);
+        else if constexpr (Op == UnionOp::Gt) return py_cmp<CmpOp::Gt>(x, y);
+        else return py_cmp<CmpOp::Ge>(x, y);
+    }
 }
 
 // Hand-rolled index dispatch instead of `std::visit`. Visiting two variants

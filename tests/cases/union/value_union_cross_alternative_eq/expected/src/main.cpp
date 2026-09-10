@@ -356,6 +356,12 @@ bool t_ge(double a, double b) {
     return (a >= b);
 }
 
+// def dunder_ne(a: Tagged | Marked, b: Tagged | Marked) -> bool:  # free function
+bool dunder_ne(const ::tpy::Union<Marked, Tagged>& a, const ::tpy::Union<Marked, Tagged>& b) {
+    // return a != b  # tpyc: ok
+    return (a != b);
+}
+
 // def value_record_lt(a: Fixed | Zone, b: Fixed | Zone) -> str:
 std::string value_record_lt(const ::tpy::Union<Fixed, Zone>& a, const ::tpy::Union<Fixed, Zone>& b) {
     // try:
@@ -656,6 +662,15 @@ void main() {
     ::tpy::Union<Fixed, Zone> __tmp_28 = Fixed(1);
     ::tpy::Union<Fixed, Zone> __tmp_29 = Fixed(2);
     std::cout << "value record lt" << " " << value_record_lt(__tmp_28, __tmp_29) << "\n";
+    // print("custom_ne", dunder_ne(Tagged(1), Tagged(1)),
+    // dunder_ne(Tagged(1), Tagged(2)), dunder_ne(Tagged(1), Marked(1)))
+    ::tpy::Union<Marked, Tagged> __tmp_30 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_31 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_32 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_33 = Tagged(2);
+    ::tpy::Union<Marked, Tagged> __tmp_34 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_35 = Marked(1);
+    std::cout << "custom_ne" << " " << ::tpy::print_bool(dunder_ne(__tmp_30, __tmp_31)) << " " << ::tpy::print_bool(dunder_ne(__tmp_32, __tmp_33)) << " " << ::tpy::print_bool(dunder_ne(__tmp_34, __tmp_35)) << "\n";
     // print("unorderable", str_int_cmp(n, s, 0), str_int_cmp(n, s, 1),
     // str_int_cmp(n, s, 2), str_int_cmp(n, s, 3))
     std::cout << "unorderable" << " " << str_int_cmp(n, s, 0) << " " << str_int_cmp(n, s, 1) << " " << str_int_cmp(n, s, 2) << " " << str_int_cmp(n, s, 3) << "\n";

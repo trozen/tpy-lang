@@ -13,12 +13,12 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string basic(const std::variant<A*, B*, C*> v);
-::tpy::BigInt negate(const std::variant<A*, B*, C*> v);
-std::string and_rhs(const std::variant<A*, B*, C*> v, bool flag);
-std::string or_lhs(const std::variant<A*, B*, C*> v, bool flag);
-std::string single_member_tuple(const std::variant<A*, B*, C*> v);
-std::string match_guard(const std::variant<A*, B*, C*> v);
+std::string basic(::tpy::Union<const A*, const B*, const C*> v);
+::tpy::BigInt negate(::tpy::Union<const A*, const B*, const C*> v);
+std::string and_rhs(::tpy::Union<const A*, const B*, const C*> v, bool flag);
+std::string or_lhs(::tpy::Union<const A*, const B*, const C*> v, bool flag);
+std::string single_member_tuple(::tpy::Union<const A*, const B*, const C*> v);
+std::string match_guard(::tpy::Union<const A*, const B*, const C*> v);
 void main();
 
 // # Tuple form isinstance(x, (A, B)) expands to "A or B" narrowing,

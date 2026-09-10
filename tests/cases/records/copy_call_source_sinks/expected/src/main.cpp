@@ -54,7 +54,7 @@ int32_t variant_copy(bool pick) {
     // # active-member deep copy, its own arm.
     // u: Dog | Cat = Dog(1)
     ::tpy::Union<Cat, Dog> __slot_1 = Dog(1);
-    std::variant<Cat*, Dog*> u = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> u = ::tpy::to_ptr_variant(__slot_1);
     // if not pick:
     if ((!(pick))) {
         // u = Cat(2)
@@ -63,7 +63,7 @@ int32_t variant_copy(bool pick) {
     }
     // dup = copy(u)
     ::tpy::Union<Cat, Dog> __slot_3 = ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(u);
-    std::variant<Cat*, Dog*> dup = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Cat*, Dog*> dup = ::tpy::to_ptr_variant(__slot_3);
     // if isinstance(u, Dog):
     if (std::holds_alternative<Dog*>(u)) {
         auto& __u = *std::get<Dog*>(u);

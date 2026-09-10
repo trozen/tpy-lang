@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def describe(c: Canvas) -> None:
 void describe(const Canvas& c) {
     // s = c.shape
-    std::variant<const Circle*, const Square*> s = ::tpy::to_const_ptr_variant(c.shape());
+    ::tpy::Union<const Circle*, const Square*> s = ::tpy::to_const_ptr_variant(c.shape());
     // if isinstance(s, Circle):
     if (std::holds_alternative<const Circle*>(s)) {
         auto& __s = *std::get<const Circle*>(s);
@@ -27,11 +27,11 @@ void describe(const Canvas& c) {
 void main() {
     // describe(Canvas(Circle(5)))
     Circle __tmp_1 = Circle(5);
-    Canvas __tmp_2 = Canvas(std::variant<Circle*, Square*>{&__tmp_1});
+    Canvas __tmp_2 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_1});
     describe(__tmp_2);
     // describe(Canvas(Square(10)))
     Square __tmp_3 = Square(10);
-    Canvas __tmp_4 = Canvas(std::variant<Circle*, Square*>{&__tmp_3});
+    Canvas __tmp_4 = Canvas(::tpy::Union<const Circle*, const Square*>{&__tmp_3});
     describe(__tmp_4);
 }
 

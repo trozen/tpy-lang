@@ -13,7 +13,7 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt f(const std::variant<A*, B*, C*> v);
+::tpy::BigInt f(::tpy::Union<const A*, const B*, const C*> v);
 void main();
 
 // # After ruling out one member of a 3-member union, two remain (still a union):

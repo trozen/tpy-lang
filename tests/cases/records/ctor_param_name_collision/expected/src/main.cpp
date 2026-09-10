@@ -10,7 +10,7 @@ std::expected<bool, ::tpy::StopIteration> __gen_g::__next__() {
     case S_INITIAL: {
         // yield isinstance(v, A)
         __state = S_RESUME_0;
-        return std::holds_alternative<A*>(v);
+        return std::holds_alternative<const A*>(v);
     }
     case S_RESUME_0: {
         __state = S_DONE;
@@ -23,7 +23,7 @@ std::expected<bool, ::tpy::StopIteration> __gen_g::__next__() {
 
 
 // def g(v: A | B) -> Iterator[bool]:
-__gen_g g(std::variant<A*, B*> v) {
+__gen_g g(::tpy::Union<const A*, const B*> v) {
     return __gen_g(v);
 }
 
@@ -32,7 +32,7 @@ void main() {
     // for b in g(A(1)):
     {
         A __tmp_1 = A(1);
-        auto __src_0 = g(std::variant<A*, B*>{&__tmp_1});
+        auto __src_0 = g(::tpy::Union<const A*, const B*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -47,7 +47,7 @@ void main() {
     // print(h.n)
     std::cout << h.n << "\n";
     // u = h.u
-    std::variant<A*, B*> u = ::tpy::to_ptr_variant(h.u);
+    ::tpy::Union<A*, B*> u = ::tpy::to_ptr_variant(h.u);
     // if isinstance(u, B):
     if (std::holds_alternative<B*>(u)) {
         auto& __u = *std::get<B*>(u);

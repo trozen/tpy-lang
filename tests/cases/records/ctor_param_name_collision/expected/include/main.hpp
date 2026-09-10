@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_g;
 
-__gen_g g(std::variant<A*, B*> v);
+__gen_g g(::tpy::Union<const A*, const B*> v);
 void main();
 
 // class A:
@@ -72,7 +72,7 @@ inline std::ostream& operator<<(std::ostream& os, const H& obj) {
 // Generator: g
 struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, bool> {
     int32_t __state;
-    std::variant<A*, B*> v;
+    ::tpy::Union<const A*, const B*> v;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -80,7 +80,7 @@ struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, bool> {
         S_DONE = 2,
     };
 
-    __gen_g(std::variant<A*, B*> v_)
+    __gen_g(::tpy::Union<const A*, const B*> v_)
         : __state(S_INITIAL), v(v_) {}
 
     std::expected<bool, ::tpy::StopIteration> __next__();

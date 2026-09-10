@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pick(x: A | B | None) -> Int32:
-int32_t pick(const std::variant<std::monostate, A*, B*> x) {
+int32_t pick(::tpy::Union<std::monostate, const A*, const B*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -36,13 +36,13 @@ int32_t pick(const std::variant<std::monostate, A*, B*> x) {
 // def main() -> None:
 void main() {
     // print(pick(None))
-    std::cout << pick(std::variant<std::monostate, A*, B*>{std::monostate{}}) << "\n";
+    std::cout << pick(::tpy::Union<std::monostate, const A*, const B*>{std::monostate{}}) << "\n";
     // print(pick(A()))
     A __tmp_1 = A();
-    std::cout << pick(std::variant<std::monostate, A*, B*>{&__tmp_1}) << "\n";
+    std::cout << pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_1}) << "\n";
     // print(pick(B()))
     B __tmp_2 = B();
-    std::cout << pick(std::variant<std::monostate, A*, B*>{&__tmp_2}) << "\n";
+    std::cout << pick(::tpy::Union<std::monostate, const A*, const B*>{&__tmp_2}) << "\n";
 }
 
 void __tpy_init() {

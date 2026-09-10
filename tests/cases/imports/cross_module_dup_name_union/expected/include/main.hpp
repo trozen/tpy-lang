@@ -14,7 +14,7 @@ using WorldPoint = ::tpyapp::world::Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void shift(std::variant<::tpyapp::screen::Point*, ::tpyapp::world::Point*> p);
+void shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*> p);
 void main();
 
 void __tpy_init();

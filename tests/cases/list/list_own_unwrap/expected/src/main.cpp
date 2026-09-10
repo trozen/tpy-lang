@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def show(a: Cat | Dog) -> None:
-void show(const std::variant<Cat*, Dog*> a) {
+void show(::tpy::Union<const Cat*, const Dog*> a) {
     // pass
 }
 
@@ -13,16 +13,16 @@ void show(const std::variant<Cat*, Dog*> a) {
 void main() {
     // a: Cat | Dog = Cat("x")
     ::tpy::Union<Cat, Dog> __slot_1 = Cat("x");
-    std::variant<Cat*, Dog*> a = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: Cat | Dog = Dog("y")
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("y");
-    std::variant<Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_2);
     // items: list[Cat | Dog] = [a, b]
     std::vector<::tpy::Union<Cat, Dog>> items = {::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(a), ::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(b)};
     // show(a)
-    show(a);
+    show(a.as_const());
     // show(b)
-    show(b);
+    show(b.as_const());
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
     // # Narrowed variable in list literal: 'a' is Cat& after isinstance,

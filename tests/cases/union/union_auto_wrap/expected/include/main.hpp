@@ -12,7 +12,7 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void process(const std::variant<A*, B*> v);
+void process(::tpy::Union<const A*, const B*> v);
 void main();
 
 // # Test passing concrete types to functions expecting union parameters

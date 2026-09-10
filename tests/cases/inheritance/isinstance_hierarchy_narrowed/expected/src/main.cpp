@@ -5,29 +5,29 @@ namespace tpyapp::main {
 
 
 // def upcast_in_branch(x: Dog | Cat) -> bool:
-bool upcast_in_branch(const std::variant<Cat*, Dog*> x) {
+bool upcast_in_branch(::tpy::Union<const Cat*, const Dog*> x) {
     // # Dog is an Animal -- folds to True, no warning.
     // if isinstance(x, Dog):
-    if (std::holds_alternative<Dog*>(x)) {
-        auto& __x = *std::get<Dog*>(x);
+    if (std::holds_alternative<const Dog*>(x)) {
+        auto& __x = *std::get<const Dog*>(x);
         // return isinstance(x, Animal)
         return true;
     }
-    auto& __x = *std::get<Cat*>(x);
+    auto& __x = *std::get<const Cat*>(x);
     // return False
     return false;
 }
 
 // def downcast_in_branch(x: Dog | Cat) -> bool:
-bool downcast_in_branch(const std::variant<Cat*, Dog*> x) {
+bool downcast_in_branch(::tpy::Union<const Cat*, const Dog*> x) {
     // # Puppy is a descendant of narrowed Dog -- folds to False + warning.
     // if isinstance(x, Dog):
-    if (std::holds_alternative<Dog*>(x)) {
-        auto& __x = *std::get<Dog*>(x);
+    if (std::holds_alternative<const Dog*>(x)) {
+        auto& __x = *std::get<const Dog*>(x);
         // return isinstance(x, Puppy)  # tpyc: warning(/descendant type 'Puppy'/)
         return false;
     }
-    auto& __x = *std::get<Cat*>(x);
+    auto& __x = *std::get<const Cat*>(x);
     // return False
     return false;
 }
@@ -36,10 +36,10 @@ bool downcast_in_branch(const std::variant<Cat*, Dog*> x) {
 void main() {
     // print(upcast_in_branch(Dog("Rex", "lab")))
     Dog __tmp_1 = Dog("Rex", "lab");
-    std::cout << ::tpy::print_bool(upcast_in_branch(std::variant<Cat*, Dog*>{&__tmp_1})) << "\n";
+    std::cout << ::tpy::print_bool(upcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_1})) << "\n";
     // print(downcast_in_branch(Dog("Rex", "lab")))
     Dog __tmp_2 = Dog("Rex", "lab");
-    std::cout << ::tpy::print_bool(downcast_in_branch(std::variant<Cat*, Dog*>{&__tmp_2})) << "\n";
+    std::cout << ::tpy::print_bool(downcast_in_branch(::tpy::Union<const Cat*, const Dog*>{&__tmp_2})) << "\n";
 }
 
 void __tpy_init() {

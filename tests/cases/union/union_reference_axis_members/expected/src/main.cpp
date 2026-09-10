@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def grow(u: list[Int32] | bytearray) -> None:
-void grow(std::variant<::tpy::ByteArray*, std::vector<int32_t>*> u) {
+void grow(::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u) {
     // if isinstance(u, bytearray):
     if (std::holds_alternative<::tpy::ByteArray*>(u)) {
         auto& __u = *std::get<::tpy::ByteArray*>(u);
@@ -20,7 +20,7 @@ void grow(std::variant<::tpy::ByteArray*, std::vector<int32_t>*> u) {
 }
 
 // def touch(u: list[Int32] | Array[Int32, 2]) -> None:
-void touch(std::variant<std::array<int32_t, 2>*, std::vector<int32_t>*> u) {
+void touch(::tpy::Union<std::array<int32_t, 2>*, std::vector<int32_t>*> u) {
     // if isinstance(u, list):
     if (std::holds_alternative<std::vector<int32_t>*>(u)) {
         auto& __u = *std::get<std::vector<int32_t>*>(u);
@@ -40,7 +40,7 @@ void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     // # The decl under test: a bytearray NAME into a ptr-variant union slot.
     // u: list[Int32] | bytearray = ba
-    std::variant<::tpy::ByteArray*, std::vector<int32_t>*> u{&(ba)};
+    ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u{&(ba)};
     // grow(u)
     grow(u);
     // print(len(ba))
@@ -48,7 +48,7 @@ void main() {
     // xs: list[Int32] = [1, 2]
     std::vector<int32_t> xs = {1, 2};
     // v: list[Int32] | bytearray = xs
-    std::variant<::tpy::ByteArray*, std::vector<int32_t>*> v{&(xs)};
+    ::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> v{&(xs)};
     // grow(v)
     grow(v);
     // print(len(xs))
@@ -56,7 +56,7 @@ void main() {
     // a = Array[Int32, 2]()
     std::array<int32_t, 2> a = std::array<int32_t, 2>();
     // ua: list[Int32] | Array[Int32, 2] = a
-    std::variant<std::array<int32_t, 2>*, std::vector<int32_t>*> ua{&(a)};
+    ::tpy::Union<std::array<int32_t, 2>*, std::vector<int32_t>*> ua{&(a)};
     // touch(ua)
     touch(ua);
     // print(a[0])

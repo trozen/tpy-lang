@@ -17,8 +17,8 @@ struct __gen_capture;
 struct __gen_guarded;
 struct __gen_kill;
 
-__gen_voices voices(std::variant<Cat*, Dog*> a);
-__gen_capture capture(std::variant<Cat*, Dog*> a);
+__gen_voices voices(::tpy::Union<Cat*, Dog*> a);
+__gen_capture capture(::tpy::Union<Cat*, Dog*> a);
 __gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow);
 ::tpy::Union<::tpy::BigInt, std::string> remake();
 __gen_kill kill(::tpy::Union<::tpy::BigInt, std::string> a);
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // Generator: voices
 struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
     int32_t __state;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -66,7 +66,7 @@ struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
         S_DONE = 5,
     };
 
-    __gen_voices(std::variant<Cat*, Dog*> a_)
+    __gen_voices(::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
@@ -80,7 +80,7 @@ struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
 // Generator: capture
 struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string> {
     int32_t __state;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
     ::tpy::frame_slot<Dog> d;
 
     enum : int32_t {
@@ -92,7 +92,7 @@ struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string>
         S_DONE = 5,
     };
 
-    __gen_capture(std::variant<Cat*, Dog*> a_)
+    __gen_capture(::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();

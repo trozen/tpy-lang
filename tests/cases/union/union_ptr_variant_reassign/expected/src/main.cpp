@@ -10,7 +10,7 @@ void main() {
     // # Init from concrete rvalue, then reassign to different type
     // pet: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
-    std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):
     if (true) {
         auto& __pet = *std::get<Dog*>(pet);
@@ -39,7 +39,7 @@ void main() {
     // # Reassign from another ptr-variant local
     // other: Dog | Cat = Cat("Luna")
     ::tpy::Union<Cat, Dog> __slot_3 = Cat("Luna");
-    std::variant<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_3);
     // pet = other
     pet = other;
     // if isinstance(pet, Cat):

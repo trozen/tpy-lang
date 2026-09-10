@@ -92,7 +92,7 @@ void main() {
     // pets: dict[str, Dog | Cat] = {"rex": Dog("Rex"), "whiskers": Cat("Whiskers")}
     ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>> pets = ::tpy::ordered_map<std::string, ::tpy::Union<Cat, Dog>>({{"rex", Dog("Rex")}, {"whiskers", Cat("Whiskers")}});
     // pet = pets["rex"]
-    std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(::tpy::__getitem__(pets, "rex"));
+    ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(::tpy::__getitem__(pets, "rex"));
     // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
@@ -177,7 +177,7 @@ void main() {
     // d5: dict[str, list[int] | str] = {"nums": [1, 2, 3], "label": "test"}
     ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, ::tpy::Union<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", "test"}});
     // v3 = d5["label"]
-    std::variant<std::vector<::tpy::BigInt>*, std::string*> v3 = ::tpy::to_ptr_variant(::tpy::__getitem__(d5, "label"));
+    ::tpy::Union<std::vector<::tpy::BigInt>*, std::string*> v3 = ::tpy::to_ptr_variant(::tpy::__getitem__(d5, "label"));
     // if isinstance(v3, str):
     if (std::holds_alternative<std::string*>(v3)) {
         auto& __v3 = *std::get<std::string*>(v3);
@@ -188,7 +188,7 @@ void main() {
     // mixed: list[list[Int32] | str] = [[10, 20], "hi"]
     std::vector<::tpy::Union<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
     // v4 = mixed[1]
-    std::variant<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
+    ::tpy::Union<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
     // if isinstance(v4, str):
     if (std::holds_alternative<std::string*>(v4)) {
         auto& __v4 = *std::get<std::string*>(v4);

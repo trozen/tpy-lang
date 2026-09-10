@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string classify(const std::variant<Cat*, Dog*> a, bool strict);
-std::string as_guard(const std::variant<Cat*, Dog*> a);
+std::string classify(::tpy::Union<const Cat*, const Dog*> a, bool strict);
+std::string as_guard(::tpy::Union<const Cat*, const Dog*> a);
 void main();
 
 // @dataclass

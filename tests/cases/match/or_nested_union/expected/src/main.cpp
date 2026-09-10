@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def known(a: Dog | Cat | Bird) -> str:
-std::string known(const std::variant<Bird*, Cat*, Dog*> a) {
+std::string known(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -25,7 +25,7 @@ std::string known(const std::variant<Bird*, Cat*, Dog*> a) {
 }
 
 // def tag(a: Dog | Cat | Bird, t: str) -> Int32:
-int32_t tag(std::variant<Bird*, Cat*, Dog*> a, std::string_view t) {
+int32_t tag(::tpy::Union<Bird*, Cat*, Dog*> a, std::string_view t) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -64,7 +64,7 @@ int32_t tag(std::variant<Bird*, Cat*, Dog*> a, std::string_view t) {
 }
 
 // def read(a: Dog | Cat | Bird) -> str:
-std::string read(const std::variant<Bird*, Cat*, Dog*> a) {
+std::string read(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -100,27 +100,27 @@ std::string read(const std::variant<Bird*, Cat*, Dog*> a) {
 void main() {
     // d: Dog | Cat | Bird = Dog(["x"])
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog({"x"});
-    std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // print(known(d))
-    std::cout << known(d) << "\n";
+    std::cout << known(d.as_const()) << "\n";
     // print(tag(d, "y"))
     std::cout << tag(d, "y") << "\n";
     // print(read(d))
-    std::cout << read(d) << "\n";
+    std::cout << read(d.as_const()) << "\n";
     // c: Dog | Cat | Bird = Cat(["p"])
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat({"p"});
-    std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // print(tag(c, "q"))
     std::cout << tag(c, "q") << "\n";
     // print(read(c))
-    std::cout << read(c) << "\n";
+    std::cout << read(c.as_const()) << "\n";
     // b: Dog | Cat | Bird = Bird(["m"])
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird({"m"});
-    std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     // print(tag(b, "n"))
     std::cout << tag(b, "n") << "\n";
     // print(read(b))
-    std::cout << read(b) << "\n";
+    std::cout << read(b.as_const()) << "\n";
 }
 
 void __tpy_init() {

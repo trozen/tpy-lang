@@ -55,7 +55,7 @@ struct Shelter {
     // def __init__(self) -> None:
     Shelter();
 
-    __coro_Shelter_describe describe(std::variant<Cat*, Dog*> a);
+    __coro_Shelter_describe describe(::tpy::Union<const Cat*, const Dog*> a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shelter";
 };
 
@@ -69,7 +69,7 @@ struct __coro_Shelter_describe {
     int32_t __state;
     bool __cancel_pending;
     Shelter& __self;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -78,7 +78,7 @@ struct __coro_Shelter_describe {
         S_DONE = 2,
     };
 
-    __coro_Shelter_describe(Shelter& __self, std::variant<Cat*, Dog*> a_)
+    __coro_Shelter_describe(Shelter& __self, ::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
@@ -89,7 +89,7 @@ struct __coro_Shelter_describe {
     }
 };
 
-inline __coro_Shelter_describe Shelter::describe(std::variant<Cat*, Dog*> a) {
+inline __coro_Shelter_describe Shelter::describe(::tpy::Union<const Cat*, const Dog*> a) {
     return __coro_Shelter_describe(*this, a);
 }
 

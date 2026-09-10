@@ -14,10 +14,15 @@ Two axes:
   * `signature_const`  -- emit the const spelling for the param itself.
   * `deep_borrow_const`-- inner pointers / refs / tuple slots are also const.
 
-For most params the two axes move together (T& -> const T&; T* -> const T*;
-tuple<T*, ...> -> tuple<const T*, ...>). They diverge for pointer-variant
-unions where the existing pattern is shallow-const under inference and
-deep-const only under explicit @readonly methods.
+The axes move together for every type (T& -> const T&; T* -> const T*;
+tuple<T*, ...> -> tuple<const T*, ...>). They used to diverge for
+pointer-variant unions, which took a shallow const under inference and a deep
+one only inside a @readonly method -- a spelling derived from the RECEIVER's
+const-ness rather than the parameter's own non-mutation fact, so one logical
+borrow had two incompatible C++ types and a const-bound source could not
+reach the mutable-pointee one. The pair survives as the two QUESTIONS a
+caller may be asking; the answers are one verdict, which is why
+FunctionInfo materializes a single set.
 
 These are codegen ABI facts. They are computed AFTER Phase-2 mutation
 propagation and never feed back into sema; the mutation lattice is
@@ -50,7 +55,7 @@ _NOT_CONST = ParamConstDecision(signature_const=False, deep_borrow_const=False)
 
 def _is_ptr_variant_union(ptype: TpyType) -> bool:
     """Whether `ptype` (after stripping Ref/Readonly) is a non-value union that
-    lowers to `std::variant<A*, B*>`. The unwrapping entry point onto the
+    lowers to `::tpy::Union<A*, B*>`. The unwrapping entry point onto the
     canonical `forms.is_ptr_variant_union` (a pure type query, no Compiler ctx),
     so the FunctionInfo verdict can be materialized at Phase-2 time."""
     return _forms_is_ptr_variant_union(unwrap_readonly(unwrap_ref_type(ptype)))
@@ -66,7 +71,6 @@ def decide_param_const(
     reassigned_params: 'AbstractSet[str] | None' = None,
     is_ptr_variant_union: bool = False,
     const_params: bool = False,
-    use_readonly_params: bool = False,
 ) -> ParamConstDecision:
     """Compute the const decision for a single param.
 
@@ -82,16 +86,15 @@ def decide_param_const(
                              const for types that need a copy-for-reassign
                              rename (str, BigInt, ...).
       is_ptr_variant_union : whether ptype unwraps to a pointer-variant union.
-                             Drives shallow-vs-deep handling.
+                             Carried for callers that key on the family; the
+                             const decision no longer splits on it.
       const_params         : caller forces const (e.g. const method body, ctor).
-      use_readonly_params  : caller wants the deep-const variant for ptr-variant
-                             unions (paired with const_params for @readonly).
 
     Decision rules:
       * Explicit `ReadonlyType` annotation: deep const.
       * Reassigned param with copy-for-reassign type: not const.
       * Direct mutation or address escape: not const.
-      * `const_params=True`: const (deep when use_readonly_params or non-union).
+      * `const_params=True`: const, deep.
       * Otherwise inference: requires `mutated_params is not None` and the
         param to have a mutable borrow surface; index must be absent from
         `mutated_params`. Top-level TypeParamRef is excluded from inference
@@ -113,9 +116,6 @@ def decide_param_const(
     if const_params:
         if directly_mutated:
             return _NOT_CONST
-        if is_ptr_variant_union and not use_readonly_params:
-            # Shallow const for ptr-variant unions under forced const.
-            return ParamConstDecision(signature_const=True, deep_borrow_const=False)
         return ParamConstDecision(signature_const=True, deep_borrow_const=True)
 
     if mutated_params is None:
@@ -132,28 +132,19 @@ def decide_param_const(
         # Pure value type (e.g. int): not a candidate for const-ref shape.
         return _NOT_CONST
 
-    if is_ptr_variant_union and not use_readonly_params:
-        # Existing inference-time behavior: shallow const variant only.
-        return ParamConstDecision(signature_const=True, deep_borrow_const=False)
-
     return ParamConstDecision(signature_const=True, deep_borrow_const=True)
 
 
 def populate_const_borrow_params(fi: FunctionInfo) -> None:
-    """Populate FunctionInfo.const_borrow_params / deep_const_borrow_params.
+    """Populate FunctionInfo.const_borrow_params.
 
     Called after Phase-2 mutation propagation finalizes `mutated_params`,
     `addr_escapes_params`. The result is a frozen ABI fact -- call sites
     read it directly without re-deriving the decision.
 
-    `use_readonly_params=fi.is_readonly` mirrors the signature emitter
-    (`gen_params(..., use_readonly_params=func.is_readonly)`): a readonly
-    fn/method deep-consts its pointer-variant union params. Requires
-    `fi.is_readonly` to be finalized first -- this runs after
-    `infer_method_const` in the Phase-2 driver, not inside
-    `propagate_mutation_facts`. `reassigned_params` is unavailable here (a
-    body-scan fact), but it only flips copy-for-reassign value types (str,
-    BigInt), never the borrow-shaped params whose verdict call sites read.
+    `reassigned_params` is unavailable here (a body-scan fact), but it only
+    flips copy-for-reassign value types (str, BigInt), never the borrow-shaped
+    params whose verdict call sites read.
     """
     if fi.mutated_params is None:
         # Phase-2 hasn't run for this function -- leave as None to signal
@@ -161,7 +152,6 @@ def populate_const_borrow_params(fi: FunctionInfo) -> None:
         return
 
     sig: set[int] = set()
-    deep: set[int] = set()
     for i, p in enumerate(fi.params):
         decision = decide_param_const(
             p.type,
@@ -171,11 +161,9 @@ def populate_const_borrow_params(fi: FunctionInfo) -> None:
             addr_escapes_params=fi.addr_escapes_params,
             reassigned_params=None,  # not tracked on FunctionInfo
             is_ptr_variant_union=_is_ptr_variant_union(p.type),
-            use_readonly_params=fi.is_readonly,
         )
+        assert decision.signature_const == decision.deep_borrow_const
         if decision.signature_const:
             sig.add(i)
-        if decision.deep_borrow_const:
-            deep.add(i)
 
-    fi.set_const_borrow_verdict(frozenset(sig), frozenset(deep))
+    fi.set_const_borrow_verdict(frozenset(sig))

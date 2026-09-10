@@ -1,9 +1,12 @@
 # Narrowed union members pass through union argument and return slots.
 # Mutation exposes reference copies; value members retain value semantics.
+# The `total`-calling sections below cover the other half: a non-mutating
+# union parameter borrows CONST pointees, so const-bound sources reach it
+# and each source's binding picks its own conversion.
 import asyncio
 from typing import Iterator
 
-from tpy import (Int32, Float64, ValueType, readonly, error_return,
+from tpy import (Int32, Float64, Own, ValueType, readonly, error_return,
                  ReturnException)
 
 
@@ -205,9 +208,8 @@ def walrus(v: A | B) -> Int32:
 
 
 # readonly[A | B] slot: the deep-const pointer-variant spelling (a const
-# borrow, so nothing is mutated here)
-# Const-bound members cannot use mutable-pointee slots, including plain loop
-# variables: BUGS.md#const-member-at-mutable-pointee-union-slot.
+# borrow, so nothing is mutated here). The plain `A | B` slots below render
+# the same way, so the annotation changes nothing about the arg.
 def readonly_slot(v: A | B) -> Int32:
     if isinstance(v, A):
         return peek(v)  # tpyc: ok
@@ -242,6 +244,113 @@ def str_total(u: A | str) -> Int32:
     if isinstance(u, A):
         return u.n
     return -3
+
+
+# A non-mutating union parameter borrows CONST pointees, so every
+# const-bound source below reaches `total`'s slot; `bump`'s mutating slot
+# keeps the mutable ones, which is what the inverse sections pin.
+def total(u: A | B) -> Int32:
+    if isinstance(u, A):
+        return u.n
+    return -1
+
+
+# free function: a const-bound member-typed name at the deep-const slot
+def const_member(a: A) -> Int32:
+    return total(a)  # tpyc: ok
+
+
+class Reader:
+    base: Int32
+
+    def __init__(self, base: Int32) -> None:
+        self.base = base
+
+    # method body: the method mutates nothing, so its narrowed subject binds
+    # `const A&` and its own union param is deep-const too
+    def read(self, v: A | B) -> Int32:
+        if isinstance(v, A):
+            return self.base + total(v)  # tpyc: ok
+        return -1
+
+
+class Tally:
+    k: Int32
+
+    # constructor parameter, forwarded to a second deep-const slot
+    def __init__(self, u: A | B) -> None:
+        self.k = total(u)  # tpyc: ok
+
+
+# constructor CALL arg: the ctor loop threads the callee verdict the free
+# loop threads
+def ctor_call_arg(a: A) -> Int32:
+    return Tally(a).k  # tpyc: ok
+
+
+# Own[union] name forward: the source is the STORAGE variant, so the lift is
+# the storage converter rather than the borrow one
+def own_forward(u: Own[A | B]) -> Int32:  # tpyc: warning(/never consumed/)
+    return total(u)  # tpyc: ok
+
+
+# loop variable over list[A | B]: a storage binding as well, un-narrowed
+def loop_const(xs: list[A | B]) -> Int32:
+    k = 0
+    for e in xs:
+        k = k + total(e)  # tpyc: ok
+    return k
+
+
+# generator factory param
+def gen_total(v: A | B) -> Iterator[Int32]:
+    yield total(v)  # tpyc: ok
+    yield total(v)
+
+
+# async factory param
+async def async_total(v: A | B) -> Int32:
+    await asyncio.sleep(0)
+    return total(v)  # tpyc: ok
+
+
+# storage source at a METHOD slot: the element binding takes the storage
+# converter there too, not just at a free call
+def loop_method(xs: list[A | B], r: Reader) -> Int32:
+    k = 0
+    for e in xs:
+        k = k + r.read(e)  # tpyc: ok
+    return k
+
+
+# closure body: the capture keeps the ENCLOSING parameter's const verdict, so
+# the narrowing inside the lambda spells const pointees
+def closure_narrow(u: A | B) -> Int32:
+    def inner() -> Int32:
+        if isinstance(u, A):  # tpyc: ok
+            return u.n
+        return -1
+    return inner()
+
+
+# closure body, forwarding the capture on: already const, so no conversion
+def closure_forward(u: A | B) -> Int32:
+    def inner() -> Int32:
+        return total(u)  # tpyc: ok
+    return inner()
+
+
+# inverse: a MUTABLE borrow source converts with the type's own as_const(),
+# and the mutating slot before it keeps the mutable pointees -- the caller
+# observes the mutation through the boundary
+def wrap_then_mutate(u: A | B) -> Int32:
+    bump(u)  # tpyc: ok
+    return total(u)  # tpyc: ok
+
+
+# inverse: both ends non-mutating, so the forward needs no conversion at all
+def forward_union(u: A | B) -> Int32:
+    return total(u)  # tpyc: ok
 
 
 # union RETURN slot: isinstance-narrowed and match-narrowed both take the
@@ -389,6 +498,8 @@ async def async_main() -> None:
     print("async", await async_body(t), t.n)
     u = A(150)
     print("async-match", await async_match(u), u.n)
+    w: A | B = A(240)
+    print("async-const", await async_total(w))
 
 
 def main() -> None:
@@ -454,6 +565,19 @@ def main() -> None:
 
     q = A(120)
     print("str-member", str_member(q))
+
+    cm = A(210)
+    print("const-member", const_member(cm), Reader(1000).read(mv))
+    print("ctor-call-arg", ctor_call_arg(cm), own_forward(A(220)))
+    cxs: list[A | B] = [A(1), A(2)]
+    print("loop-const", loop_const(cxs), loop_method(cxs, Reader(1000)))
+    print("closure", closure_narrow(mv), closure_forward(mv))
+    gt3 = 0
+    for y in gen_total(cm):
+        gt3 = gt3 + y
+    print("gen-const", gt3)
+    wm: A | B = A(230)
+    print("as-const", wrap_then_mutate(wm), forward_union(wm), total(wm))
 
     s = A(130)
     ret = pick_isinstance(s)

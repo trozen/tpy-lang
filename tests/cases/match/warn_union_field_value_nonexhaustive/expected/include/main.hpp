@@ -12,7 +12,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<Cat*, Dog*> a);
+std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 void main();
 
 // # Conditional arms don't cover their variant: a sole `Dog(legs=4)` arm leaves

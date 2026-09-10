@@ -51,7 +51,7 @@ struct Zoo {
     // def __init__(self) -> None:
     Zoo();
 
-    __gen_Zoo_codes codes(std::variant<const Cat*, const Dog*> a) const;
+    __gen_Zoo_codes codes(::tpy::Union<const Cat*, const Dog*> a) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
 };
 
@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 struct __gen_Zoo_codes : public ::tpy::next_iter_mixin<__gen_Zoo_codes, ::tpy::BigInt> {
     int32_t __state;
     const Zoo& __self;
-    std::variant<const Cat*, const Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -75,7 +75,7 @@ struct __gen_Zoo_codes : public ::tpy::next_iter_mixin<__gen_Zoo_codes, ::tpy::B
         S_DONE = 5,
     };
 
-    __gen_Zoo_codes(const Zoo& __self, std::variant<const Cat*, const Dog*> a_)
+    __gen_Zoo_codes(const Zoo& __self, ::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), __self(__self), a(a_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
@@ -86,7 +86,7 @@ struct __gen_Zoo_codes : public ::tpy::next_iter_mixin<__gen_Zoo_codes, ::tpy::B
     }
 };
 
-inline __gen_Zoo_codes Zoo::codes(std::variant<const Cat*, const Dog*> a) const {
+inline __gen_Zoo_codes Zoo::codes(::tpy::Union<const Cat*, const Dog*> a) const {
     return __gen_Zoo_codes(*this, a);
 }
 

@@ -11,18 +11,18 @@ int32_t uses_pkg_a(const ::tpyapp::pkg_a::Foo& x) {
 }
 
 // def describe(u: Foo | Bar) -> str:
-std::string describe(const std::variant<::tpyapp::pkg_b::Bar*, ::tpyapp::pkg_a::Foo*> u) {
+std::string describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*> u) {
     // # Union with one member each from pkg_a and pkg_b (different
     // # short names so isinstance narrowing is unambiguous).  Pre-fix
     // # this compiled the same as today; the test exists to guard
     // # against future regressions if someone re-collapses the types.
     // if isinstance(u, Foo):
-    if (std::holds_alternative<::tpyapp::pkg_a::Foo*>(u)) {
-        auto& __u = *std::get<::tpyapp::pkg_a::Foo*>(u);
+    if (std::holds_alternative<const ::tpyapp::pkg_a::Foo*>(u)) {
+        auto& __u = *std::get<const ::tpyapp::pkg_a::Foo*>(u);
         // return name_a(u)
         return ::tpyapp::pkg_a::name_of(__u);
     }
-    auto& __u = *std::get<::tpyapp::pkg_b::Bar*>(u);
+    auto& __u = *std::get<const ::tpyapp::pkg_b::Bar*>(u);
     // return "bar"
     return "bar";
 }
@@ -38,10 +38,10 @@ void main() {
     // print(name_of_b())
     std::cout << ::tpyapp::pkg_b::name_of_b() << "\n";
     // print(describe(a))
-    std::cout << describe(std::variant<::tpyapp::pkg_b::Bar*, ::tpyapp::pkg_a::Foo*>{&(a)}) << "\n";
+    std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&(a)}) << "\n";
     // print(describe(Bar(Int32(7))))
     ::tpyapp::pkg_b::Bar __tmp_1 = ::tpyapp::pkg_b::Bar(7);
-    std::cout << describe(std::variant<::tpyapp::pkg_b::Bar*, ::tpyapp::pkg_a::Foo*>{&__tmp_1}) << "\n";
+    std::cout << describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*>{&__tmp_1}) << "\n";
 }
 
 void __tpy_init() {

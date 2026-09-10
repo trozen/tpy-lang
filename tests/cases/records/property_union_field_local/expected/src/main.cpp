@@ -8,10 +8,10 @@ namespace tpyapp::main {
 void main() {
     // print(Holder(A("rel")).label)
     A __tmp_1 = A("rel");
-    std::cout << Holder(std::variant<A*, B*>{&__tmp_1}).label() << "\n";
+    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_1}).label() << "\n";
     // print(Holder(B("smoke")).label)
     B __tmp_2 = B("smoke");
-    std::cout << Holder(std::variant<A*, B*>{&__tmp_2}).label() << "\n";
+    std::cout << Holder(::tpy::Union<const A*, const B*>{&__tmp_2}).label() << "\n";
 }
 
 void __tpy_init() {

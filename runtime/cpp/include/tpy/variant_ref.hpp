@@ -1,16 +1,17 @@
 /**
- * Pointer-variant utilities for non-value union types.
+ * Converters between a union's two forms.
  *
  * Non-value unions (e.g. Dog | Cat where members are records) use a two-layer
- * representation:
- *   - Storage: ::tpy::Union<Dog, Cat>        (owns values)
- *   - Reference: std::variant<Dog*, Cat*>    (borrows values)
+ * representation, both spelled with the one type (union_type.hpp):
+ *   - Storage: ::tpy::Union<Dog, Cat>    (owns the values)
+ *   - Borrow:  ::tpy::Union<Dog*, Cat*>  (borrows them)
  *
- * to_ptr_variant() converts a storage variant reference into a pointer variant.
+ * to_ptr_variant() converts a storage variant reference into a borrow union.
  * std::monostate members (representing None in nullable unions) pass through.
  *
- * The storage form is a class DERIVED from std::variant, so every trait here
- * asks for a variant's base by deduction rather than matching the exact type.
+ * `Union` is DERIVED from std::variant, so every trait here asks for a base
+ * by deduction rather than matching an exact type; the borrow question is the
+ * ALTERNATIVE PACK, which is what the two forms actually differ in.
  */
 
 #pragma once
@@ -40,17 +41,20 @@ using variant_base_t =
 template<typename T>
 inline constexpr bool is_variant_v = !std::is_void_v<variant_base_t<T>>;
 
-// Trait: is T a pointer variant (every alternative is a pointer or monostate)?
-// Distinguishes the borrow form std::variant<A*, B*> from the storage form
-// ::tpy::Union<A, B>.
+// Trait: is T the BORROW form of a union? One type spells both forms, so
+// the question is the ALTERNATIVE PACK -- every alternative a pointer, plus a
+// monostate for a nullable union's None (`detail::vc_borrow_pack`). Asked
+// over the deduced base, so a `::tpy::Union` derived class answers for its
+// pack rather than for its head.
 namespace detail {
-template<typename V> struct ptr_variant_impl : std::false_type {};
-template<typename... Ts> struct ptr_variant_impl<std::variant<Ts...>>
-    : std::bool_constant<((std::is_pointer_v<Ts>
-                           || std::is_same_v<Ts, std::monostate>) && ...)> {};
+template<typename... Ts>
+std::bool_constant<vc_borrow_pack<Ts...>> borrow_pack_of(const std::variant<Ts...>&);
+std::false_type borrow_pack_of(...);
 }  // namespace detail
+
 template<typename T>
-inline constexpr bool is_ptr_variant_v = detail::ptr_variant_impl<variant_base_t<T>>::value;
+inline constexpr bool is_ptr_variant_v = decltype(
+    detail::borrow_pack_of(std::declval<const std::remove_cvref_t<T>&>()))::value;
 
 // Trait: does this pointer variant have const pointees (std::variant<const A*,
 // ...>)? Selects to_const_ptr_variant vs to_ptr_variant. Every alternative must
@@ -107,38 +111,37 @@ Result to_ptr_variant_impl(Variant& v, std::index_sequence<Is...>) {
 
 } // namespace detail
 
-// Convert std::variant<Ts...>& -> std::variant<Ts*...> (monostate passthrough)
+// Convert std::variant<Ts...>& -> Union<Ts*...> (monostate passthrough)
+//
+// Each converter below returns a borrow OF ITS ARGUMENT: the result holds
+// `&std::get<I>(v)`. A temporary argument therefore hands back a dangling
+// union, which ASan reports as a stack-use-after-scope at the first read,
+// so the rvalue overload is deleted rather than left to bind.
 template<typename... Ts>
-std::variant<typename detail::ptr_of<Ts>::type...>
+Union<typename detail::ptr_of<Ts>::type...>
 to_ptr_variant(std::variant<Ts...>& v) {
-    using Result = std::variant<typename detail::ptr_of<Ts>::type...>;
+    using Result = Union<typename detail::ptr_of<Ts>::type...>;
     return detail::to_ptr_variant_impl<Result>(v, std::index_sequence_for<Ts...>{});
 }
 
-// Convert const std::variant<Ts...>& -> std::variant<const Ts*...> (monostate passthrough)
 template<typename... Ts>
-std::variant<typename detail::const_ptr_of<Ts>::type...>
+Union<typename detail::ptr_of<Ts>::type...>
+to_ptr_variant(std::variant<Ts...>&&) = delete;
+
+// Convert const std::variant<Ts...>& -> Union<const Ts*...> (monostate passthrough)
+template<typename... Ts>
+Union<typename detail::const_ptr_of<Ts>::type...>
 to_const_ptr_variant(const std::variant<Ts...>& v) {
-    using Result = std::variant<typename detail::const_ptr_of<Ts>::type...>;
+    using Result = Union<typename detail::const_ptr_of<Ts>::type...>;
     return detail::to_ptr_variant_impl<Result>(v, std::index_sequence_for<Ts...>{});
 }
 
-// Convert mutable pointer variant to const pointer variant:
-// std::variant<T*...> -> std::variant<const T*...>
-// Handles monostate (nullable unions) by passing it through.
-namespace detail {
-template<typename Result>
-struct to_const_visitor {
-    template<typename T>
-    Result operator()(T* p) const { return static_cast<const T*>(p); }
-    Result operator()(std::monostate m) const { return m; }
-};
-} // namespace detail
+template<typename... Ts>
+Union<typename detail::const_ptr_of<Ts>::type...>
+to_const_ptr_variant(std::variant<Ts...>&&) = delete;
 
-template<typename Result, typename... Alts>
-Result ptr_variant_to_const(const std::variant<Alts...>& v) {
-    return std::visit(detail::to_const_visitor<Result>{}, v);
-}
+// A mutable borrow union reaches its read-borrow sibling through the type's
+// own `Union::as_const()`, which needs no target spelling from the caller.
 
 // Reverse: convert pointer variant to value variant (copies active member).
 // Used when storing into fields/containers that own their values.
@@ -169,23 +172,36 @@ ValueVariant to_value_variant(const std::variant<PtrAlts...>& v) {
 namespace detail {
 
 // The trait answers generated code relies on, pinned in-header (compiled by
-// every generated TU) because the storage form is a DERIVED variant: a trait
-// that stopped deducing through the base would answer `false` silently and
-// send a storage union down the wrong branch of borrow_value_elem.
+// every generated TU) because a union is a DERIVED variant: a trait that
+// stopped deducing through the base would answer `false` silently and send a
+// storage union down the wrong branch of borrow_value_elem.
 struct variant_ref_pins {
     struct A { int x; };
     struct B { int y; };
     using SU = Union<A, B>;
-    using PV = std::variant<A*, B*>;
+    using BU = Union<A*, B*>;
     static_assert(std::is_same_v<variant_base_t<SU>, std::variant<A, B>>);
+    static_assert(std::is_same_v<variant_base_t<BU>, std::variant<A*, B*>>);
     static_assert(is_variant_v<SU>);
+    static_assert(is_variant_v<BU>);
     static_assert(is_variant_v<std::variant<A, B>>);
     static_assert(!is_variant_v<int>);
-    // A storage union is not a borrow form, whatever its head spells.
+    // The two forms are one type over different packs, and the pack is
+    // what the trait reads -- including through the base, so the bare
+    // variant a `@native` signature may spell answers for its pack too.
     static_assert(!is_ptr_variant_v<SU>);
-    static_assert(is_ptr_variant_v<PV>);
-    static_assert(!ptr_variant_const_pointee<PV>::value);
-    static_assert(ptr_variant_const_pointee<std::variant<const A*, const B*>>::value);
+    static_assert(is_ptr_variant_v<BU>);
+    static_assert(is_ptr_variant_v<std::variant<A*, B*>>);
+    static_assert(!is_ptr_variant_v<std::variant<A, B>>);
+    static_assert(!ptr_variant_const_pointee<BU>::value);
+    static_assert(ptr_variant_const_pointee<Union<const A*, const B*>>::value);
+    // The converters answer with the borrow form, so a lifted slot needs no
+    // spelling of its own.
+    static_assert(std::is_same_v<
+        decltype(to_ptr_variant(std::declval<std::variant<A, B>&>())), BU>);
+    static_assert(std::is_same_v<
+        decltype(to_const_ptr_variant(std::declval<const std::variant<A, B>&>())),
+        BU::const_form>);
 };
 
 }  // namespace detail

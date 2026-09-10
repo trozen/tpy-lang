@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def rename(pet: Cat | Dog, new_name: str) -> None:
-void rename(std::variant<Cat*, Dog*> pet, std::string_view new_name) {
+void rename(::tpy::Union<Cat*, Dog*> pet, std::string_view new_name) {
     // # pet is proven mutated (field assignment after narrowing) -- must stay T&
     // if isinstance(pet, Cat):
     if (std::holds_alternative<Cat*>(pet)) {
@@ -23,17 +23,17 @@ void rename(std::variant<Cat*, Dog*> pet, std::string_view new_name) {
 }
 
 // def read_name(pet: Cat | Dog) -> str:
-std::string read_name(const std::variant<Cat*, Dog*> pet) {
+std::string read_name(::tpy::Union<const Cat*, const Dog*> pet) {
     // # pet is NOT mutated (read-only access) -- must become const T&
     // if isinstance(pet, Cat):
-    if (std::holds_alternative<Cat*>(pet)) {
-        auto& __pet = *std::get<Cat*>(pet);
+    if (std::holds_alternative<const Cat*>(pet)) {
+        auto& __pet = *std::get<const Cat*>(pet);
         // return pet.name
         return __pet.name;
     } else {
         // elif isinstance(pet, Dog):
         if (true) {
-            auto& __pet = *std::get<Dog*>(pet);
+            auto& __pet = *std::get<const Dog*>(pet);
             // return pet.name
             return __pet.name;
         }
@@ -47,18 +47,18 @@ void test() {
     // # Use union-typed locals so rename gets a direct reference (no auto-wrap copy)
     // c: Cat | Dog = Cat("Whiskers")
     ::tpy::Union<Cat, Dog> __slot_1 = Cat("Whiskers");
-    std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_1);
     // d: Cat | Dog = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_2 = Dog("Rex");
-    std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_2);
     // rename(c, "Fluffy")
     rename(c, "Fluffy");
     // rename(d, "Buddy")
     rename(d, "Buddy");
     // print(read_name(c))
-    std::cout << read_name(c) << "\n";
+    std::cout << read_name(c.as_const()) << "\n";
     // print(read_name(d))
-    std::cout << read_name(d) << "\n";
+    std::cout << read_name(d.as_const()) << "\n";
 }
 
 void __tpy_init() {

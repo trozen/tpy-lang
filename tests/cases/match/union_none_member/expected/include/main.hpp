@@ -12,7 +12,7 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t pick(const std::variant<std::monostate, A*, B*> x);
+int32_t pick(::tpy::Union<std::monostate, const A*, const B*> x);
 void main();
 
 // class A:

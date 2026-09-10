@@ -13,7 +13,7 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show(const std::variant<Other*, WithScalar*, WithStr*> u);
+void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u);
 void main();
 
 // class WithScalar:

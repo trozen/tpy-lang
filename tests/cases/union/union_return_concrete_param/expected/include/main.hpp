@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<Cat*, Dog*> wrap_dog(Dog& d);
-std::variant<Cat*, Dog*> wrap_cat(Cat& c);
+::tpy::Union<Cat*, Dog*> wrap_dog(Dog& d);
+::tpy::Union<Cat*, Dog*> wrap_cat(Cat& c);
 void main();
 
 // class Dog:

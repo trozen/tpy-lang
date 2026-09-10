@@ -1088,7 +1088,7 @@ def _own_dyn_return(t: TpyType | None) -> 'NominalType | None':
 
 def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
     """The F4 U2 slice: a pointer-repr union of record members (`A | B
-    [| None]` -> borrow `std::variant<[std::monostate, ]A*, B*>` / storage
+    [| None]` -> borrow `::tpy::Union<[std::monostate, ]A*, B*>` / storage
     `std::variant<[std::monostate, ]A, B>`). Non-None members must be
     `_f1_record`-renderable (any non-generic user record -- native / cross-module
     type spelling agrees with the resolver; only generics stay off); a None
@@ -1116,6 +1116,19 @@ def _eligible_ptr_union(t: TpyType | None, analyzer) -> 'UnionType | None':
                for m in t.members):
         return None
     return t
+
+def _eligible_ptr_union_either(t: TpyType | None,
+                               analyzer) -> 'UnionType | None':
+    """The member class the WHOLE-union arg rows admit on: the narrow slice,
+    or the widened one for a member the narrow slice's test excludes (a
+    zero-type-arg `bytearray`).
+
+    Two rows read it -- `_union_pass_through_arg`'s admission and
+    `_arg_ptr_union_slot`'s const bridge -- and they have to answer the same
+    class or an argument is admitted at one and skipped at the other, which
+    is how a deep-const slot once received an un-wrapped argument."""
+    return (_eligible_ptr_union(t, analyzer)
+            or _eligible_ptr_union_wide(t, analyzer))
 
 def _ptr_union_view_member_ok(m: 'TpyType', analyzer) -> bool:
     """A str or concrete builtin-container member of a ptr-variant union
@@ -1296,7 +1309,7 @@ def _isinstance_narrow_info(
     condition renders `true` and the dead implicit-else is suppressed
     (`_condition_static_true`). Out of the slice: Any / polymorphic /
     deref-view / type-param subjects (different extraction machinery),
-    readonly-qualified subjects (the `ptr_variant_to_const` chain), and
+    readonly-qualified subjects (the const-conversion chain), and
     global slots. A resumable FRAME member is in: its
     variant spelling (bare member, or the frame_slot `(*v)` deref) comes
     from `_narrow_variant_cpp` like any other subject's. A recursive-alias
@@ -4089,7 +4102,7 @@ def _own_storage_viewfam_return(t: TpyType | None, analyzer) -> 'TpyType | None'
 
 def _call_ret_union_ok(ret: 'TpyType | None', analyzer) -> bool:
     """A union-returning call landing bare in a same-union STORAGE sink:
-    a ptr-variant return (`std::variant<monostate, A*, B*>` by value) or
+    a ptr-variant return (`::tpy::Union<monostate, A*, B*>` by value) or
     an `Own[union]` factory's storage variant -- no per-member conversion
     fires."""
     if ret is None:
@@ -4852,7 +4865,7 @@ def _open_slot_match(at_open: 'TpyType | None',
 def _union_elem_tuple(t: 'TpyType | None', analyzer) -> 'TupleType | None':
     """A tuple whose only non-value slot is a POINTER-VARIANT union element
     (`tuple[Dog | Cat, Int32]`): borrow form
-    `std::tuple<std::variant<const Cat*, const Dog*>, int32_t>`, storage form
+    `std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>`, storage form
     `std::tuple<std::variant<Cat, Dog>, int32_t>`. A union element is
     excluded from `_element_is_pointer_repr` BY DESIGN (its borrow form is a
     variant, not a bare `T*`), so this family never routes through
@@ -7880,8 +7893,8 @@ def _owning_fi(func: TpyFunction, analyzer,
 def _param_const_verdict(name: str, func: TpyFunction, analyzer,
                          record_name: str | None, attr: str) -> bool:
     """Whether param `name` is in the function's `attr` verdict set
-    (`const_borrow_params` / `deep_const_borrow_params` -- both are
-    param-index sets on the registry FunctionInfo). A method's FunctionInfo
+    (`const_borrow_params`, a param-index set on the registry
+    FunctionInfo). A method's FunctionInfo
     lives on the owning record (`record_name`), a free function's in the
     function registry -- the same lookup codegen's
     `_get_method_mutated_params` uses. A property pair shares one overload
@@ -7895,15 +7908,35 @@ def _param_const_verdict(name: str, func: TpyFunction, analyzer,
     idx = next((i for i, (n, _) in enumerate(func.params) if n == name), None)
     return idx is not None and idx in verdict
 
+def _const_verdict_func(name: str, lc) -> TpyFunction:
+    """The function whose param const verdict decides how `name` is BOUND.
+
+    Normally `lc.func`, but a nested def captures the enclosing param by
+    reference and keeps its outer render, so inside a lambda the verdict
+    belongs to the defining function -- the same fact
+    `_nested_def_lowering_scope` carries when it unions the outer param
+    names into the nested prescan. Asking `lc.func` there answered
+    not-const for every capture, which spelled a mutable `std::get<A*>`
+    against a deep-const parameter. `lc.func` is asked FIRST so an inner
+    param of the same name shadows."""
+    if any(n == name for n, _ in lc.func.params):
+        return lc.func
+    for outer in reversed(lc.capture_funcs):
+        if any(n == name for n, _ in outer.params):
+            return outer
+    return lc.func
+
 def _param_is_deep_const(name: str, func: TpyFunction, analyzer,
                          record_name: str | None = None) -> bool:
-    """Whether param `name` carries the DEEP-const verdict
-    (`FunctionInfo.deep_const_borrow_params` -- discriminant-only use, no
+    """Whether param `name` carries the const verdict read for its INNER
+    surface (`FunctionInfo.const_borrow_params` -- discriminant-only use, no
     address escape), which deep-consts a pointer-variant param's pointees
-    (`std::variant<const A*, const B*>`) in the signature and every
-    narrowed-member spelling."""
+    (`::tpy::Union<const A*, const B*>`) in the signature and every
+    narrowed-member spelling. The separate name is the QUESTION, not a
+    second set: `_param_is_const` asks the same verdict for the signature
+    spelling and adds the inplace-dunder force."""
     return _param_const_verdict(name, func, analyzer, record_name,
-                                "deep_const_borrow_params")
+                                "const_borrow_params")
 
 def _opt_ptr_param_deep_const(name: str, func: TpyFunction, analyzer,
                               record_name: str | None) -> bool:
@@ -7977,8 +8010,9 @@ def _const_borrow_name(name: str, lc) -> bool:
     (ReadonlyType declared type) never fires for admitted subjects -- the
     poly/dyn admission requires the declared entry fully unwrapped, so a
     readonly-declared name rejects before const-ness is consulted."""
-    return (_param_is_deep_const(name, lc.func, lc.analyzer, lc.record_name)
-            or _param_is_const(name, lc.func, lc.analyzer, lc.record_name))
+    f = _const_verdict_func(name, lc)
+    return (_param_is_deep_const(name, f, lc.analyzer, lc.record_name)
+            or _param_is_const(name, f, lc.analyzer, lc.record_name))
 
 def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
@@ -8202,7 +8236,7 @@ def _mixed_sign_compare(left: TpyType | None, right: TpyType | None) -> bool:
     return lt is not None and rt is not None and lt.signed != rt.signed
 
 def _union_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
-    """Two SAME-TYPE value-union compare operands: `std::variant`'s own
+    """Two SAME-TYPE value-union compare operands: `::tpy::Union`'s own
     comparison operators, the rb=None bare-operator arm -- `(a == b)`. A
     union-vs-member compare would render the bare mixed pair (invalid C++, see
     BUGS.md); the equal-union requirement rejects it."""
@@ -8218,6 +8252,83 @@ def _union_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
     rb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
           if rt is not None else None)
     return isinstance(lb, RecursiveAliasInstanceType) and lb == rb
+
+def _ptr_union_borrow_const(name: str, declared: dict[str, TpyType],
+                            lc) -> 'bool | None':
+    """Whether a borrow-form union NAME is bound with CONST pointees, or None
+    when the name is not bound as a borrow form at all.
+
+    Once two operands share a union type, the pointee const-ness is the whole
+    remaining difference between their renders -- `::tpy::Union<const A*,
+    const B*>` against `::tpy::Union<A*, B*>`, with no conversion either
+    way. Three sources give the const one: a `readonly[...]` annotation, a
+    param the callable only discriminates (`const_borrow_params`), and a
+    local lifted out of a const source (`to_const_ptr_variant`, recorded at
+    the decl in `const_locals`).
+
+    Those three are the same three `emit_prims.seed_param_locals` seeds
+    `const_indirect_locals` from, which is why this combinator has to move
+    with that one: a fourth const source added there and not here would let a
+    mixed pair through as a compare that does not build."""
+    if name not in lc.ptr_variant_locals:
+        return None
+    dt = declared.get(name)
+    return bool(
+        name in lc.const_locals
+        or (dt is not None
+            and isinstance(unwrap_ref_type(unwrap_send_sync(dt)),
+                           ReadonlyType))
+        or _param_is_deep_const(name, _const_verdict_func(name, lc),
+                                lc.analyzer, lc.record_name))
+
+def _ptr_union_const_wrap(name: str, decl: UnionType, slot: UnionType,
+                          declared: dict[str, TpyType], lc) -> 'str | None':
+    """How an already-union NAME reaches a DEEP-CONST union slot, or None when
+    it needs no conversion at all.
+
+    One union type has three borrow renders and none converts to another
+    implicitly, so the source's BINDING picks the converter, never its TPy
+    type: a storage-bound name (a `list[A | B]` loop element, an `Own[union]`
+    param) is a `::tpy::Union<A, B>` and takes `to_const_ptr_variant`, while a
+    borrow-bound one is the borrow form and takes its own `as_const()`.
+    A name already bound with const pointees is the slot's type, so it passes
+    bare.
+
+    `as_const()` answers with `Union::const_form`, which is the slot
+    because the slot union IS the source's: a narrower union at a wider slot
+    (`f(u)` with `u: A | B` into an `A | B | None` parameter) never reaches
+    a render -- it rejects at admission, `call.arg_shape.union` for a free
+    call, `call.ctor_arg.union` for a constructor and `method.arg_shape` for
+    a method."""
+    borrow_const = _ptr_union_borrow_const(name, declared, lc)
+    if borrow_const is None:
+        return "storage"
+    return None if borrow_const else "as_const"
+
+def _ptr_union_compare_pair(e: TpyBinOp, lt: TpyType | None,
+                            rt: TpyType | None, lc, declared: dict,
+                            analyzer) -> bool:
+    """The BORROW-form twin of `_union_compare_pair`: two same-type reference
+    union operands, rendered as the bare `(a == b)` on `::tpy::Union`,
+    which owns Python's rule through the pointee (its `__eq__`, or identity
+    when it defines none -- the answer only a borrow position can give).
+
+    Both operands must be bound as the borrow form AND render the SAME C++
+    type. One union type has three borrow renders here -- the storage form a
+    comprehension loop variable binds, the mutable borrow, and the
+    const-pointee read borrow -- and none of them converts to another, so a
+    pair admitted on the TPy type alone emits a compare that does not build.
+    Requiring the renders to agree leaves every mixed pair rejecting exactly
+    where it rejected before (`BUGS.md#ref-union-loop-var-vs-borrow-compare`
+    covers the loop-variable one)."""
+    pu = _eligible_ptr_union_wide(lt, analyzer)
+    if pu is None or pu != _eligible_ptr_union_wide(rt, analyzer):
+        return False
+    if not (isinstance(e.left, TpyName) and isinstance(e.right, TpyName)):
+        return False
+    l_const = _ptr_union_borrow_const(e.left.name, declared, lc)
+    return l_const is not None and l_const == _ptr_union_borrow_const(
+        e.right.name, declared, lc)
 
 def _container_compare_pair(op: str, lt: TpyType | None,
                             rt: TpyType | None, analyzer) -> bool:
@@ -10529,12 +10640,18 @@ def _arg_ptr_union_slot(ptype: TpyType | None, analyzer,
                         ) -> 'tuple[UnionType, bool] | None':
     """The pointer-variant union of a non-Own call-arg slot (the member/None
     inline-lift target) plus its deep-const verdict (a `readonly[...]`
-    annotation or the callee's `deep_const_borrow_params` fact, threaded as
+    annotation or the callee's `const_borrow_params` fact, threaded as
     `readonly_target`), or None. A deep-const slot spells const pointees on
-    the lift and takes the `ptr_variant_to_const` wrap on already-union
-    args. An `Own[union]` slot is the value-variant auto-move cascade and
+    the lift and takes one of the const conversions on already-union args
+    (`_ptr_union_const_wrap`). An `Own[union]` slot is the value-variant auto-move cascade and
     rejects. Consumed by
-    `_lower_call_arg` so admission and lift selection key on one verdict."""
+    `_lower_call_arg` so admission and lift selection key on one verdict.
+
+    The member class comes from `_eligible_ptr_union_either`, the one
+    `_union_pass_through_arg` admits on. Keying the const bridge on the
+    narrow class alone left a union with a zero-type-arg container member
+    (`bytearray | Int32`) admitted at the pass-through row and skipped at
+    the wrap, so the argument reached a const-pointee slot un-wrapped."""
     pt = ptype if isinstance(ptype, TpyType) else None
     if pt is None:
         return None
@@ -10542,7 +10659,7 @@ def _arg_ptr_union_slot(ptype: TpyType | None, analyzer,
     deep_const = isinstance(pt, ReadonlyType) or readonly_target
     if isinstance(unwrap_readonly(pt), OwnType):
         return None
-    ut = _eligible_ptr_union(pt, analyzer)
+    ut = _eligible_ptr_union_either(pt, analyzer)
     if ut is None:
         return None
     return ut, deep_const

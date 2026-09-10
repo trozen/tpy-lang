@@ -49,7 +49,7 @@ int32_t unread_subject(const ::tpy::Union<A, B>& u, bool flag) {
 }
 
 // def ref_union(u: Node | Leaf, flag: bool) -> Int32:
-int32_t ref_union(std::variant<Leaf*, Node*> u, bool flag) {
+int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag) {
     // # The reference-union twin: the alias borrows the pointer variant, so the
     // # mutation is visible on the caller`s object afterwards.
     // if not isinstance(u, Node) or flag:
@@ -86,7 +86,7 @@ void main() {
     // n = Node(1)
     Node n = Node(1);
     // print(ref_union(n, False))
-    std::cout << ref_union(std::variant<Leaf*, Node*>{&(n)}, false) << "\n";
+    std::cout << ref_union(::tpy::Union<Leaf*, Node*>{&(n)}, false) << "\n";
     // print(n.v)
     std::cout << n.v << "\n";
 }

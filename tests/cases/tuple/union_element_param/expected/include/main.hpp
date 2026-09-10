@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t read_second(const std::tuple<std::variant<const Cat*, const Dog*>, int32_t>& pair);
-int32_t passthrough(const std::tuple<std::variant<const Cat*, const Dog*>, int32_t>& pair);
+int32_t read_second(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair);
+int32_t passthrough(const std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>& pair);
 void main();
 
 // @nocopy

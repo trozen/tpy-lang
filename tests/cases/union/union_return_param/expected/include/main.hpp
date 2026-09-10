@@ -12,8 +12,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::variant<Cat*, Dog*> identity(std::variant<Cat*, Dog*> pet);
-std::string get_name(const std::variant<Cat*, Dog*> pet);
+::tpy::Union<Cat*, Dog*> identity(::tpy::Union<Cat*, Dog*> pet);
+std::string get_name(::tpy::Union<const Cat*, const Dog*> pet);
 void main();
 
 // class Dog:

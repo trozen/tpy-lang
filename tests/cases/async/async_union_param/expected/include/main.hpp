@@ -18,7 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_describe;
 struct __coro_main;
 
-__coro_describe describe(std::variant<Cat*, Dog*> a);
+__coro_describe describe(::tpy::Union<const Cat*, const Dog*> a);
 __coro_main main();
 
 // class Dog:
@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct __coro_describe {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -60,7 +60,7 @@ struct __coro_describe {
         S_DONE = 2,
     };
 
-    __coro_describe(std::variant<Cat*, Dog*> a_)
+    __coro_describe(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);

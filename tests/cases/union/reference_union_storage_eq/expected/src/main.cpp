@@ -22,6 +22,12 @@ bool pet_list_eq(const std::vector<Pet>& xs, const std::vector<Pet>& ys) {
     return (xs == ys);
 }
 
+// def tag_list_ne(xs: list[Labelled], ys: list[Labelled]) -> bool:  # free function
+bool tag_list_ne(const std::vector<Labelled>& xs, const std::vector<Labelled>& ys) {
+    // return xs != ys  # tpyc: ok
+    return (xs != ys);
+}
+
 // def gen_eq(xs: list[Mixed], ys: list[Mixed]) -> Iterator[bool]:  # generator
 std::expected<bool, ::tpy::StopIteration> __gen_gen_eq::__next__() {
     while (true) switch (__state) {
@@ -183,7 +189,7 @@ bool nullable_eq(const std::vector<::tpy::Union<std::monostate, Cat, Dog>>& xs, 
 // def crate_pet_n(c: Crate) -> Int32:
 int32_t crate_pet_n(const Crate& c) {
     // p = c.pet
-    std::variant<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(c.pet);
+    ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(c.pet);
     // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
@@ -201,7 +207,7 @@ int32_t crate_pet_n(const Crate& c) {
 // def bump_first(xs: list[Pet]) -> None:
 void bump_first(std::vector<Pet>& xs) {
     // e = xs[0]
-    std::variant<Cat*, Dog*> e = ::tpy::to_ptr_variant(::tpy::__getitem__(xs, 0));
+    ::tpy::Union<Cat*, Dog*> e = ::tpy::to_ptr_variant(::tpy::__getitem__(xs, 0));
     // if isinstance(e, Dog):
     if (std::holds_alternative<Dog*>(e)) {
         auto& __e = *std::get<Dog*>(e);
@@ -213,7 +219,7 @@ void bump_first(std::vector<Pet>& xs) {
 // def first_n(xs: list[Pet]) -> Int32:
 int32_t first_n(const std::vector<Pet>& xs) {
     // e = xs[0]
-    std::variant<const Cat*, const Dog*> e = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 0));
+    ::tpy::Union<const Cat*, const Dog*> e = ::tpy::to_const_ptr_variant(::tpy::__getitem__(xs, 0));
     // if isinstance(e, Dog):
     if (std::holds_alternative<const Dog*>(e)) {
         auto& __e = *std::get<const Dog*>(e);
@@ -324,6 +330,14 @@ void main() {
     std::vector<Pet> c1 = {Cat(1)};
     // print("record same alternative", pet_list_eq(d1, d2), pet_list_eq(d1, d3))
     std::cout << "record same alternative" << " " << ::tpy::print_bool(pet_list_eq(d1, d2)) << " " << ::tpy::print_bool(pet_list_eq(d1, d3)) << "\n";
+    // t1: list[Labelled] = [Tag(1)]
+    std::vector<Labelled> t1 = {Tag(1)};
+    // t2: list[Labelled] = [Tag(1)]
+    std::vector<Labelled> t2 = {Tag(1)};
+    // t3: list[Labelled] = [Tag(2)]
+    std::vector<Labelled> t3 = {Tag(2)};
+    // print("container ne", tag_list_ne(t1, t2), tag_list_ne(t1, t3))
+    std::cout << "container ne" << " " << ::tpy::print_bool(tag_list_ne(t1, t2)) << " " << ::tpy::print_bool(tag_list_ne(t1, t3)) << "\n";
     // print("record cross alternative", pet_list_eq(d1, c1))
     std::cout << "record cross alternative" << " " << ::tpy::print_bool(pet_list_eq(d1, c1)) << "\n";
     // pd1: dict[str, Pet] = {"k": Dog(3)}
@@ -349,7 +363,7 @@ void main() {
     std::cout << "nullable" << " " << ::tpy::print_bool(nullable_eq(nn1, nn2)) << " " << ::tpy::print_bool(nullable_eq(nn1, nd)) << "\n";
     // print("field", crate_pet_n(Crate(Dog(7))))
     Dog __tmp_1 = Dog(7);
-    Crate __tmp_2 = Crate(std::variant<Cat*, Dog*>{&__tmp_1});
+    Crate __tmp_2 = Crate(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     std::cout << "field" << " " << crate_pet_n(__tmp_2) << "\n";
     // bump_first(d1)
     bump_first(d1);

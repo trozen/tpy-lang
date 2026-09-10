@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def ensure_dog(pet: Dog | Cat) -> Dog | Cat:
-std::variant<Cat*, Dog*> ensure_dog(std::variant<Cat*, Dog*> pet) {
+::tpy::Union<Cat*, Dog*> ensure_dog(::tpy::Union<Cat*, Dog*> pet) {
     // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
@@ -18,7 +18,7 @@ std::variant<Cat*, Dog*> ensure_dog(std::variant<Cat*, Dog*> pet) {
 }
 
 // def pick_first_dog(a: Dog | Cat, b: Dog | Cat) -> Dog | Cat:
-std::variant<Cat*, Dog*> pick_first_dog(std::variant<Cat*, Dog*> a, std::variant<Cat*, Dog*> b) {
+::tpy::Union<Cat*, Dog*> pick_first_dog(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b) {
     // if isinstance(a, Dog):
     if (std::holds_alternative<Dog*>(a)) {
         auto& __a = *std::get<Dog*>(a);
@@ -44,9 +44,9 @@ void main() {
     // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
     // pet: Dog | Cat = d
-    std::variant<Cat*, Dog*> pet{&(d)};
+    ::tpy::Union<Cat*, Dog*> pet{&(d)};
     // result = ensure_dog(pet)
-    std::variant<Cat*, Dog*> result = ensure_dog(pet);
+    ::tpy::Union<Cat*, Dog*> result = ensure_dog(pet);
     // if isinstance(result, Dog):
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
@@ -54,9 +54,9 @@ void main() {
         std::cout << __result.name << "\n";
     }
     // pet2: Dog | Cat = c
-    std::variant<Cat*, Dog*> pet2{&(c)};
+    ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     // result2 = pick_first_dog(pet2, pet)
-    std::variant<Cat*, Dog*> result2 = pick_first_dog(pet2, pet);
+    ::tpy::Union<Cat*, Dog*> result2 = pick_first_dog(pet2, pet);
     // if isinstance(result2, Dog):
     if (std::holds_alternative<Dog*>(result2)) {
         auto& __result2 = *std::get<Dog*>(result2);

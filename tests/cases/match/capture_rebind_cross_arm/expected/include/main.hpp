@@ -12,7 +12,7 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt score(const std::variant<Cat*, Dog*> a);
+::tpy::BigInt score(::tpy::Union<const Cat*, const Dog*> a);
 void main();
 
 // # One arm rebinds a capture name that a sibling arm binds (same type) without

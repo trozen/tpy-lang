@@ -53,7 +53,7 @@ struct Holder {
     ::tpy::Union<A, B> sub;
 
     // def __init__(self, sub: A | B) -> None:
-    explicit Holder(const std::variant<A*, B*> sub);
+    explicit Holder(::tpy::Union<const A*, const B*> sub);
 
     // @property
     // def label(self) -> str:
@@ -74,13 +74,13 @@ inline A::A(std::optional<std::string_view> target) : target(target ? std::make_
 inline B::B(std::optional<std::string_view> filter_) : filter_(filter_ ? std::make_optional(std::string(*filter_)) : std::nullopt) {}
 
 // def __init__(self, sub: A | B) -> None:
-inline Holder::Holder(const std::variant<A*, B*> sub) : sub(::tpy::to_value_variant<::tpy::Union<A, B>>(sub)) {}
+inline Holder::Holder(::tpy::Union<const A*, const B*> sub) : sub(::tpy::to_value_variant<::tpy::Union<A, B>>(sub)) {}
 
 // @property
 // def label(self) -> str:
 inline std::string Holder::label() const {
     // v = self.sub
-    std::variant<const A*, const B*> v = ::tpy::to_const_ptr_variant(this->sub);
+    ::tpy::Union<const A*, const B*> v = ::tpy::to_const_ptr_variant(this->sub);
     // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {

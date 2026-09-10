@@ -9,7 +9,7 @@ void main() {
     // for s in Box(Dog()).describe():
     {
         Dog __tmp_1 = Dog();
-        Box __tmp_2 = Box(std::variant<Cat*, Dog*>{&__tmp_1});
+        Box __tmp_2 = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         auto __src_0 = __tmp_2.describe();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
@@ -23,7 +23,7 @@ void main() {
     // for s in Box(Cat()).describe():
     {
         Cat __tmp_3 = Cat();
-        Box __tmp_4 = Box(std::variant<Cat*, Dog*>{&__tmp_3});
+        Box __tmp_4 = Box(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
         auto __src_2 = __tmp_4.describe();
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {

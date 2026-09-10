@@ -388,7 +388,7 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     if isinstance(unwrapped, AnyType):
         return True
     # A pointer-repr union param's frame field is the SAME pointer-variant
-    # shape as the sync param (`std::variant<A*, B*>`), so reads, isinstance
+    # shape as the sync param (`::tpy::Union<A*, B*>`), so reads, isinstance
     # narrowing, and pass-through args take the sync union rows unchanged.
     # A VALUE union (`int | str` -> `std::variant<BigInt, std::string>`
     # moved capture) also admits: its narrowed reads ride the
@@ -2489,7 +2489,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 lowered_args = []
                 # The const verdict lives on the RAW fi only (substitution
                 # never copies it), so the emplace arg reads it there.
-                dcbp = fi.root.deep_const_borrow_params
+                dcbp = fi.root.const_borrow_params
                 for i, a in enumerate(operand.args):
                     # An awaited callee is a coro factory -- always
                     # frame-capturing for its ref args. The emplace is a

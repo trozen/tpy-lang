@@ -27,9 +27,9 @@ std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std:
 }
 
 // def ref_tuple(v: A | B | None) -> str:
-std::string ref_tuple(const std::variant<std::monostate, A*, B*> v) {
+std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v) {
     // if isinstance(v, (A, B)):
-    if ((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v))) {
+    if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
         // return "ab"
         return "ab";
     }
@@ -53,13 +53,13 @@ void main() {
     std::cout << scalar_inline(n) << "\n";
     // x: A | B | None = A()
     ::tpy::Union<std::monostate, A, B> __slot_1 = A();
-    std::variant<std::monostate, A*, B*> x = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<std::monostate, A*, B*> x = ::tpy::to_ptr_variant(__slot_1);
     // print(ref_tuple(x))
-    std::cout << ref_tuple(x) << "\n";
+    std::cout << ref_tuple(x.as_const()) << "\n";
     // y: A | B | None = None
-    std::variant<std::monostate, A*, B*> y = std::monostate{};
+    ::tpy::Union<std::monostate, A*, B*> y = std::monostate{};
     // print(ref_tuple(y))
-    std::cout << ref_tuple(y) << "\n";
+    std::cout << ref_tuple(y.as_const()) << "\n";
 }
 
 void __tpy_init() {

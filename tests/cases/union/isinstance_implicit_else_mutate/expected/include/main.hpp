@@ -12,7 +12,7 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void bump(std::variant<Box*, Other*> x);
+void bump(::tpy::Union<Box*, Other*> x);
 void main();
 
 // # The fall-through narrowed access must alias the member (not copy): mutate a

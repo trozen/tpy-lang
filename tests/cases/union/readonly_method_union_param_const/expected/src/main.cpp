@@ -10,14 +10,14 @@ void main() {
     Classifier c = Classifier();
     // d: Dog | Cat = Dog()
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
-    std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // print(c.which(d))
-    std::cout << c.which(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(d)) << "\n";
+    std::cout << c.which(d.as_const()) << "\n";
     // t: Dog | Cat = Cat()
     ::tpy::Union<Cat, Dog> __slot_2 = Cat();
-    std::variant<Cat*, Dog*> t = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*> t = ::tpy::to_ptr_variant(__slot_2);
     // print(c.which(t))
-    std::cout << c.which(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(t)) << "\n";
+    std::cout << c.which(t.as_const()) << "\n";
 }
 
 void __tpy_init() {

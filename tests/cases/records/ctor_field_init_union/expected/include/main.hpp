@@ -56,7 +56,7 @@ struct Pick {
 
     // def __init__(self, p: A | B) -> None:
     Pick() = default;
-    explicit Pick(const std::variant<A*, B*> p);
+    explicit Pick(::tpy::Union<const A*, const B*> p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pick";
 };
 
@@ -73,6 +73,6 @@ inline A::A(const ::tpy::BigInt& x) : x(x) {}
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
 
 // def __init__(self, p: A | B) -> None:
-inline Pick::Pick(const std::variant<A*, B*> p) : val(((std::holds_alternative<A*>(p)) ? ((*std::get<A*>(p)).x) : ((*std::get<B*>(p)).y))) {}
+inline Pick::Pick(::tpy::Union<const A*, const B*> p) : val(((std::holds_alternative<const A*>(p)) ? ((*std::get<const A*>(p)).x) : ((*std::get<const B*>(p)).y))) {}
 void __tpy_init();
 } // namespace tpyapp::main

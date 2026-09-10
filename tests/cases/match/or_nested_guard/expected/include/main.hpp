@@ -13,7 +13,7 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string classify(const std::variant<Bird*, Cat*, Dog*> a, bool allow);
+std::string classify(::tpy::Union<const Bird*, const Cat*, const Dog*> a, bool allow);
 std::string small(const ::tpy::BigInt& n, bool allow);
 void main();
 

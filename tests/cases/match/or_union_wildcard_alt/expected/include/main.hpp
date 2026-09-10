@@ -13,8 +13,8 @@ struct Fox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string feed(std::variant<std::monostate, Cat*, Dog*> a);
-std::string only_wildcard_covers(const std::variant<std::monostate, Dog*, Fox*> a);
+std::string feed(::tpy::Union<std::monostate, Cat*, Dog*> a);
+std::string only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const Fox*> a);
 void main();
 
 // # A wildcard or capture alternative makes an or-group over a union subject

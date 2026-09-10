@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_names;
 
-__gen_names names(std::variant<const Cat*, const Dog*> a);
+__gen_names names(::tpy::Union<const Cat*, const Dog*> a);
 void main();
 
 // class Dog:
@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // Generator: names
 struct __gen_names : public ::tpy::next_iter_mixin<__gen_names, std::string> {
     int32_t __state;
-    std::variant<const Cat*, const Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -64,7 +64,7 @@ struct __gen_names : public ::tpy::next_iter_mixin<__gen_names, std::string> {
         S_DONE = 6,
     };
 
-    __gen_names(std::variant<const Cat*, const Dog*> a_)
+    __gen_names(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();

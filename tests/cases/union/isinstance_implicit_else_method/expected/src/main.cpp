@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def show(x: Cat | Dog) -> int:
-::tpy::BigInt show(std::variant<Cat*, Dog*> x) {
+::tpy::BigInt show(::tpy::Union<Cat*, Dog*> x) {
     // if isinstance(x, Cat):
     if (std::holds_alternative<Cat*>(x)) {
         auto& __x = *std::get<Cat*>(x);
@@ -21,10 +21,10 @@ namespace tpyapp::main {
 void main() {
     // print(show(Cat(1)))
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
-    std::cout << show(std::variant<Cat*, Dog*>{&__tmp_1}) << "\n";
+    std::cout << show(::tpy::Union<Cat*, Dog*>{&__tmp_1}) << "\n";
     // print(show(Dog(2)))
     Dog __tmp_2 = Dog(::tpy::BigInt(2));
-    std::cout << show(std::variant<Cat*, Dog*>{&__tmp_2}) << "\n";
+    std::cout << show(::tpy::Union<Cat*, Dog*>{&__tmp_2}) << "\n";
 }
 
 void __tpy_init() {

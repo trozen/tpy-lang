@@ -9,7 +9,7 @@ void main() {
     // h = Holder()
     Holder h = Holder();
     // s = h.slot
-    std::variant<std::monostate, A*, B*> s = ::tpy::to_ptr_variant(h.slot);
+    ::tpy::Union<std::monostate, A*, B*> s = ::tpy::to_ptr_variant(h.slot);
     // if isinstance(s, A):
     if (std::holds_alternative<A*>(s)) {
         auto& __s = *std::get<A*>(s);

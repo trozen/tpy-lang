@@ -16,8 +16,8 @@ struct __gen_run;
 struct __gen_first_value;
 
 __gen_run run();
-__gen_first_value first_value(std::variant<Emit*, Push*> t);
-::tpy::BigInt plain(const std::variant<Emit*, Push*> t);
+__gen_first_value first_value(::tpy::Union<const Emit*, const Push*> t);
+::tpy::BigInt plain(::tpy::Union<const Emit*, const Push*> t);
 void main();
 
 // class Push:
@@ -83,7 +83,7 @@ struct __gen_run : public ::tpy::next_iter_mixin<__gen_run, ::tpy::BigInt> {
 // Generator: first_value
 struct __gen_first_value : public ::tpy::next_iter_mixin<__gen_first_value, ::tpy::BigInt> {
     int32_t __state;
-    std::variant<Emit*, Push*> t;
+    ::tpy::Union<const Emit*, const Push*> t;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -91,7 +91,7 @@ struct __gen_first_value : public ::tpy::next_iter_mixin<__gen_first_value, ::tp
         S_DONE = 2,
     };
 
-    __gen_first_value(std::variant<Emit*, Push*> t_)
+    __gen_first_value(::tpy::Union<const Emit*, const Push*> t_)
         : __state(S_INITIAL), t(t_) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

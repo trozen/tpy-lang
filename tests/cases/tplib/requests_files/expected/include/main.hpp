@@ -20,7 +20,7 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void send(std::variant<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files);
+void send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files);
 void send_redirect(::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files);
 void main();
 

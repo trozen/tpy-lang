@@ -2324,7 +2324,7 @@ def _standalone_unpack_target_binds(
             if _eligible_ptr_union(tt, analyzer) is not None:
                 # An Own[A | B] element: the capture holds the VALUE variant
                 # (`std::variant<A, B>`), so the target lifts it per element
-                # -- `std::variant<A*, B*> p = to_ptr_variant(std::get<i>(
+                # -- `::tpy::Union<A*, B*> p = to_ptr_variant(std::get<i>(
                 # __tup));` -- never a moved-out owned local. The lift is
                 # PER-ELEMENT, unlike the opt_ptr arm's whole-capture
                 # tuple_to_pointer wrap.
@@ -4886,7 +4886,8 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     out.
     `self_captured` keeps the receiver alive for a lambda whose capture list
     spells `this`."""
-    saved = (lc.func, lc.prescan, lc.self_receiver, dict(lc.inline_narrowed))
+    saved = (lc.func, lc.prescan, lc.self_receiver, dict(lc.inline_narrowed),
+             lc.capture_funcs)
     # The hoist-residue bookkeeping is per-function: seed the NESTED
     # function's own hoist facts (its try lowering drains them;
     # `_lower_nested_def` residue-checks after the body, mirroring
@@ -4917,6 +4918,10 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     prescan.rvalue_reassigned = outer_prescan.rvalue_reassigned
     prescan.hoisted = outer_prescan.hoisted
     prescan.move_through = outer_prescan.move_through
+    # Same reason the outer param NAMES are unioned above: a captured name
+    # keeps its outer render, so the predicates keyed on the enclosing
+    # signature's const verdict must be able to reach that function.
+    lc.capture_funcs = lc.capture_funcs + (lc.func,)
     lc.func = func
     lc.prescan = prescan
     # The receiver survives ONLY when the capture list carries it: a captured
@@ -4942,7 +4947,8 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
         with lc.branch_scope():
             yield
     finally:
-        (lc.func, lc.prescan, lc.self_receiver, lc.inline_narrowed) = saved
+        (lc.func, lc.prescan, lc.self_receiver, lc.inline_narrowed,
+         lc.capture_funcs) = saved
         lc.unhandled_hoists = saved_hoists
 
 
@@ -9334,7 +9340,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 # branch-safe.
                 note_detail("decl.branch_ptr_union")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            # Every arm below binds the name as `std::variant<A*, B*>` --
+            # Every arm below binds the name as `::tpy::Union<A*, B*>` --
             # the `ptr_variant_locals` registration, which the narrow arms
             # read to pick `std::get<T*>` over `std::get<T>`.
             lc.ptr_variant_locals.add(stmt.name)

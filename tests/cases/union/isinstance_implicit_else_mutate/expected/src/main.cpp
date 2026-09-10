@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def bump(x: Box | Other) -> None:
-void bump(std::variant<Box*, Other*> x) {
+void bump(::tpy::Union<Box*, Other*> x) {
     // if isinstance(x, Other):
     if (std::holds_alternative<Other*>(x)) {
         auto& __x = *std::get<Other*>(x);
@@ -22,7 +22,7 @@ void main() {
     // b = Box(5)
     Box b = Box(::tpy::BigInt(5));
     // bump(b)
-    bump(std::variant<Box*, Other*>{&(b)});
+    bump(::tpy::Union<Box*, Other*>{&(b)});
     // print(b.n)          # 6 -> the narrowed access aliased, did not copy
     std::cout << b.n << "\n";
 }

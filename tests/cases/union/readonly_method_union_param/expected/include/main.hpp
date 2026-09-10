@@ -57,7 +57,7 @@ struct Speaker {
     Speaker();
 
     // def voice(self, a: Dog | Cat) -> str:
-    std::string voice(std::variant<Cat*, Dog*> a) const;
+    std::string voice(::tpy::Union<Cat*, Dog*> a) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Speaker";
 };
 
@@ -95,7 +95,7 @@ inline Speaker::Speaker() {
 }
 
 // def voice(self, a: Dog | Cat) -> str:
-inline std::string Speaker::voice(std::variant<Cat*, Dog*> a) const {
+inline std::string Speaker::voice(::tpy::Union<Cat*, Dog*> a) const {
     // if isinstance(a, Dog):
     if (std::holds_alternative<Dog*>(a)) {
         auto& __a = *std::get<Dog*>(a);

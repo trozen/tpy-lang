@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 std::string scalar_tuple(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
 std::string scalar_inline(const ::tpy::Union<std::monostate, ::tpy::BigInt, std::string>& v);
-std::string ref_tuple(const std::variant<std::monostate, A*, B*> v);
+std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v);
 void main();
 
 // # isinstance narrowing on a union subject that CONTAINS None: the else branch

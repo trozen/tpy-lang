@@ -20,7 +20,7 @@ namespace tpyapp::main {
 void main() {
     // pet = make_dog("Rex", 5)
     ::tpy::Union<Cat, Dog> __slot_1 = make_dog("Rex", 5);
-    std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
@@ -29,7 +29,7 @@ void main() {
     }
     // pet2 = make_cat("Whiskers", 9)
     ::tpy::Union<Cat, Dog> __slot_2 = make_cat("Whiskers", 9);
-    std::variant<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*> pet2 = ::tpy::to_ptr_variant(__slot_2);
     // if isinstance(pet2, Cat):
     if (std::holds_alternative<Cat*>(pet2)) {
         auto& __pet2 = *std::get<Cat*>(pet2);

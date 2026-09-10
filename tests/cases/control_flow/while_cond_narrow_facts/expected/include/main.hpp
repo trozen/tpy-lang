@@ -16,7 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t and_not(const ::tpy::Union<A, B>& u, bool flag);
 int32_t not_or(const ::tpy::Union<A, B>& u, bool flag);
-int32_t ref_union(std::variant<Leaf*, Node*> u, bool flag);
+int32_t ref_union(::tpy::Union<Leaf*, Node*> u, bool flag);
 void main();
 
 // class A(ValueType):

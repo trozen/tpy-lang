@@ -11,15 +11,15 @@ int32_t first(const std::vector<int32_t>& items) {
 }
 
 // def take(f: Apple | Banana) -> None:
-void take(const std::variant<Apple*, Banana*> f) {
+void take(::tpy::Union<const Apple*, const Banana*> f) {
     // if isinstance(f, Apple):
-    if (std::holds_alternative<Apple*>(f)) {
-        auto& __f = *std::get<Apple*>(f);
+    if (std::holds_alternative<const Apple*>(f)) {
+        auto& __f = *std::get<const Apple*>(f);
         // print("apple")
         std::cout << "apple" << "\n";
     // else:
     } else {
-        auto& __f = *std::get<Banana*>(f);
+        auto& __f = *std::get<const Banana*>(f);
         // print("banana")
         std::cout << "banana" << "\n";
     }
@@ -32,10 +32,10 @@ void main() {
     std::cout << first(__tmp_1) << "\n";
     // take(Apple())
     Apple __tmp_2 = Apple();
-    take(std::variant<Apple*, Banana*>{&__tmp_2});
+    take(::tpy::Union<const Apple*, const Banana*>{&__tmp_2});
     // take(Banana())
     Banana __tmp_3 = Banana();
-    take(std::variant<Apple*, Banana*>{&__tmp_3});
+    take(::tpy::Union<const Apple*, const Banana*>{&__tmp_3});
 }
 
 void __tpy_init() {

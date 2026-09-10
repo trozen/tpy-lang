@@ -95,10 +95,10 @@ std::string show_tagged(const Tagged& t) {
 void main() {
     // w1 = Wrapper(Cat("Whiskers"))
     Cat __tmp_1 = Cat("Whiskers");
-    Wrapper w1 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_1});
+    Wrapper w1 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
     // w2 = Wrapper(Dog("Rex"))
     Dog __tmp_2 = Dog("Rex");
-    Wrapper w2 = Wrapper(std::variant<Cat*, Dog*>{&__tmp_2});
+    Wrapper w2 = Wrapper(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
     // print(describe(w1))
     std::cout << describe(w1) << "\n";
     // print(describe(w2))

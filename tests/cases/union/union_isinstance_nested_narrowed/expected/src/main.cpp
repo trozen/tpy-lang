@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def redundant_same(v: A | B) -> int:
-::tpy::BigInt redundant_same(const std::variant<A*, B*> v) {
+::tpy::BigInt redundant_same(::tpy::Union<const A*, const B*> v) {
     // if isinstance(v, A):
-    if (std::holds_alternative<A*>(v)) {
-        auto& __v = *std::get<A*>(v);
+    if (std::holds_alternative<const A*>(v)) {
+        auto& __v = *std::get<const A*>(v);
         // if isinstance(v, A):  # always true
         if (true) {
-            auto& __v = *std::get<A*>(v);
+            auto& __v = *std::get<const A*>(v);
             // return v.x
             return __v.x;
         }
@@ -21,20 +21,20 @@ namespace tpyapp::main {
 }
 
 // def dead_other(v: A | B) -> int:
-::tpy::BigInt dead_other(const std::variant<A*, B*> v) {
+::tpy::BigInt dead_other(::tpy::Union<const A*, const B*> v) {
     // if isinstance(v, A):
-    if (std::holds_alternative<A*>(v)) {
-        auto& __v = *std::get<A*>(v);
+    if (std::holds_alternative<const A*>(v)) {
+        auto& __v = *std::get<const A*>(v);
         // if isinstance(v, B):  # always false
         if (false) {
-            auto& __v = *std::get<B*>(v);
+            auto& __v = *std::get<const B*>(v);
             // return -1  # dead
             return ::tpy::BigInt(-1);
         }
         // return v.x
         return __v.x;
     }
-    auto& __v = *std::get<B*>(v);
+    auto& __v = *std::get<const B*>(v);
     // return -2
     return ::tpy::BigInt(-2);
 }
@@ -43,7 +43,7 @@ namespace tpyapp::main {
 ::tpy::BigInt assign_then_check() {
     // v: A | B = A(7)
     ::tpy::Union<A, B> __slot_1 = A(::tpy::BigInt(7));
-    std::variant<A*, B*> v = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<A*, B*> v = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(v, A):  # always true after assignment narrowing
     if (true) {
         auto& __v = *std::get<A*>(v);
@@ -55,21 +55,21 @@ namespace tpyapp::main {
 }
 
 // def elif_exhaustive(v: A | B | C) -> str:
-std::string elif_exhaustive(const std::variant<A*, B*, C*> v) {
+std::string elif_exhaustive(::tpy::Union<const A*, const B*, const C*> v) {
     // if isinstance(v, A):
-    if (std::holds_alternative<A*>(v)) {
-        auto& __v = *std::get<A*>(v);
+    if (std::holds_alternative<const A*>(v)) {
+        auto& __v = *std::get<const A*>(v);
         // return "a"
         return "a";
     // elif isinstance(v, B):
-    } else if (std::holds_alternative<B*>(v)) {
-        auto& __v = *std::get<B*>(v);
+    } else if (std::holds_alternative<const B*>(v)) {
+        auto& __v = *std::get<const B*>(v);
         // return "b"
         return "b";
     } else {
         // elif isinstance(v, C):  # exhaustive tail, static-true
         if (true) {
-            auto& __v = *std::get<C*>(v);
+            auto& __v = *std::get<const C*>(v);
             // return "c"
             return "c";
         }
@@ -82,27 +82,27 @@ std::string elif_exhaustive(const std::variant<A*, B*, C*> v) {
 void main() {
     // print(redundant_same(A(1)))
     A __tmp_1 = A(::tpy::BigInt(1));
-    std::cout << redundant_same(std::variant<A*, B*>{&__tmp_1}) << "\n";
+    std::cout << redundant_same(::tpy::Union<const A*, const B*>{&__tmp_1}) << "\n";
     // print(redundant_same(B(2)))
     B __tmp_2 = B(::tpy::BigInt(2));
-    std::cout << redundant_same(std::variant<A*, B*>{&__tmp_2}) << "\n";
+    std::cout << redundant_same(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
     // print(dead_other(A(5)))
     A __tmp_3 = A(::tpy::BigInt(5));
-    std::cout << dead_other(std::variant<A*, B*>{&__tmp_3}) << "\n";
+    std::cout << dead_other(::tpy::Union<const A*, const B*>{&__tmp_3}) << "\n";
     // print(dead_other(B(9)))
     B __tmp_4 = B(::tpy::BigInt(9));
-    std::cout << dead_other(std::variant<A*, B*>{&__tmp_4}) << "\n";
+    std::cout << dead_other(::tpy::Union<const A*, const B*>{&__tmp_4}) << "\n";
     // print(assign_then_check())
     std::cout << assign_then_check() << "\n";
     // print(elif_exhaustive(A(1)))
     A __tmp_5 = A(::tpy::BigInt(1));
-    std::cout << elif_exhaustive(std::variant<A*, B*, C*>{&__tmp_5}) << "\n";
+    std::cout << elif_exhaustive(::tpy::Union<const A*, const B*, const C*>{&__tmp_5}) << "\n";
     // print(elif_exhaustive(B(2)))
     B __tmp_6 = B(::tpy::BigInt(2));
-    std::cout << elif_exhaustive(std::variant<A*, B*, C*>{&__tmp_6}) << "\n";
+    std::cout << elif_exhaustive(::tpy::Union<const A*, const B*, const C*>{&__tmp_6}) << "\n";
     // print(elif_exhaustive(C(3)))
     C __tmp_7 = C(::tpy::BigInt(3));
-    std::cout << elif_exhaustive(std::variant<A*, B*, C*>{&__tmp_7}) << "\n";
+    std::cout << elif_exhaustive(::tpy::Union<const A*, const B*, const C*>{&__tmp_7}) << "\n";
 }
 
 void __tpy_init() {

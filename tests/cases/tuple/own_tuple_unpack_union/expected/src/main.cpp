@@ -11,17 +11,17 @@ std::tuple<::tpy::Union<A, B>, int32_t> pair() {
 }
 
 // def borrow(u: A | B) -> Int32:
-int32_t borrow(const std::variant<A*, B*> u) {
+int32_t borrow(::tpy::Union<const A*, const B*> u) {
     // if isinstance(u, A):
-    if (std::holds_alternative<A*>(u)) {
-        auto& __u = *std::get<A*>(u);
+    if (std::holds_alternative<const A*>(u)) {
+        auto& __u = *std::get<const A*>(u);
         // return u.x
         return __u.x;
     }
-    auto& __u = *std::get<B*>(u);
+    auto& __u = *std::get<const B*>(u);
     // if isinstance(u, B):
     if (true) {
-        auto& __u = *std::get<B*>(u);
+        auto& __u = *std::get<const B*>(u);
         // return u.y
         return __u.y;
     }
@@ -33,10 +33,10 @@ int32_t borrow(const std::variant<A*, B*> u) {
 void main() {
     // p, n = pair()
     auto __tup_1 = pair();
-    std::variant<A*, B*> p = ::tpy::to_ptr_variant(std::get<0>(__tup_1));
+    ::tpy::Union<A*, B*> p = ::tpy::to_ptr_variant(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     // print(borrow(p))
-    std::cout << borrow(p) << "\n";
+    std::cout << borrow(p.as_const()) << "\n";
     // print(n)
     std::cout << n << "\n";
 }

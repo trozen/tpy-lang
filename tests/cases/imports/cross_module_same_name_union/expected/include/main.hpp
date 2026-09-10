@@ -18,7 +18,7 @@ using ::tpyapp::pkg_a::Foo;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t uses_pkg_a(const ::tpyapp::pkg_a::Foo& x);
-std::string describe(const std::variant<::tpyapp::pkg_b::Bar*, ::tpyapp::pkg_a::Foo*> u);
+std::string describe(::tpy::Union<const ::tpyapp::pkg_b::Bar*, const ::tpyapp::pkg_a::Foo*> u);
 void main();
 
 void __tpy_init();

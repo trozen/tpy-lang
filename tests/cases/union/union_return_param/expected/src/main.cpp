@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def identity(pet: Dog | Cat) -> Dog | Cat:
-std::variant<Cat*, Dog*> identity(std::variant<Cat*, Dog*> pet) {
+::tpy::Union<Cat*, Dog*> identity(::tpy::Union<Cat*, Dog*> pet) {
     // return pet
     return pet;
 }
 
 // def get_name(pet: Dog | Cat) -> str:
-std::string get_name(const std::variant<Cat*, Dog*> pet) {
+std::string get_name(::tpy::Union<const Cat*, const Dog*> pet) {
     // if isinstance(pet, Dog):
-    if (std::holds_alternative<Dog*>(pet)) {
-        auto& __pet = *std::get<Dog*>(pet);
+    if (std::holds_alternative<const Dog*>(pet)) {
+        auto& __pet = *std::get<const Dog*>(pet);
         // return pet.name
         return __pet.name;
     }
-    auto& __pet = *std::get<Cat*>(pet);
+    auto& __pet = *std::get<const Cat*>(pet);
     // if isinstance(pet, Cat):
     if (true) {
-        auto& __pet = *std::get<Cat*>(pet);
+        auto& __pet = *std::get<const Cat*>(pet);
         // return pet.name
         return __pet.name;
     }
@@ -34,19 +34,19 @@ void main() {
     // d = Dog("Rex", 5)
     Dog d = Dog("Rex", 5);
     // pet: Dog | Cat = d
-    std::variant<Cat*, Dog*> pet{&(d)};
+    ::tpy::Union<Cat*, Dog*> pet{&(d)};
     // result = identity(pet)
-    std::variant<Cat*, Dog*> result = identity(pet);
+    ::tpy::Union<Cat*, Dog*> result = identity(pet);
     // print(get_name(result))
-    std::cout << get_name(result) << "\n";
+    std::cout << get_name(result.as_const()) << "\n";
     // c = Cat("Whiskers", 9)
     Cat c = Cat("Whiskers", 9);
     // pet2: Dog | Cat = c
-    std::variant<Cat*, Dog*> pet2{&(c)};
+    ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     // result2 = identity(pet2)
-    std::variant<Cat*, Dog*> result2 = identity(pet2);
+    ::tpy::Union<Cat*, Dog*> result2 = identity(pet2);
     // print(get_name(result2))
-    std::cout << get_name(result2) << "\n";
+    std::cout << get_name(result2.as_const()) << "\n";
 }
 
 void __tpy_init() {

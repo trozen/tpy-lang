@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def classify(v: A | B | C | D) -> Int32:
-int32_t classify(std::variant<A*, B*, C*, D*> v) {
+int32_t classify(::tpy::Union<A*, B*, C*, D*> v) {
     // if not isinstance(v, A | B | C):
     if ((!((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v) || std::holds_alternative<C*>(v))))) {
         auto& __v = *std::get<D*>(v);
@@ -22,10 +22,10 @@ int32_t classify(std::variant<A*, B*, C*, D*> v) {
 void main() {
     // print(classify(A(1)))
     A __tmp_1 = A(1);
-    std::cout << classify(std::variant<A*, B*, C*, D*>{&__tmp_1}) << "\n";
+    std::cout << classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_1}) << "\n";
     // print(classify(D(5)))
     D __tmp_2 = D(5);
-    std::cout << classify(std::variant<A*, B*, C*, D*>{&__tmp_2}) << "\n";
+    std::cout << classify(::tpy::Union<A*, B*, C*, D*>{&__tmp_2}) << "\n";
 }
 
 void __tpy_init() {

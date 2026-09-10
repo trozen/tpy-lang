@@ -49,7 +49,7 @@ struct Box {
     ::tpy::Union<Cat, Dog> payload;
 
     // def __init__(self, p: Dog | Cat) -> None:
-    explicit Box(const std::variant<Cat*, Dog*> p);
+    explicit Box(::tpy::Union<const Cat*, const Dog*> p);
 
     __gen_Box_describe describe() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -101,6 +101,6 @@ inline Cat::Cat() {
 }
 
 // def __init__(self, p: Dog | Cat) -> None:
-inline Box::Box(const std::variant<Cat*, Dog*> p) : payload(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(p)) {}
+inline Box::Box(::tpy::Union<const Cat*, const Dog*> p) : payload(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(p)) {}
 void __tpy_init();
 } // namespace tpyapp::main

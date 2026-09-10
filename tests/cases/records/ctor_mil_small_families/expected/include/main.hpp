@@ -75,7 +75,7 @@ struct H {
 
     // def __init__(self, pu: A | B, ft: tuple[A, Int32],
     // vt: tuple[Int32, Int32]) -> None:
-    explicit H(const std::variant<A*, B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt);
+    explicit H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& ft, const std::tuple<int32_t, int32_t>& vt);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
 };
 

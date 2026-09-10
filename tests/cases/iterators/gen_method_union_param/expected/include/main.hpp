@@ -58,9 +58,9 @@ struct Zoo {
     // def __init__(self) -> None:
     Zoo();
 
-    __gen_Zoo_voices voices(std::variant<Cat*, Dog*> a);
+    __gen_Zoo_voices voices(::tpy::Union<Cat*, Dog*> a);
 
-    __gen_Zoo_names names(std::variant<const Cat*, const Dog*> a);
+    __gen_Zoo_names names(::tpy::Union<const Cat*, const Dog*> a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
 };
 
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::string> {
     int32_t __state;
     Zoo& __self;
-    std::variant<Cat*, Dog*> a;
+    ::tpy::Union<Cat*, Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -84,7 +84,7 @@ struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::s
         S_DONE = 5,
     };
 
-    __gen_Zoo_voices(Zoo& __self, std::variant<Cat*, Dog*> a_)
+    __gen_Zoo_voices(Zoo& __self, ::tpy::Union<Cat*, Dog*> a_)
         : __state(S_INITIAL), __self(__self), a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
@@ -95,7 +95,7 @@ struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::s
     }
 };
 
-inline __gen_Zoo_voices Zoo::voices(std::variant<Cat*, Dog*> a) {
+inline __gen_Zoo_voices Zoo::voices(::tpy::Union<Cat*, Dog*> a) {
     return __gen_Zoo_voices(*this, a);
 }
 
@@ -103,7 +103,7 @@ inline __gen_Zoo_voices Zoo::voices(std::variant<Cat*, Dog*> a) {
 struct __gen_Zoo_names : public ::tpy::next_iter_mixin<__gen_Zoo_names, std::string> {
     int32_t __state;
     Zoo& __self;
-    std::variant<const Cat*, const Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -114,7 +114,7 @@ struct __gen_Zoo_names : public ::tpy::next_iter_mixin<__gen_Zoo_names, std::str
         S_DONE = 5,
     };
 
-    __gen_Zoo_names(Zoo& __self, std::variant<const Cat*, const Dog*> a_)
+    __gen_Zoo_names(Zoo& __self, ::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL), __self(__self), a(a_) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
@@ -125,7 +125,7 @@ struct __gen_Zoo_names : public ::tpy::next_iter_mixin<__gen_Zoo_names, std::str
     }
 };
 
-inline __gen_Zoo_names Zoo::names(std::variant<const Cat*, const Dog*> a) {
+inline __gen_Zoo_names Zoo::names(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_Zoo_names(*this, a);
 }
 

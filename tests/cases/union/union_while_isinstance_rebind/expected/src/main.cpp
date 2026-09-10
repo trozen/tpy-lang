@@ -10,7 +10,7 @@ namespace tpyapp::main {
     // # entry-narrowed to A, then rebound off A in the body -> must exit.
     // t: A | B = A(seed)
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
-    std::variant<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     // total = 0
     int32_t total = 0;
     // while isinstance(t, A):
@@ -31,7 +31,7 @@ namespace tpyapp::main {
     // # entry-narrowed to A, never rebound -> fold stays valid; break exits.
     // t: A | B = A(seed)
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
-    std::variant<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     // n = 0
     int32_t n = 0;
     // while isinstance(t, A):
@@ -52,7 +52,7 @@ namespace tpyapp::main {
     // # isinstance under `and`, subject rebound -> the nested fold must drop too.
     // t: A | B = A(seed)
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
-    std::variant<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     // total = 0
     int32_t total = 0;
     // while isinstance(t, A) and flag:
@@ -74,7 +74,7 @@ namespace tpyapp::main {
     // # isinstance under `or`, subject rebound -> the `||` arm's fold must drop.
     // t: A | B = A([1])
     ::tpy::Union<A, B> __slot_1 = A({1});
-    std::variant<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     // keep = True
     bool keep = true;
     // n = 0
@@ -99,7 +99,7 @@ namespace tpyapp::main {
     // # isinstance under `not`, subject rebound -> the `!` operand's fold must drop.
     // t: A | B = A([1, 2])
     ::tpy::Union<A, B> __slot_1 = A({1, 2});
-    std::variant<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     // n = 0
     int32_t n = 0;
     // while not isinstance(t, B):

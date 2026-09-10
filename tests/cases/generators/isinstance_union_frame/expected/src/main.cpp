@@ -83,14 +83,14 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_first_value::__next__()
     case S_INITIAL: {
         // # assert-narrowing (the persistent extraction path) of a frame-resident union.
         // assert isinstance(t, Push)  # tpyc: ok
-        if (!(std::holds_alternative<Push*>(t))) ::tpy::raise_assertion_error();
-        auto& __t = *std::get<Push*>(t);
+        if (!(std::holds_alternative<const Push*>(t))) ::tpy::raise_assertion_error();
+        auto& __t = *std::get<const Push*>(t);
         // yield t.items[0]
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__t.items, 0);
     }
     case S_RESUME_0: {
-        auto& __t = *std::get<Push*>(t);
+        auto& __t = *std::get<const Push*>(t);
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -101,20 +101,20 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_first_value::__next__()
 
 
 // def first_value(t: Push | Emit) -> Iterator[int]:
-__gen_first_value first_value(std::variant<Emit*, Push*> t) {
+__gen_first_value first_value(::tpy::Union<const Emit*, const Push*> t) {
     return __gen_first_value(t);
 }
 
 // def plain(t: Push | Emit) -> int:
-::tpy::BigInt plain(const std::variant<Emit*, Push*> t) {
+::tpy::BigInt plain(::tpy::Union<const Emit*, const Push*> t) {
     // # Inverse: the same narrowing in a non-generator must keep working.
     // if isinstance(t, Push):
-    if (std::holds_alternative<Push*>(t)) {
-        auto& __t = *std::get<Push*>(t);
+    if (std::holds_alternative<const Push*>(t)) {
+        auto& __t = *std::get<const Push*>(t);
         // return len(t.items)
         return ::tpy::BigInt(::tpy::__len__(__t.items));
     }
-    auto& __t = *std::get<Emit*>(t);
+    auto& __t = *std::get<const Emit*>(t);
     // return -1
     return ::tpy::BigInt(-1);
 }
@@ -136,7 +136,7 @@ void main() {
     // for v in first_value(Push([7, 8])):
     {
         Push __tmp_1 = Push({7, 8});
-        auto __src_2 = first_value(std::variant<Emit*, Push*>{&__tmp_1});
+        auto __src_2 = first_value(::tpy::Union<const Emit*, const Push*>{&__tmp_1});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -148,10 +148,10 @@ void main() {
     }
     // print("plain", plain(Push([1, 2, 3, 4])))
     Push __tmp_2 = Push({1, 2, 3, 4});
-    std::cout << "plain" << " " << plain(std::variant<Emit*, Push*>{&__tmp_2}) << "\n";
+    std::cout << "plain" << " " << plain(::tpy::Union<const Emit*, const Push*>{&__tmp_2}) << "\n";
     // print("plain", plain(Emit("z")))
     Emit __tmp_3 = Emit("z");
-    std::cout << "plain" << " " << plain(std::variant<Emit*, Push*>{&__tmp_3}) << "\n";
+    std::cout << "plain" << " " << plain(::tpy::Union<const Emit*, const Push*>{&__tmp_3}) << "\n";
 }
 
 void __tpy_init() {

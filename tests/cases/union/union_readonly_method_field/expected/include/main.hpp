@@ -54,7 +54,7 @@ struct Inner {
     ::tpy::Union<Cat, Dog> pet;
 
     // def __init__(self, pet: Dog | Cat) -> None:
-    explicit Inner(const std::variant<Cat*, Dog*> pet);
+    explicit Inner(::tpy::Union<const Cat*, const Dog*> pet);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -96,7 +96,7 @@ inline Dog::Dog(std::string_view name) : name(name) {}
 inline Cat::Cat(std::string_view name) : name(name) {}
 
 // def __init__(self, pet: Dog | Cat) -> None:
-inline Inner::Inner(const std::variant<Cat*, Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
+inline Inner::Inner(::tpy::Union<const Cat*, const Dog*> pet) : pet(::tpy::to_value_variant<::tpy::Union<Cat, Dog>>(pet)) {}
 
 // def __init__(self, inner: Inner) -> None:
 inline Zoo::Zoo(const Inner& inner) : inner(inner) {}
@@ -105,7 +105,7 @@ inline Zoo::Zoo(const Inner& inner) : inner(inner) {}
 // def get_pet_name(self) -> str:
 inline std::string Zoo::get_pet_name() const {
     // p = self.inner.pet
-    std::variant<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(this->inner.pet);
+    ::tpy::Union<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(this->inner.pet);
     // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
@@ -126,7 +126,7 @@ inline std::string Zoo::get_pet_name() const {
 // def get_pet_name_auto(self) -> str:
 inline std::string Zoo::get_pet_name_auto() {
     // p = self.inner.pet
-    std::variant<Cat*, Dog*> p = ::tpy::to_ptr_variant(this->inner.pet);
+    ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(this->inner.pet);
     // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
@@ -148,7 +148,7 @@ inline std::string Zoo::get_pet_name_auto() {
 inline void Zoo::rename_pet(std::string_view new_name) {
     // # Mutate through pointer-variant local -- proves reference semantics
     // p = self.inner.pet
-    std::variant<Cat*, Dog*> p = ::tpy::to_ptr_variant(this->inner.pet);
+    ::tpy::Union<Cat*, Dog*> p = ::tpy::to_ptr_variant(this->inner.pet);
     // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);

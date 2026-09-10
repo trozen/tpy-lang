@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def process(v: A | B) -> None:
-void process(const std::variant<A*, B*> v) {
+void process(::tpy::Union<const A*, const B*> v) {
     // if isinstance(v, A):
-    if (std::holds_alternative<A*>(v)) {
-        auto& __v = *std::get<A*>(v);
+    if (std::holds_alternative<const A*>(v)) {
+        auto& __v = *std::get<const A*>(v);
         // print(v.x)
         std::cout << __v.x << "\n";
     // else:
     } else {
-        auto& __v = *std::get<B*>(v);
+        auto& __v = *std::get<const B*>(v);
         // print(v.y)
         std::cout << __v.y << "\n";
     }
@@ -26,9 +26,9 @@ void main() {
     // b: B = B("hello")
     B b = B("hello");
     // process(a)
-    process(std::variant<A*, B*>{&(a)});
+    process(::tpy::Union<const A*, const B*>{&(a)});
     // process(b)
-    process(std::variant<A*, B*>{&(b)});
+    process(::tpy::Union<const A*, const B*>{&(b)});
 }
 
 void __tpy_init() {

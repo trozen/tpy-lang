@@ -9,7 +9,7 @@ int32_t consume(::tpy::Union<A, B>&& v) {
     // sink = Sink(v)
     Sink sink = Sink(std::move(v));
     // w = sink.u
-    std::variant<A*, B*> w = ::tpy::to_ptr_variant(sink.u);
+    ::tpy::Union<A*, B*> w = ::tpy::to_ptr_variant(sink.u);
     // if isinstance(w, A):
     if (std::holds_alternative<A*>(w)) {
         auto& __w = *std::get<A*>(w);

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def score(a: Cat | Dog) -> int:
-::tpy::BigInt score(const std::variant<Cat*, Dog*> a) {
+::tpy::BigInt score(::tpy::Union<const Cat*, const Dog*> a) {
     // match a:
     ::tpy::BigInt v;
     auto& __match_subject_1 = a;
@@ -34,10 +34,10 @@ namespace tpyapp::main {
 void main() {
     // print(score(Cat(9)))   # 109
     Cat __tmp_1 = Cat(::tpy::BigInt(9));
-    std::cout << score(std::variant<Cat*, Dog*>{&__tmp_1}) << "\n";
+    std::cout << score(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     // print(score(Dog(7)))   # 7 -- the non-rebinding arm's value still flows out
     Dog __tmp_2 = Dog(::tpy::BigInt(7));
-    std::cout << score(std::variant<Cat*, Dog*>{&__tmp_2}) << "\n";
+    std::cout << score(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
 }
 
 void __tpy_init() {

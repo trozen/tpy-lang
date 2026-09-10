@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pick(v: Item | Other) -> Int32:
-int32_t pick(std::variant<Item*, Other*> v) {
+int32_t pick(::tpy::Union<Item*, Other*> v) {
     // match v:
     auto& __match_subject_1 = v;
     switch (__match_subject_1.index()) {
@@ -36,7 +36,7 @@ void main() {
     // it = Item(6)
     Item it = Item(6);
     // print(pick(it))
-    std::cout << pick(std::variant<Item*, Other*>{&(it)}) << "\n";
+    std::cout << pick(::tpy::Union<Item*, Other*>{&(it)}) << "\n";
     // print(it.code)
     std::cout << it.code << "\n";
     // print(Registry.code)

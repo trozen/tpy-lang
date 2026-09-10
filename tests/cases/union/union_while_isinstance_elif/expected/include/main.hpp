@@ -13,7 +13,7 @@ struct Triangle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(const std::variant<Circle*, Rect*, Triangle*> s);
+void describe(::tpy::Union<const Circle*, const Rect*, const Triangle*> s);
 void main();
 
 // class Circle:

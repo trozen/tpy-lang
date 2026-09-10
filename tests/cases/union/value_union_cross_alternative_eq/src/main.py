@@ -298,6 +298,44 @@ class Zone(ValueType):
     zid: Int32
 
 
+# `__ne__` INVERTED on purpose: CPython calls a declared `__ne__` rather than
+# deriving one from `__eq__`, so both rows below disagree with the negation
+# of `__eq__`. This is the only position where a union's own `operator!=` is
+# reachable -- a container `!=` answers from the elements' `==` in both
+# languages (see `union/reference_union_storage_eq`).
+class Tagged(ValueType):
+    n: Int32
+
+    def __init__(self, n: Int32) -> None:
+        self.n = n
+
+    def __eq__(self, other: "Tagged") -> bool:
+        if not isinstance(other, Tagged):
+            return False
+        return self.n == other.n
+
+    def __ne__(self, other: "Tagged") -> bool:
+        if not isinstance(other, Tagged):
+            return True
+        return self.n == other.n
+
+
+class Marked(ValueType):
+    n: Int32
+
+    def __init__(self, n: Int32) -> None:
+        self.n = n
+
+    def __eq__(self, other: "Marked") -> bool:
+        if not isinstance(other, Marked):
+            return False
+        return self.n == other.n
+
+
+def dunder_ne(a: Tagged | Marked, b: Tagged | Marked) -> bool:  # free function
+    return a != b  # tpyc: ok
+
+
 def value_record_lt(a: Fixed | Zone, b: Fixed | Zone) -> str:
     try:
         ordered = a < b  # tpyc: ok
@@ -427,6 +465,8 @@ def main() -> None:
     n: Int32 | str = 1
     s: Int32 | str = "a"
     print("value record lt", value_record_lt(Fixed(1), Fixed(2)))
+    print("custom_ne", dunder_ne(Tagged(1), Tagged(1)),
+          dunder_ne(Tagged(1), Tagged(2)), dunder_ne(Tagged(1), Marked(1)))
     print("unorderable", str_int_cmp(n, s, 0), str_int_cmp(n, s, 1),
           str_int_cmp(n, s, 2), str_int_cmp(n, s, 3))
     print("str_int_eq", str_int_eq(n, s), str_int_eq(s, s), str_int_eq(n, n))

@@ -57,7 +57,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
 
 
 // def voices(a: Dog | Cat) -> Iterator[str]:
-__gen_voices voices(std::variant<Cat*, Dog*> a) {
+__gen_voices voices(::tpy::Union<Cat*, Dog*> a) {
     return __gen_voices(a);
 }
 
@@ -115,7 +115,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
 
 
 // def capture(a: Dog | Cat) -> Iterator[str]:
-__gen_capture capture(std::variant<Cat*, Dog*> a) {
+__gen_capture capture(::tpy::Union<Cat*, Dog*> a) {
     return __gen_capture(a);
 }
 
@@ -286,7 +286,7 @@ void main() {
     // for s in voices(Dog()):
     {
         Dog __tmp_1 = Dog();
-        auto __src_0 = voices(std::variant<Cat*, Dog*>{&__tmp_1});
+        auto __src_0 = voices(::tpy::Union<Cat*, Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -299,7 +299,7 @@ void main() {
     // for s in voices(Cat()):
     {
         Cat __tmp_2 = Cat();
-        auto __src_2 = voices(std::variant<Cat*, Dog*>{&__tmp_2});
+        auto __src_2 = voices(::tpy::Union<Cat*, Dog*>{&__tmp_2});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -312,7 +312,7 @@ void main() {
     // for s in capture(Dog()):
     {
         Dog __tmp_3 = Dog();
-        auto __src_4 = capture(std::variant<Cat*, Dog*>{&__tmp_3});
+        auto __src_4 = capture(::tpy::Union<Cat*, Dog*>{&__tmp_3});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

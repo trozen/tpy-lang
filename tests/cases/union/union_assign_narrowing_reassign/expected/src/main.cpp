@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def check(s: Circle | Rect) -> None:
-void check(const std::variant<Circle*, Rect*> s) {
+void check(::tpy::Union<const Circle*, const Rect*> s) {
     // if isinstance(s, Circle):
-    if (std::holds_alternative<Circle*>(s)) {
-        auto& __s = *std::get<Circle*>(s);
+    if (std::holds_alternative<const Circle*>(s)) {
+        auto& __s = *std::get<const Circle*>(s);
         // print(s.radius)
         std::cout << ::tpy::print_float(__s.radius) << "\n";
     // else:
     } else {
-        auto& __s = *std::get<Rect*>(s);
+        auto& __s = *std::get<const Rect*>(s);
         // print(s.width)
         std::cout << ::tpy::print_float(__s.width) << "\n";
     }
@@ -24,7 +24,7 @@ void main() {
     std::optional<::tpy::Union<Circle, Rect>> __slot_2;
     // s: Circle | Rect = Circle(1.0)
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(1.0);
-    std::variant<Circle*, Rect*> s = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Circle*, Rect*> s = ::tpy::to_ptr_variant(__slot_1);
     // print(s.radius)
     std::cout << ::tpy::print_float((*std::get<Circle*>(s)).radius) << "\n";
     // s = Rect(3.0, 4.0)

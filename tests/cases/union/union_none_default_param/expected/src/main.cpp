@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pointer_arm(pet: Dog | Cat | None = None) -> str:
-std::string pointer_arm(std::variant<std::monostate, Cat*, Dog*> pet) {
+std::string pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*> pet) {
     // if pet is None:
     if ((std::holds_alternative<std::monostate>(pet))) {
         // return "none"
@@ -49,7 +49,7 @@ void main() {
     // d = Dog(1)
     Dog d = Dog(::tpy::BigInt(1));
     // print(pointer_arm(d), d.barks)
-    std::cout << pointer_arm(std::variant<std::monostate, Cat*, Dog*>{&(d)}) << " " << d.barks << "\n";
+    std::cout << pointer_arm(::tpy::Union<std::monostate, Cat*, Dog*>{&(d)}) << " " << d.barks << "\n";
 }
 
 void __tpy_init() {

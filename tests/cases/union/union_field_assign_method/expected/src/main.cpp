@@ -9,18 +9,18 @@ void main() {
     // d = Dog("Rex")
     Dog d = Dog("Rex");
     // pet: Dog | Cat = d
-    std::variant<Cat*, Dog*> pet{&(d)};
+    ::tpy::Union<Cat*, Dog*> pet{&(d)};
     // p = Pen(pet)
-    Pen p = Pen(pet);
+    Pen p = Pen(pet.as_const());
     // # Reassign via method from pointer-variant param
     // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
     // new_pet: Dog | Cat = c
-    std::variant<Cat*, Dog*> new_pet{&(c)};
+    ::tpy::Union<Cat*, Dog*> new_pet{&(c)};
     // p.set_pet(new_pet)
-    p.set_pet(new_pet);
+    p.set_pet(new_pet.as_const());
     // r = p.pet
-    std::variant<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
+    ::tpy::Union<Cat*, Dog*> r = ::tpy::to_ptr_variant(p.pet);
     // if isinstance(r, Cat):
     if (std::holds_alternative<Cat*>(r)) {
         auto& __r = *std::get<Cat*>(r);
@@ -31,11 +31,11 @@ void main() {
     // d2 = Dog("Buddy")
     Dog d2 = Dog("Buddy");
     // buddy: Dog | Cat = d2
-    std::variant<Cat*, Dog*> buddy{&(d2)};
+    ::tpy::Union<Cat*, Dog*> buddy{&(d2)};
     // p.set_pet(buddy)
-    p.set_pet(buddy);
+    p.set_pet(buddy.as_const());
     // r2 = p.pet
-    std::variant<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
+    ::tpy::Union<Cat*, Dog*> r2 = ::tpy::to_ptr_variant(p.pet);
     // if isinstance(r2, Dog):
     if (std::holds_alternative<Dog*>(r2)) {
         auto& __r2 = *std::get<Dog*>(r2);

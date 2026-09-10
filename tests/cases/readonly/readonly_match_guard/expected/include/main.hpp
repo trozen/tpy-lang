@@ -12,7 +12,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(std::variant<const Cat*, const Dog*> pet);
+std::string describe(::tpy::Union<const Cat*, const Dog*> pet);
 void main();
 
 // class Dog:

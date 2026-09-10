@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def classify(v: A | B | C) -> str:
-std::string classify(const std::variant<A*, B*, C*> v) {
+std::string classify(::tpy::Union<const A*, const B*, const C*> v) {
     // if isinstance(v, A | B):
-    if ((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v))) {
+    if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
         // return "ab"
         return "ab";
     }
-    auto& __v = *std::get<C*>(v);
+    auto& __v = *std::get<const C*>(v);
     // return "c"
     return "c";
 }
 
 // def excluded(v: A | B | C) -> Int32:
-int32_t excluded(const std::variant<A*, B*, C*> v) {
+int32_t excluded(::tpy::Union<const A*, const B*, const C*> v) {
     // if not isinstance(v, A | B):
-    if ((!((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v))))) {
-        auto& __v = *std::get<C*>(v);
+    if ((!((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))))) {
+        auto& __v = *std::get<const C*>(v);
         // return v.z
         return __v.z;
     }
@@ -32,16 +32,16 @@ int32_t excluded(const std::variant<A*, B*, C*> v) {
 void main() {
     // print(classify(A(1)))
     A __tmp_1 = A(1);
-    std::cout << classify(std::variant<A*, B*, C*>{&__tmp_1}) << "\n";
+    std::cout << classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_1}) << "\n";
     // print(classify(C(3)))
     C __tmp_2 = C(3);
-    std::cout << classify(std::variant<A*, B*, C*>{&__tmp_2}) << "\n";
+    std::cout << classify(::tpy::Union<const A*, const B*, const C*>{&__tmp_2}) << "\n";
     // print(excluded(C(9)))
     C __tmp_3 = C(9);
-    std::cout << excluded(std::variant<A*, B*, C*>{&__tmp_3}) << "\n";
+    std::cout << excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_3}) << "\n";
     // print(excluded(A(1)))
     A __tmp_4 = A(1);
-    std::cout << excluded(std::variant<A*, B*, C*>{&__tmp_4}) << "\n";
+    std::cout << excluded(::tpy::Union<const A*, const B*, const C*>{&__tmp_4}) << "\n";
 }
 
 void __tpy_init() {

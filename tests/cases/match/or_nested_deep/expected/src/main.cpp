@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pick(x: A | B | C | D) -> str:
-std::string pick(const std::variant<A*, B*, C*, D*> x) {
+std::string pick(::tpy::Union<const A*, const B*, const C*, const D*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -26,7 +26,7 @@ std::string pick(const std::variant<A*, B*, C*, D*> x) {
 }
 
 // def value(x: A | B | C | D) -> int:
-::tpy::BigInt value(const std::variant<A*, B*, C*, D*> x) {
+::tpy::BigInt value(::tpy::Union<const A*, const B*, const C*, const D*> x) {
     // match x:
     auto& __match_subject_1 = x;
     switch (__match_subject_1.index()) {
@@ -69,24 +69,24 @@ std::string pick(const std::variant<A*, B*, C*, D*> x) {
 void main() {
     // a: A | B | C | D = A(1)
     ::tpy::Union<A, B, C, D> __slot_1 = A(::tpy::BigInt(1));
-    std::variant<A*, B*, C*, D*> a = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<A*, B*, C*, D*> a = ::tpy::to_ptr_variant(__slot_1);
     // b: A | B | C | D = B(2)
     ::tpy::Union<A, B, C, D> __slot_2 = B(::tpy::BigInt(2));
-    std::variant<A*, B*, C*, D*> b = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<A*, B*, C*, D*> b = ::tpy::to_ptr_variant(__slot_2);
     // c: A | B | C | D = C(3)
     ::tpy::Union<A, B, C, D> __slot_3 = C(::tpy::BigInt(3));
-    std::variant<A*, B*, C*, D*> c = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<A*, B*, C*, D*> c = ::tpy::to_ptr_variant(__slot_3);
     // d: A | B | C | D = D(4)
     ::tpy::Union<A, B, C, D> __slot_4 = D(::tpy::BigInt(4));
-    std::variant<A*, B*, C*, D*> d = ::tpy::to_ptr_variant(__slot_4);
+    ::tpy::Union<A*, B*, C*, D*> d = ::tpy::to_ptr_variant(__slot_4);
     // print(pick(a), value(a))
-    std::cout << pick(a) << " " << value(a) << "\n";
+    std::cout << pick(a.as_const()) << " " << value(a.as_const()) << "\n";
     // print(pick(b), value(b))
-    std::cout << pick(b) << " " << value(b) << "\n";
+    std::cout << pick(b.as_const()) << " " << value(b.as_const()) << "\n";
     // print(pick(c), value(c))
-    std::cout << pick(c) << " " << value(c) << "\n";
+    std::cout << pick(c.as_const()) << " " << value(c.as_const()) << "\n";
     // print(pick(d), value(d))
-    std::cout << pick(d) << " " << value(d) << "\n";
+    std::cout << pick(d.as_const()) << " " << value(d.as_const()) << "\n";
 }
 
 void __tpy_init() {

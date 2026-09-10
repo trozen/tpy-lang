@@ -32,17 +32,17 @@ std::string describe_zoo(const Zoo& z) {
 void main() {
     // ball: Ball | Mouse = Ball("red")
     ::tpy::Union<Ball, Mouse> __slot_1 = Ball("red");
-    std::variant<Ball*, Mouse*> ball = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Ball*, Mouse*> ball = ::tpy::to_ptr_variant(__slot_1);
     // cat: Cat | Dog = Cat("Luna", ball)
-    ::tpy::Union<Cat, Dog> __slot_2 = Cat("Luna", ball);
-    std::variant<Cat*, Dog*> cat = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat, Dog> __slot_2 = Cat("Luna", ball.as_const());
+    ::tpy::Union<Cat*, Dog*> cat = ::tpy::to_ptr_variant(__slot_2);
     // z1 = Zoo(cat)
-    Zoo z1 = Zoo(cat);
+    Zoo z1 = Zoo(cat.as_const());
     // dog: Cat | Dog = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_3 = Dog("Rex");
-    std::variant<Cat*, Dog*> dog = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Cat*, Dog*> dog = ::tpy::to_ptr_variant(__slot_3);
     // z2 = Zoo(dog)
-    Zoo z2 = Zoo(dog);
+    Zoo z2 = Zoo(dog.as_const());
     // print(describe_zoo(z1))
     std::cout << describe_zoo(z1) << "\n";
     // print(describe_zoo(z2))

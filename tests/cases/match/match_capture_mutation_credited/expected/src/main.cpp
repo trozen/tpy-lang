@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // # free function, union param, `as` capture
 // def free_union(a: Cat | Dog) -> None:
-void free_union(std::variant<Cat*, Dog*> a) {
+void free_union(::tpy::Union<Cat*, Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -46,7 +46,7 @@ void free_record(Counter& b) {
 // # or-pattern alternatives binding one field sub-capture; the mutation is
 // # STRUCTURAL (append), which reaches the param through the same alias
 // def or_sub_capture(a: Cat | Dog) -> None:
-void or_sub_capture(std::variant<Cat*, Dog*> a) {
+void or_sub_capture(::tpy::Union<Cat*, Dog*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -100,7 +100,7 @@ void add_one(Counter& c) {
 
 // # the capture is handed to a MUTATING callee rather than written directly
 // def via_callee(u: Counter | Cat) -> None:
-void via_callee(std::variant<Cat*, Counter*> u) {
+void via_callee(::tpy::Union<Cat*, Counter*> u) {
     // match u:
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
@@ -254,7 +254,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
 
 
 // def gen_body(a: Counter | Cat) -> Iterator[Int32]:
-__gen_gen_body gen_body(std::variant<Cat*, Counter*> a) {
+__gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
     return __gen_gen_body(a);
 }
 
@@ -302,14 +302,14 @@ __gen_gen_body gen_body(std::variant<Cat*, Counter*> a) {
 
 
 // async def async_body(a: Counter | Cat) -> Int32:
-__coro_async_body async_body(std::variant<Cat*, Counter*> a) {
+__coro_async_body async_body(::tpy::Union<Cat*, Counter*> a) {
     return __coro_async_body(a);
 }
 
 // # inverse: an arm that only READS keeps the param's non-mutating verdict --
 // # the snapshot pins the `const std::variant<...>` this section must keep
 // def read_only(a: Counter | Cat) -> Int32:
-int32_t read_only(const std::variant<Cat*, Counter*> a) {
+int32_t read_only(::tpy::Union<const Cat*, const Counter*> a) {
     // match a:
     auto& __match_subject_1 = a;
     switch (__match_subject_1.index()) {
@@ -405,7 +405,7 @@ void main() {
     // cat = Cat(5)
     Cat cat = Cat(5);
     // free_union(cat)
-    free_union(std::variant<Cat*, Dog*>{&(cat)});
+    free_union(::tpy::Union<Cat*, Dog*>{&(cat)});
     // print("free_union:", cat.hunger)
     std::cout << "free_union:" << " " << cat.hunger << "\n";
     // ctr = Counter(1)
@@ -417,7 +417,7 @@ void main() {
     // dog = Dog(2)
     Dog dog = Dog(2);
     // or_sub_capture(dog)
-    or_sub_capture(std::variant<Cat*, Dog*>{&(dog)});
+    or_sub_capture(::tpy::Union<Cat*, Dog*>{&(dog)});
     // print("or_sub_capture:", len(dog.tags), dog.tags[0])
     std::cout << "or_sub_capture:" << " " << ::tpy::__len__(dog.tags) << " " << ::tpy::__getitem__(dog.tags, 0) << "\n";
     // opt = Counter(10)
@@ -429,7 +429,7 @@ void main() {
     // callee = Counter(20)
     Counter callee = Counter(20);
     // via_callee(callee)
-    via_callee(std::variant<Cat*, Counter*>{&(callee)});
+    via_callee(::tpy::Union<Cat*, Counter*>{&(callee)});
     // print("via_callee:", callee.n)
     std::cout << "via_callee:" << " " << callee.n << "\n";
     // bag = Bag(30)
@@ -490,7 +490,7 @@ void main() {
     Counter gen_ctr = Counter(60);
     // for got in gen_body(gen_ctr):
     {
-        auto __src_0 = gen_body(std::variant<Cat*, Counter*>{&(gen_ctr)});
+        auto __src_0 = gen_body(::tpy::Union<Cat*, Counter*>{&(gen_ctr)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -505,13 +505,13 @@ void main() {
     // async_ctr = Counter(70)
     Counter async_ctr = Counter(70);
     // print("async_body:", asyncio.run(async_body(async_ctr)))
-    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_body(std::variant<Cat*, Counter*>{&(async_ctr)}))) << "\n";
+    std::cout << "async_body:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(async_body(::tpy::Union<Cat*, Counter*>{&(async_ctr)}))) << "\n";
     // print("async_body after:", async_ctr.n)
     std::cout << "async_body after:" << " " << async_ctr.n << "\n";
     // ro = Counter(80)
     Counter ro = Counter(80);
     // print("read_only:", read_only(ro), ro.n)
-    std::cout << "read_only:" << " " << read_only(std::variant<Cat*, Counter*>{&(ro)}) << " " << ro.n << "\n";
+    std::cout << "read_only:" << " " << read_only(::tpy::Union<const Cat*, const Counter*>{&(ro)}) << " " << ro.n << "\n";
     // rv = Counter(90)
     Counter rv = Counter(90);
     // print("rvalue_subject:", rvalue_subject(rv), rv.n)

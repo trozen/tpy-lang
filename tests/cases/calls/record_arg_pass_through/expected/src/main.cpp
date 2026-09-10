@@ -40,7 +40,7 @@ int32_t through_pointer(Holder& h, bool flag) {
 }
 
 // def through_narrowing(v: A | B) -> Int32:
-int32_t through_narrowing(std::variant<A*, B*> v) {
+int32_t through_narrowing(::tpy::Union<A*, B*> v) {
     // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
@@ -73,12 +73,12 @@ void main() {
     // a = A(5)
     A a = A(5);
     // print(through_narrowing(a))
-    std::cout << through_narrowing(std::variant<A*, B*>{&(a)}) << "\n";
+    std::cout << through_narrowing(::tpy::Union<A*, B*>{&(a)}) << "\n";
     // print(a.x)                  # 15: mutated through the narrowed alias
     std::cout << a.x << "\n";
     // print(through_narrowing(B(7)))
     B __tmp_1 = B(7);
-    std::cout << through_narrowing(std::variant<A*, B*>{&__tmp_1}) << "\n";
+    std::cout << through_narrowing(::tpy::Union<A*, B*>{&__tmp_1}) << "\n";
 }
 
 void __tpy_init() {

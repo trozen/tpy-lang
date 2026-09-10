@@ -61,7 +61,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_names::__next__() {
 
 
 // def names(a: readonly[Dog | Cat]) -> Iterator[str]:
-__gen_names names(std::variant<const Cat*, const Dog*> a) {
+__gen_names names(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_names(a);
 }
 
@@ -70,7 +70,7 @@ void main() {
     // for s in names(Dog("rex")):
     {
         Dog __tmp_1 = Dog("rex");
-        auto __src_0 = names(std::variant<const Cat*, const Dog*>{&__tmp_1});
+        auto __src_0 = names(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

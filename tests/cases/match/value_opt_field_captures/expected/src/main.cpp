@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def show(u: WithScalar | WithStr | Other) -> None:
-void show(const std::variant<Other*, WithScalar*, WithStr*> u) {
+void show(::tpy::Union<const Other*, const WithScalar*, const WithStr*> u) {
     // match u:
     auto& __match_subject_1 = u;
     switch (__match_subject_1.index()) {
@@ -46,13 +46,13 @@ void show(const std::variant<Other*, WithScalar*, WithStr*> u) {
 void main() {
     // show(WithScalar(4))
     WithScalar __tmp_1 = WithScalar(4);
-    show(std::variant<Other*, WithScalar*, WithStr*>{&__tmp_1});
+    show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_1});
     // show(WithStr("hi"))
     WithStr __tmp_2 = WithStr("hi");
-    show(std::variant<Other*, WithScalar*, WithStr*>{&__tmp_2});
+    show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_2});
     // show(Other(9))
     Other __tmp_3 = Other(9);
-    show(std::variant<Other*, WithScalar*, WithStr*>{&__tmp_3});
+    show(::tpy::Union<const Other*, const WithScalar*, const WithStr*>{&__tmp_3});
 }
 
 void __tpy_init() {

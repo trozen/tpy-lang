@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // # container sibling alongside dict / list). Mutating the narrowed set and
 // # observing the new length proves it aliases the union's storage, not a copy.
 // def f(x: int | set[int]) -> None:
-void f(std::variant<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> x) {
+void f(::tpy::Union<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> x) {
     // if isinstance(x, set):
     if (std::holds_alternative<::tpy::ordered_set<::tpy::BigInt>*>(x)) {
         auto& __x = *std::get<::tpy::ordered_set<::tpy::BigInt>*>(x);
@@ -29,12 +29,12 @@ void main() {
     // s: set[int] = {1, 2, 3}
     ::tpy::ordered_set<::tpy::BigInt> s = ::tpy::ordered_set<::tpy::BigInt>({::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)});
     // v: int | set[int] = s
-    std::variant<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> v{&(s)};
+    ::tpy::Union<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> v{&(s)};
     // f(v)
     f(v);
     // w: int | set[int] = 7
     ::tpy::Union<::tpy::BigInt, ::tpy::ordered_set<::tpy::BigInt>> __slot_1 = 7;
-    std::variant<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> w = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<::tpy::BigInt*, ::tpy::ordered_set<::tpy::BigInt>*> w = ::tpy::to_ptr_variant(__slot_1);
     // f(w)
     f(w);
 }

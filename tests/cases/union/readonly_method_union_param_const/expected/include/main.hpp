@@ -52,7 +52,7 @@ struct Classifier {
     Classifier();
 
     // def which(self, a: Dog | Cat) -> int:
-    ::tpy::BigInt which(std::variant<const Cat*, const Dog*> a) const;
+    ::tpy::BigInt which(::tpy::Union<const Cat*, const Dog*> a) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Classifier";
 };
 
@@ -78,7 +78,7 @@ inline Classifier::Classifier() {
 }
 
 // def which(self, a: Dog | Cat) -> int:
-inline ::tpy::BigInt Classifier::which(std::variant<const Cat*, const Dog*> a) const {
+inline ::tpy::BigInt Classifier::which(::tpy::Union<const Cat*, const Dog*> a) const {
     // if isinstance(a, Dog):
     if (std::holds_alternative<const Dog*>(a)) {
         auto& __a = *std::get<const Dog*>(a);

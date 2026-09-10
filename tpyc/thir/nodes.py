@@ -629,12 +629,14 @@ class THIRUnionArgLift(THIRExpr):
     member-typed record name the address-of lift (`std::variant<...>{&(name)}`;
     `deref` prepends the pointer-local/receiver indirect-name deref --
     `&((*p))` / `&((*this))`), and an
-    already-union name into a deep-const slot the explicit const conversion
-    (`const_wrap`: `::tpy::ptr_variant_to_const<std::variant<...>>(name)`).
+    already-union name into a deep-const slot one of the const conversions
+    (`const_wrap`, chosen at lowering from how the SOURCE is bound: `as_const`
+    -> `name.as_const()` for a mutable borrow, `storage` ->
+    `::tpy::to_const_ptr_variant(name)` for a storage-form binding).
 
     `variant_cpp` is the slot's pointer-variant spelling, fixed at lowering:
-    const-pointee (`std::variant<const A*, ...>`) for a deep-const slot (a
-    `readonly[...]` annotation or the callee's `deep_const_borrow_params`
+    const-pointee (`::tpy::Union<const A*, ...>`) for a deep-const slot (a
+    `readonly[...]` annotation or the callee's `const_borrow_params`
     verdict), the mutable spelling otherwise. Beyond that split the member
     render is const-blind (it spells the callee's variant
     whatever the source's const-ness -- a const source into a MUTABLE slot is
@@ -648,7 +650,7 @@ class THIRUnionArgLift(THIRExpr):
     variant_cpp: str
     value: THIRExpr | None = None  # None -> the monostate member
     deref: bool = False
-    const_wrap: bool = False
+    const_wrap: 'str | None' = None
     temp_cpp: str | None = None
 
 
@@ -1766,7 +1768,7 @@ class THIRPtrLocalDecl(THIRStmt):
     """First declaration of a pointer-repr local backed by the `__slot_N`
     hoist machinery (the slot-hoist family): a pointer-repr `Optional[T]`
     local (`T* x` over a hoisted storage slot) or a pointer-variant union
-    local (`std::variant<A*, B*>` over a value-variant slot).
+    local (`::tpy::Union<A*, B*>` over a value-variant slot).
 
     `cpp_type` is the POINTEE spelling for the OPT_* kinds (`T` of `T* x`)
     and the full pointer-variant spelling for the UNION_* kinds. `val_cpp`
@@ -2437,7 +2439,7 @@ class THIRTupleUnpack(THIRStmt):
         "cref"   -> const T& name = std::get<i>(tup);   // is_const_ref
         "move"   -> T name = std::move(std::get<i>(tup)); // Own element
         "assign" -> name = std::get<i>(tup);   // reused target, no decl
-        "ptr_variant" -> std::variant<A*, B*> name =
+        "ptr_variant" -> ::tpy::Union<A*, B*> name =
                              ::tpy::to_ptr_variant(std::get<i>(tup));
                          // Own[A | B] element off the value-variant capture
         "unwrap_ref" -> T& name = ::tpy::unwrap_ref(std::get<i>(tup));

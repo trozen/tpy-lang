@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // def describe(s: Circle | Rect) -> str:
-std::string describe(const std::variant<Circle*, Rect*> s) {
+std::string describe(::tpy::Union<const Circle*, const Rect*> s) {
     // if isinstance(s, Circle):
-    if (std::holds_alternative<Circle*>(s)) {
-        auto& __s = *std::get<Circle*>(s);
+    if (std::holds_alternative<const Circle*>(s)) {
+        auto& __s = *std::get<const Circle*>(s);
         // return "circle"
         return "circle";
     // else:
     } else {
-        auto& __s = *std::get<Rect*>(s);
+        auto& __s = *std::get<const Rect*>(s);
         // return "rect"
         return "rect";
     }
@@ -23,7 +23,7 @@ std::string describe(const std::variant<Circle*, Rect*> s) {
 void main() {
     // c: Circle | Rect = Circle(5.0)
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(5.0);
-    std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     // print(c.radius)
     std::cout << ::tpy::print_float((*std::get<Circle*>(c)).radius) << "\n";
     // if isinstance(c, Circle):
@@ -38,7 +38,7 @@ void main() {
         std::cout << "no" << "\n";
     }
     // print(describe(c))
-    std::cout << describe(c) << "\n";
+    std::cout << describe(c.as_const()) << "\n";
 }
 
 void __tpy_init() {

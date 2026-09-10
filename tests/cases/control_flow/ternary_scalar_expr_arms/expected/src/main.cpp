@@ -37,9 +37,9 @@ int32_t maybe_call(int32_t k, bool c) {
 }
 
 // def tag(u: A | B) -> str:
-std::string tag(const std::variant<A*, B*> u) {
+std::string tag(::tpy::Union<const A*, const B*> u) {
     // return "a" if isinstance(u, A) else "b"    # tpyc: ok -- a str result
-    return std::string(((std::holds_alternative<A*>(u)) ? ("a") : ("b")));
+    return std::string(((std::holds_alternative<const A*>(u)) ? ("a") : ("b")));
 }
 
 // def main() -> None:
@@ -51,7 +51,7 @@ void main() {
     // print(tag(A(1)), tag(B(2)))
     A __tmp_1 = A(1);
     B __tmp_2 = B(2);
-    std::cout << tag(std::variant<A*, B*>{&__tmp_1}) << " " << tag(std::variant<A*, B*>{&__tmp_2}) << "\n";
+    std::cout << tag(::tpy::Union<const A*, const B*>{&__tmp_1}) << " " << tag(::tpy::Union<const A*, const B*>{&__tmp_2}) << "\n";
 }
 
 void __tpy_init() {

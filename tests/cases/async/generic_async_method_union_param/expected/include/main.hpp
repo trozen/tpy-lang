@@ -67,7 +67,7 @@ struct Holder {
     Holder() = default;
     explicit Holder(::tpy::own_param_t<T> v) : v(std::move(v)) {}
 
-    __coro_Holder_show<T> show(std::variant<const A*, const B*> u) const;
+    __coro_Holder_show<T> show(::tpy::Union<const A*, const B*> u) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -86,7 +86,7 @@ struct PlainHolder {
     PlainHolder() = default;
     explicit PlainHolder(int32_t v);
 
-    __coro_PlainHolder_show show(std::variant<const A*, const B*> u) const;
+    __coro_PlainHolder_show show(::tpy::Union<const A*, const B*> u) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.PlainHolder";
 };
 
@@ -101,7 +101,7 @@ struct __coro_Holder_show {
     int32_t __state;
     bool __cancel_pending;
     const Holder<T>& __self;
-    std::variant<const A*, const B*> u;
+    ::tpy::Union<const A*, const B*> u;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -110,7 +110,7 @@ struct __coro_Holder_show {
         S_DONE = 2,
     };
 
-    __coro_Holder_show(const Holder<T>& __self, std::variant<const A*, const B*> u_)
+    __coro_Holder_show(const Holder<T>& __self, ::tpy::Union<const A*, const B*> u_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), u(u_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -157,7 +157,7 @@ template <typename T>
 
 
 template <typename T>
-inline __coro_Holder_show<T> Holder<T>::show(std::variant<const A*, const B*> u) const {
+inline __coro_Holder_show<T> Holder<T>::show(::tpy::Union<const A*, const B*> u) const {
     return __coro_Holder_show<T>(*this, u);
 }
 
@@ -166,7 +166,7 @@ struct __coro_PlainHolder_show {
     int32_t __state;
     bool __cancel_pending;
     const PlainHolder& __self;
-    std::variant<const A*, const B*> u;
+    ::tpy::Union<const A*, const B*> u;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -175,7 +175,7 @@ struct __coro_PlainHolder_show {
         S_DONE = 2,
     };
 
-    __coro_PlainHolder_show(const PlainHolder& __self, std::variant<const A*, const B*> u_)
+    __coro_PlainHolder_show(const PlainHolder& __self, ::tpy::Union<const A*, const B*> u_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), u(u_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -186,7 +186,7 @@ struct __coro_PlainHolder_show {
     }
 };
 
-inline __coro_PlainHolder_show PlainHolder::show(std::variant<const A*, const B*> u) const {
+inline __coro_PlainHolder_show PlainHolder::show(::tpy::Union<const A*, const B*> u) const {
     return __coro_PlainHolder_show(*this, u);
 }
 

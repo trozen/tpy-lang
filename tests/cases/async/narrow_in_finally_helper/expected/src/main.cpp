@@ -70,7 +70,7 @@ void __coro_a_assert::__finally_0() {
 }
 
 // async def a_assert(a: Dog | Cat) -> str:
-__coro_a_assert a_assert(std::variant<Cat*, Dog*> a) {
+__coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
     return __coro_a_assert(a);
 }
 
@@ -143,7 +143,7 @@ void __coro_a_post_if::__finally_0() {
 }
 
 // async def a_post_if(a: Dog | Cat) -> str:
-__coro_a_post_if a_post_if(std::variant<Cat*, Dog*> a) {
+__coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
     return __coro_a_post_if(a);
 }
 
@@ -251,7 +251,7 @@ void __coro_a_nested::__finally_1() {
 }
 
 // async def a_nested(a: Dog | Cat, b: Dog | Cat) -> str:
-__coro_a_nested a_nested(std::variant<Cat*, Dog*> a, std::variant<Cat*, Dog*> b) {
+__coro_a_nested a_nested(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b) {
     return __coro_a_nested(a, b);
 }
 
@@ -304,7 +304,7 @@ void __gen_g_assert::__finally_0() {
 }
 
 // def g_assert(a: Dog | Cat) -> Iterator[str]:
-__gen_g_assert g_assert(std::variant<Cat*, Dog*> a) {
+__gen_g_assert g_assert(::tpy::Union<Cat*, Dog*> a) {
     return __gen_g_assert(a);
 }
 
@@ -361,7 +361,7 @@ void __gen_g_post_if::__finally_0() {
 }
 
 // def g_post_if(a: Dog | Cat) -> Iterator[str]:
-__gen_g_post_if g_post_if(std::variant<Cat*, Dog*> a) {
+__gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
     return __gen_g_post_if(a);
 }
 
@@ -372,7 +372,7 @@ __gen_g_post_if g_post_if(std::variant<Cat*, Dog*> a) {
         // d = Dog()
         d.emplace(Dog());
         // print(await a_assert(d))
-        __sub_0.emplace(std::variant<Cat*, Dog*>{&((*d))});
+        __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*d))});
         __state = S_RESUME_0;
         continue;
     }
@@ -388,7 +388,7 @@ __gen_g_post_if g_post_if(std::variant<Cat*, Dog*> a) {
         // c = Cat()
         c.emplace(Cat());
         // print(await a_post_if(c))
-        __sub_1.emplace(std::variant<Cat*, Dog*>{&((*c))});
+        __sub_1.emplace(::tpy::Union<Cat*, Dog*>{&((*c))});
         __state = S_RESUME_1;
         continue;
     }
@@ -406,7 +406,7 @@ __gen_g_post_if g_post_if(std::variant<Cat*, Dog*> a) {
         // d2 = Dog()
         d2.emplace(Dog());
         // print(await a_nested(c2, d2))
-        __sub_2.emplace(std::variant<Cat*, Dog*>{&((*c2))}, std::variant<Cat*, Dog*>{&((*d2))});
+        __sub_2.emplace(::tpy::Union<Cat*, Dog*>{&((*c2))}, ::tpy::Union<Cat*, Dog*>{&((*d2))});
         __state = S_RESUME_2;
         continue;
     }
@@ -439,7 +439,7 @@ void main() {
     Cat c3 = Cat();
     // for v in g_assert(c3):
     {
-        auto __src_0 = g_assert(std::variant<Cat*, Dog*>{&(c3)});
+        auto __src_0 = g_assert(::tpy::Union<Cat*, Dog*>{&(c3)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -455,7 +455,7 @@ void main() {
     Dog d3 = Dog();
     // for v in g_post_if(d3):
     {
-        auto __src_2 = g_post_if(std::variant<Cat*, Dog*>{&(d3)});
+        auto __src_2 = g_post_if(::tpy::Union<Cat*, Dog*>{&(d3)});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

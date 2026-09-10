@@ -43,20 +43,20 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_body;
 struct __coro_async_body;
 
-void free_union(std::variant<Cat*, Dog*> a);
+void free_union(::tpy::Union<Cat*, Dog*> a);
 void free_record(Counter& b);
-void or_sub_capture(std::variant<Cat*, Dog*> a);
+void or_sub_capture(::tpy::Union<Cat*, Dog*> a);
 void optional_subject(Counter* x);
 void add_one(Counter& c);
-void via_callee(std::variant<Cat*, Counter*> u);
+void via_callee(::tpy::Union<Cat*, Counter*> u);
 void reseated(Bag& h, Bag& g);
 void reseated_callee(Bag& h, Bag& g);
 void subscript_subject(std::vector<Counter>& xs, int32_t i);
 void positional_sub_capture(Pair& p);
 void poly_subject(Pet& p);
-__gen_gen_body gen_body(std::variant<Cat*, Counter*> a);
-__coro_async_body async_body(std::variant<Cat*, Counter*> a);
-int32_t read_only(const std::variant<Cat*, Counter*> a);
+__gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a);
+__coro_async_body async_body(::tpy::Union<Cat*, Counter*> a);
+int32_t read_only(::tpy::Union<const Cat*, const Counter*> a);
 Counter clone_of(const Counter& c);
 int32_t rvalue_subject(const Counter& c);
 int32_t scalar_capture(int32_t n);
@@ -283,14 +283,14 @@ namespace tpyapp::main {
 struct __coro_async_body {
     int32_t __state;
     bool __cancel_pending;
-    std::variant<Cat*, Counter*> a;
+    ::tpy::Union<Cat*, Counter*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_async_body(std::variant<Cat*, Counter*> a_)
+    __coro_async_body(::tpy::Union<Cat*, Counter*> a_)
         : __state(S_INITIAL), __cancel_pending(false), a(a_) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -304,7 +304,7 @@ struct __coro_async_body {
 // Generator: gen_body
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     int32_t __state;
-    std::variant<Cat*, Counter*> a;
+    ::tpy::Union<Cat*, Counter*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -312,7 +312,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
         S_DONE = 2,
     };
 
-    __gen_gen_body(std::variant<Cat*, Counter*> a_)
+    __gen_gen_body(::tpy::Union<Cat*, Counter*> a_)
         : __state(S_INITIAL), a(a_) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

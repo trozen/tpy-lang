@@ -13,10 +13,10 @@ struct B;
 inline constexpr std::string_view __name__ = "__main__";
 
 void store_opt(std::vector<std::optional<A>>& xs, const A* p);
-void store_union(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p);
-void append_union(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p);
+void store_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
+void append_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
 void store_dict(::tpy::ordered_map<std::string, std::optional<A>>& d, const A* p);
-void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p);
+void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p);
 void main();
 
 // # Storing a borrow-form value (pointer-repr Optional / pointer-variant

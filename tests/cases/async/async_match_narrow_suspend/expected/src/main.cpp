@@ -50,7 +50,7 @@ namespace tpyapp::main {
 
 
 // async def voice(a: Dog | Cat) -> str:
-__coro_voice voice(std::variant<Cat*, Dog*> a) {
+__coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
     return __coro_voice(a);
 }
 
@@ -60,7 +60,7 @@ __coro_voice voice(std::variant<Cat*, Dog*> a) {
     case S_INITIAL: {
         __coro_arg_0.emplace(Dog());
         // print(await voice(Dog()))
-        __sub_0.emplace(std::variant<Cat*, Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
@@ -73,7 +73,7 @@ __coro_voice voice(std::variant<Cat*, Dog*> a) {
         std::cout << __await_lift_0 << "\n";
         __coro_arg_1.emplace(Cat());
         // print(await voice(Cat()))
-        __sub_1.emplace(std::variant<Cat*, Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
     }

@@ -13,7 +13,7 @@ struct Banana;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t first(const std::vector<int32_t>& items);
-void take(const std::variant<Apple*, Banana*> f);
+void take(::tpy::Union<const Apple*, const Banana*> f);
 void main();
 
 // class Apple:

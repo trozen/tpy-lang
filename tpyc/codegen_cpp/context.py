@@ -1137,7 +1137,7 @@ class LocalCppForm(Enum):
       * `VALUE_VARIANT` -- `::tpy::Union<A, B>` storage form. `Own[Union nonvalue]`
         params at the ABI. Lifts via `tpy::to_ptr_variant` when consumed
         as a pointer-variant slot.
-      * `PTR_VARIANT` -- `std::variant<T*, ...>` borrow form. Non-value
+      * `PTR_VARIANT` -- `::tpy::Union<T*, ...>` borrow form. Non-value
         union local already in pointer-variant shape; no lift needed.
       * `STORAGE_TUPLE` -- `std::tuple<std::optional<T>, ...>` storage form.
         For-loop variables iterating storage containers, locals initialized
@@ -1179,7 +1179,7 @@ class CppForm(Enum):
     tuple family, record -> address-of) and the const flag. For value types
     the two forms coincide (cheaply copyable), so `VALUE` needs no bridge.
 
-      * `BORROW`   -- `T*` / `const T*` / `T&` / `std::variant<A*, B*>` /
+      * `BORROW`   -- `T*` / `const T*` / `T&` / `::tpy::Union<A*, B*>` /
                       `std::tuple<..., T*>`. Indirect into storage elsewhere.
       * `STORAGE`  -- `T` / `std::optional<T>` / `std::variant<A, B>` /
                       `std::tuple<..., std::optional<T>>`. Self-contained.
@@ -1494,7 +1494,7 @@ class CodeGenContext:
     frame_field_shadows: set[str] = field(default_factory=set)
 
     # --- Pointer-variant locals (non-value union variables) ---
-    # Variables that are std::variant<T*...> instead of std::variant<T...>.
+    # Variables that are ::tpy::Union<T*...> instead of ::tpy::Union<T...>.
     ptr_variant_locals: set[str] = field(default_factory=set)
     pointer_globals: set[str] = field(default_factory=set)
     final_globals: set[str] = field(default_factory=set)
@@ -2865,7 +2865,7 @@ class CodeGenContext:
         """True when `name` is in `VALUE_VARIANT` form -- an
         `Own[Union nonvalue]` param whose C++ shape is `std::variant<A, B>`
         and must be lifted via `tpy::to_ptr_variant` to feed a
-        `std::variant<A*, B*>` slot.
+        `::tpy::Union<A*, B*>` slot.
         """
         return self.local_cpp_form(name) is LocalCppForm.VALUE_VARIANT
 

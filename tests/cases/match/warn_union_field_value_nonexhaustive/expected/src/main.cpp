@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> str:
-std::string describe(const std::variant<Cat*, Dog*> a) {
+std::string describe(::tpy::Union<const Cat*, const Dog*> a) {
     // result = "none"
     std::string_view result = "none";
     // match a:  # tpyc: warning(/non-exhaustive match on 'Cat \| Dog'; missing: Cat, Dog/)
@@ -31,13 +31,13 @@ __match_end_2:;
 void main() {
     // print(describe(Dog(4)))
     Dog __tmp_1 = Dog(::tpy::BigInt(4));
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_1}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n";
     // print(describe(Dog(2)))
     Dog __tmp_2 = Dog(::tpy::BigInt(2));
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_2}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n";
     // print(describe(Cat("x")))
     Cat __tmp_3 = Cat("x");
-    std::cout << describe(std::variant<Cat*, Dog*>{&__tmp_3}) << "\n";
+    std::cout << describe(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n";
 }
 
 void __tpy_init() {

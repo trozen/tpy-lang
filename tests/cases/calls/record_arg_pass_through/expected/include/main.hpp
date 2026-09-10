@@ -17,7 +17,7 @@ int32_t read_rec(const A& a);
 void mutate_rec(A& a);
 int32_t pass_both(const A& a, A& b);
 int32_t through_pointer(Holder& h, bool flag);
-int32_t through_narrowing(std::variant<A*, B*> v);
+int32_t through_narrowing(::tpy::Union<A*, B*> v);
 void main();
 
 // class A:

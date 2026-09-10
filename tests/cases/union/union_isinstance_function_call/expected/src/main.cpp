@@ -21,7 +21,7 @@ void main() {
     std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     // pet: Dog | Cat = Dog("Rex")
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
-    std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // if isinstance(pet, Dog):
     if (true) {
         auto& __pet = *std::get<Dog*>(pet);

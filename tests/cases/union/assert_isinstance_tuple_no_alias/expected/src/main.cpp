@@ -5,11 +5,11 @@ namespace tpyapp::main {
 
 
 // def probe(v: Alpha | Beta | Gamma) -> Int32:
-int32_t probe(const std::variant<Alpha*, Beta*, Gamma*> v) {
+int32_t probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*> v) {
     // # A tuple isinstance extracts nothing: the holds-OR test emits bare and
     // # the subject stays the variant.
     // assert isinstance(v, (Alpha, Beta))
-    if (!((std::holds_alternative<Alpha*>(v) || std::holds_alternative<Beta*>(v)))) ::tpy::raise_assertion_error();
+    if (!((std::holds_alternative<const Alpha*>(v) || std::holds_alternative<const Beta*>(v)))) ::tpy::raise_assertion_error();
     // return 0
     return 0;
 }
@@ -18,7 +18,7 @@ int32_t probe(const std::variant<Alpha*, Beta*, Gamma*> v) {
 void main() {
     // print(probe(Alpha(1)))
     Alpha __tmp_1 = Alpha(1);
-    std::cout << probe(std::variant<Alpha*, Beta*, Gamma*>{&__tmp_1}) << "\n";
+    std::cout << probe(::tpy::Union<const Alpha*, const Beta*, const Gamma*>{&__tmp_1}) << "\n";
 }
 
 void __tpy_init() {

@@ -9,9 +9,9 @@ void main() {
     // d = Dog("Rex")
     Dog d = Dog("Rex");
     // pet: Dog | Cat = d
-    std::variant<Cat*, Dog*> pet{&(d)};
+    ::tpy::Union<Cat*, Dog*> pet{&(d)};
     // z = Zoo(Inner(pet))
-    Zoo z = Zoo(Inner(pet));
+    Zoo z = Zoo(Inner(pet.as_const()));
     // print(z.get_pet_name())
     std::cout << z.get_pet_name() << "\n";
     // print(z.get_pet_name_auto())
@@ -19,9 +19,9 @@ void main() {
     // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
     // pet2: Dog | Cat = c
-    std::variant<Cat*, Dog*> pet2{&(c)};
+    ::tpy::Union<Cat*, Dog*> pet2{&(c)};
     // z2 = Zoo(Inner(pet2))
-    Zoo z2 = Zoo(Inner(pet2));
+    Zoo z2 = Zoo(Inner(pet2.as_const()));
     // print(z2.get_pet_name())
     std::cout << z2.get_pet_name() << "\n";
     // print(z2.get_pet_name_auto())

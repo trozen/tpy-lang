@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // def describe(s: Shape) -> str:
-std::string describe(const std::variant<Circle*, Rect*> s) {
+std::string describe(::tpy::Union<const Circle*, const Rect*> s) {
     // if isinstance(s, Circle):
-    if (std::holds_alternative<Circle*>(s)) {
-        auto& __s = *std::get<Circle*>(s);
+    if (std::holds_alternative<const Circle*>(s)) {
+        auto& __s = *std::get<const Circle*>(s);
         // return "circle"
         return "circle";
     }
-    auto& __s = *std::get<Rect*>(s);
+    auto& __s = *std::get<const Rect*>(s);
     // assert isinstance(s, Rect)
     if (!(true)) ::tpy::raise_assertion_error();
-    auto& __s_2 = *std::get<Rect*>(s);
+    auto& __s_2 = *std::get<const Rect*>(s);
     // return "rect"
     return "rect";
 }
@@ -24,14 +24,14 @@ std::string describe(const std::variant<Circle*, Rect*> s) {
 void main() {
     // c: Shape = Circle(Int32(10))
     Shape __slot_1 = Circle(10);
-    std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     // r: Shape = Rect(Int32(3), Int32(4))
     Shape __slot_2 = Rect(3, 4);
-    std::variant<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
     // print(describe(c))
-    std::cout << describe(c) << "\n";
+    std::cout << describe(c.as_const()) << "\n";
     // print(describe(r))
-    std::cout << describe(r) << "\n";
+    std::cout << describe(r.as_const()) << "\n";
 }
 
 void __tpy_init() {

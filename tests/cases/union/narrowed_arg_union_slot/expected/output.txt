@@ -15,6 +15,12 @@ readonly 100 100
 loop-var 3
 ctor-slot 110 111
 str-member 120
+const-member 210 1016
+ctor-call-arg 210 220
+loop-const 3 2003
+closure 16 16
+gen-const 420
+as-const 231 231 231
 return-isinstance 131 131
 return-match 132 132
 value-union 181 181
@@ -28,4 +34,5 @@ value-union-record 4 4
 assign-narrowed 51
 async 142 142
 async-match 151 151
+async-const 240
 module 201

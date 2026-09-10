@@ -11,13 +11,13 @@ void store_opt(std::vector<std::optional<A>>& xs, const A* p) {
 }
 
 // def store_union(xs: list[A | B], p: A | B) -> None:
-void store_union(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p) {
+void store_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p) {
     // xs[0] = p
     ::tpy::__setitem__(xs, 0, ::tpy::to_value_variant<::tpy::Union<A, B>>(p));
 }
 
 // def append_union(xs: list[A | B], p: A | B) -> None:
-void append_union(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p) {
+void append_union(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p) {
     // xs.append(p)
     xs.push_back(::tpy::to_value_variant<::tpy::Union<A, B>>(p));
 }
@@ -29,10 +29,10 @@ void store_dict(::tpy::ordered_map<std::string, std::optional<A>>& d, const A* p
 }
 
 // def store_narrowed(xs: list[A | B], p: A | B) -> None:
-void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, const std::variant<A*, B*> p) {
+void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, const B*> p) {
     // if isinstance(p, A):
-    if (std::holds_alternative<A*>(p)) {
-        auto& __p = *std::get<A*>(p);
+    if (std::holds_alternative<const A*>(p)) {
+        auto& __p = *std::get<const A*>(p);
         // xs[0] = p        # p is narrowed to a concrete A, not a variant -- the
         ::tpy::__setitem__(xs, 0, __p);
         // # value-variant lift must be skipped (no double-wrap)
@@ -54,9 +54,9 @@ void main() {
     std::vector<::tpy::Union<A, B>> u = {A(::tpy::BigInt(1)), B(::tpy::BigInt(2))};
     // store_union(u, B(9))
     B __tmp_2 = B(::tpy::BigInt(9));
-    store_union(u, std::variant<A*, B*>{&__tmp_2});
+    store_union(u, ::tpy::Union<const A*, const B*>{&__tmp_2});
     // e0 = u[0]
-    std::variant<A*, B*> e0 = ::tpy::to_ptr_variant(::tpy::__getitem__(u, 0));
+    ::tpy::Union<A*, B*> e0 = ::tpy::to_ptr_variant(::tpy::__getitem__(u, 0));
     // if isinstance(e0, B):
     if (std::holds_alternative<B*>(e0)) {
         auto& __e0 = *std::get<B*>(e0);
@@ -65,9 +65,9 @@ void main() {
     }
     // append_union(u, A(7))
     A __tmp_3 = A(::tpy::BigInt(7));
-    append_union(u, std::variant<A*, B*>{&__tmp_3});
+    append_union(u, ::tpy::Union<const A*, const B*>{&__tmp_3});
     // e2 = u[2]
-    std::variant<A*, B*> e2 = ::tpy::to_ptr_variant(::tpy::__getitem__(u, 2));
+    ::tpy::Union<A*, B*> e2 = ::tpy::to_ptr_variant(::tpy::__getitem__(u, 2));
     // if isinstance(e2, A):
     if (std::holds_alternative<A*>(e2)) {
         auto& __e2 = *std::get<A*>(e2);
@@ -87,9 +87,9 @@ void main() {
     std::vector<::tpy::Union<A, B>> nx = {B(::tpy::BigInt(0)), B(::tpy::BigInt(0))};
     // store_narrowed(nx, A(13))
     A __tmp_5 = A(::tpy::BigInt(13));
-    store_narrowed(nx, std::variant<A*, B*>{&__tmp_5});
+    store_narrowed(nx, ::tpy::Union<const A*, const B*>{&__tmp_5});
     // e3 = nx[0]
-    std::variant<A*, B*> e3 = ::tpy::to_ptr_variant(::tpy::__getitem__(nx, 0));
+    ::tpy::Union<A*, B*> e3 = ::tpy::to_ptr_variant(::tpy::__getitem__(nx, 0));
     // if isinstance(e3, A):
     if (std::holds_alternative<A*>(e3)) {
         auto& __e3 = *std::get<A*>(e3);

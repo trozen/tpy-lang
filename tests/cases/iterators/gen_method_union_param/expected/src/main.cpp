@@ -10,7 +10,7 @@ void main() {
     Zoo z = Zoo();
     // pet: Dog | Cat = Dog()
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
-    std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for s in z.voices(pet):
     {
         auto __src_0 = z.voices(pet);
@@ -25,10 +25,10 @@ void main() {
     }
     // other: Dog | Cat = Cat()
     ::tpy::Union<Cat, Dog> __slot_2 = Cat();
-    std::variant<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_2);
     // for s in z.names(other):
     {
-        auto __src_2 = z.names(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(other));
+        auto __src_2 = z.names(other.as_const());
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

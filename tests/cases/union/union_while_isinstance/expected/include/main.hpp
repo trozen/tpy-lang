@@ -12,7 +12,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void drain_circles(const std::variant<Circle*, Rect*> s);
+void drain_circles(::tpy::Union<const Circle*, const Rect*> s);
 void main();
 
 // class Circle:

@@ -13,7 +13,7 @@ struct PetError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void check(const std::variant<Cat*, Dog*> pet);
+void check(::tpy::Union<const Cat*, const Dog*> pet);
 void main();
 
 // # Same static-true exhaustive-elif shape as isinstance_elif_exhaustive, but the

@@ -14,9 +14,9 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void bump(std::variant<A*, B*> u);
-void bump_counter(std::variant<A*, Counter*> u);
-int32_t describe(const std::variant<std::monostate, A*, B*> u);
+void bump(::tpy::Union<A*, B*> u);
+void bump_counter(::tpy::Union<A*, Counter*> u);
+int32_t describe(::tpy::Union<std::monostate, const A*, const B*> u);
 int32_t via_param(A& a);
 void main();
 
@@ -105,7 +105,7 @@ inline Counter::Counter(int32_t n) : n(n) {}
 // def bump_via_union(self) -> None:
 inline void Counter::bump_via_union() {
     // bump_counter(self)
-    bump_counter(std::variant<A*, Counter*>{&((*this))});
+    bump_counter(::tpy::Union<A*, Counter*>{&((*this))});
 }
 
 // def __init__(self, m: Int32, n: Int32) -> None:
@@ -121,7 +121,7 @@ inline void Pair::bump_picked(bool flip) {
         p = &(this->a2);
     }
     // bump(p)
-    bump(std::variant<A*, B*>{&((*p))});
+    bump(::tpy::Union<A*, B*>{&((*p))});
 }
 void __tpy_init();
 } // namespace tpyapp::main

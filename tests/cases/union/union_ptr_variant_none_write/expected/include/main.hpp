@@ -15,8 +15,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void clear(Holder& h);
 void copy_field(Holder& dst, const Holder& src);
-std::variant<std::monostate, A*, B*> cycle(std::variant<std::monostate, A*, B*> v);
-std::variant<std::monostate, A*, B*> pick_none();
+::tpy::Union<std::monostate, A*, B*> cycle(::tpy::Union<std::monostate, A*, B*> v);
+::tpy::Union<std::monostate, A*, B*> pick_none();
 std::string describe(const Holder& h);
 void main();
 
@@ -58,7 +58,7 @@ struct Holder {
     ::tpy::Union<std::monostate, A, B> u;
 
     // def __init__(self, u: A | B | None) -> None:
-    explicit Holder(const std::variant<std::monostate, A*, B*> u);
+    explicit Holder(::tpy::Union<std::monostate, const A*, const B*> u);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -75,6 +75,6 @@ inline A::A(int32_t x) : x(x) {}
 inline B::B(int32_t y) : y(y) {}
 
 // def __init__(self, u: A | B | None) -> None:
-inline Holder::Holder(const std::variant<std::monostate, A*, B*> u) : u(::tpy::to_value_variant<::tpy::Union<std::monostate, A, B>>(u)) {}
+inline Holder::Holder(::tpy::Union<std::monostate, const A*, const B*> u) : u(::tpy::to_value_variant<::tpy::Union<std::monostate, A, B>>(u)) {}
 void __tpy_init();
 } // namespace tpyapp::main

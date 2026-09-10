@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat | Bird) -> str:
-std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
+std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a) {
     // if isinstance(a, Dog):
-    if (std::holds_alternative<Dog*>(a)) {
-        auto& __a = *std::get<Dog*>(a);
+    if (std::holds_alternative<const Dog*>(a)) {
+        auto& __a = *std::get<const Dog*>(a);
         // return "dog: " + a.name
         return (::tpy::str_concat("dog: ", __a.name));
     // elif isinstance(a, Cat):
-    } else if (std::holds_alternative<Cat*>(a)) {
-        auto& __a = *std::get<Cat*>(a);
+    } else if (std::holds_alternative<const Cat*>(a)) {
+        auto& __a = *std::get<const Cat*>(a);
         // return "cat: " + a.name
         return (::tpy::str_concat("cat: ", __a.name));
     } else {
         // elif isinstance(a, Bird):
         if (true) {
-            auto& __a = *std::get<Bird*>(a);
+            auto& __a = *std::get<const Bird*>(a);
             // return "bird: " + a.name
             return (::tpy::str_concat("bird: ", __a.name));
         }
@@ -32,19 +32,19 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
 void main() {
     // d: Dog | Cat | Bird = Dog("Rex")
     ::tpy::Union<Bird, Cat, Dog> __slot_1 = Dog("Rex");
-    std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
+    ::tpy::Union<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     // c: Dog | Cat | Bird = Cat("Whiskers")
     ::tpy::Union<Bird, Cat, Dog> __slot_2 = Cat("Whiskers");
-    std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
+    ::tpy::Union<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     // b: Dog | Cat | Bird = Bird("Tweety")
     ::tpy::Union<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
-    std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
+    ::tpy::Union<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     // print(describe(d))
-    std::cout << describe(d) << "\n";
+    std::cout << describe(d.as_const()) << "\n";
     // print(describe(c))
-    std::cout << describe(c) << "\n";
+    std::cout << describe(c.as_const()) << "\n";
     // print(describe(b))
-    std::cout << describe(b) << "\n";
+    std::cout << describe(b.as_const()) << "\n";
 }
 
 void __tpy_init() {

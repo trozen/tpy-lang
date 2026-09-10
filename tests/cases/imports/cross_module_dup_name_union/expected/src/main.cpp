@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def shift(p: Point | WorldPoint) -> None:
-void shift(std::variant<::tpyapp::screen::Point*, ::tpyapp::world::Point*> p) {
+void shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*> p) {
     // if isinstance(p, Point):
     if (std::holds_alternative<::tpyapp::screen::Point*>(p)) {
         auto& __p = *std::get<::tpyapp::screen::Point*>(p);
@@ -27,9 +27,9 @@ void main() {
     // w = WorldPoint(20)
     ::tpyapp::world::Point w = ::tpyapp::world::Point(::tpy::BigInt(20));
     // shift(s)
-    shift(std::variant<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(s)});
+    shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(s)});
     // shift(w)
-    shift(std::variant<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(w)});
+    shift(::tpy::Union<::tpyapp::screen::Point*, ::tpyapp::world::Point*>{&(w)});
     // print(s.x)
     std::cout << s.x << "\n";
     // print(w.lat)
