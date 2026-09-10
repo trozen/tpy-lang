@@ -31,7 +31,7 @@ class Buf:
         self.ba = bytearray()
 
     def load(self, src: bytes) -> None:
-        # The converting construction: `this->ba = ::tpy::bytes_copy(src);`
+        # The converting construction: `this->ba = ::tpy::ByteArray(src);`
         self.ba = bytearray(src)
 
     def own_call(self) -> None:

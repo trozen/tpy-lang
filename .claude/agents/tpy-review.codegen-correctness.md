@@ -68,7 +68,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Surface concerns
 
 `docs/PITFALLS.md` holds the language and generated-code rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches (not the whole doc per change), and never accept a runtime-behavior finding without the probe. Author probes with `printf '...' > /tmp/agents/<name>.py` -- no Write tool, no heredocs:
 
-- `hidden-allocation` -- every `std::string(`, `bytes_copy(`, container construction, `BigInt(` temporary, `from_str`, `make_`, `new ` and `__tmp` local in changed emit must be one the type mapping requires at that position.
+- `hidden-allocation` -- every `std::string(`, `::tpy::Bytes(`, `::tpy::ByteArray(`, container construction, `BigInt(` temporary, `from_str`, `make_`, `new ` and `__tmp` local in changed emit must be one the type mapping requires at that position.
 - `view-not-copy` -- `str`/`bytes` at borrowed positions stay views; `Own[` on a value type is a finding.
 - `tuple-equals-scalar` -- for a changed boundary rule, compile the subject as `x`, `(x,)` and `(x, 1)` and diff the element's storage form, deref, view and move verdicts.
 - `same-construct-every-position` -- compile the changed construct at two positions the change did not name (the doc's list: free function, method, constructor, module-level statement, generator body, async body, comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match` arm) and diff the emit; a difference is a Critical against the fix, not a new bug.

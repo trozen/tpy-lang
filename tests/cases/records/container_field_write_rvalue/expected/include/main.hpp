@@ -65,7 +65,7 @@ inline Buf::Buf(int32_t k) : n(k) {
 
 // def load(self, src: bytes) -> None:
 inline void Buf::load(std::span<const uint8_t> src) {
-    // # The converting construction: `this->ba = ::tpy::bytes_copy(src);`
+    // # The converting construction: `this->ba = ::tpy::ByteArray(src);`
     // self.ba = bytearray(src)
     this->ba = ::tpy::ByteArray(src);
 }

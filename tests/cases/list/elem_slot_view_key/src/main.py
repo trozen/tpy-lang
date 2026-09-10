@@ -4,7 +4,7 @@
 # which answers a view against an owned element directly -- no element is
 # built.
 # What the snapshot pins is the RENDER: no `std::string(...)` /
-# `bytes_copy(...)` at any of these calls. A snapshot cannot pin the
+# `::tpy::Bytes(...)` at any of these calls. A snapshot cannot pin the
 # non-allocation itself (that is which runtime overload wins, not what the
 # call looks like); `lookup_key.hpp`'s static_asserts hold that half.
 # The remove legs mutate the caller's list so the aliasing is observable, not
