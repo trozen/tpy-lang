@@ -5375,16 +5375,9 @@ def _own_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
     the two renders coincide only while they match."""
     if not isinstance(a, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
         return False
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if ptype is not None else None)
-    if not isinstance(pt, OwnType):
+    inner = _own_container_slot(ptype, analyzer)
+    if inner is None:
         return False
-    inner = unwrap_readonly(unwrap_send_sync(pt.wrapped))
-    # A stub slot off a literal-seeded receiver can still be PENDING
-    # (`rows.append([9, 9])` -- Own[PendingList], which resolves to the
-    # read-only DEMOTED Array); resolve first. The bare brace renders the
-    # same for the list and the demoted-Array spellings.
-    inner = _resolve_literal_seeded(inner, analyzer)
     if _is_type_param_slot(inner):
         # A RAW `Own[T]` element slot (a builtin stub's unsubstituted T):
         # the bare brace renders off the literal's own resolved container,
@@ -5396,6 +5389,54 @@ def _own_container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
                 and _container_literal_shape_ok(a, ltu, analyzer))
     return (_own_literal_family(inner)
             and _container_literal_shape_ok(a, inner, analyzer))
+
+def _own_container_slot(ptype: 'TpyType | None',
+                        analyzer) -> 'TpyType | None':
+    """The peeled payload of an `Own[...]` slot, or None when the slot is not
+    one -- the peel both Own container twins (literal, comprehension) start
+    from. A stub slot off a literal-seeded receiver can still be PENDING
+    (`rows.append([9, 9])` -- Own[PendingList], which resolves to the
+    read-only DEMOTED Array); resolve first, the renders agree for the
+    list and the demoted-Array spellings."""
+    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+          if ptype is not None else None)
+    if not isinstance(pt, OwnType):
+        return None
+    inner = unwrap_readonly(unwrap_send_sync(pt.wrapped))
+    return _resolve_literal_seeded(inner, analyzer)
+
+
+def _own_container_comp_slot(ptype: 'TpyType | None',
+                             analyzer) -> 'TpyType | None':
+    """The container an `Own[container]` slot moves a comprehension into,
+    or None. Shared by the admission and the render so the two peel
+    identically; a raw `Own[T]` stub slot is not one (the literal twin
+    falls back to the literal's own container there, a comprehension has
+    no such row)."""
+    inner = _own_container_slot(ptype, analyzer)
+    if inner is None or _is_type_param_slot(inner):
+        return None
+    return inner
+
+
+def _own_container_comp_arg(a: TpyExpr, ptype: 'TpyType | None',
+                            analyzer) -> bool:
+    """A comprehension into an `Own[container]` slot (`Keep([f(x) for x in
+    xs])`): the stmt-expr is a prvalue of exactly the slot's container, so
+    it moves into the by-value slot inline -- the comprehension twin of
+    `_own_container_literal_arg`. A raw `Own[T]` stub slot is not admitted:
+    the target type there is the comprehension's own, a different row."""
+    inner = _own_container_comp_slot(ptype, analyzer)
+    if inner is None:
+        return False
+    if isinstance(a, TpyListComprehension):
+        return is_list(inner)
+    if isinstance(a, TpySetComprehension):
+        return is_set(inner)
+    if isinstance(a, TpyDictComprehension):
+        return is_dict(inner)
+    return False
+
 
 def _own_container_instantiation_arg(a: TpyExpr, ptype: 'TpyType | None',
                                      analyzer) -> bool:
@@ -10881,6 +10922,10 @@ def _r_own_container_literal(req: _ArgReq) -> bool:
     return _own_container_literal_arg(req.a, req.ptype, req.analyzer)
 
 
+def _r_own_container_comp(req: _ArgReq) -> bool:
+    return _own_container_comp_arg(req.a, req.ptype, req.analyzer)
+
+
 def _r_any_pass_through(req: _ArgReq) -> bool:
     return _any_pass_through_arg(req.a, req.ptype, req.locals_, req.analyzer)
 
@@ -12148,6 +12193,9 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # A nested list literal into an Own[list] element slot
         # (`rows.append([9, 9])` -> `push_back({9, 9})`).
         _ArgRow("own_container_literal", _r_own_container_literal),
+        # ... and the comprehension into the same Own[container] slot:
+        # the stmt-expr prvalue moves in inline.
+        _ArgRow("own_container_comp", _r_own_container_comp),
         _ArgRow("any_pass_through", _r_any_pass_through),
         _ArgRow("container_literal_method", _r_container_literal_method),
         # ... and the COMPREHENSION at the same concrete container slot
@@ -12579,6 +12627,7 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     _ArgRow("same_tparam_name", _r_same_tparam_name,
             face="arg.same_tparam_name"),
     _ArgRow("own_container_literal", _r_own_container_literal),
+    _ArgRow("own_container_comp", _r_own_container_comp),
     # An F1-record call rvalue into a plain record slot
     # (`os.path.samestat(s, os.stat(d))` -- the nested marker call
     # renders bare in place, the qualcall twin of the native row).
@@ -12597,7 +12646,7 @@ _MARKER_OWN_ROWS = frozenset({
     "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
     "str_owned_slot", "own_move", "own_lvalue", "own_union_ctor",
     "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
-    "own_container_literal",
+    "own_container_literal", "own_container_comp",
 })
 
 assert _MARKER_OWN_ROWS <= {r.row for r in _MARKER_ROWS}
@@ -12686,6 +12735,7 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # renders inline spelled (`consume_dict(::tpy::ordered_map<..>
         # ({{..}}));` -- the prvalue moves in; the method ladder's row).
         _ArgRow("own_container_literal", _r_own_container_literal),
+        _ArgRow("own_container_comp", _r_own_container_comp),
         _ArgRow("covariant_temp", _r_covariant_temp, extra=_x_temps_ok),
         _ArgRow("optional_ptr", _r_optional_ptr),
         # A record name moved into an Optional[Own[T]] slot (bare

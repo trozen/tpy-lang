@@ -536,6 +536,10 @@ _RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
 
 
 from .checks import (
+    _r_container_comp,
+    _r_own_container_comp,
+    _own_container_comp_arg,
+    _own_container_comp_slot,
     _container_module_var_arg,
     _x_temps_ok,
     _r_callable_value_pass,
@@ -1951,6 +1955,10 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("callable_value_pass", _r_callable_value_pass),
         _ArgRow("field_read_ref_ctor", _r_field_read_ref_ctor,
                 face="ctor.field_read_ref_arg"),
+        # A comprehension at a container slot hoists the slot-typed ArgTemp
+        # the free-call family renders (an lvalue, so a mutated `T&` slot
+        # binds it too); flush-gated like every other temp row here.
+        _ArgRow("container_comp", _r_container_comp, extra=_x_temps_ok),
         _ArgRow("container_literal", _r_container_literal,
                 extra=_x_not_mutated, face="ctor.container_literal_arg"),
         # A list literal into an `Own[list]` ctor slot renders the same bare
@@ -1958,6 +1966,7 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         # prvalue into the by-value Own slot), the qualcall row's ctor face.
         _ArgRow("own_container_literal", _r_own_container_literal,
                 face="ctor.container_literal_arg"),
+        _ArgRow("own_container_comp", _r_own_container_comp),
         # The @dataclass default_factory fill: an empty container
         # instantiation into an `Own[container]` ctor slot renders the
         # spelled default ctor (`Foo(std::vector<int32_t>(), 1)`).
@@ -8156,14 +8165,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     args.append(_lower_expr(a, lc, declared,
                                             field_prechecked=True))
                 else:
-                    # temp_args is scoped to the specific temp-hoisting rows
-                    # the gate admitted: the Own-slot copy cascade and the
-                    # member-ctor-rvalue union lift (`pv{&__tmp_N}`). A blanket
+                    # temp_args is scoped to the temp-hoisting rows the gate
+                    # admitted (the disjuncts below, one per row). A blanket
                     # temp_args would re-shape the other temp rows in
                     # _lower_call_arg (record rvalue into a const ref slot,
                     # member-NAME union) whose ctor renders are BARE.
                     flush_slot = (
-                        _own_lvalue_temp_slot(
+                        _container_comp_arg(a, p.type)
+                        or _own_lvalue_temp_slot(
                             a, p.type, lc.analyzer, declared,
                             lc.prescan.param_names) is not None
                         or _union_ctor_temp_arg(a, p.type, lc.analyzer)
@@ -12906,19 +12915,6 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                                              lc.analyzer)
             _witness("arg.native_comprehension")
             return _lower_comprehension(a, comp_c, lc, declared, pointers)
-    if plain_kind and _container_comp_arg(a, ptype) and temp_args:
-        # The slot-typed comprehension ArgTemp
-        # (`std::vector<int64_t> __tmp_N = ({ ... });`) -- the init is the
-        # decl-init arm's stmt-expr, target-typed by the slot.
-        from .comprehensions import _lower_comprehension
-        slot_c = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-        pointers = _comp_shadow_pointers(lc.pointers, declared,
-                                         lc.analyzer)
-        comp = _lower_comprehension(a, slot_c, lc, declared, pointers)
-        _witness("argtemp.comprehension")
-        return THIRArgTemp(result_type=slot_c, cpp_type=slot_c.to_cpp(), movable=unwrap_ref_type(slot_c).is_movable(),
-                           init=comp, form=Form.BORROW,
-                           loc=getattr(a, "loc", None))
     if (plain_kind and _wrapper_ref_tuple_elem_arg(a, ptype, declared,
                                                    lc.analyzer)):
         # The wrapper element off a REFERENCE-element tuple binding: the
@@ -13551,6 +13547,34 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             _witness("arg.native_comprehension")
             return _lower_comprehension(a, _stub_comp_c, lc, declared,
                                         _stub_ptrs)
+    if _own_container_comp_arg(a, ptype, lc.analyzer):
+        # A comprehension into an `Own[container]` slot: the stmt-expr
+        # prvalue IS the slot's container, so it moves into the by-value
+        # slot inline -- no temp, no flush, at every loop (the
+        # own_container_literal row's comprehension twin).
+        from .comprehensions import _lower_comprehension
+        own_c = _own_container_comp_slot(ptype, lc.analyzer)
+        own_ptrs = _comp_shadow_pointers(lc.pointers, declared, lc.analyzer)
+        _witness("arg.own_container_comp")
+        return _lower_comprehension(a, own_c, lc, declared, own_ptrs)
+    if (temp_args and not method_arg and not inline_template
+            and _container_comp_arg(a, ptype)):
+        # The slot-typed comprehension ArgTemp
+        # (`std::vector<int64_t> __tmp_N = ({ ... });`) -- the init is the
+        # decl-init arm's stmt-expr, target-typed by the slot. Shared by the
+        # flushing plain-callee loops (free call, ctor); the method loops
+        # render the stmt-expr inline above, native/template slots take the
+        # inline twin in the free-call loop.
+        from .comprehensions import _lower_comprehension
+        slot_c = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+        pointers = _comp_shadow_pointers(lc.pointers, declared,
+                                         lc.analyzer)
+        comp = _lower_comprehension(a, slot_c, lc, declared, pointers)
+        _witness("argtemp.comprehension")
+        return THIRArgTemp(result_type=slot_c, cpp_type=slot_c.to_cpp(),
+                           movable=unwrap_ref_type(slot_c).is_movable(),
+                           init=comp, form=Form.BORROW,
+                           loc=getattr(a, "loc", None))
     if (isinstance(a, TpyFieldAccess)
             and _container_module_var_arg(a, ptype, declared, lc.analyzer)):
         # A module-variable container at a plain container ref slot

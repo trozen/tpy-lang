@@ -3616,12 +3616,14 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
         if isinstance(stmt.init, (TpyArrayLiteral, TpyDictLiteral,
                                   TpySetLiteral)):
             _witness("decl.container_rebind_slot")
+        # A decl is a flush position: the emitter drains the init's arg
+        # temps before the `T __slot_N = <init>;` line.
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype,
             init=_lower_expr(
                 stmt.init, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                             slot_target=vtype)),
+                             slot_target=vtype, allow_temps=True)),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)
     if (binding is LocalBinding.POINTER

@@ -182,7 +182,7 @@ class TestMethodArgSinkShape:
 
     # Where the record-only rows start. Named once, so the split-point pins
     # below read as facts about the merge rather than magic offsets.
-    STUB_ROWS = 49
+    STUB_ROWS = 50
 
     def test_row_order_is_pinned(self):
         # Order is load-bearing: `_witness` fires during the walk, so a
@@ -220,6 +220,7 @@ class TestMethodArgSinkShape:
             "native_iterable_comp",
             "own_iter_special",
             "own_container_literal",
+            "own_container_comp",
             "any_pass_through",
             "container_literal_method",
             "container_comp",
@@ -304,8 +305,8 @@ class TestMethodArgSinkShape:
         # already name: 15 shapes were written twice, and the leading cell is
         # now the only one deciding them.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 104
-        assert len(rows[:self.STUB_ROWS]) == 49
+        assert len(rows) == 105
+        assert len(rows[:self.STUB_ROWS]) == 50
         assert rows[self.STUB_ROWS] == "lambda"
 
     def test_str_owned_slot_precedes_own_lvalue(self):
@@ -493,7 +494,7 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 43
+        assert len([r for r in rows if r in others]) == 44
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",
@@ -667,6 +668,7 @@ class TestMarkerSinkSplit:
             "btuple_literal_marker",
             "same_tparam_name",
             "own_container_literal",
+            "own_container_comp",
             "native_record_call",
             "protocol_slot",
         ]
@@ -703,7 +705,7 @@ class TestMarkerSinkSplit:
             "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
             "own_move", "own_lvalue", "own_union_ctor", "str_owned_slot",
             "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
-            "own_container_literal"})
+            "own_container_literal", "own_container_comp"})
 
     def test_own_capability_is_row_membership_not_a_flag(self):
         # The Own capability IS which cells the family holds -- there is no
@@ -810,6 +812,7 @@ class TestPlainSinkShape:
             "container_literal",
             "ref_param_dictset_literal",
             "own_container_literal",
+            "own_container_comp",
             "covariant_temp",
             "optional_ptr",
             "opt_own_record_name",
@@ -935,7 +938,7 @@ class TestPlainSinkShape:
                      _METHOD_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 43
+        assert len(shared) == 44
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -1050,7 +1053,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 49
+        assert len(set(plain) - set(generic)) == 50
         assert {"callable_field", "value_union_temp", "record_rvalue_temp",
                 "str_owned_slot", "bytes_owned_slot", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
@@ -1557,8 +1560,10 @@ class TestRecordCtorSinkShape:
             "async_factory_wrap",
             "callable_value_pass",
             "field_read_ref_ctor",
+            "container_comp",
             "container_literal",
             "own_container_literal",
+            "own_container_comp",
             "own_container_instantiation",
             "own_container_construct",
             "ru_wrapper_name_no_alias",
@@ -1661,6 +1666,7 @@ class TestRecordCtorSinkShape:
             ("mutated_container_literal", "_x_temps_and_mutated"),
             ("own_lvalue", "_x_temps_ok"),
             ("own_move_source_slice", "_x_not_temps_ok"),
+            ("container_comp", "_x_temps_ok"),
             ("container_literal", "_x_not_mutated"),
             ("union_ctor_temp", "_x_temps_ok"),
             ("protocol_union_literal_temp", "_x_temps_ok"),
@@ -1720,7 +1726,7 @@ class TestRecordCtorNestedIsNotADirectPrefix:
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 49
+        assert len(direct - nested) == 51
         assert {"mutated_container_literal", "str_pass_through",
                 "shared_pass_through", "own_lvalue", "own_bytes_literal",
                 "container_literal", "own_container_literal",
@@ -1782,7 +1788,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 33
+        assert len([r for r in rows if r in others]) == 35
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

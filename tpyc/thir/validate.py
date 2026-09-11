@@ -59,7 +59,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from .nodes import (
-    Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
+    FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
     THIRCoerce, THIRConstructor,
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
@@ -69,7 +69,7 @@ from .nodes import (
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRSubscript,
     THIRFrameSlotWrite,
-    THIRPtrLocalDecl, THIRResumableBody, THIRSelf, THIRSimpleGenBody,
+    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, THIRSimpleGenBody,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
 )
 
@@ -447,6 +447,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             _walk(owner, node.recv_eval, return_type)
         _walk(owner, node.target, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRPtrLocalRebind):
+        # A flushing reseat kind makes the value a flushable position like
+        # THIRAssign's; the rest keep the default.
+        if node.value is not None:
+            _walk(owner, node.value, return_type,
+                  argtemp_ok=node.kind in FLUSHING_REBIND_KINDS)
         return
     if isinstance(node, THIRSetItem):
         # The value AND the target's INDEX are flushable positions: the

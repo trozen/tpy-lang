@@ -3588,7 +3588,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             cpp = stmt.cpp_type
             _declare_rebind_slot(state, stmt.name, rebind_slot, cpp)
             const_pfx = "const " if stmt.is_const else ""
-            out.write(f"{indent}{cpp} __slot_{init_slot} = {_emit_expr(stmt.init, state)};\n")
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{cpp} __slot_{init_slot} = {init_cpp};\n")
             out.write(f"{indent}{const_pfx}{cpp}* {name} = &__slot_{init_slot};\n")
         elif stmt.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS:
             # F3 storage-tuple alias: `auto&& name = <lvalue storage tuple>` binds a
@@ -3598,7 +3600,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         elif stmt.cpp_local_representation is LocalBinding.PTR_VARIANT:
             # F4 U2 pointer-variant local: cpp_type carries the full (possibly
             # const-pointee) variant spelling -- no sigil, no const prefix.
-            out.write(f"{indent}{stmt.cpp_type} {name} = {_emit_expr(stmt.init, state)};\n")
+            init_cpp = _emit_expr(stmt.init, state)
+            state.temps.flush(out, indent)
+            out.write(f"{indent}{stmt.cpp_type} {name} = {init_cpp};\n")
         elif stmt.cpp_local_representation is not None:
             # Non-value borrow local. cpp_type is already the pointee record (the
             # optional's inner for OPTIONAL_TO_PTR, not the optional itself), so
@@ -3861,6 +3865,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # assert_local_slot).
             slot = state.next_slot()
             val_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
             # Backstop: this hoist has no drain point in a leaf emitter; lowering
             # defers generator/async bodies, so reaching here undrainable is a bug.
             assert state.hoist_drainable, (
@@ -3926,6 +3931,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # block slot in place (value renders before the slot draw);
             # later rvalue reseats reuse it.
             val_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
             slot = state.inline_rvalue_slots.get(stmt.name)
             if slot is None:
                 slot = (state.assert_local_slot() or state.next_slot())
@@ -3942,6 +3948,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # later rvalue reseats reuse it. Value renders before the
             # allocation, so its own counter draws come first.
             val_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
             slot = _use_rebind_slot(state, stmt.name)
             if slot is None:
                 slot = (state.assert_local_slot() or state.next_slot())
@@ -3964,9 +3971,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{name} = "
                       f"::tpy::to_ptr_variant(__slot_{slot});\n")
         else:  # PtrSlotKind.UNION_RVALUE -- emplace + re-lift the rebind slot
+            val_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
             slot = _use_rebind_slot(state, stmt.name)
-            out.write(f"{indent}__slot_{slot}.emplace("
-                      f"{_emit_expr(stmt.value, state)});\n")
+            out.write(f"{indent}__slot_{slot}.emplace({val_cpp});\n")
             out.write(f"{indent}{name} = "
                       f"::tpy::to_ptr_variant(*__slot_{slot});\n")
     elif isinstance(stmt, THIRAssign):
@@ -4009,8 +4017,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                          .has_pointer_repr_element())
                 and _use_rebind_slot(state, stmt.target.name) is not None):
             slot = state.rebind_slots[stmt.target.name]
+            value_cpp = _emit_expr(stmt.value, state)
+            state.temps.flush(out, indent)
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
-                      f"&*(__slot_{slot} = {_emit_expr(stmt.value, state)});\n")
+                      f"&*(__slot_{slot} = {value_cpp});\n")
         else:
             # Receiver eval (class-constant writes) renders first, then the
             # value (its arg temps flush before the line); targets are
@@ -4086,7 +4096,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         tgt = (_emit_expr(stmt.target_expr, state)
                if stmt.target_expr is not None
                else escape_cpp_name(stmt.target))
-        out.write(f"{indent}{tgt} += {_emit_expr(stmt.value, state)};\n")
+        value_cpp = _emit_expr(stmt.value, state)
+        state.temps.flush(out, indent)
+        out.write(f"{indent}{tgt} += {value_cpp};\n")
     elif isinstance(stmt, THIRFrameSlotWrite):
         # `name.emplace(value);` -- a resumable frame_slot local write (R1c).
         # Render the value first so its arg temps flush before the line

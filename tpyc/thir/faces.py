@@ -1840,6 +1840,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # container type over the literal's braces
     "arg.native_comprehension",     # comprehension stmt-expr inline at a
                                     # native/template Iterable slot
+    "arg.own_container_comp",       # comprehension stmt-expr inline into an
+                                    # Own[container] slot (prvalue moves in)
     "res.btuple_write",             # resumable borrow-tuple frame-field write
     "res.btuple_yield",             # borrow-tuple yield (literal or lifted source)
     "ret.tuple_opt_elem",
@@ -2571,7 +2573,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "comp.storage_opt_const_elem",  # ... bound off a CONST source, so the
                                     # lift-decl twin spells `const P*`
     "argtemp.comprehension",        # slot-typed comp ArgTemp at a plain
-                                    # container ref slot (accept([x for ..]))
+                                    # container ref slot, free call or ctor
+                                    # (accept([x for ..]), Flat([x for ..]))
     "arg.borrow_tuple_field",       # storage F3-tuple field wrapped
                                     # tuple_to_pointer at a borrow-tuple slot
     "arg.borrow_tuple_subscript",   # the container-element twin: a checked

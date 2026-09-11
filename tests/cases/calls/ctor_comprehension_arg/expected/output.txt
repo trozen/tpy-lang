@@ -1,0 +1,26 @@
+ctor_borrow 2
+ctor_mutated_slot 4
+ctor_set_dict 7
+ctor_nested_call 2
+ctor_return 4
+ctor_element 2 1
+ctor_condition yes
+own_ctor 4
+own_method 6
+own_free 3
+own_stub_elem 1 [0.0, 2.0, 4.0, 9.0]
+own_stub_elem [0, 1, 2, 7] 4
+own_marker [0, 2, 4, 9]
+own_pending_elem [[0, 1, 2, 7]]
+rebind_slot_reseat 3
+rebind_slot_reseat 4
+str_append_temp startknone
+ctor_method_body 5
+closure 3
+with_body 2
+try_body 3
+match_arm 4
+hoisted_reseat 1
+hoisted_reseat 3
+error_return_body 2
+module_level 3

@@ -1764,6 +1764,21 @@ class PtrSlotKind(Enum):
     GLOBAL_HOIST_RVALUE = auto()
 
 
+# The reseat kinds whose emitter drains pending temps before the write, so
+# a temp-bearing value is legal there (the validator's flushable-position
+# fact). The bare-name kinds (PTR_ADDR, DYN_PROTOCOL_ERASED, GLOBAL_PTR_COPY)
+# and the valueless ones stay out; a new kind is classified here, next to
+# its declaration.
+FLUSHING_REBIND_KINDS = frozenset({
+    PtrSlotKind.FRAME_STORAGE_CALL, PtrSlotKind.FRAME_RVALUE,
+    PtrSlotKind.OPT_FIELD_RVALUE, PtrSlotKind.OPT_STORAGE_CALL,
+    PtrSlotKind.DYN_PROTOCOL, PtrSlotKind.GLOBAL_HOIST_RVALUE,
+    PtrSlotKind.GLOBAL_REBIND, PtrSlotKind.INLINE_RVALUE,
+    PtrSlotKind.BRANCH_RVALUE, PtrSlotKind.UNION_INLINE_SLOT,
+    PtrSlotKind.UNION_RVALUE,
+})
+
+
 @dataclass(frozen=True)
 class THIRPtrLocalDecl(THIRStmt):
     """First declaration of a pointer-repr local backed by the `__slot_N`
