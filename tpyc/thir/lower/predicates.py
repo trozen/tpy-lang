@@ -3535,6 +3535,10 @@ def _type_family_tag(t: 'TpyType | None', analyzer) -> str:
         return "container"
     if is_span(u):
         return "span"
+    if is_varargs(u):
+        # `varargs[E]` is a NominalType, so without its own arm it falls
+        # through to the record split and reads as a record problem.
+        return "varargs"
     if is_enum_type(u):
         return "enum"
     if is_str_type(u) or is_str_view_type(u) or is_string_type(u):

@@ -204,6 +204,31 @@ each must be one the type mapping requires at that position. Where the corpus
 does not reach a position, compile a probe and read its emit. For runtime operators,
 also inspect the callee: unchanged operator syntax can hide temporary allocations.
 
+### `const-source-const-loop-var`
+
+**Rule.** A loop variable that aliases its source -- the pointer form, `&(*it)` into a `T*` --
+inherits the source's const-ness. A const-rooted source (a `readonly[...]` container, a `self`
+field under a const-inferred receiver) or a `readonly[T]` element (what sema's auto-readonly flip
+makes the DEFAULT for a `*args` pack the body does not mutate) gives `const T*`. The two wrong
+answers cost differently: a mutable `T*` is a hard C++ error, and falling back to an owning slot
+compiles by copying the element every iteration where every other path aliases -- the
+`silent-copy-vs-alias` defect in a second costume, in a cell that is the norm rather than a
+corner.
+
+**Example.** `def walk(xs: readonly[list[Node]]) -> Iterator[Int32]: for n in xs: yield n.v;
+yield n.v` -- two yields, so the body is a resumable frame rather than the simple-generator
+peephole. Wrong: the frame field `Node* n` against an advance that yields `const Node*` (g++
+`invalid conversion from 'const Node*' to 'Node*'`); equally wrong, `::tpy::frame_slot<Node> n`,
+which compiles and copies. Right: `const Node* n = nullptr;`. Same cell from the other two roots:
+`def each(self) -> Iterator[Int32]: for p in self.items:` with a const-inferred receiver, and
+`def sizes(*xs: list[Int32])` whose loop over the pack suspends.
+
+**Check.** For an iteration whose source is `readonly`, a `self` field under a const receiver, or
+an unmutated `*args` pack, read the loop var's frame field in the emitted C++: an owning
+`frame_slot<T>` or a non-const `T*` is the defect. Then mutate the SOURCE between two pulls and
+read it back through the next one under both interpreters -- a const alias shows the change, a
+copy shows the stale value, and a read-only body cannot tell them apart.
+
 ### `generated-cpp-readability`
 
 **Rule.** Generated C++ is read by the developer and by reviewers. A member-init list with

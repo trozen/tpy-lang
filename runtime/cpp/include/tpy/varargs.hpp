@@ -91,6 +91,14 @@ struct varargs {
             return *this;
         }
 
+        // The resumable-frame for-loop advance spells the postfix form
+        // (`&(*(it)++)`); the value specialization gets it free from `T*`.
+        iterator operator++(int) {
+            iterator t = *this;
+            ++*this;
+            return t;
+        }
+
         bool operator==(const iterator& o) const {
             return indirect_ ? indirect_ == o.indirect_ : direct_ == o.direct_;
         }

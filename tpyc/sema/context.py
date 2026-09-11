@@ -36,7 +36,7 @@ from ..type_def_registry import int_traits_of
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp,
-    TpyUnaryOp, TpyIfExpr, TpyTupleLiteral,
+    TpyUnaryOp, TpyIfExpr, TpyTupleLiteral, TpyVarargPack, TpyStarUnpack,
     TpyNestedDef, TpyNamedExpr,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
@@ -162,6 +162,28 @@ def _borrow_storage_root(expr: TpyExpr) -> str | None:
     if isinstance(expr, TpyFieldAccess):
         return _storage_key(expr)
     return None
+
+
+def _borrow_storage_roots(expr: TpyExpr) -> list[str]:
+    """Storage keys borrowed by ONE argument position.
+
+    A `*args` pack occupies a single parameter slot while holding many
+    operands, and a callee that borrows the pack borrows every packed
+    element -- so the slot contributes one root per element instead of the
+    None a whole-pack expression would yield. A forwarded pack (`f(*xs)`)
+    is the same slot spelled once: the operand is the source pack itself.
+    """
+    if isinstance(expr, TpyVarargPack):
+        roots = []
+        for arg in expr.args:
+            if isinstance(arg, TpyStarUnpack):
+                arg = arg.expr
+            root = _borrow_storage_root(arg)
+            if root is not None:
+                roots.append(root)
+        return roots
+    root = _borrow_storage_root(expr)
+    return [] if root is None else [root]
 
 
 class BorrowKind(Enum):
@@ -821,7 +843,10 @@ class FunctionTrackingState:
     mutated_loop_vars: set[str] = field(default_factory=set)
     consumed_loop_vars: set[str] = field(default_factory=set)
     deferred_loop_copy_warnings: dict[str, list[int]] = field(default_factory=dict)
-    loop_var_iterable: dict[str, str] = field(default_factory=dict)
+    # One loop var can borrow MANY sources: a `*args` pack is a single
+    # argument slot holding many operands, so an iterable borrowing the pack
+    # borrows every one of them.
+    loop_var_iterable: dict[str, list[str]] = field(default_factory=dict)
     # True while analyzing the argument of an explicit copy(...) call --
     # copy-divergence warnings (e.g. dict.get(k, default)) are suppressed,
     # the wrap being the acknowledgment spelling.
@@ -1922,8 +1947,7 @@ class SemanticContext:
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:
             self.func.current_mutated_param_names.add(name)
-        iterable = self.func.loop_var_iterable.get(name)
-        if iterable is not None:
+        for iterable in self.func.loop_var_iterable.get(name, ()):
             # Field-path iterables ("c.items") need root extraction for param lookup
             self.mark_param_mutated(_storage_root(iterable), through_field=through_field)
         for src in self.func.bp_borrow_source_roots(name):
@@ -1961,8 +1985,7 @@ class SemanticContext:
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:
             self.func.current_struct_mutated_param_names.add(name)
-        iterable = self.func.loop_var_iterable.get(name)
-        if iterable is not None:
+        for iterable in self.func.loop_var_iterable.get(name, ()):
             self.mark_param_structurally_mutated(_storage_root(iterable))
 
     def mark_param_returned(self, name: str) -> None:
@@ -1978,8 +2001,7 @@ class SemanticContext:
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:
             self.func.current_returned_param_names.add(name)
-        iterable = self.func.loop_var_iterable.get(name)
-        if iterable is not None:
+        for iterable in self.func.loop_var_iterable.get(name, ()):
             self.mark_param_returned(_storage_root(iterable))
         for src in self.func.bp_borrow_source_roots(name):
             self.mark_param_returned(src)

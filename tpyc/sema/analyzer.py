@@ -1672,7 +1672,7 @@ class SemanticAnalyzer:
             # those params (the same set registration stamped up front).
             if func.is_generator:
                 gen_borrows = TypeRegistrar.generator_borrow_param_indices(
-                    [ptype for _, ptype in func.params])
+                    [p.type for p in func_info.params])
                 if gen_borrows:
                     func_info.return_borrows_from = func_info.return_borrows_from | gen_borrows
 
@@ -3027,7 +3027,7 @@ class SemanticAnalyzer:
                     # would block readonly inference); see BUGS.md.
                     if method.is_generator:
                         returned = returned | TypeRegistrar.generator_borrow_param_indices(
-                            [ptype for _, ptype in method.params])
+                            [p.type for p in method_fi.params])
                     method_fi.return_borrows_from = returned
                     method_fi.addr_escapes_params = frozenset(
                         i for i, pname in enumerate(param_list)

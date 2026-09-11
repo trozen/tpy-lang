@@ -75,7 +75,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
+from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, _borrow_storage_roots, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm,
@@ -250,9 +250,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         if (fi in ctx.pending_borrow_fact_fis
                 and _signature_may_return_borrow(fi)):
             for src in ([obj] if obj is not None else []) + list(args):
-                root = _borrow_storage_root(src)
-                if root is not None and root != borrower:
-                    bt.add_borrow(root, borrower, BorrowKind.OPAQUE)
+                for root in _borrow_storage_roots(src):
+                    if root != borrower:
+                        bt.add_borrow(root, borrower, BorrowKind.OPAQUE)
         return
     for idx in fi.return_borrows_from:
         if idx == -1 and obj is not None:
@@ -266,10 +266,10 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
                     expr,
                 )
         elif idx >= 0 and idx < len(args):
-            root = _borrow_storage_root(args[idx])
-            if root is not None:
+            roots = _borrow_storage_roots(args[idx])
+            for root in roots:
                 bt.add_borrow(root, borrower, BorrowKind.ELEMENT)
-            elif _is_dangling_temporary_arg(args[idx]):
+            if not roots and _is_dangling_temporary_arg(args[idx]):
                 ctx.warning(
                     f"Result borrows from temporary argument '{fi.params[idx].name}'; "
                     f"the temporary is destroyed at end-of-statement",
@@ -352,7 +352,7 @@ def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
 
 def _is_self_call_deferred(
     expr_obj: TpyExpr, obj_root: str | None,
-    loop_var_iterable: dict[str, str],
+    loop_var_iterable: dict[str, list[str]],
     borrow_tracker: 'BorrowTracker',
 ) -> bool:
     """Check if a method call receiver traces to self through field accesses or loop vars.
@@ -374,8 +374,8 @@ def _is_self_call_deferred(
         return isinstance(chain, TpyName) and chain.name == "self"
     if obj_root is not None:
         # loop_var.method() where loop_var iterates over self.field
-        iterable = loop_var_iterable.get(obj_root)
-        if iterable is not None and _storage_root(iterable) == "self":
+        if any(_storage_root(it) == "self"
+               for it in loop_var_iterable.get(obj_root, ())):
             return True
         # local.method() where `local = self.<field>` registered a FIELD borrow.
         # Without this, the call is treated as a regular non-self call and the
@@ -1418,13 +1418,16 @@ class StatementAnalyzer:
                                 ret_args = ret_inner.args
                                 ret_obj = getattr(ret_inner, 'obj', None)
                                 for idx in fi_ret.return_borrows_from:
+                                    # One argument position can hold many
+                                    # operands (a `*args` pack), and each is
+                                    # borrowed by the same contract.
                                     if idx == -1 and ret_obj is not None:
-                                        src = _borrow_storage_root(ret_obj)
+                                        srcs = _borrow_storage_roots(ret_obj)
                                     elif idx >= 0 and idx < len(ret_args):
-                                        src = _borrow_storage_root(ret_args[idx])
+                                        srcs = _borrow_storage_roots(ret_args[idx])
                                     else:
-                                        src = None
-                                    if src is not None:
+                                        srcs = []
+                                    for src in srcs:
                                         # Read-only sources (readonly callees, view returns)
                                         # don't propagate mutation to their borrowed-from arg.
                                         if not returns_borrowing_view and not fi_ret.is_readonly:
@@ -1649,7 +1652,7 @@ class StatementAnalyzer:
                     bt = self.ctx.func.borrow_tracker
                     if isinstance(stmt.iterable, TpyName):
                         bt.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
-                        self.ctx.func.loop_var_iterable[stmt.var] = stmt.iterable.name
+                        self.ctx.func.loop_var_iterable[stmt.var] = [stmt.iterable.name]
                         # Protocol-typed and TypeParamRef params used as for-loop iterables
                         # require mutable access: .__next__() mutates iterator state.
                         # Mark them mutated so the generated param gets T& not const T&.
@@ -1663,22 +1666,24 @@ class StatementAnalyzer:
                         if gc is not None:
                             fi_gc = gc.resolved_function_info
                             if fi_gc is not None and fi_gc.return_borrows_from:
+                                iter_srcs: list[str] = []
                                 for idx in fi_gc.return_borrows_from:
                                     if idx == -1 and gc.obj is not None:
-                                        src = _borrow_storage_root(gc.obj)
-                                        if src is not None:
-                                            bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
-                                            self.ctx.func.loop_var_iterable[stmt.var] = src
+                                        srcs = _borrow_storage_roots(gc.obj)
                                     elif idx >= 0 and idx < len(gc.args):
-                                        src = _borrow_storage_root(gc.args[idx])
-                                        if src is not None:
-                                            bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
-                                            self.ctx.func.loop_var_iterable[stmt.var] = src
+                                        srcs = _borrow_storage_roots(gc.args[idx])
+                                    else:
+                                        srcs = []
+                                    for src in srcs:
+                                        bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                        iter_srcs.append(src)
+                                if iter_srcs:
+                                    self.ctx.func.loop_var_iterable[stmt.var] = iter_srcs
                         else:
                             key = _storage_key(stmt.iterable)
                             if key is not None:
                                 bt.add_borrow(key, "__for_iter", BorrowKind.ITER)
-                                self.ctx.func.loop_var_iterable[stmt.var] = key
+                                self.ctx.func.loop_var_iterable[stmt.var] = [key]
                     elif isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
                         # 8b: iterable is a call whose return borrows from source arg(s).
                         # Register ITER borrow directly on those source containers so that
@@ -1687,20 +1692,21 @@ class StatementAnalyzer:
                         if fi_iter is not None and fi_iter.return_borrows_from:
                             call_args = stmt.iterable.args
                             call_obj = getattr(stmt.iterable, 'obj', None)
+                            iter_srcs = []
                             for idx in fi_iter.return_borrows_from:
                                 arg = None
                                 if idx == -1 and call_obj is not None:
-                                    src = _borrow_storage_root(call_obj)
+                                    srcs = _borrow_storage_roots(call_obj)
                                     arg = call_obj
                                 elif idx >= 0 and idx < len(call_args):
-                                    src = _borrow_storage_root(call_args[idx])
+                                    srcs = _borrow_storage_roots(call_args[idx])
                                     arg = call_args[idx]
                                 else:
-                                    src = None
-                                if src is not None:
+                                    srcs = []
+                                for src in srcs:
                                     bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
-                                    self.ctx.func.loop_var_iterable[stmt.var] = src
-                                elif arg is not None and _is_dangling_temporary_arg(arg):
+                                    iter_srcs.append(src)
+                                if not srcs and arg is not None and _is_dangling_temporary_arg(arg):
                                     # Call results returning non-value types are
                                     # materialized into named variables by codegen
                                     # (for by-reference passing), so they survive
@@ -1722,6 +1728,8 @@ class StatementAnalyzer:
                                             f"the temporary is destroyed before iteration begins",
                                             stmt.iterable,
                                         )
+                            if iter_srcs:
+                                self.ctx.func.loop_var_iterable[stmt.var] = iter_srcs
                     # A user `__iter__` that mutates its receiver needs a
                     # non-const receiver; record that so an enclosing read-only
                     # method isn't wrongly inferred const (the loop_var_iterable
@@ -2769,7 +2777,7 @@ class StatementAnalyzer:
             if isinstance(stmt.iterable, TpyName):
                 bt = self.ctx.func.borrow_tracker
                 bt.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
-                self.ctx.func.loop_var_iterable[stmt.var] = stmt.iterable.name
+                self.ctx.func.loop_var_iterable[stmt.var] = [stmt.iterable.name]
                 # Protocol-typed or generic-typed iterables: `__aiter__`
                 # is called on the param and may mutate self, so the
                 # generated signature must be `T&` not `const T&`.

@@ -1,0 +1,19 @@
+gen: 3
+gen: 3
+gen: 4
+gen: -1
+plain: 2
+plain: 3 3
+method: 9
+kwonly: 4
+kwonly: 2
+kwonly: 3
+kwonly: 4
+kwpack: 2
+kwpack: 2
+kwpack: 3
+kwpack: 1
+fwd: 3
+fwd: 4 4
+fwd2: 2
+fwd2: 3 3

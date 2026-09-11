@@ -66,6 +66,7 @@ from ..type_def_registry import (
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of,
     factory_qnames_in_module, protocol_info_of,
     is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
+    is_varargs,
 )
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
@@ -1556,9 +1557,14 @@ class TypeRegistrar:
                 # readonly inference (a self-borrowing return pins non-const),
                 # which would flip every generator method non-readonly; the
                 # receiver borrow is tracked in BUGS.md instead.
+                # Read the assembled parameter list, not `method_params`: a
+                # `*args` pack is absent from the latter, so the index set
+                # would both miss it and shift any keyword-only param behind
+                # it -- and these indices are matched against a call's
+                # argument list.
                 func_info.return_borrows_from = (
                     self.generator_borrow_param_indices(
-                        [t for _, t in method_params]))
+                        [p.type for p in func_info.params]))
             elif ((func_info.native_name is not None
                        or func_info.is_native
                        or func_info.cpp_template is not None)
@@ -3221,11 +3227,14 @@ class TypeRegistrar:
         in step with codegen's frame storage. Signature-derived, so it is exact
         at registration time -- callers analyzed before the generator's body
         still see the right facts.
+
+        A `*args` pack is value-typed but views the caller's argument array,
+        so the frame borrows it exactly the way a Span param is borrowed.
         """
         return frozenset(
             i for i, ptype in enumerate(param_types)
             if (not ptype.is_value_type() or is_str_type(ptype)
-                or is_borrowing_view_type(ptype))
+                or is_borrowing_view_type(ptype) or is_varargs(ptype))
             and not is_owned_in_coro_frame(ptype)
         )
 
@@ -3500,8 +3509,12 @@ class TypeRegistrar:
             # return_borrows_from=None and the auto-move gate would miss the
             # frame's reference captures. Finalize unions body-derived facts
             # on top.
+            # Indices are read against the CALL's argument list, so they must
+            # come from the full parameter list -- a `*args` pack is absent
+            # from resolved_params and would both be missed and shift the
+            # indices of any keyword-only param behind it.
             info.return_borrows_from = self.generator_borrow_param_indices(
-                [t for _, t in resolved_params])
+                [p.type for p in info.params])
         # @inline: store body for call-site inlining
         if func.is_inline and not func.is_stub:
             non_doc = [s for s in func.body

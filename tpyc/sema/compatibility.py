@@ -3774,10 +3774,11 @@ class TypeCompatibility:
                     self._name_is_param_or_global(_storage_root(src))
                     for src in srcs)
             else:
-                it = self.ctx.func.loop_var_iterable.get(inner.name)
-                if it is not None:
-                    dangles = not self._name_is_param_or_global(
-                        _storage_root(it))
+                its = self.ctx.func.loop_var_iterable.get(inner.name)
+                if its:
+                    # Any source outside param/global storage dies at return.
+                    dangles = any(not self._name_is_param_or_global(
+                        _storage_root(it)) for it in its)
         if dangles:
             bad = next(et for et in tuple_type.element_types
                        if tuple_type._element_is_pointer_repr(et))

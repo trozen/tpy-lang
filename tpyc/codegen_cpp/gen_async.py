@@ -1209,9 +1209,15 @@ class AsyncCoroCodegen:
         # Loop vars whose field payload is spelled from the iteration
         # source; the trait decides alias-vs-own, so no TPy-side form.
         source_form_fields: dict[str, str] = {}
+        # Loop vars whose `&(*it)` is a `const T*` (const-rooted source or a
+        # readonly element); joins the statement-level const aliases below so
+        # both reach the same `const` verdict.
+        const_loop_vars: set[str] = set()
         for info in state.for_loop_info.values():
             if info.pointer_form_loop_var is not None:
                 pointer_form_names.add(info.pointer_form_loop_var)
+                if info.pointer_form_is_const:
+                    const_loop_vars.add(info.pointer_form_loop_var)
             pointer_form_names.update(info.pointer_form_unpack_targets)
             if info.loop_var_field is not None:
                 name, payload = info.loop_var_field
@@ -1230,7 +1236,7 @@ class AsyncCoroCodegen:
         # empty set -- running the prescan here would change its verdicts.
         if not GeneratorCodegen.is_simple_generator(func):
             pointer_form_names.update(self._classify_pointer_alias_locals(func))
-        const_aliases = state.const_pointer_alias_locals
+        const_aliases = state.const_pointer_alias_locals | const_loop_vars
 
         bindings: dict[str, rcfg.FrameLocalLayout] = {}
         for lname, ltype in (func.generator_locals or []):

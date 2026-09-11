@@ -38,6 +38,12 @@ class GeneratorForInfo:
     # preserves CPython aliasing semantics across yield/resume instead of
     # copying the element into the frame. None when copy-storage is used.
     pointer_form_loop_var: str | None = None
+    # Whether that pointer-form loop var is spelled `const T*`. The advance
+    # takes `&(*it++)`, so the pointer's const-ness is the ITERATION SOURCE's:
+    # a const-rooted source (readonly container) or a `readonly[E]` element
+    # (what sema's `varargs_as_const` flip makes the default for `*args`)
+    # both yield a `const T*`, and a plain `T*` field would not compile.
+    pointer_form_is_const: bool = False
     # (loop var name, fully-spelled C++ payload for its frame field). The
     # payload is derived from the ITERATION SOURCE rather than the TPy element
     # type -- e.g. `::tpy::for_elem_next_t<T_items>` -- so C++ decides at
@@ -108,14 +114,18 @@ def elem_wants_borrow_form(elem_type: 'TpyType | None') -> bool:
     arbitrary `__next__` may hand back a fresh value that looks identical to a
     lent one here, so its field defers to `for_elem_next_t` and lets C++ decide.
 
-    Value elements copy by their own semantics. `readonly[T]` is excluded
-    because the advance emit has no `const T*` form -- a narrow gap tracked in
-    BUGS.md, and the one thing the trait would express better here.
+    Value elements copy by their own semantics. A `readonly[T]` element rides
+    too: it is the DEFAULT element of a non-mutated `*args` pack (sema's
+    `varargs_as_const` flip), so excluding it would make the silent copy the
+    normal case rather than a corner. Its pointer is spelled `const T*`: the
+    two `GeneratorForInfo` construction sites below decide that with
+    `pointer_form_is_const` -- from the iteration source's const verdict or a
+    `readonly` element -- and the frame layout consumes it through the same
+    const-alias set the statement-level const aliases use.
     """
     elem = unwrap_ref_type(elem_type) if elem_type is not None else None
     return (elem is not None
-            and not isinstance(elem, ReadonlyType)
-            and not elem.is_value_type())
+            and not unwrap_readonly(elem).is_value_type())
 
 
 def elem_is_known_value(elem_type: 'TpyType | None') -> bool:
@@ -901,8 +911,12 @@ class GeneratorCodegen:
                     and elem_wants_borrow_form(elem_type))
                 else None
             )
-            return GeneratorForInfo(uid=uid, strategy="next", fields=fields,
-                                    pointer_form_loop_var=pointer_form_var)
+            return GeneratorForInfo(
+                uid=uid, strategy="next", fields=fields,
+                pointer_form_loop_var=pointer_form_var,
+                pointer_form_is_const=isinstance(
+                    unwrap_ref_type(elem_type) if elem_type else None,
+                    ReadonlyType))
 
         # error_return __next__ types (user iterators)
         er_elem = get_error_return_next_element_type(
@@ -951,10 +965,10 @@ class GeneratorCodegen:
             # becomes T* (aliasing the container element) instead of
             # std::optional<T> (value-copy). Preserves CPython aliasing
             # semantics across yield/resume.
-            # ReadonlyType elements need a `const T*` slot (not plain `T*`);
-            # the current emission path only emits the latter, so readonly
-            # elements fall back to value-storage to avoid a
-            # const-correctness violation when taking `&(*iter)`.
+            # `&(*iter)` is a `const T*` whenever the source iterates const --
+            # a const-rooted container or a `readonly[E]` element -- so the
+            # slot takes the const spelling rather than falling back to a
+            # value copy.
             elem_for_form = unwrap_ref_type(native_elem) if native_elem else None
             # Proxy-ref tuple iterators (dict_items): `&(*it)` is ill-formed
             # on the prvalue proxy, so the loop element binds as a borrow-form
@@ -1001,6 +1015,9 @@ class GeneratorCodegen:
             return GeneratorForInfo(
                 uid=uid, strategy="begin_end", fields=fields,
                 pointer_form_loop_var=pointer_form_var,
+                pointer_form_is_const=(src_is_const
+                                       or isinstance(elem_for_form,
+                                                     ReadonlyType)),
                 pointer_form_unpack_targets=pointer_form_targets,
                 borrow_tuple_loop_var=borrow_tuple_var,
             )

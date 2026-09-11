@@ -1,0 +1,55 @@
+scalar: 1
+scalar: 3
+scalar: 6
+scalar: -1
+str: 2
+str: 5
+str: -1
+container: 0
+container: 1
+container: 2
+container: -1
+record-mut: 2
+record-mut: 3
+record-mut: -1
+record-mut: after 2 3
+record-ro: 1
+record-ro: 20
+record-ro: -1
+method: 11
+method: 12
+method: -1
+forward: 10
+forward: -1
+subscript: 7
+subscript: 8
+subscript: -1
+tryfinally: 1
+tryfinally: 2
+tryfinally: cleanup
+tryfinally: -1
+with: 1
+with: 2
+with: exit
+with: -1
+readonly-param: 5
+readonly-param: 60
+readonly-param: -1
+generic: 2
+generic: 3
+generic: -1
+generic: after 2 3
+self-field: 1
+self-field: 101
+self-field: 60
+self-field: 160
+readonly-next: 7
+readonly-next: 8
+readonly-next: 7
+readonly-next: 8
+readonly-next: -1
+multi-root: 1 1
+multi-root: 2 2
+multi-root swapped: 3 3
+method-multi-root: 1 1
+method-multi-root: 2 2

@@ -74,6 +74,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Surface concerns
 - `same-construct-every-position` -- compile the changed construct at two positions the change did not name (the doc's list: free function, method, constructor, module-level statement, generator body, async body, comprehension, closure, context-manager body, `try`/`finally`, `@error_return` body, `match` arm) and diff the emit; a difference is a Critical against the fix, not a new bug.
 - `conditional-operand-evaluates-in-place` -- in a changed statement with `||`, `&&`, `?:` or a comprehension filter, no `__tmp` declaration, copy or call of the guarded operand sits above its guard, and no operand is spelled twice.
 - `generic-equals-monomorphic-twin` -- for a changed rule a generic body can reach, compile the monomorphic twin at the case's instantiation and diff the emit for the subject; a different form is the finding.
+- `const-source-const-loop-var` -- for a changed iteration whose source is `readonly`, a `self` field under a const receiver, or an unmutated `*args` pack, the loop var's frame field is `const T*`; an owning `frame_slot<T>` or a non-const `T*` is the finding.
 - `generated-cpp-readability` -- multi-item initializer lists and calls past the column width render one item per line.
 
 ## False-positive discipline
