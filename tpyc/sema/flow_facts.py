@@ -14,7 +14,8 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from .context import (
-    BorrowKind, BORROW_KIND_RANK, BindingProvenance, _DEFAULT_PROVENANCE,
+    LoanInfo, combine_loan_info,
+    BindingProvenance, _DEFAULT_PROVENANCE,
 )
 from .value_range import ValueRange
 
@@ -107,18 +108,18 @@ def _merge_value_ranges(
     return frozenset(merged.items())
 
 
-def _merge_borrow_triples(
-    then_borrows: frozenset[tuple[str, str, BorrowKind]],
-    else_borrows: frozenset[tuple[str, str, BorrowKind]],
+def merge_borrow_triples(
+    then_borrows: frozenset[tuple[str, str, LoanInfo]],
+    else_borrows: frozenset[tuple[str, str, LoanInfo]],
     then_term: bool,
     else_term: bool,
-) -> frozenset[tuple[str, str, BorrowKind]]:
-    """Merge borrow (storage, borrower, kind) triples across branch endpoints.
+) -> frozenset[tuple[str, str, LoanInfo]]:
+    """Merge loan (storage, borrower, LoanInfo) triples across branch endpoints.
 
     Uses UNION policy: a borrow exists after the merge if it exists in
     either live branch (conservative -- may hold on either path).
-    When the same (storage, borrower) has different kinds on the two branches,
-    the more dangerous kind wins (element > alias, ptr > alias, iter > alias).
+    When the same (storage, borrower) differs on the two branches,
+    `combine_loan_info` takes each field at its more dangerous value.
     """
     if then_term and else_term:
         combined = then_borrows | else_borrows
@@ -128,14 +129,13 @@ def _merge_borrow_triples(
         combined = then_borrows
     else:
         combined = then_borrows | else_borrows
-    # Deduplicate (storage, borrower) pairs, keeping the more dangerous kind
-    best: dict[tuple[str, str], BorrowKind] = {}
-    for storage, borrower, kind in combined:
+    # Deduplicate (storage, borrower) pairs, keeping the more dangerous facts
+    best: dict[tuple[str, str], LoanInfo] = {}
+    for storage, borrower, loan in combined:
         key = (storage, borrower)
         prev = best.get(key)
-        if prev is None or BORROW_KIND_RANK[kind] > BORROW_KIND_RANK[prev]:
-            best[key] = kind
-    return frozenset((s, b, k) for (s, b), k in best.items())
+        best[key] = loan if prev is None else combine_loan_info(prev, loan)
+    return frozenset((s, b, loan) for (s, b), loan in best.items())
 
 
 def _min_idx(x: int | None, y: int | None) -> int | None:
@@ -221,9 +221,14 @@ class FlowFacts:
     # Per-local escape/ownership provenance (return-safety + tuple-member
     # hazards). See BindingProvenance / merge_binding_provenance.
     binding_provenance: frozenset[tuple[str, BindingProvenance]] = frozenset()
-    # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
-    # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
-    borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
+    # Loan map: (storage_name, borrower_name, LoanInfo) triples.
+    # ITER_BORROWER is the borrower for implicit for-loop iterator borrows.
+    borrows: frozenset[tuple[str, str, LoanInfo]] = frozenset()
+    # Names whose value has moved into their rebind slot (see LoanResidency).
+    # A HAZARD fact: it unions at a join, but a branch that does not rebind
+    # must not inherit the sibling arm's residency, so it is restored like any
+    # other flow fact rather than growing monotonically.
+    slot_resident: frozenset[str] = frozenset()
     value_ranges: frozenset[tuple[str, ValueRange]] = frozenset()
 
     @staticmethod
@@ -257,9 +262,13 @@ class FlowFacts:
                 then.binding_provenance, else_.binding_provenance,
                 then_term, else_term,
             ),
-            borrows=_merge_borrow_triples(
+            borrows=merge_borrow_triples(
                 then.borrows, else_.borrows,
                 then_term, else_term,
+            ),
+            slot_resident=_merge_sets(
+                then.slot_resident, else_.slot_resident,
+                then_term, else_term, _MergePolicy.UNION,
             ),
             value_ranges=_merge_value_ranges(
                 then.value_ranges, else_.value_ranges,

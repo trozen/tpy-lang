@@ -864,7 +864,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - Mutation-based const inference applies to tuple borrow params: when the body provably doesn't mutate through any slot, the slots become const (`tuple[T, T]` → `const std::tuple<const T*, const T*>&`; `tuple[T | None, T | None]` → `const std::tuple<const T*, const T*>&`). Bodies that mutate keep mutable slots. This mirrors the existing `T → const T&` inference for plain record params and applies all-or-nothing per param (per-slot precision is a future refinement). Generic-slot tuples (`tuple[T, ...]` with type-param `T`) skip inference -- the C++ ABI is decided at instantiation.
   - Boundaries between borrow form and storage form (field-init, field-write, global init, container-element init, destructuring of a storage-form source) lower to element-wise conversions via `tpy::tuple_to_storage<...>` / `tpy::tuple_to_pointer<...>`. The pass-through case (return value of one function flowing into the param of another, both in pointer form) needs no conversion.
   - Rvalue tuple elements of reference type (e.g. `f((Point(1,2), 42))` where the slot expects a borrow) trigger the same C++ "address of rvalue" limitation as the analogous non-Optional case; bind to a local first. Tracked in BUGS.md.
-  - **Owned-element unpack (move-out):** unpacking a fresh `tuple[Own[A], Own[B], ...]` rvalue (`a, b = make_pair()`) binds each target as an *owned, movable* local -- each `Own[T]` element is moved out of the consumed temporary, so the targets can be moved onward (into `Own[]` params, etc.) just like a single-assign owned rvalue. Non-`Own` elements keep their usual value/borrow semantics. The named-source form (`t = make_pair(); a, b = t`) works too: when the unpack is the last use of the tuple local, the source is moved into the temp and each element moved out. An owned-element tuple **parameter** (`def f(p: tuple[Own[A], Own[B]])`) takes ownership -- it is rendered `std::tuple<...>&&` (the tuple analog of the scalar `Own[T] -> T&&` ABI), so the callee can unpack/move its elements out, forward it onward, or return it; the caller moves a last-use owned source in. A source NOT at its last use can't move into the `&&` param: a `@nocopy` tuple is a use-after-move error, and a copyable one is warned and auto-copied (mirroring the scalar `Own[T]` arg -- TPy copies where CPython would alias, the same acknowledged, warned `Own`-copy divergence; silence it with an explicit `copy()` or by passing at the last use). Like a scalar `Own[T]` param it also warns when never consumed (suppressed for `@nocopy`, whose drop is a legitimate consume), and using it after a consuming unpack is a use-after-move error; the read-only borrow alternative is the `Own`-less `tuple[A, B]`. Move-out of an aggregate *member* in any other shape -- partial element move-out (`take(pair[0])`), record-field move-out -- is not yet supported (needs per-place partial-move tracking); use whole-tuple unpack or `Rc.clone()`. Tracked in BUGS.md.
+  - **Owned-element unpack (move-out):** unpacking a fresh `tuple[Own[A], Own[B], ...]` rvalue (`a, b = make_pair()`) binds each target as an *owned, movable* local -- each `Own[T]` element is moved out of the consumed temporary, so the targets can be moved onward (into `Own[]` params, etc.) just like a single-assign owned rvalue. Non-`Own` elements keep their usual value/borrow semantics. The named-source form (`t = make_pair(); a, b = t`) works too: when the unpack is the last use of the tuple local, the source is moved into the temp and each element moved out. One carve-out on that form: in a generator or `async def` body where the tuple local lives across a suspension (so the frame owns it), the unpack binds the frame slot rather than the tuple and fails the C++ build (`BUGS.md#frame-tuple-unpack-slot`). An owned-element tuple **parameter** (`def f(p: tuple[Own[A], Own[B]])`) takes ownership -- it is rendered `std::tuple<...>&&` (the tuple analog of the scalar `Own[T] -> T&&` ABI), so the callee can unpack/move its elements out, forward it onward, or return it; the caller moves a last-use owned source in. A source NOT at its last use can't move into the `&&` param: a `@nocopy` tuple is a use-after-move error, and a copyable one is warned and auto-copied (mirroring the scalar `Own[T]` arg -- TPy copies where CPython would alias, the same acknowledged, warned `Own`-copy divergence; silence it with an explicit `copy()` or by passing at the last use). Like a scalar `Own[T]` param it also warns when never consumed (suppressed for `@nocopy`, whose drop is a legitimate consume), and using it after a consuming unpack is a use-after-move error; the read-only borrow alternative is the `Own`-less `tuple[A, B]`. Move-out of an aggregate *member* in any other shape -- partial element move-out (`take(pair[0])`), record-field move-out -- is not yet supported (needs per-place partial-move tracking); use whole-tuple unpack or `Rc.clone()`. Tracked in BUGS.md.
   - Protocol conformance: `tuple[T1, T2, ...]` conforms to `Hashable`, `Comparable`, and `Equatable` when every `Ti` conforms to the same protocol. Lexicographic `<` and element-wise `==` lower to `std::tuple`'s built-in operators; this also unblocks the canonical `list[tuple[priority, payload]]` priority-queue pattern via `heapq`.
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
@@ -1179,8 +1179,35 @@ Restrictions:
 - Tuple element assignment (`t[0] = x`) is rejected (tuples are immutable)
 - Nested unpacking (`a, (b, c) = ...`) is not yet supported. The reference-element aliasing of a tuple-literal unpack applies to **flat** unpacks at both function-body and module/REPL scope (a class-body tuple target is a field-declaration parse error, never an unpack). All element kinds alias correctly, including a ternary of reference lvalues and a reference-returning method call (both are borrow-aliases, not owned values).
 - Non-value `Union` elements (`tuple[A | B, ...]`) borrow as a const pointer variant `::tpy::Union<const A*, const B*>` at the param/return/passthrough boundary (passing such a tuple and reading its non-union elements works); reading/narrowing the union element itself, and the storage/local/field directions, are not yet wired (see BUGS.md). `T | None` elements are fully supported (pointer-repr slots, see the Optional-element conversions above)
+- A tuple bound to a local of a generator / async frame owns its elements PER
+  ELEMENT, decided by what each INIT does with the element rather than by the
+  tuple type (a literal's inferred type has no place to say `Own`, and
+  annotating one is rejected as redundant). An element a **literal** binds
+  from a fresh rvalue -- `A(1)`, an `Own[T]`-returning call, a local at its
+  last use -- is storage the frame OWNS, as is every element an **owning
+  call** hands over (`t = make_pair()`, returning `Own[tuple[...]]` or
+  `tuple[Own[A], ...]`); an element bound from a live lvalue stays a pointer
+  at that object, so a mutation the caller makes after the suspension is read
+  back through the tuple (`t = (a, 2); yield t[0].v; a.v = 99; yield t[0].v`
+  prints `1 99`, matching CPython). All-fresh gives
+  `frame_slot<std::tuple<A, int32_t>>`, all-lvalue the plain borrow field
+  `std::tuple<A*, int32_t>`, and a mix the mixed render
+  `frame_slot<std::tuple<A, A*>>` -- the three frame kinds an `Own`-annotated
+  tuple already used. The verdict is joined over EVERY init of the name, so a
+  local reassigned in a loop keeps it, and a literal in one branch with an
+  owning call in the other agrees (both hand the element over) rather than
+  conflicting. Two shapes stay rejected because the element has no single
+  form: an element whose value is a **ternary** over a fresh object and an
+  existing one (owning it would COPY where CPython aliases), and an element
+  one init hands over while another only borrows (a named diagnostic pointing
+  at separate names) -- there the borrow would have to point into the owning
+  init's dead temporary. A tuple loop **variable**
+  over a container (`for t in xs:` where the element tuple holds a reference)
+  is the sibling rule: the frame field is a pointer to the source element
+  tuple, so the loop var aliases the container element like the sync
+  `auto&&` binding does.
 - An `Optional` *of* a pointer-repr tuple (`tuple[..., Box] | None`) is a nullable borrow-form tuple local -- `std::optional<std::tuple<..., T*>>`. The optional wraps the *borrow*-form inner tuple, so reassigning the local (`t = h.pair`) ALIASES the source's reference elements rather than copying them (matching CPython); a write through the narrowed local (`if t is not None: t[1].val = ...`) is visible on the source. `t = None` is `std::nullopt`. An owning-call init (`= make_pair()`, whose return is `tuple[..., Own[T]]`) works with this same plain annotation: the owning return materializes into a slot the local aliases. Annotating the local itself with `Own` (`tuple[..., Own[T]] | None`) is rejected as redundant -- the local is borrow form regardless.
-- A tuple local can mix an OWNING value (a call returning `Own[tuple[...]]`) with a reference to existing storage -- a rebind (`t = make_pair(); t = h.pair`), branch-mixed first bindings (`if c: t = make_pair() else: t = h.pair`), and the walrus form (`(t := make_pair())[0]; t = h.pair`). The local takes one fixed C++ shape, borrow form (`std::tuple<..., T*>`): an owning-call RHS materializes into a function-local `std::optional<std::tuple<..., T>>` slot the local aliases via `tuple_to_pointer`, a storage-form lvalue RHS lifts element-wise, a borrow RHS assigns directly -- so a rebound alias shares the source's elements like CPython (mutation through it is visible on the source). The declared per-element const-ness is the OR over all binding sources' const-ness (a const source -> `const T*`). `return t` is rejected only when the local is *possibly* owning at the return (the slot is function-local), via a flow-sensitive (snapshot + UNION-merged) owning fact. An owning tuple local in a generator/async body is backed by a `tpy::frame_slot<std::tuple<..., T>>` storage field. The owning binding may be an outer-`Own` call (`Own[tuple[...]]`), a per-element-`Own` call (`tuple[..., Own[T]]`), or an `await`-result lift temp (`a, b = await f()`) -- an awaited tuple is always owned, so even a reference-element result (`tuple[list[T], int]`) gets owning `frame_slot` storage rather than a borrow-form field, and is moved out at the unpack. A reassigned per-element-`Own` local collapses to the unified borrow type (each `Own[T]` element -> `T`) so the same borrow-slot path applies -- except a MIXED tuple, which has no unified form to collapse onto and instead keeps the mixed render (`std::tuple<A, B*>`) at every binding path, assigned straight with no slot. (The reassigned owning+alias mix inside a resumable body is not yet covered -- see BUGS.md.)
+- A tuple local can mix an OWNING value (a call returning `Own[tuple[...]]`) with a reference to existing storage -- a rebind (`t = make_pair(); t = h.pair`), branch-mixed first bindings (`if c: t = make_pair() else: t = h.pair`), and the walrus form (`(t := make_pair())[0]; t = h.pair`). The local takes one fixed C++ shape, borrow form (`std::tuple<..., T*>`): an owning-call RHS materializes into a function-local `std::optional<std::tuple<..., T>>` slot the local aliases via `tuple_to_pointer`, a storage-form lvalue RHS lifts element-wise, a borrow RHS assigns directly -- so a rebound alias shares the source's elements like CPython (mutation through it is visible on the source). The declared per-element const-ness is the OR over all binding sources' const-ness (a const source -> `const T*`). `return t` is rejected only when the local is *possibly* owning at the return (the slot is function-local), via a flow-sensitive (snapshot + UNION-merged) owning fact. An owning tuple local in a generator/async body is backed by a `tpy::frame_slot<std::tuple<..., T>>` storage field. The owning binding may be an outer-`Own` call (`Own[tuple[...]]`), a per-element-`Own` call (`tuple[..., Own[T]]`), or an `await`-result lift temp (`a, b = await f()`) -- an awaited tuple is always owned, so even a reference-element result (`tuple[list[T], int]`) gets owning `frame_slot` storage rather than a borrow-form field, and is moved out at the unpack. A reassigned per-element-`Own` local collapses to the unified borrow type (each `Own[T]` element -> `T`) so the same borrow-slot path applies -- except a MIXED tuple, which has no unified form to collapse onto and instead keeps the mixed render (`std::tuple<A, B*>`) at every binding path, assigned straight with no slot. A REASSIGNED owning-call local inside a resumable body takes the owning frame slot at every init (each rebind emplaces fresh storage); mixing an owning init with an aliasing one there is rejected by name, since the two need different fields -- see BUGS.md.
 - Comparison (`==`, `!=`) requires element-wise type compatibility; ordering (`<`, `>`, `<=`, `>=`) is lexicographic, but is rejected on tuples with an Optional element (CPython raises TypeError when `None` meets an ordering comparison)
 - An inferred ref-tuple of `@nocopy` elements (`p = (a, b)` of two `@nocopy` locals, no annotation) is rejected with a clean diagnostic. The default ref-capture (`std::tuple<T*, T*>`) cannot be promoted to a value tuple later, which would otherwise produce cryptic C++ errors on use. Annotate `p: tuple[T, ...]` to consume the sources (last-use `@nocopy` locals auto-move into the value tuple), or place the literal directly at its consumer.
 
@@ -1651,7 +1678,46 @@ If the two names genuinely need to reach one object, that is a design change rat
 
 **This is an acknowledged divergence, not a fixed bug.** Code that ignores the warning compiles and produces a value CPython would not; the specific shapes are tracked in `BUGS.md`. Closing it properly needs per-iteration storage, which cannot be supplied without allocating, copying, or keeping a second slot alive behind the author's back — see `TODO.md` for two mechanisms that were prototyped and discarded.
 
-The warning covers `for` and `while` bodies, nested loops, module scope, method bodies, and sources reached through a field or container element (`saved = o.inner` keeps `o`'s storage alive, so it is `o` that escapes). It is *not* exhaustive: the check runs at plain-name assignment, so an escape routed through a walrus binding or a `nonlocal` rebind inside a nested def is not seen, and neither is a local declared above the loop — those diverge with no diagnostic at all, and are tracked in `BUGS.md`.
+The warning covers `for` and `while` bodies, nested loops, module scope, method bodies, and sources reached through a field or container element (`saved = o.inner` keeps `o`'s storage alive, so it is `o` that escapes). It is *not* exhaustive: the check runs at plain-name assignment, so an escape routed through a walrus binding or a `nonlocal` rebind inside a nested def is not seen — those diverge with no diagnostic at all, and are tracked in `BUGS.md`.
+
+##### The rebind-site sibling
+
+The check above fires where the alias is **bound**, keyed on scope depth. Its sibling fires where the source is **rebound**, keyed on the alias itself — the same hazard reached from the other end, and the one that catches a local declared above the loop:
+
+```python
+def gen() -> Iterator[Int32]:
+    p = Point(1)
+    alias = p
+    p = Point(100)  # WARNING: 'alias' will not keep the object it was given
+    alias.bump()
+    yield alias.x   # TPy 101, CPython 2
+```
+
+```
+'alias' will not keep the object it was given -- 'p' is rebound here and both
+names share its storage; bind 'alias' with copy(p), or bind the new value to a
+name of its own
+```
+
+Whether the *first* rebind already clobbers or only a later one depends on how many object generations the name's storage can hold at once. An ordinary sync body holds **two** — the declaration's own storage plus one rebind slot — so a loan taken before the first rebind survives it and only a loan taken after is clobbered. A resumable frame (`async def`, a generator that keeps state across a `yield`), module level, and a nested-def local with no enclosing name of the same name hold **one**, so the first rebind clobbers. A rebind inside a loop counts as a later one, because it re-executes over the loan the body takes.
+
+A loan the loop body takes is still held after the last iteration, so it is the statement *after* the loop that clobbers it — the in-loop rebind stays quiet when the holder's value is dead there:
+
+```python
+def after_loop() -> None:
+    saved = Point(1)
+    p = Point(2)
+    for i in range(2):
+        p = Point(i)      # quiet: the value `saved` holds is dead -- the next line rebinds it
+        saved = p
+    p = Point(100)        # WARNING: 'saved' will not keep the object it was given
+    saved.bump()
+    print(saved.x, p.x)   # TPy 200 200, CPython 101 100
+```
+
+Three spellings avoid it, and none of them warn: `alias = copy(p)` (an independent object), `Rc.new` plus `.clone()` (identity and refcount preserved, at a heap block), or binding the new value to a name of its own (allocation-free). A rebind that only reseats a pointer — `p = other`, `p = xs[1]`, `p = None` — clobbers nothing and never warns, and neither does a value-typed local, whose rebind copies.
+
+The same divergence caveat applies: the value stays wrong if the warning is ignored. The shapes are tracked in `BUGS.md`.
 
 For `for-each` variables hoisting does not help — the variable is a reference into the container, so the reference itself would dangle. Those stay **hard errors**:
 

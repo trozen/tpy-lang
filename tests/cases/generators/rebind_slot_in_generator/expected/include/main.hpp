@@ -95,7 +95,7 @@ inline auto alias_holds_across_rebind(int32_t n) {
                 Point* p = &__slot_1;
                 // alias = p
                 Point& alias = (*p);
-                // p = Point(100)
+                // p = Point(100)  # tpyc: warning(/will not keep the object it was given/)
                 p = &*(__slot_2 = Point(100));
                 // alias.bump()
                 alias.bump();

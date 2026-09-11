@@ -209,9 +209,15 @@ in the current model.
   The single-yield lambda peephole runs a prologue at construction and post-yield code one
   pull early instead of suspending. The fix -- route such generators to the resumable path --
   is correct but IR-entangled, so it rides the migration: (1) rerouting some shapes hits the
-  resumable path's own IR-gated gaps (the borrow-form `tuple<int,Box*>` vs `tuple<int,Box>`
-  yield, Open-Q item 9; default-args-on-resumable-factory), so a broad reroute regresses
-  previously-building cases; (2) the only pre-IR alternative -- a *syntactic* "observable
+  resumable path's own gaps, so a broad reroute regresses previously-building cases. The two
+  gaps this bullet used to name are gone -- a borrow-form `tuple<int,Box*>` yield aliases
+  correctly and default args on a resumable factory work -- and what remains is `yield t` of a
+  whole tuple slot the frame OWNS (rejected: the sema dangle check for a fresh literal
+  element, `res.btuple_yield_source` for the `Own[]`-spelled and owning-call forms) and the
+  alias clobber (BUGS.md `resumable-alias-identity`: a rebind emplaces into the same frame
+  slot, so an alias taken earlier observes the new object -- silent wrong value where the
+  peephole's lambda-stack locals are correct today); (2) the only pre-IR alternative -- a
+  *syntactic* "observable
   prologue/post-yield" predicate to reroute selectively -- is a semantic-purity problem that
   leaks (a denylist keeping local bindings mis-times `x = f()`/`x = xs[i]`/`x = global`; an
   allowlist of pure-arith counters reroutes `i = Int32(0)` back into the tuple bug). Once MIR
@@ -2472,6 +2478,17 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    - boundary wraps (`_maybe_wrap_tuple_to_pointer` / `_to_storage`, the
      call-arg bridge, field writes, return/yield conversion, the await-arg
      lift).
+   Closed 2026-09, the resumable-frame tuple local: its field was derived from
+   the element TYPE while the write was decided per element, so the two
+   disagreed whenever an element was not a plain lvalue borrow. A whole-tuple
+   loop var now takes one field for both element shapes -- a pointer at the
+   source element (`std::tuple<int32_t, A>* t;`) -- and every other tuple
+   local's ownership is decided PER ELEMENT by each init and joined across all
+   of them (a literal's VALUE-captured element and every element an owning call
+   hands over are the frame's; an lvalue element stays a pointer at the
+   caller's object), carried as an effective `Own[]`-marked tuple type onto the
+   frame layout verdict THIR reads. One derivation, at the site that decides
+   it, instead of two independent ones -- the shape the form fact generalizes.
    Remaining open exhibits of the bug class: nested tuples where outer/inner
    forms disagree (BUGS.md nested-tuple entries), rvalue tuple-of-records into
    borrow-form slots (BUGS.md rvalue address-of entry), the rvalue GENERIC

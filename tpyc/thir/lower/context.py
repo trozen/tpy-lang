@@ -974,7 +974,8 @@ class _LowerCtx:
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name", "storage_tuple_locals",
                  "own_borrow_tuple_locals", "optional_borrow_tuple_locals",
-                 "const_storage_tuple_locals", "frame_slots",
+                 "const_storage_tuple_locals", "frame_own_tuple_types",
+                 "frame_slots",
                  "resumable_leaf_mode", "in_container_elem",
                  "nested_returns", "in_finally_helper",
                  "plain_frame_fields", "borrow_tuple_frame_locals",
@@ -1404,6 +1405,13 @@ class _LowerCtx:
         # storage name as `.`-access, so the pair must stay split until the
         # read arms key on this set directly.
         self.own_borrow_tuple_locals: set[str] = set()
+        # Resumable-frame tuple locals whose per-element OWNERSHIP is not in
+        # their declared type: a literal-bound owning/mixed frame slot, mapped
+        # to the effective `Own[...]`-marked tuple (codegen's
+        # `FrameLocalLayout.effective_type`). The element-read arrow chooser
+        # and the slot's write both read the ownership off this, since a
+        # literal's inferred type has no place to record it.
+        self.frame_own_tuple_types: dict[str, 'TpyType'] = {}
         # Subset of storage_tuple_locals bound from a const source (a const loop
         # var, or an alias off a const receiver chain): the borrow tuple wrap
         # spells `const T*` element pointers. Mirrors codegen's

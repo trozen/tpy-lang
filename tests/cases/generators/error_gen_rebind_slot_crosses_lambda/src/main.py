@@ -3,11 +3,10 @@
 # invocation while the pointer aliasing it is captured and outlives it, outside
 # the lambda cannot name it. Rejected rather than emitted either way.
 #
-# This is a stopgap over one codegen-visible slice of a general hazard -- a
-# rebind while a live alias points at the local, which one slot cannot represent
-# past a single generation. The sync and resumable-frame spellings of the same
-# shape are silently wrong instead (BUGS.md), so expect this reject to be
-# replaced by the uniform diagnostic rather than kept as a special case.
+# The reject is specific to the simple-generator lambda peephole: there is no
+# alias here, and the same body on the resumable frame is CORRECT (it prints
+# CPython's values exactly), so it retires when the peephole is deleted, not
+# with the alias-rebind clobber diagnostic -- see TODO.md's peephole entry.
 from tpy import Int32
 from typing import Iterator
 

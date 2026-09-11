@@ -1,0 +1,16 @@
+gen: 150
+gen: 150
+async: 150
+sync_second: 150 150
+field_chain: 150 150
+element: 50
+ptr: 150 150
+nested_def: 150 150
+after_branch: 150 150
+after_loop: 150 150
+body_local_holder: 150 150
+after_while: 150 150
+loop_carried_iter: 21
+loop_carried_iter: 1
+loop_carried: 1 1
+module: 150 150

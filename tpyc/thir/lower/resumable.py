@@ -896,6 +896,15 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
         # field the advance re-binds.
         _witness("res.loop_btuple_bind")
         return None
+    if stmt.var in value_tuple_holders:
+        # An ALL-VALUE whole-tuple loop var whose source cannot be
+        # address-taken (the dict_items proxy): the advance binds the value
+        # tuple bare into the plain field and element reads are the sync
+        # std::get rows. A tuple of values is unobservably a copy, so the
+        # bind loses no aliasing. Its address-takeable sibling never gets
+        # here -- it is a pointer-form loop var.
+        _witness("res.loop_value_tuple_bind")
+        return None
     if stmt.var in ptr_loop_vars:
         _witness("res.loop_ptr_bind")
         return None
@@ -1382,6 +1391,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     opt_tuple_holders: set[str] = set()
     borrow_tuple_loop_vars: set[str] = set()
     unpack_ptr_targets: set[str] = set()
+    # Pointer-form loop vars over a TUPLE element: the field points at the
+    # source element's STORAGE tuple, so element reads are the value form
+    # (`std::get<1>((*t)).v`) off the deref'd pointer. The `__for_tup_*`
+    # unpack holder is excluded -- its reads are the head unpack's own
+    # skeleton render, not the subscript family.
+    ptr_storage_tuple_loop_vars: set[str] = set()
     for f_info in rstate.for_info_by_uid.values():
         if f_info.pointer_form_loop_var is not None:
             ptr_frame_locals.add(f_info.pointer_form_loop_var)
@@ -1391,6 +1406,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         # fields the head unpack re-points via `= &(std::get<i>(__tup_N));`
         # -- the skeleton's pointer_form_unpack_targets seeding.
         unpack_ptr_targets.update(f_info.pointer_form_unpack_targets)
+    for lname, ltype in (func.generator_locals or []):
+        if (lname in ptr_frame_locals
+                and not lname.startswith("__for_tup_")
+                and isinstance(unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(ltype))), TupleType)):
+            ptr_storage_tuple_loop_vars.add(lname)
     frame_slots: set[str] = set()
     mixed_tuple_slots: set[str] = set()
     coro_handle_slots: set[str] = set()
@@ -1402,6 +1423,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # loop below only reads them, so they must not be rebuilt per local.
     _local_prescan = _Prescan(func, analyzer)
     _body_var_decls = _first_var_decls(func.body)
+    # Per-element ownership the declared type cannot spell (a literal-bound
+    # owning / mixed tuple slot). Collected for every kind so the read chooser
+    # and the slot write agree with the field the skeleton emitted.
+    frame_own_tuple_types: dict[str, TpyType] = {
+        lname: v.effective_type
+        for lname, v in frame_layout.bindings.items()
+        if v.effective_type is not None}
     for lname, ltype in (func.generator_locals or []):
         kind = frame_layout.bindings[lname].kind
         if kind in (_K.VALUE, _K.OWNED_STR):
@@ -1733,7 +1761,12 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # An owning tuple slot stores the STORAGE tuple, so element reads off
     # the slot deref render value-form (`std::get<1>((*t)).val`, dot not
     # arrow) -- the binding-form fact, per-binding not per-type.
+    lc.frame_own_tuple_types = frame_own_tuple_types
     lc.storage_tuple_locals |= owning_tuple_slots
+    # A pointer-to-storage-tuple loop var reads the same value form off its
+    # deref (`lc.pointers` supplies the `(*t)`), so it joins the same
+    # binding-form membership the owning slot uses.
+    lc.storage_tuple_locals |= ptr_storage_tuple_loop_vars
     # A frame-promoted STORAGE slot is movable with no value-type filter --
     # a last-use read moves out of the slot rather than copying it, which is
     # how a BigInt frame local moves at an async return. Its pointer-form

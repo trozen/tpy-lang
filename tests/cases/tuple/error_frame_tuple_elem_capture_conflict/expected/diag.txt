@@ -1,0 +1,1 @@
+main.py:20: error: 't' is bound both to a tuple holding a fresh object and to one borrowing an existing object, and lives across a suspension; the two need different storage. Bind the two forms to separate names

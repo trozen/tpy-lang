@@ -24,7 +24,7 @@ def outer(flag: Int32) -> Int32:
     def inner_alias(k: Int32) -> Int32:
         p = Point(k)
         alias = p
-        p = Point(k * 100)
+        p = Point(k * 100)  # tpyc: ok
         alias.bump()
         return alias.x + p.x
 

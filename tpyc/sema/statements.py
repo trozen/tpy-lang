@@ -75,7 +75,8 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, _borrow_storage_roots, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
+from .alias_rebind import check_alias_rebind_clobber
+from .context import BorrowKind, ITER_BORROWER, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, _borrow_storage_roots, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, borrowing_frame_callee,
@@ -1579,7 +1580,7 @@ class StatementAnalyzer:
             # loop-invariant, so drop the static fold and re-check each
             # iteration (else codegen emits an exit-less `while (true)`).
             self._unfold_loop_killed_isinstance(stmt.condition, body_kills.names)
-            with self.scopes.loop_scope():
+            with self.scopes.loop_scope(stmt.body):
                 self.init.apply_loop_entry_facts(
                     before,
                     condition_type_facts=then_type_facts,
@@ -1616,7 +1617,7 @@ class StatementAnalyzer:
                 before = self.init.save()
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
-                with self.scopes.loop_scope() as inner_scope:
+                with self.scopes.loop_scope(stmt.body) as inner_scope:
                     self.init.apply_loop_entry_facts(
                         before, kills=collect_fact_kills(stmt.body))
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
@@ -1660,14 +1661,14 @@ class StatementAnalyzer:
                 before = self.init.save()
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
-                with self.scopes.loop_scope() as inner_scope:
+                with self.scopes.loop_scope(stmt.body) as inner_scope:
                     self.init.apply_loop_entry_facts(
                         before, kills=collect_fact_kills(stmt.body))
                     # Track range facts for loop variable from range() calls
                     self._track_for_range_facts(stmt)
                     bt = self.ctx.func.borrow_tracker
                     if isinstance(stmt.iterable, TpyName):
-                        bt.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
+                        bt.add_borrow(stmt.iterable.name, ITER_BORROWER, BorrowKind.ITER)
                         self.ctx.func.loop_var_iterable[stmt.var] = [stmt.iterable.name]
                         # Protocol-typed and TypeParamRef params used as for-loop iterables
                         # require mutable access: .__next__() mutates iterator state.
@@ -1691,14 +1692,14 @@ class StatementAnalyzer:
                                     else:
                                         srcs = []
                                     for src in srcs:
-                                        bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                        bt.add_borrow(src, ITER_BORROWER, BorrowKind.ITER)
                                         iter_srcs.append(src)
                                 if iter_srcs:
                                     self.ctx.func.loop_var_iterable[stmt.var] = iter_srcs
                         else:
                             key = _storage_key(stmt.iterable)
                             if key is not None:
-                                bt.add_borrow(key, "__for_iter", BorrowKind.ITER)
+                                bt.add_borrow(key, ITER_BORROWER, BorrowKind.ITER)
                                 self.ctx.func.loop_var_iterable[stmt.var] = [key]
                     elif isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
                         # 8b: iterable is a call whose return borrows from source arg(s).
@@ -1720,7 +1721,7 @@ class StatementAnalyzer:
                                 else:
                                     srcs = []
                                 for src in srcs:
-                                    bt.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                    bt.add_borrow(src, ITER_BORROWER, BorrowKind.ITER)
                                     iter_srcs.append(src)
                                 if not srcs and arg is not None and _is_dangling_temporary_arg(arg):
                                     # Call results returning non-value types are
@@ -2780,7 +2781,7 @@ class StatementAnalyzer:
         before = self.init.save()
         consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
         ns_types_before = self._save_ns_var_types()
-        with self.scopes.loop_scope() as inner_scope:
+        with self.scopes.loop_scope(stmt.body) as inner_scope:
             self.init.apply_loop_entry_facts(
                 before, kills=collect_fact_kills(stmt.body))
             self.ctx.func.mutated_loop_vars.discard(stmt.var)
@@ -2794,7 +2795,7 @@ class StatementAnalyzer:
             # where the iterator references the iterable's storage).
             if isinstance(stmt.iterable, TpyName):
                 bt = self.ctx.func.borrow_tracker
-                bt.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
+                bt.add_borrow(stmt.iterable.name, ITER_BORROWER, BorrowKind.ITER)
                 self.ctx.func.loop_var_iterable[stmt.var] = [stmt.iterable.name]
                 # Protocol-typed or generic-typed iterables: `__aiter__`
                 # is called on the param and may mutate self, so the
@@ -3117,6 +3118,11 @@ class StatementAnalyzer:
             func.body, liveness_alias_sources(scan))
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
+        # A nested def keeps the ENCLOSING body's rebind-slot set (installed by
+        # _analyze_nested_def), because that is the set the lowering hands its
+        # lambda -- see the prescan swap in thir/lower/statements.
+        if not self.ctx.func.in_nested_def:
+            self.ctx.func.rebind_slot_names = scan.rvalue_reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
@@ -3268,9 +3274,11 @@ class StatementAnalyzer:
                     f"the default", stmt)
 
         self_is_receiver = self.ctx.receiver_self_in_scope()
+        outer_rebind_slots = self.ctx.func.rebind_slot_names
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
+            self.ctx.func.rebind_slot_names = outer_rebind_slots
             self.ctx.func.outer_scope_locals = outer_locals
             self.ctx.func.outer_self_is_receiver = self_is_receiver
 
@@ -4632,6 +4640,8 @@ class StatementAnalyzer:
         self.ctx.mark_all_view_borrowers_mutated(stmt.name)
         _handle_pinned_view_rebind(self.ctx, stmt.name, stmt)
         bt = self.ctx.func.borrow_tracker
+        if existing_type is not None and stmt.init is not None:
+            check_alias_rebind_clobber(self.ctx, stmt.name, stmt)
         bt.retarget_storage_borrows(stmt.name)
         bt.remove_borrower(stmt.name)
         # Bound async-METHOD coroutine: stable-lvalue receiver + borrow
@@ -5446,6 +5456,7 @@ class StatementAnalyzer:
             self.ctx.mark_all_view_borrowers_mutated(stmt.target.name)
             _handle_pinned_view_rebind(self.ctx, stmt.target.name, stmt)
             bt = self.ctx.func.borrow_tracker
+            check_alias_rebind_clobber(self.ctx, stmt.target.name, stmt)
             bt.retarget_storage_borrows(stmt.target.name)
             bt.remove_borrower(stmt.target.name)
             # Rebinding a non-value pointer-local generates local = &(source) in C++,

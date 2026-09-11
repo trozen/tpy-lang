@@ -147,6 +147,33 @@ def elem_wants_borrow_form(elem_type: 'TpyType | None') -> bool:
             and not unwrap_readonly(elem).is_value_type())
 
 
+def whole_tuple_loop_var_aliases(elem_type: 'TpyType | None') -> bool:
+    """Whether a NON-unpack tuple loop var is a POINTER to the source element
+    tuple (`std::tuple<..., T>*`) rather than a field of its own.
+
+    A tuple with a reference element has two C++ shapes, and a frame field in
+    either one disagrees with the advance: the storage tuple `*it` yields
+    cannot assign into a borrow-form field, and a borrow-form field rebuilt
+    per advance would still have to name the storage the pointers point at.
+    Pointing at the source element -- exactly what the tuple-UNPACK sibling's
+    `__for_tup` holder does -- has one shape, needs no runtime helper, and
+    aliases the source like CPython's `auto&&` sync twin.
+
+    An ALL-VALUE element tuple takes the same field rather than the value copy
+    it could get away with: one form answers the question for both element
+    shapes, so there is no second classification to keep in step.
+
+    For `begin_end` sources only -- the ones that lend a genuine lvalue.
+    An `__iter__`/`__next__` source hands the step result back BY VALUE for a
+    tuple element (`val_or_ref_t` treats a tuple as a value type), so there
+    is no source element to point at; its own defect is that the sync emitter
+    reads such an element in borrow form regardless (see BUGS.md).
+    """
+    elem = (unwrap_readonly(unwrap_ref_type(elem_type))
+            if elem_type is not None else None)
+    return isinstance(elem, TupleType)
+
+
 def elem_is_known_value(elem_type: 'TpyType | None') -> bool:
     """Whether the element is a CONCRETE value type, so a plain frame field is
     right and the storage-form trait is not needed.
@@ -1038,7 +1065,8 @@ class GeneratorCodegen:
                 pointer_form_var = (
                     stmt.var
                     if (not yields_proxy
-                        and elem_wants_borrow_form(native_elem))
+                        and (elem_wants_borrow_form(native_elem)
+                             or whole_tuple_loop_var_aliases(native_elem)))
                     else None
                 )
             borrow_tuple_var = (

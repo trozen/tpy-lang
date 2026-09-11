@@ -1647,6 +1647,7 @@ class AsyncCoroCodegen:
             # classify; rendering a frame FIELD for it raises at the struct
             # emit.
             payload: str | None = None
+            effective_type: 'TpyType | None' = None
             if self.functions.protocols.is_static_protocol_param(ltype_inner):
                 kind = rcfg.FrameLocalKind.PROTOCOL
             elif lname in source_form_fields:
@@ -1681,10 +1682,16 @@ class AsyncCoroCodegen:
                 # has no fully-owned storage form to hold: its borrowed
                 # element must keep pointing at the caller's object, so its
                 # payload is the mixed render.
-                if (isinstance(ltype_inner, TupleType)
-                        and ltype_inner.is_mixed_own()):
+                #
+                # The ownership axis reads off the EFFECTIVE type: a literal
+                # init's per-element verdict carries no `Own` in the declared
+                # type (there is no user spelling for it), so the oracle hands
+                # the Own-wrapped image back and every arm below keys on that.
+                eff = owning_tuple_locals[lname] or ltype_inner
+                effective_type = eff
+                if isinstance(eff, TupleType) and eff.is_mixed_own():
                     kind = rcfg.FrameLocalKind.MIXED_TUPLE_SLOT
-                    payload = self.types.tuple_borrow_cpp(ltype_inner)
+                    payload = self.types.tuple_borrow_cpp(eff)
                 else:
                     kind = rcfg.FrameLocalKind.OWNING_TUPLE_SLOT
             elif (isinstance(ltype_inner, TupleType)
@@ -1731,7 +1738,8 @@ class AsyncCoroCodegen:
                 const=(kind in (rcfg.FrameLocalKind.PTR_ALIAS,
                                 rcfg.FrameLocalKind.OPT_PTR)
                        and lname in const_aliases),
-                payload=payload)
+                payload=payload,
+                effective_type=effective_type)
 
         state.frame_layout = rcfg.FrameLayoutPlan(bindings=bindings)
         return state.frame_layout

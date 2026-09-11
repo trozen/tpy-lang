@@ -2990,6 +2990,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
+    "res.frame_own_tuple_literal",  # literal at a fully-owned frame slot
+    "res.frame_mixed_tuple_literal",  # literal at a MIXED-own frame slot
     "res.alias_bind",               # pointer-alias frame bind (= &(<lvalue>)
                                     # or the bare alias-of-alias pointer copy)
     "res.nested_def_member",        # frame nested def -> the marker-line stmt
@@ -3014,6 +3016,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.for_narrowed_opt_field_src",
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
     "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted
+    "res.loop_value_tuple_bind",    # whole all-value tuple loop var admitted
     "res.yield_record_borrow",      # record yield of a routed loop-var name
     "res.yield_record_param",       # record yield of a PARAM name, bare
     "res.yield_value",              # generator yield-value render

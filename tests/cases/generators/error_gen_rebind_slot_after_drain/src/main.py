@@ -1,8 +1,8 @@
 # Same cross-scope hazard as error_gen_rebind_slot_crosses_lambda (see its
-# header for why the reject is a stopgap), but with an earlier same-scope rebind
-# that already drained the slot's declaration. The reject keys on the slot's
-# owning scope, not on the pending declaration, so the diagnostic must not
-# depend on statement order.
+# header for why the reject retires with the peephole), but with an earlier
+# same-scope rebind that already drained the slot's declaration. The reject
+# keys on the slot's owning scope, not on the pending declaration, so the
+# diagnostic must not depend on statement order.
 from tpy import Int32
 from typing import Iterator
 

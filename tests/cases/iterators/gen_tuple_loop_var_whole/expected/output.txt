@@ -1,0 +1,20 @@
+free 1
+free 110
+free 2
+free 120
+free src 110 120
+value 1
+value 10
+value 2
+value 20
+method 3
+method 130
+method src 130
+readonly 3
+readonly 130
+async 155
+async src 150
+async items 3
+items 7
+items 170
+items src 170

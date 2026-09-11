@@ -2587,6 +2587,11 @@ def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
         return False
     recv_t, idx = res
     if isinstance(sub.obj, TpyName):
+        # A literal-bound frame slot's ownership is not in the declared type,
+        # so the per-element verdict below reads the effective one.
+        _eff = lc.frame_own_tuple_types.get(sub.obj.name)
+        if isinstance(_eff, TupleType):
+            recv_t = _eff
         if (sub.obj.name in lc.storage_tuple_locals
                 # A walrus-slot tuple (`std::optional<std::tuple<..>>`)
                 # holds its elements BY VALUE: `std::get<i>((*t))` yields

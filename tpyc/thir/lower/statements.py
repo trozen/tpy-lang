@@ -96,6 +96,7 @@ from ...typesys import (
     UnionType,
     VoidType,
     collapse_tuple_own_elements,
+    owned_tuple_storage_type,
     contains_pending_leaf,
     is_void_like_type,
     error_return_to_cpp,
@@ -6850,6 +6851,31 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     Shared by the top-level leaf decl arm and the branch-nested decl arm."""
     init = _peel_stale_view_owned_coerce(stmt.init, declared[stmt.name],
                                          lc.analyzer)
+    _fsw_eff = lc.frame_own_tuple_types.get(stmt.name)
+    if isinstance(init, TpyTupleLiteral) and isinstance(_fsw_eff, TupleType):
+        # A tuple LITERAL into an owning frame slot whose per-element
+        # ownership was inferred from the literal's own captures. MIXED (some
+        # element owned, some borrowed) has no whole-tuple value form, so it
+        # takes the same per-element builder the mixed render uses elsewhere;
+        # a fully-owned slot spells the storage tuple. `consuming` marks the
+        # slot as outliving the statement, which is what makes an rvalue
+        # element land in a value slot rather than as a dead borrow.
+        if _fsw_eff.is_mixed_own():
+            value = _lower_borrow_tuple_literal(
+                init, _fsw_eff, lc, declared, consuming=True,
+                use=_ExprUse(allow_temps=True))
+            _witness("res.frame_mixed_tuple_literal")
+        else:
+            value = _lower_tuple_literal(
+                init, owned_tuple_storage_type(_fsw_eff), lc, declared,
+                use=_ExprUse(allow_temps=True))
+            _witness("res.frame_own_tuple_literal")
+        return THIRFrameSlotWrite(
+            name=stmt.name, value=value,
+            cpp_type=lc.render_type(unwrap_readonly(unwrap_ref_type(
+                lc.frame_local_types.get(stmt.name, declared[stmt.name])))),
+            loc=stmt.loc,
+            no_source_comment=getattr(stmt, "no_source_comment", False))
     if type(init) in _comprehensions._COMP_KINDS:
         # A comprehension init (`rows = [[i, i+1] for i in range(3)]`):
         # the ordinary comp statement-expression renders INSIDE the

@@ -273,10 +273,16 @@ class FrameLocalLayout:
     is const-rooted). `payload` is the frame_slot field's C++ payload
     spelling for the kinds that cannot re-derive it from the local's type --
     SOURCE_FORM_SLOT (spelled from the iteration source) and
-    MIXED_TUPLE_SLOT (the mixed render); None for every other kind."""
+    MIXED_TUPLE_SLOT (the mixed render); None for every other kind.
+
+    `effective_type` is the local's tuple type with per-element ownership made
+    explicit (`Own[...]` on the elements the frame owns) for a tuple whose
+    declared type cannot say so -- a literal-bound owning local. None whenever
+    the declared type is already the whole story."""
     kind: FrameLocalKind
     const: bool = False
     payload: 'str | None' = None
+    effective_type: 'TpyType | None' = None
 
 
 @dataclass

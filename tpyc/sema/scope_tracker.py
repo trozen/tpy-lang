@@ -13,6 +13,7 @@ from ..typesys import TpyType, OwnType
 from ..parse import TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyExpr, TpyStmt, TpyFunction
 from ..namespace import Namespace
 from ..diagnostics import Scope
+from .alias_rebind import collect_loop_body_loans
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -29,15 +30,23 @@ class ScopeTracker:
     # --- Loop scope management ---
 
     @contextmanager
-    def loop_scope(self) -> Iterator[Scope]:
-        """Create an inner scope for a loop body and bump loop_depth."""
+    def loop_scope(self, body: list[TpyStmt] | None = None) -> Iterator[Scope]:
+        """Create an inner scope for a loop body and bump loop_depth.
+
+        ``body`` seeds the loop's loan pre-scan: sema walks a loop body once,
+        so a rebind inside it needs the syntax to tell it which loans the
+        next iteration will re-take (see `alias_rebind`).
+        """
         inner_scope = Scope(self.ctx.func.current_scope)
         old_scope = self.ctx.func.current_scope
         self.ctx.func.current_scope = inner_scope
         self.ctx.func.loop_depth += 1
+        self.ctx.func.loop_body_loans.append(
+            collect_loop_body_loans(body) if body else {})
         try:
             yield inner_scope
         finally:
+            self.ctx.func.loop_body_loans.pop()
             self.ctx.func.loop_depth -= 1
             self.ctx.func.current_scope = old_scope
 

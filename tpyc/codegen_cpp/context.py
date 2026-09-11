@@ -26,7 +26,7 @@ from ..parse import (
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
     TpyIfExpr, TpyAssign, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
-    TpyNamedExpr, walrus_bindings,
+    TpyNamedExpr, TpyTupleLiteral, TupleElemCapture, walrus_bindings,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
@@ -2991,23 +2991,37 @@ class CodeGenContext:
             return f"(*{escape_cpp_name(storage)})"
         return None
 
-    def owning_generator_tuple_locals(self, func: 'TpyFunction') -> set[str]:
-        """Generator/async frame locals that are OWNING tuples needing
-        `tpy::frame_slot<std::tuple<...>>` storage rather than a raw field.
+    def owning_generator_tuple_locals(
+            self, func: 'TpyFunction') -> dict[str, 'TpyType | None']:
+        """Generator/async frame locals that OWN tuple element storage, mapped
+        to the EFFECTIVE tuple type when it differs from the declared one.
 
-        Two sources qualify (both never-reassigned):
-          - bound from an `Own[tuple[...]]` call (owning pointer-repr tuple);
+        A frame field for such a local is `frame_slot<std::tuple<..., T>>`, not
+        the borrow-form `std::tuple<..., T*>`: a borrow field can't hold owned
+        elements and the owning rvalue can't be address-taken into it. Aliasing
+        tuple locals (every element bound from a storage lvalue) stay borrow
+        form.
+
+        Two sources qualify:
           - typed as a tuple with an `OWN` element (e.g. an await-result lift
             temp `tuple[Own[socket], ...]`). `is_value_type()` reports such a
             tuple True, so without this it would take the raw-field path and
             make the frame default ctor ill-formed (the owned element by value
-            is not default-constructible).
+            is not default-constructible);
+          - an init that hands the frame element storage: a tuple LITERAL that
+            VALUE-captures a reference element (`t = (A(1), 2)` -- a fresh
+            rvalue no one else owns, so a borrow field would dangle at the end
+            of the statement), or an owning call (`t = make_pair()`, whose
+            result is equally the frame's).
 
-        Such a local owns its element storage, so its frame field must be a
-        `frame_slot<std::tuple<..., T>>` -- a borrow-form `std::tuple<..., T*>`
-        field can't hold the owned elements and the owning rvalue can't be
-        address-taken into it. Aliasing tuple locals (bound from a storage
-        lvalue) stay borrow form.
+        Ownership is decided PER ELEMENT by each init (`init_verdict`) and
+        joined across every init of the name: element i is owned iff every init
+        hands it over. The verdict is expressed as an effective TupleType
+        with the owned reference elements wrapped in `Own[...]`, so
+        `is_owned_movable` / `is_mixed_own` / `tuple_borrow_cpp` route it into
+        the frame kinds that already exist. An element one init hands over and
+        another only borrows has no single form and is rejected at the decl --
+        the borrow would have to point into the owning init's dead temporary.
         """
         # Local import: top-level would cycle (resumable_cfg -> gen_generators
         # -> context).
@@ -3015,8 +3029,8 @@ class CodeGenContext:
         one_shot = _rcfg.resumable_state(func).one_shot_lift_names
         scan = self.analyzer.function_scan_results.get(func)
         reassigned = scan.reassigned if scan is not None else set()
-        gen_names = {n for n, _ in (func.generator_locals or [])}
-        owning: set[str] = set()
+        gen_types = dict(func.generator_locals or [])
+        owning: dict[str, 'TpyType | None'] = {}
 
         # Type/provenance-driven owning tuple locals:
         #  - a tuple with an OWN element owns its storage regardless of how it
@@ -3032,33 +3046,105 @@ class CodeGenContext:
                 continue
             if (inner.has_own_element()
                     or (lname in one_shot and inner.has_pointer_repr_element())):
-                owning.add(lname)
+                owning[lname] = None
 
-        def record(name: str | None, src: TpyExpr | None) -> None:
-            if (name is None or src is None
-                    or name not in gen_names or name in reassigned):
+        # Per-name join of the per-element ownership each init implies. A
+        # missing entry means "no init said anything", which is the borrow
+        # default.
+        elem_owned: dict[str, list[bool]] = {}
+        # An element ANY init wants owned: the join alone cannot tell "no init
+        # owned it" (plain borrow, fine) from "one did and another did not"
+        # (no single form -- the diagnostic below).
+        elem_wanted: dict[str, list[bool]] = {}
+        conflicts: dict[str, TpyStmt] = {}
+
+        def init_verdict(init: TpyExpr, inner: TupleType) -> list[bool]:
+            """Per-element ownership THIS ONE init implies, decided here and
+            nowhere else -- the join below only merges verdicts.
+
+            A tuple LITERAL owns the elements it VALUE-captures (a fresh
+            object no one else holds). An owning CALL hands the frame the
+            whole result, so every element the result owns is the frame's;
+            which those are is in the return type -- `Own[tuple[...]]` owns
+            each reference element, a per-element `tuple[Own[A], B]` owns
+            exactly its `Own` slots. Every other init (including a
+            borrow-returning call) contributes the borrow default."""
+            n = len(inner.element_types)
+            if isinstance(init, TpyTupleLiteral) and init.elem_capture:
+                verdict = [
+                    (init.elem_capture[i] is TupleElemCapture.VALUE
+                     and not unwrap_readonly(
+                         unwrap_ref_type(inner.element_types[i])).is_value_type())
+                    for i in range(min(n, len(init.elem_capture)))]
+            elif (isinstance(init, (TpyCall, TpyMethodCall))
+                    and self.is_storage_form_source(init)):
+                fi = init.resolved_function_info
+                rt = unwrap_readonly(fi.return_type) if fi is not None else None
+                if isinstance(rt, TupleType):
+                    verdict = [isinstance(et, OwnType)
+                               for et in rt.element_types][:n]
+                else:
+                    verdict = [
+                        not unwrap_readonly(
+                            unwrap_ref_type(et)).is_value_type()
+                        for et in inner.element_types]
+            else:
+                verdict = []
+            return verdict + [False] * (n - len(verdict))
+
+        def record(name: str | None, src: TpyExpr | None,
+                   at: 'TpyStmt | None') -> None:
+            """Join one init's per-element ownership into the name's verdict."""
+            ltype = gen_types.get(name) if name is not None else None
+            inner = unwrap_ref_type(ltype) if ltype is not None else None
+            if name is None or src is None or not isinstance(inner, TupleType):
                 return
-            inner = src.expr if isinstance(src, TpyCoerce) else src
-            if (isinstance(inner, (TpyCall, TpyMethodCall))
-                    and self.is_storage_form_source(inner)):
-                owning.add(name)
+            init = src.expr if isinstance(src, TpyCoerce) else src
+            verdict = init_verdict(init, inner)
+            prev = elem_owned.get(name)
+            if prev is None:
+                elem_owned[name] = verdict
+                elem_wanted[name] = list(verdict)
+                return
+            want = elem_wanted[name]
+            for i, (a, b) in enumerate(zip(prev, verdict)):
+                if a != b and at is not None:
+                    conflicts.setdefault(name, at)
+                prev[i] = a and b
+                want[i] = want[i] or b
 
         def visit(stmts: list[TpyStmt]) -> None:
             for stmt in stmts:
                 if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-                    record(stmt.name, stmt.init)
+                    record(stmt.name, stmt.init, stmt)
                 elif (isinstance(stmt, TpyAssign)
                       and isinstance(stmt.target, TpyName)):
-                    record(stmt.target.name, stmt.value)
+                    record(stmt.target.name, stmt.value, stmt)
                 # A walrus binds in expression position: without this row its
                 # owning-call source is invisible here and the frame gets a
                 # borrow-form tuple field aliasing the dead result temporary.
                 for ne in walrus_bindings(stmt):
-                    record(ne.target, ne.value)
+                    record(ne.target, ne.value, stmt)
                 for body in stmt.sub_bodies():
                     visit(body)
 
         visit(func.body)
+        for lname, flags in elem_owned.items():
+            if not any(elem_wanted[lname]):
+                continue
+            if lname in conflicts:
+                at = conflicts[lname]
+                raise CodeGenError(
+                    f"'{lname}' is bound both to a tuple holding a fresh "
+                    f"object and to one borrowing an existing object, and "
+                    f"lives across a suspension; the two need different "
+                    f"storage. Bind the two forms to separate names",
+                    loc=getattr(at, "loc", None))
+            inner = unwrap_ref_type(gen_types[lname])
+            eff = TupleType(tuple(
+                OwnType(et) if own and not isinstance(et, OwnType) else et
+                for et, own in zip(inner.element_types, flags)))
+            owning[lname] = eff
         return owning
 
     def setup_resumable_frame_locals(self, func: 'TpyFunction') -> None:
