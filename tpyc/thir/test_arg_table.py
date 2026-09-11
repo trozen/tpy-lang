@@ -276,6 +276,7 @@ class TestMethodArgSinkShape:
             "container_field_pass",
             "record_pass_through",
             "record_field_marker",
+            "record_elem_subscript",
             "method_ctor_rvalue",
             "record_rvalue_temp_factory",
             "dyn_own_conformer",
@@ -307,7 +308,7 @@ class TestMethodArgSinkShape:
         # already name: 15 shapes were written twice, and the leading cell is
         # now the only one deciding them.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 107
+        assert len(rows) == 108
         assert len(rows[:self.STUB_ROWS]) == 50
         assert rows[self.STUB_ROWS] == "lambda"
 
@@ -496,7 +497,7 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 46
+        assert len([r for r in rows if r in others]) == 47
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",
@@ -588,7 +589,7 @@ class TestMethodArgSinkShape:
         # transcription.
         plain = {r.row for r in _PLAIN_ARG_SINK.rows}
         mine = {r.row for r in _METHOD_ARG_SINK.rows}
-        assert len(plain - mine) == 41
+        assert len(plain - mine) == 40
         assert {"borrow_tuple_field", "borrow_tuple_subscript",
                 "callable_field", "container_literal", "container_module_var",
                 "covariant_temp", "deref_coerce", "dyn_own_coro_factory",
@@ -598,7 +599,7 @@ class TestMethodArgSinkShape:
                 "own_tuple_storage_elem", "own_union_call_pass",
                 "own_union_ctor", "readonly_container_rvalue",
                 "readonly_record_ctor", "record_borrow_call",
-                "record_elem_subscript", "record_field_ref",
+                "record_field_ref",
                 "record_rvalue_temp", "recursive_union_borrow_call",
                 "ref_param_dictset_literal", "required_protocol_union",
                 "ru_container_literal", "ru_wrapper_borrow_call",
@@ -667,6 +668,7 @@ class TestMarkerSinkSplit:
             "container_literal_method",
             "container_field_pass",
             "record_field_marker",
+            "record_elem_subscript",
             "value_tuple_field_pass",
             "borrow_ret_record_marker",
             "btuple_literal_marker",
@@ -945,7 +947,7 @@ class TestPlainSinkShape:
                      _METHOD_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 46
+        assert len(shared) == 47
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -1567,6 +1569,7 @@ class TestRecordCtorSinkShape:
             "async_factory_wrap",
             "callable_value_pass",
             "field_read_ref_ctor",
+            "record_elem_subscript",
             "container_comp",
             "container_literal",
             "own_container_literal",
@@ -1608,6 +1611,7 @@ class TestRecordCtorSinkShape:
             "dyn_own_conformer",
             "value_record_rvalue",
             "ptr_pass_through",
+            "record_elem_subscript",
             "const_rvalue",
             "str_pass_through_unmutated",
         ]
@@ -1793,7 +1797,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 37
+        assert len([r for r in rows if r in others]) == 38
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

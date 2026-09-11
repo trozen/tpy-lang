@@ -2636,6 +2636,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # bare by an Own[container] slot
     "arg.record_borrow_call",       # T&-returning call bound inline at a
                                     # record ref slot (bump(find_first(..)))
+    "arg.record_elem_subscript",    # checked element lvalue bound inline at
+                                    # a record ref slot, every call family
+                                    # (Player(things[0]), add_a(a.bs[0]))
     "arg.recursive_union_borrow_call",  # the wrapper-slot twin
                                     # (show(v.inner.get()) at `const Value&`)
     "arg.native_protocol_tuple_literal",  # tuple literal at a native

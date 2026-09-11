@@ -1,0 +1,14 @@
+ctor_field_write 4.0 14.0 14.0
+method_field_write 15.0 15.0
+ctor_local_decl 5.0 4.0
+ctor_nested 15.0 15.0
+ctor_mutated_slot 14.0 14.0
+method 5.0 5.0
+static_method 105.0 105.0
+stub_count 2
+stub_index 1
+dict_elem 17.0 17.0
+generator 11.0
+generator 12.0
+generator 11.0 12.0
+module_level 11.0 11.0

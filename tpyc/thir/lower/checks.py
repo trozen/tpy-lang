@@ -12464,6 +12464,10 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # ... and its FIELD twin (`self.soak(other.inner)`): the member
         # read binds the same record ref slot bare.
         _ArgRow("record_field_marker", _r_record_field_marker),
+        # ... and its ELEMENT twin (`bag.take(things[0])`, the stub
+        # `things.count(things[0])`): the checked element lvalue binds the
+        # record ref slot inline.
+        _ArgRow("record_elem_subscript", _r_record_elem_subscript),
         _ArgRow("method_ctor_rvalue", _r_method_ctor_rvalue),
         # A record rvalue at a generator/coro factory method's ref /
         # readonly-ref slot hoists the named scope-local the frame
@@ -12681,6 +12685,9 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     # the member read binds the `T&` slot bare -- the same cell the
     # record-method family carries.
     _ArgRow("record_field_marker", _r_record_field_marker),
+    # ... and its ELEMENT twin (`Bag.peek(things[0])`): the checked
+    # element lvalue binds the record ref slot inline.
+    _ArgRow("record_elem_subscript", _r_record_elem_subscript),
     # ... and its VALUE-TUPLE twin (`self._sock.connect(self._addr)`):
     # borrow and storage forms coincide, so the member read binds the
     # `const std::tuple<..>&` slot bare.

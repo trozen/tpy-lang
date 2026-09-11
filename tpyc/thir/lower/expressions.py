@@ -542,6 +542,7 @@ from .checks import (
     _r_opt_own_ptr_opt_name_move,
     _r_container_comp,
     _r_own_container_comp,
+    _r_record_elem_subscript,
     _own_container_comp_arg,
     _own_container_comp_slot,
     _container_module_var_arg,
@@ -1932,6 +1933,10 @@ _CTOR_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("callable_value_pass", _r_callable_value_pass),
         _ArgRow("field_read_ref_ctor", _r_field_read_ref_ctor,
                 face="ctor.field_read_ref_arg"),
+        # A checked container-element read at a record ref slot
+        # (`Player(things[0])`): the element lvalue binds the slot inline,
+        # the free-call family's render.
+        _ArgRow("record_elem_subscript", _r_record_elem_subscript),
         # A comprehension at a container slot hoists the slot-typed ArgTemp
         # the free-call family renders (an lvalue, so a mutated `T&` slot
         # binds it too); flush-gated like every other temp row here.
@@ -2092,6 +2097,9 @@ _CTOR_NESTED_ARG_SINK = register_sink(_ArgSink(
         # never fires there, so every leg renders in place (bare value,
         # `nullptr`, the storage-optional lift), which is this family's rule.
         _ArgRow("ptr_pass_through", _r_ptr_pass_through),
+        # A checked container-element read binds the record ref slot inline
+        # at a flush-less nested position too: it hoists nothing.
+        _ArgRow("record_elem_subscript", _r_record_elem_subscript),
         # DECISIVE: an unmutated record-rvalue temp slot is answered HERE.
         # The ladder spelled it as an early `return`, so a source that is
         # not one of the two ctor/call shapes is REFUSED rather than falling
@@ -13026,17 +13034,21 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
             loc=getattr(a, "loc", None))
     _ru_borrow_call = (_recursive_union_borrow_call_arg(a, ptype, analyzer)
                        if plain_kind else False)
+    _elem_sub = (_record_elem_subscript_arg(a, ptype, analyzer)
+                 if plain_kind else False)
     if (plain_kind
             and (_ru_borrow_call
                  or _record_borrow_call_arg(a, ptype, analyzer)
-                 or _record_elem_subscript_arg(a, ptype, analyzer))):
+                 or _elem_sub)):
         # The T&-returning call / checked record-element read binds the
         # record ref slot inline (`bump(find_first(pts))` /
         # `add_a(::tpy::__getitem__(a.bs, 0), ..)`); BORROW_BIND admits
         # the borrow-record result like the compare-operand twin. A
         # recursive-union WRAPPER slot binds the same way -- same render,
-        # separate face so the boundary stays measurable.
+        # separate face so the boundary stays measurable; the element read
+        # carries the face every other family witnesses it under.
         _witness("arg.recursive_union_borrow_call" if _ru_borrow_call
+                 else "arg.record_elem_subscript" if _elem_sub
                  else "arg.record_borrow_call")
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
@@ -14463,6 +14475,15 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
     # const-ref param bare): BORROW_BIND so the callee's result gate
     # admits the wrapper return, the free-call arm's qualcall twin.
     if _ru_wrapper_borrow_call_arg(a, ptype, lc.analyzer):
+        return _lower_expr(a, lc, declared,
+                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                                        allow_temps=temp_args))
+    # A checked container-element read at a record ref slot
+    # (`Player(things[0])`, `bag.take(things[0])`): the element lvalue
+    # binds the slot inline -- the free-call arm's render, which every
+    # other family's gate now admits as the same row.
+    if _record_elem_subscript_arg(a, ptype, lc.analyzer):
+        _witness("arg.record_elem_subscript")
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
                                         allow_temps=temp_args))
