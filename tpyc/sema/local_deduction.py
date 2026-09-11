@@ -319,7 +319,7 @@ class LocalTypeDeduction:
         var's declared type in place across var_types, declared_var_types,
         scope, and namespace -- subsequent expression analysis in the same
         function sees the new type, and codegen reads it through
-        var_types[id(decl)]. Returns the new (unwrapped) target on
+        var_types[decl]. Returns the new (unwrapped) target on
         success; None when the gate fails or some recorded value is out
         of range.
         """
@@ -334,7 +334,7 @@ class LocalTypeDeduction:
         var_decl = self.ctx.func.var_decl_by_name.get(name)
         if var_decl is None:
             return None
-        self.ctx.var_types[id(var_decl)] = target
+        self.ctx.var_types[var_decl] = target
         for key in list(self.ctx.declared_var_types):
             if key[1] == name:
                 self.ctx.declared_var_types[key] = target
@@ -813,7 +813,7 @@ class LocalTypeDeduction:
         if info.variable_name:
             var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
             if var_decl:
-                self.ctx.var_types[id(var_decl)] = resolved
+                self.ctx.var_types[var_decl] = resolved
 
     # ------------------------------------------------------------------
     # Dict literal deduction
@@ -1270,7 +1270,7 @@ class LocalTypeDeduction:
 
             var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
             if var_decl:
-                self.ctx.var_types[id(var_decl)] = resolved
+                self.ctx.var_types[var_decl] = resolved
             if info.decl_line is not None:
                 self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
 
@@ -1359,10 +1359,10 @@ class LocalTypeDeduction:
                     binding.type = self._deep_resolve_pending(binding.type)
 
         for node in self.ctx.func.pending_composite_exprs:
-            current = self.ctx.expr_types.get(id(node))
+            current = self.ctx.expr_types.get(node)
             if current is not None:
                 current = self._deep_resolve_pending(current)
-                self.ctx.expr_types[id(node)] = current
+                self.ctx.expr_types[node] = current
                 # Completeness net for the recorded-composite half of the
                 # set_expr_type chokepoint: an explicit raise (like
                 # _assert_no_pending_locals, so it is not stripped under -O)

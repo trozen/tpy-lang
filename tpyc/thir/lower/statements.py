@@ -1010,7 +1010,7 @@ def _for_loop_shape_ok(stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
             or stmt.enum_iterable is not None
             or stmt.consuming_iter_fi is not None):
         return False
-    if not allow_branch_decls and analyzer.if_branch_decls.get(id(stmt)):
+    if not allow_branch_decls and analyzer.if_branch_decls.get(stmt):
         return False
     if stmt.hoist_loop_var:
         return allow_hoist
@@ -1479,7 +1479,7 @@ def _for_consuming_route(stmt: TpyForEach, analyzer,
             # mutated loop var).
             or (stmt.const_loop_var and not own_iter_name)):
         return None
-    if analyzer.if_branch_decls.get(id(stmt)):
+    if analyzer.if_branch_decls.get(stmt):
         return None
     if stmt.var in declared:
         return None
@@ -1510,7 +1510,7 @@ def _for_enum_route(stmt: TpyForEach, analyzer,
     if (stmt.is_async or stmt.is_tuple_unpack
             or stmt.consuming_iter_fi is not None or stmt.hoist_loop_var):
         return None
-    if analyzer.if_branch_decls.get(id(stmt)):
+    if analyzer.if_branch_decls.get(stmt):
         return None
     if stmt.var in declared:
         return None
@@ -1544,7 +1544,7 @@ def _for_tuple_unpack_route(
     up = stmt.body[0]
     if not (isinstance(up.value, TpyName) and up.value.name == stmt.var):
         return None
-    hoisted_names = analyzer.if_branch_decls.get(id(stmt), {}).keys()
+    hoisted_names = analyzer.if_branch_decls.get(stmt, {}).keys()
     target_types = _tuple_unpack_targets(up, analyzer, declared, narrowed,
                                          hoisted_names)
     it = stmt.iterable
@@ -2042,7 +2042,7 @@ def _for_each_reject_detail(stmt: TpyForEach, analyzer,
         return "foreach.consuming_iter"
     if stmt.hoist_loop_var:
         return "foreach.hoist_loop_var"
-    if analyzer.if_branch_decls.get(id(stmt)):
+    if analyzer.if_branch_decls.get(stmt):
         return "foreach.branch_decls"
     if stmt.var in declared:
         return "foreach.var_shadow"
@@ -2902,7 +2902,7 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx') -> bool:
     locals registered so far, so a source that turns const only later is not
     covered."""
     analyzer = lc.analyzer
-    borrow_decls = analyzer.function_stmt_borrow_decls.get(id(lc.func), {})
+    borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
 
     def name_const(n: str) -> bool:
         return (n in lc.const_locals or borrow_decls.get(n, False)
@@ -2968,7 +2968,7 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
     if name in lc.prescan.move_through:
         return False
     if analyzer.function_stmt_borrow_decls.get(
-            id(lc.func), {}).get(name, False):
+            lc.func, {}).get(name, False):
         return False
     if contains_pending_leaf(bare) or any(
             isinstance(t, (PendingViewType, IntLiteralType, FloatLiteralType))
@@ -3065,13 +3065,13 @@ def _opt_storage_hoist_flavor(name: str, var_type: TpyType,
         return "resumable"
     if name in lc.prescan.move_through:
         return "move_through"
-    borrow_decls = analyzer.function_stmt_borrow_decls.get(id(lc.func), {})
+    borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
     if borrow_decls.get(name, False):
         return "const"
     if (name in lc.prescan.reassigned
             or (name in borrow_decls
                 and name not in analyzer.function_ever_owned_locals.get(
-                    id(lc.func), set()))):
+                    lc.func, set()))):
         return "other"
     return None
 
@@ -3100,8 +3100,8 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
     const/readonly hoists, borrow-form tuples, resumable bodies (the
     rebind hoists have no drain point in the leaf emitters)."""
     analyzer = lc.analyzer
-    borrow_decls = analyzer.function_stmt_borrow_decls.get(id(lc.func), {})
-    ever_owned = analyzer.function_ever_owned_locals.get(id(lc.func), set())
+    borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
+    ever_owned = analyzer.function_ever_owned_locals.get(lc.func, set())
     hoist_decls: list[tuple[str, str]] = []
     hoist_slots: list[tuple[str, str]] = []
     for name, raw in hoists.items():
@@ -3350,7 +3350,7 @@ def _lower_error_return_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
                 and not (lc.func.is_generator or lc.func.is_async)
                 and bare is not None and is_plain_nonvalue(bare)):
             _sema_t = analyzer.get_expr_type(init)
-            _svt = analyzer.var_types.get(id(stmt))
+            _svt = analyzer.var_types.get(stmt)
             const_like = (
                 isinstance(_sema_t, ReadonlyType)
                 or isinstance(unwrap_ref_type(er_fi.return_type),
@@ -4085,7 +4085,7 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
     # const-name arms all need a non-None init, which is the rvalue branch
     # (inherently non-const: `_opt_slot_rvalue_shape` admits only a fresh
     # F1-record rvalue, never a readonly-typed source).
-    sema_var_t = analyzer.var_types.get(id(stmt))
+    sema_var_t = analyzer.var_types.get(stmt)
     is_const = (
         isinstance(inner, ReadonlyType)
         or (isinstance(sema_var_t, OptionalType)
@@ -4696,7 +4696,7 @@ def _lower_dyn_own_erased_call_decl(stmt: TpyVarDecl, lc: _LowerCtx,
     forms). Fresh un-hoisted un-reassigned sync names only; the frame
     flavor stays on the resumable's erased_handle_locals arm."""
     analyzer = lc.analyzer
-    sema_var_t = analyzer.var_types.get(id(stmt))
+    sema_var_t = analyzer.var_types.get(stmt)
     if sema_var_t is None or not isinstance(
             unwrap_readonly(unwrap_send_sync(sema_var_t)), OwnType):
         return None
@@ -4739,7 +4739,7 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: 'TpyType | None',
     # `vtype`, so re-check the sema binding type and defer, keeping the two
     # ownership shapes distinct rather than relying on the erased-source guard
     # below to catch it incidentally.
-    sema_var_t = analyzer.var_types.get(id(stmt))
+    sema_var_t = analyzer.var_types.get(stmt)
     if sema_var_t is not None and isinstance(
             unwrap_readonly(unwrap_send_sync(sema_var_t)), OwnType):
         # An ASYNC-FACTORY init (`c = add_one(41)` at Own[Cancellable[T]]):
@@ -4895,7 +4895,7 @@ def _nested_def_lowering_scope(lc: _LowerCtx, func: TpyFunction, *,
     # same-named nested try-hoist must not drain the outer's entry.
     saved_hoists = lc.unhandled_hoists
     lc.unhandled_hoists = set(
-        lc.analyzer.function_hoisted_vars.get(id(func), ()))
+        lc.analyzer.function_hoisted_vars.get(func, ()))
     outer_prescan = lc.prescan
     prescan = _Prescan(func, lc.analyzer)
     # Module-level facts carry over; the nested func has no global decls
@@ -4977,7 +4977,7 @@ def _nested_def_entry_reject(func, lc: '_LowerCtx', reason_for) -> None:
     # and the default is simply not rendered.
     if any(d is not None for d in func.defaults):
         _witness("nesteddef.unused_default")
-    if analyzer.function_global_decls.get(id(func)):
+    if analyzer.function_global_decls.get(func):
         note_detail("nesteddef.global_decl")
         raise ThirUnsupported(reason_for())
 
@@ -7120,7 +7120,7 @@ def _lower_nullproto_guard_if(stmt: TpyIf, var: str, lc: _LowerCtx,
     is `_lower_constexpr_if`'s -- no extraction, the guarded var
     DECLARED-retyped to its branch fact (reads deref through the pointer
     set); the shape guards mirror it too."""
-    if lc.analyzer.if_branch_decls.get(id(stmt)):
+    if lc.analyzer.if_branch_decls.get(stmt):
         note_detail("if.nullproto_hoist")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     if (var in lc.narrow.narrowed or var in lc.narrow.spelled
@@ -7153,7 +7153,7 @@ def _lower_constexpr_if(stmt: TpyIf, info, lc: _LowerCtx,
     if lc.render_concept is None:
         note_detail("if.constexpr_no_renderer")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    if lc.analyzer.if_branch_decls.get(id(stmt)):
+    if lc.analyzer.if_branch_decls.get(stmt):
         note_detail("if.constexpr_hoist")
         raise ThirUnsupported(stmt_reject_reason(stmt))
     if (var in lc.narrow.narrowed or var in lc.narrow.spelled
@@ -7487,7 +7487,7 @@ def _lower_overload_folded_if(
                                trivia_loc=stmt.loc)
     branches: list[tuple] = []
     for i, node in enumerate(live):
-        if lc.analyzer.if_branch_decls.get(id(node)):
+        if lc.analyzer.if_branch_decls.get(node):
             note_detail("if.overload_live_branch_decls")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         if _overload_concrete_facts(node.then_type_facts):
@@ -8922,7 +8922,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # ::tpy::optional_to_ptr(__ptr_slot_f0);` -- the
                     # OPT_STORAGE_CALL decl's resumable twin).
                     fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(
-                        id(stmt))
+                        stmt)
                     if fld is None:
                         note_detail("decl.opt_reseat_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -8962,7 +8962,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     # the frame ptr-slot-field flavor; an inline slot would
                     # die at the next suspension).
                     fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(
-                        id(stmt))
+                        stmt)
                     if fld is None:
                         note_detail("decl.opt_reseat_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -9760,7 +9760,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                 collapse_tuple_own_elements(vtype))))
             if (isinstance(bt, TupleType) and bt.has_pointer_repr_element()
                     and not analyzer.function_stmt_borrow_decls.get(
-                        id(lc.func), {}).get(stmt.name, False)
+                        lc.func, {}).get(stmt.name, False)
                     and not contains_pending_leaf(bt)
                     and not any(isinstance(t_, (PendingViewType,
                                                 IntLiteralType,
@@ -10558,7 +10558,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                     or stmt.target.name not in declared
                     or stmt.target.name in narrowed
                     or stmt.target.name
-                    in analyzer.function_global_decls.get(id(lc.func), set())):
+                    in analyzer.function_global_decls.get(lc.func, set())):
                 note_detail("error_return.assign_target")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_error_return_bind(
@@ -13373,7 +13373,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         finfo = (None if info is not None or minfo is not None
                  or oinfo is not None or ainfo is not None
                  else _folded_narrow_info(stmt.condition, lc))
-        hoists = analyzer.if_branch_decls.get(id(stmt), {})
+        hoists = analyzer.if_branch_decls.get(stmt, {})
         if hoists and (info is not None or minfo is not None
                        or oinfo is not None or ainfo is not None
                        or finfo is not None):
@@ -13755,7 +13755,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # (`{ auto __del_sink = std::move(name); }`, deref-first for an
         # owning pointer-local).
         if isinstance(stmt, TpyDelVar):
-            globals_ = analyzer.function_global_decls.get(id(lc.func), set())
+            globals_ = analyzer.function_global_decls.get(lc.func, set())
             sinks: list[tuple[str, bool]] = []
             for name in stmt.names:
                 # A narrowed binding has no sink render here; an unknown
@@ -13887,7 +13887,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         _witness("stmt.del_attr_multi")
         return THIRDelItem(calls=tuple(lowered_dels), loc=loc)
     if isinstance(stmt, TpyWhile):
-        if analyzer.if_branch_decls.get(id(stmt)):
+        if analyzer.if_branch_decls.get(stmt):
             raise ThirUnsupported("stmt.while")
         info = _narrow_cond_info(stmt.condition, declared, analyzer)
         oinfo = (_or_chain_narrow_info(stmt.condition, declared, analyzer)
@@ -14435,7 +14435,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # enter the CALLER's `declared` (function scope), so a nested loop and
         # the post-loop reads see them. Gated to the plain-value predecl family;
         # includes the loop var itself when it is hoisted (used after the loop).
-        foreach_hoists = analyzer.if_branch_decls.get(id(stmt), {})
+        foreach_hoists = analyzer.if_branch_decls.get(stmt, {})
         borrow_tuple_hoists: set[str] = set()
         ptr_null_hoists: set[str] = set()
         opt_storage_hoists: set[str] = set()
@@ -15389,7 +15389,7 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         # to a single ReturnException handler -- defensive.
         note_detail("try.return_handlers")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    hoists = lc.analyzer.if_branch_decls.get(id(stmt), {})
+    hoists = lc.analyzer.if_branch_decls.get(stmt, {})
     opt_storage_hoists: set[str] = set()
     btuple_hoists: set[str] = set()
     pointer_hoists: set[str] = set()
@@ -15643,8 +15643,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
     owned_ctx = None
     if resumable:
         owned_ctx = rcfg.resumable_state(lc.func).with_owned_ctx_map.get(
-            id(stmt))
-    hoists = lc.analyzer.if_branch_decls.get(id(stmt), {})
+            stmt)
+    hoists = lc.analyzer.if_branch_decls.get(stmt, {})
     opt_storage_hoists: set[str] = set()
     pointer_hoists: set[str] = set()
     for name, raw in hoists.items():

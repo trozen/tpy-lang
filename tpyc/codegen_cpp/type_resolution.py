@@ -26,7 +26,7 @@ def resolve_stmt_binding_type(
     if var_type is not None or stmt.init is None:
         return var_type
 
-    var_type = analyzer.var_types.get(id(stmt))
+    var_type = analyzer.var_types.get(stmt)
     if var_type is None or isinstance(var_type, _PENDING_TYPES):
         if include_global_binding:
             binding = analyzer.global_ns.lookup_local(stmt.name)

@@ -1158,9 +1158,9 @@ def _make_skeleton_module(records=(), protocols=(), functions=(), enums=()):
         exports.enums[name] = nominal
 
     snap = _SkeletonSnapshot(
-        records={n: id(o) for n, o in exports.records.items()},
-        protocols={n: id(o) for n, o in exports.protocols.items()},
-        functions={n: (id(lst), id(lst[0])) if lst else (0, 0)
+        records=dict(exports.records),
+        protocols=dict(exports.protocols),
+        functions={n: (lst, lst[0]) if lst else (None, None)
                    for n, lst in exports.functions.items()},
     )
     return CompiledModule(
@@ -1305,3 +1305,55 @@ class TestCallMacroModuleData:
         analyzer = SemanticAnalyzer()
         analyzer.bind_imports(self._bare_module(None), "m")
         assert CallMacroContext(analyzer.ctx).module_data is None
+
+
+# Programs for the repeated-compile guard below, one per family of
+# identity-keyed table: a `@property` read reaches the synthesized-getter
+# seam (`expr_types`), an async try/finally the resumable seam maps
+# (`THIRResumableBody`, `thir_resumables`, `resumable_region_guards`), and a
+# generator the simple-generator ones (`thir_simple_gens`,
+# `generator_for_loop_info`).
+_CASES_DIR = Path(__file__).resolve().parent.parent / "tests" / "cases"
+_REPEAT_CASES = {
+    "property": _CASES_DIR / "records/member_name_shadows_type/src/main.py",
+    "async": _CASES_DIR / "async/await_try_except_finally/src/main.py",
+    "generator": _CASES_DIR / "iterators/gen_finally_raises_once/src/main.py",
+}
+
+
+class TestRepeatedCompilesAreIdentical:
+    """Only the heap layout differs between two compilations of one program in
+    one process, so a later compile that diagnoses differently or emits
+    different C++ means a side table outlived the objects it keys on."""
+
+    # A canary, not a proof -- the deterministic pins are in
+    # `tpyc/test_identity_map.py`. Before `tpyc/identity_map.py` the property
+    # case failed in about a third of runs at this count, and no more often at
+    # 16 or 24: the reject lands on whichever iteration recycles the address,
+    # so more repeats buy nothing.
+    ITERATIONS = 8
+
+    def _compile_once(self, src: Path) -> tuple[str, tuple[str, str]]:
+        compiler = Compiler(src, default_int="Int32", lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        entry = next(m for m in modules if m.is_entry_point)
+        diags = [d.format("tpyc") for d in compiler.diagnostics]
+        for mod in modules:
+            diags.extend(d.format(mod.path.name) for d in mod.analyzer.diagnostics)
+        sources, _ctx = compiler.generate_code_and_thir(entry)
+        return "\n".join(diags), sources
+
+    @pytest.mark.parametrize("family", sorted(_REPEAT_CASES))
+    def test_the_same_program_compiles_the_same_way_every_time(self, family):
+        src = _REPEAT_CASES[family]
+        if not src.exists():
+            pytest.skip(f"case corpus not present at {src}")
+        first_diags, first_sources = self._compile_once(src)
+        assert "not yet supported" not in first_diags, first_diags
+        for i in range(1, self.ITERATIONS):
+            diags, sources = self._compile_once(src)
+            assert diags == first_diags, (
+                f"compile #{i} in this process diagnosed differently:\n"
+                f"{diags}\n--- first ---\n{first_diags}")
+            assert sources == first_sources, (
+                f"compile #{i} in this process emitted different C++")

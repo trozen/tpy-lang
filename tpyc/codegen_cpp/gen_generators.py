@@ -340,7 +340,7 @@ class GeneratorCodegen:
         """The body's leaf renderer bound to the live ctx sinks. Lowering
         already ran in the module seeding loop (unlike resumables, it needs no
         live codegen ctx)."""
-        sg = self.ctx.thir_simple_gens.get(id(func))
+        sg = self.ctx.thir_simple_gens.get(func)
         if sg is None:
             raise CodeGenError(
                 f"internal error: no lowered simple-generator body for "

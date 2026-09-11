@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Union
 
+from ..identity_map import IdentityMap
 from ..parse.nodes import (
     TpyAssert, TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
     TpyExpr, TpyExprStmt, TpyForEach, TpyIf, TpyName,
@@ -97,20 +98,20 @@ class ResumableFuncState:
     for_prescanned: bool = False
     for_uid_map: 'dict[int, int]' = field(default_factory=dict)
     for_fields: 'list[tuple[str, str]]' = field(default_factory=list)
-    for_loop_info: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
+    for_loop_info: 'IdentityMap' = field(default_factory=IdentityMap)
     for_info_by_uid: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
     async_for_struct_names: 'dict[int, str]' = field(default_factory=dict)
     # ptr-slot prescan (_prescan_resumable_ptr_slots): an rvalue write into a
     # pointer-form frame local materializes its backing storage in a
     # `std::optional<T>` FRAME FIELD (one per write site), never a case-block
     # local -- the pointer field outlives the case block, so an inline slot
-    # dangles at the first suspension. ptr_slot_map keys id(TpyVarDecl/
-    # TpyAssign) -> field name; the pointer-local reseat lowering
+    # dangles at the first suspension. ptr_slot_map keys the TpyVarDecl/
+    # TpyAssign -> field name; the pointer-local reseat lowering
     # consumes it and must find an entry for every slot-needing write (loud
     # internal error otherwise -- silence would be the dangle coming back).
     ptr_slots_prescanned: bool = False
     ptr_slot_fields: 'list[tuple[str, str]]' = field(default_factory=list)
-    ptr_slot_map: 'dict[int, str]' = field(default_factory=dict)
+    ptr_slot_map: 'IdentityMap' = field(default_factory=IdentityMap)
     # with-stmt prescan (_prescan_with_stmts)
     with_prescanned: bool = False
     with_uid_map: 'dict[int, list[int]]' = field(default_factory=dict)
@@ -127,11 +128,11 @@ class ResumableFuncState:
     # its statement, so it can be read across a suspension that the `with`
     # itself does not contain.
     with_target_payloads: 'dict[str, str]' = field(default_factory=dict)
-    # id(TpyWith) -> per-item `__with_ctx_<n>` number (None where not promoted),
+    # TpyWith -> per-item `__with_ctx_<n>` number (None where not promoted),
     # for a NON-decomposed region whose OWNED manager backs an aliasing target.
     # The target's frame field points into `__enter__()`'s result, so the manager
     # must outlive the frame rather than the statement.
-    with_owned_ctx_map: 'dict[int, list[int | None]]' = field(default_factory=dict)
+    with_owned_ctx_map: 'IdentityMap' = field(default_factory=IdentityMap)
     # `__with_ctx_<n>` numbering shared by the region prescan and the later
     # manager-home pass, which appends fields after the frame layout is built.
     with_ctx_counter: int = 0

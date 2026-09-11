@@ -210,7 +210,7 @@ def reject_attempt(component: RejectComponent, node: object = None, *,
         raise _strict_error(component, node, where, loc, 'unclassified')
     reason = compiler._thir_reject_reason or 'unclassified'
     if node is not None:
-        compiler._thir_reject_by_node[id(node)] = reason
+        compiler._thir_reject_by_node[node] = reason
     # The reject's own position when lowering recorded one; the enclosing
     # unit's `def`/decl line is the floor, never a stale sibling's.
     raise _strict_error(component, node, where,

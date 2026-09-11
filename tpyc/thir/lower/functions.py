@@ -407,7 +407,7 @@ def _admit_overload_stub(func: TpyFunction, group, analyzer,
     header is signature (like declared type params), and the
     stub's body lowers against the stub's protocol-typed params through
     the ordinary arms (the protocol-param loop included)."""
-    stubs = analyzer.overload_groups.get(id(func)) or []
+    stubs = analyzer.overload_groups.get(func) or []
     if any(_stub_has_template_param(fi) for fi in stubs):
         _witness("fn.overload_template_stub")
     if overload_stubs_are_literal_only(stubs, func):
@@ -603,7 +603,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # reassigned param in its lambda capture, a render the leaves do not
     # produce.
     if allow_resumable and func.is_generator:
-        scan = analyzer.function_scan_results.get(id(func))
+        scan = analyzer.function_scan_results.get(func)
         if scan is not None and scan.reassigned:
             for name, ptype in func.params:
                 pt = ptype if isinstance(ptype, TpyType) else None
@@ -624,7 +624,7 @@ def _param_reassign_copies(func: TpyFunction,
     (`std::string(__param_p)` / the make_optional split) while body reads
     keep their view-form renders. Non-value params cannot be reassigned at
     all (sema rejects the rebind), so no other copy shape arises."""
-    scan = analyzer.function_scan_results.get(id(func))
+    scan = analyzer.function_scan_results.get(func)
     if scan is None or not scan.reassigned:
         return ()
     copies: list[THIRParamCopy] = []
@@ -763,8 +763,8 @@ def _seed_readonly_globals(
     cands: dict[str, TpyType] = {}
     spelled: dict[str, str] = {}
     slots: set[str] = set()
-    global_decls = analyzer.function_global_decls.get(id(func), set())
-    hoisted = analyzer.function_hoisted_vars.get(id(func), set())
+    global_decls = analyzer.function_global_decls.get(func, set())
+    hoisted = analyzer.function_hoisted_vars.get(func, set())
     for n in analyzer.ctx.top_level_decls:
         if n in scope or n in global_decls or n in hoisted:
             continue
@@ -847,7 +847,7 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
     global_seeded: set[str] = set()
     global_write_cpp: dict[str, str] = {}
     decl_slots: set[str] = set()
-    for n in analyzer.function_global_decls.get(id(func), set()):
+    for n in analyzer.function_global_decls.get(func, set()):
         if n in params_set:
             continue
         gt = analyzer.ctx.global_scope.lookup(n)
@@ -979,7 +979,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     # no params override applies.
     literal_group = (stub is not None
                      and overload_stubs_are_literal_only(
-                         analyzer.overload_groups.get(id(func)) or [], func))
+                         analyzer.overload_groups.get(func) or [], func))
     lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver,
                    record_name=record_name,
                    render_type_stored=render_type_stored,
@@ -1822,7 +1822,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # sig.param_reassign_copy): the prologue local `T name = __param_name;`
     # has no matching `__param_` rename in the ctor signature -- a
     # pre-existing defect the tail does not reproduce.
-    scan = analyzer.function_scan_results.get(id(init_method))
+    scan = analyzer.function_scan_results.get(init_method)
     if scan is not None and scan.reassigned:
         for pname, ptype in init_method.params:
             pt = ptype if isinstance(ptype, TpyType) else None
@@ -2876,12 +2876,12 @@ def unemitted_overload_clones(module: TpyModule, analyzer) -> set[int]:
     out: set[int] = set()
     for record in module.records:
         registered = {m.name for m in record.methods
-                      if analyzer.overload_groups.get(id(m))}
+                      if analyzer.overload_groups.get(m)}
         if not registered:
             continue
         for m in record.methods:
             if (m.name in registered and not m.is_overload_stub
-                    and not analyzer.overload_groups.get(id(m))
+                    and not analyzer.overload_groups.get(m)
                     and (m.auto_readonly_params_resolved
                          or m.is_auto_own_borrowing_clone
                          or m.is_auto_own_consuming_clone)):

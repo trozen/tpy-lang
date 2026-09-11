@@ -253,7 +253,7 @@ def _lower_simple_generator(func: TpyFunction, analyzer, render_type,
     init = _lower_stmts(init_stmts, lc, declared)
 
     if isinstance(last, TpyWhile):
-        if analyzer.if_branch_decls.get(id(last)):
+        if analyzer.if_branch_decls.get(last):
             return _reject("sgen.hoist_promoted")
         if _narrow_cond_info(last.condition, declared, analyzer) is not None:
             # A while-isinstance head would need the U4 loop-entry extraction

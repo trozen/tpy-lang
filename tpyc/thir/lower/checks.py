@@ -6840,7 +6840,7 @@ def _own_move_arg(a: TpyExpr, ptype: TpyType | None,
         locals_[a.name])))
     if own is None or own.wrapped.is_value_type():
         return False
-    return id(a) in analyzer.ctx.all_last_uses
+    return a in analyzer.ctx.all_last_uses
 
 def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
                     locals_: dict[str, TpyType],

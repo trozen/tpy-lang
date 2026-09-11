@@ -108,7 +108,9 @@ class ScopeTracker:
         # _collect_generator_locals' local_ns) never see it. The nested
         # analysis only ever binds into the child scope/ns created here, so
         # re-attaching the ORIGINAL objects after the restore is safe and
-        # keeps their identity stable across the def statement.
+        # keeps their identity stable across the def statement. The
+        # identity-keyed fields need no such re-attachment: their
+        # `__deepcopy__` keeps every key by identity already.
         outer_scope = self.ctx.func.current_scope
         outer_ns = self.ctx.func.current_ns
         saved = self.ctx.save_function_state()

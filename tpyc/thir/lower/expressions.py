@@ -7206,9 +7206,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         need_predecl = (e.target not in lc.walrus_predeclared
                         and e.target not in declared)
         borrow_decls = analyzer.function_stmt_borrow_decls.get(
-            id(lc.func), {})
+            lc.func, {})
         ever_owned = analyzer.function_ever_owned_locals.get(
-            id(lc.func), set())
+            lc.func, set())
         # The pointer/slot/viewfam rungs are SYNC-only: a resumable body's
         # locals are frame fields (`(*b)` source reads, no named-row drain
         # for the predecls), a different render model -- only the
@@ -17242,7 +17242,7 @@ def _is_move_source(value: TpyExpr, lc: _LowerCtx,
     inner = _peel_coerce(value)
     return (isinstance(inner, TpyName)
             and inner.name in movable_names
-            and id(inner) in lc.analyzer.ctx.all_last_uses)
+            and inner in lc.analyzer.ctx.all_last_uses)
 
 
 def _is_move_source_facts(value: TpyExpr,
@@ -17255,4 +17255,4 @@ def _is_move_source_facts(value: TpyExpr,
     inner = _peel_coerce(value)
     return (isinstance(inner, TpyName)
             and inner.name in movable_locals
-            and id(inner) in analyzer.ctx.all_last_uses)
+            and inner in analyzer.ctx.all_last_uses)

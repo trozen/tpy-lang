@@ -244,6 +244,34 @@ Conformance tests in `tpyc/test_type_def_registry.py` pin the
 invariants: `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT`,
 `PROTOCOL_SNAPSHOT`.
 
+### Per-compilation state
+
+State that belongs to one compilation lives on the `Compiler`
+instance (added in `_init_shared`, read through
+`get_current_compiler()`), not in module-level globals -- the
+registry's dynamic slice above is the model.
+
+A fact keyed on a specific *object* has a second requirement: **the
+table must own its keys**. A side table spelled `{id(node): fact}`
+keeps no reference to the node, so once the node dies CPython is free
+to hand its address to the next allocation, and the table then
+answers a fresh object with a dead one's fact. Two thirds of the
+entries in `SemanticContext.expr_types` belong to nodes that are dead
+by the end of a compilation, which is how the property-getter seam
+came to read a stale type and reject a valid body in some runs.
+`tpyc/identity_map.py` provides `IdentityMap` / `IdentitySet`, which
+store the key beside the value; every such table on
+`SemanticContext`, `SemanticAnalyzer`, `CodeGenContext`, `Compiler`
+and `THIRResumableBody` uses them, and their `__deepcopy__` carries
+keys over by identity so a snapshot is still looked up with the live
+node. A `WeakKeyDictionary` is not available: AST nodes are plain
+`@dataclass`es, so they define `__eq__` and are unhashable -- which
+is why `id()` was reached for in the first place. Raw `id()` keys
+remain sound only where the container is a local recursion guard or
+worklist whose keyed objects are alive for the whole call, or where a
+live list / the module AST co-owns them; say which in a comment when
+writing one.
+
 ### Identity invariants
 
 1. **Nominal identity is qname-based; `_module_qname` is not a

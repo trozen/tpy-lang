@@ -34,6 +34,7 @@ from ..type_def_registry import (
     is_borrowing_view_type, is_big_int_type, is_fixed_int_type,
 )
 from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
+from ..identity_map import IdentityMap
 from ..compilation_context import get_current_compiler
 from ..value_category import (
     is_rvalue_source as _is_rvalue_source_shared,
@@ -1317,22 +1318,23 @@ class CodeGenContext:
     options: CodeGenOptions
     module_name: str = "generated"
     source_lines: list[str] = field(default_factory=list)
-    # Lowered bodies, keyed by id() of the source TpyFunction (or by
-    # (id(impl), id(stub)) for a per-@overload-stub specialization).
-    # Populated per-module in CodeGenerator.generate.
-    thir_functions: dict["int | tuple[int, int]", "THIRFunction"] = field(default_factory=dict)
+    # Lowered bodies, keyed by the source TpyFunction. A per-@overload-stub
+    # specialization lands in `thir_overload_functions` instead (impl -> stub
+    # -> body). Populated per-module in CodeGenerator.generate.
+    thir_functions: IdentityMap = field(default_factory=IdentityMap)
+    thir_overload_functions: IdentityMap = field(default_factory=IdentityMap)
     # The `__tpy_init` body, lowered from the module's top-level statements.
     # Seeded right before gen_module_init, which is where the generator's
     # global-type map exists.
     thir_top_level: "THIRFunction | None" = None
     # A constructor's member-init-list + body tail emit from its
     # THIRConstructor; the signature comes from the record skeleton.
-    # Keyed by id() of the source __init__ TpyFunction; consumed in gen_record_decl.
-    thir_constructors: dict[int, "THIRConstructor"] = field(default_factory=dict)
-    # Attempt-once cache of async-body leaf lowerings, keyed by id() of the
+    # Keyed by the source __init__ TpyFunction; consumed in gen_record_decl.
+    thir_constructors: IdentityMap = field(default_factory=IdentityMap)
+    # Attempt-once cache of async-body leaf lowerings, keyed by the
     # source TpyFunction. Populated lazily at first frame
     # emission (the CFG needs live codegen ctx), unlike the seeding-loop maps.
-    thir_resumables: dict[int, "THIRResumableBody | None"] = field(default_factory=dict)
+    thir_resumables: IdentityMap = field(default_factory=IdentityMap)
     # The active body's leaf renderer while gen_async emits its state
     # machine; every seam site (leaf stmts, Branch conds, emplace args, the
     # async-return value) consults it. None outside a frame emission.
@@ -1340,10 +1342,10 @@ class CodeGenContext:
     # A peephole generator's leaves (init block, while cond, pre-/post-yield
     # blocks, yield value, iterable / range args) emit from its
     # THIRSimpleGenBody inside the skeleton's
-    # lambda. Keyed by id() of the source TpyFunction; populated in
+    # lambda. Keyed by the source TpyFunction; populated in
     # the same seeding loop as `thir_functions` (no live-ctx dependency,
     # unlike resumables); consumed in gen_simple_generator_inline.
-    thir_simple_gens: dict[int, "THIRSimpleGenBody"] = field(default_factory=dict)
+    thir_simple_gens: IdentityMap = field(default_factory=IdentityMap)
     # Peer modules in the same import-graph SCC. When a `<peer>.hpp`
     # would be included from this module's header (vs cpp file), the
     # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic
@@ -1613,7 +1615,7 @@ class CodeGenContext:
     # the impl body is emitted once per stub, and the method path emits a
     # synthetic clone whose id matches nothing. gen_body CONSUMES the key
     # on entry so bodies nested under the specialization never inherit it.
-    thir_overload_key: tuple[int, int] | None = None
+    thir_overload_key: "tuple[TpyFunction, TpyFunction] | None" = None
 
     # --- Iterator loop counter ---
     iter_counter: int = 0
@@ -1644,13 +1646,13 @@ class CodeGenContext:
     # (below) is a set keyed by these NAMES, so uniqueness is what keeps one
     # frame's membership from aliasing another's. reset_scope leaves it alone.
     finally_guard_counter: int = 0
-    # Resumable path only: id(region) -> `bool __fin_ran_N` guard name for the
+    # Resumable path only: region -> `bool __fin_ran_N` guard name for the
     # C++ try the current switch case opened for that region. An exit-edge
     # cleanup copy sets it; the region's own catch tests it, so a raising
     # cleanup is not re-run by the catch it throws into (the sync path's
     # FinallyContext.guard_name, expressed across the three resumable emit
     # methods). Populated per case in _emit_case, cleared at case end.
-    resumable_region_guards: dict[int, str] = field(default_factory=dict)
+    resumable_region_guards: IdentityMap = field(default_factory=IdentityMap)
     # Live `bool __fin_ran_N` guard names: a guard lands here when an exit
     # edge actually emits its `= true`. The one liveness channel for BOTH
     # paths -- the sync try/finally + with catches and the resumable region
@@ -1675,10 +1677,10 @@ class CodeGenContext:
     # struct).
     frame_layout_builder: 'Callable[[TpyFunction], object] | None' = None
     generator_field_names: set[str] = field(default_factory=set)
-    # id(write stmt) -> frame-field slot name for rvalue writes into
+    # write stmt -> frame-field slot name for rvalue writes into
     # pointer-form frame locals (seeded per body from the resumable
     # state's ptr_slot_map).
-    resumable_ptr_slot_map: dict[int, str] = field(default_factory=dict)
+    resumable_ptr_slot_map: IdentityMap = field(default_factory=IdentityMap)
     # Hoisted locals that are compile-time aliases of a captured static-protocol
     # param (`xs = it`): they occupy no frame field of their own; every storage
     # access resolves to the backing param via `generator_storage_name`.
@@ -1699,12 +1701,12 @@ class CodeGenContext:
     # to the value yield slot -- but pointer-repr Optional/Union locals (also
     # in pointer_locals) must NOT be deref'd that way, hence a dedicated set.
     generator_borrow_form_loop_vars: set[str] = field(default_factory=set)
-    # For-loops with yields in state machine generators: keyed by id(TpyForEach)
+    # For-loops with yields in state machine generators: keyed by TpyForEach.
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
-    generator_for_loop_info: dict[int, object] = field(default_factory=dict)
-    # id(TpyWith) -> per-item `__with_ctx_<n>` number for a non-decomposed region
+    generator_for_loop_info: IdentityMap = field(default_factory=IdentityMap)
+    # TpyWith -> per-item `__with_ctx_<n>` number for a non-decomposed region
     # whose owned manager was promoted to the frame to back an aliasing target.
-    generator_with_owned_ctx: dict[int, object] = field(default_factory=dict)
+    generator_with_owned_ctx: IdentityMap = field(default_factory=IdentityMap)
     # Statement-level borrow-alias frame locals (single-assign / tuple-unpack
     # targets aliasing existing storage). Seeded into pointer_locals by
     # setup_resumable_frame_locals so the frame field is a `T*` alias, not an
@@ -2995,7 +2997,7 @@ class CodeGenContext:
         # -> context).
         from . import resumable_cfg as _rcfg
         one_shot = _rcfg.resumable_state(func).one_shot_lift_names
-        scan = self.analyzer.function_scan_results.get(id(func))
+        scan = self.analyzer.function_scan_results.get(func)
         reassigned = scan.reassigned if scan is not None else set()
         gen_names = {n for n, _ in (func.generator_locals or [])}
         owning: set[str] = set()
@@ -3073,8 +3075,8 @@ class CodeGenContext:
         # Per-write-site frame homes for rvalue writes into pointer-form
         # frame locals (see _prescan_resumable_ptr_slots); empty for the
         # simple-peephole path, whose locals live on the lambda stack.
-        self.resumable_ptr_slot_map = dict(
-            _rcfg.resumable_state(func).ptr_slot_map)
+        self.resumable_ptr_slot_map = (
+            _rcfg.resumable_state(func).ptr_slot_map.copy())
 
         if not func.generator_locals:
             return

@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, replace as dc_replace
 from typing import Callable, Iterator, NoReturn, TYPE_CHECKING
 
+from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
@@ -628,8 +629,8 @@ class CallAnalyzer:
         # Deferred match-arm subject-mutation checks: a method call on the
         # subject root/prefix whose readonly verdict (and thus whether it may
         # reassign the borrowed subject storage) only settles in Phase 2.
-        # Entry: (method_call, subject_path_str, arm_id).
-        self.pending_match_subject_checks: list[tuple[TpyMethodCall, str, int]] = []
+        # Entry: (method_call, subject_path_str, match arm).
+        self.pending_match_subject_checks: list = []
 
     def _restore_readonly_arg(self, arg: TpyExpr, arg_type: TpyType,
                               target_is_readonly: bool = False) -> TpyType:
@@ -667,13 +668,13 @@ class CallAnalyzer:
         call on the subject root/prefix (it may reassign the borrowed subject
         storage). Readonly is now settled; warn once per arm. The sound fix
         (reject the mutation) waits for the IR loan model -- see BUGS.md."""
-        warned_arms: set[int] = set()
-        for mcall, subj_str, arm_id in self.pending_match_subject_checks:
-            if arm_id in warned_arms:
+        warned_arms: IdentitySet = IdentitySet()
+        for mcall, subj_str, arm in self.pending_match_subject_checks:
+            if arm in warned_arms:
                 continue
             fi = mcall.resolved_function_info
             if fi is not None and fi.is_readonly is False:
-                warned_arms.add(arm_id)
+                warned_arms.add(arm)
                 self.ctx.warning(
                     f"'{subj_str}' may be mutated by '{mcall.method}()' in this "
                     f"arm while pattern bindings borrow its storage; the "

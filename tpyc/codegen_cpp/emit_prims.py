@@ -113,7 +113,7 @@ def is_const_indirect(ctx: 'CodeGenContext', target_type: TpyType | None,
     # For annotated Optional locals, sema var_types may hold
     # OptionalType(ReadonlyType(T)) even when stmt.type is plain Optional[T].
     if stmt is not None:
-        sema_var_type = ctx.analyzer.var_types.get(id(stmt))
+        sema_var_type = ctx.analyzer.var_types.get(stmt)
         if (isinstance(sema_var_type, OptionalType)
                 and isinstance(sema_var_type.inner, ReadonlyType)):
             return True
@@ -813,8 +813,8 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
     ctx.declared_vars = {pname for pname, _ in params}
     ctx.var_types = {pname: unwrap_ref_type(ptype) for pname, ptype in params}
     ctx.local_scope_names = {pname for pname, _ in params}
-    ctx.global_declared_vars = ctx.analyzer.function_global_decls.get(id(func), set())
-    scan = ctx.analyzer.function_scan_results.get(id(func))
+    ctx.global_declared_vars = ctx.analyzer.function_global_decls.get(func, set())
+    scan = ctx.analyzer.function_scan_results.get(func)
     if scan:
         ctx.reassigned_vars = scan.reassigned - ctx.global_declared_vars
         ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - ctx.global_declared_vars
@@ -827,11 +827,11 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
         ctx.lvalue_reassigned_vars = set()
         ctx.aliased_vars = set()
         ctx.alias_names = set()
-    ctx.hoisted_vars = ctx.analyzer.function_hoisted_vars.get(id(func), set())
-    ctx.move_through_vars = ctx.analyzer.function_move_through_vars.get(id(func), set())
-    ctx.sema_movable_locals = ctx.analyzer.function_movable_locals.get(id(func), set())
-    ctx.sema_ever_owned_locals = ctx.analyzer.function_ever_owned_locals.get(id(func), set())
-    ctx.sema_stmt_borrow_decls = ctx.analyzer.function_stmt_borrow_decls.get(id(func), {})
+    ctx.hoisted_vars = ctx.analyzer.function_hoisted_vars.get(func, set())
+    ctx.move_through_vars = ctx.analyzer.function_move_through_vars.get(func, set())
+    ctx.sema_movable_locals = ctx.analyzer.function_movable_locals.get(func, set())
+    ctx.sema_ever_owned_locals = ctx.analyzer.function_ever_owned_locals.get(func, set())
+    ctx.sema_stmt_borrow_decls = ctx.analyzer.function_stmt_borrow_decls.get(func, {})
     # Classify params into the pointer-form local sets (pointer_locals,
     # ptr_variant_locals, optional_locals, movable_locals, ...) that access
     # dispatch consults so `->` vs `.` / move / variant-form are correct.

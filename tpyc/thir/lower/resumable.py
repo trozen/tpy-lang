@@ -10,7 +10,7 @@ sub-coro emplace arguments at each suspension.
 `lower_resumable` walks the already-built CFG (cached on the function by
 `gen_async._build_resumable_cfg`), lowers every leaf through the shared
 statement/expression lowering plus the resumable-only rejects below, and
-returns a `THIRResumableBody` keyed by id() of the parse-tree nodes the
+returns a `THIRResumableBody` keyed by the parse-tree nodes the
 skeleton holds -- or None (with a `res.*` / composed `stmt.*` reject
 reason) when any leaf or frame feature falls outside the slice.
 
@@ -36,6 +36,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import fields as dc_fields, replace
+
+from ...identity_map import IdentityMap
 
 from ..reject import (ThirUnsupported, begin_stmt, note, note_detail,
                         stmt_reject_reason)
@@ -897,7 +899,7 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
         if fi is None:
             raise ThirUnsupported("res.for_range_shape")
         for i, arg in enumerate(it.args):
-            region_exprs[id(arg)] = _lower_call_arg(
+            region_exprs[arg] = _lower_call_arg(
                 arg, fi.params[i].type, lc, declared)
         return
 
@@ -935,7 +937,7 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
             lowered_it = replace(lowered_it, deref=True)
         else:
             raise ThirUnsupported("res.for_narrowed_optional")
-    region_exprs[id(it)] = lowered_it
+    region_exprs[it] = lowered_it
 
 
 def _with_enter_reject(stmt: 'rcfg.WithEnter | rcfg.AsyncWithSetup', analyzer,
@@ -1713,7 +1715,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # the fixed-size Array optimization (sibling arms may bind different
     # lengths). Renders spelling the slot must see the same override.
     for _stmt in _iter_nested_stmts(list(func.body)):
-        for _bname, _btype in (analyzer.if_branch_decls.get(id(_stmt))
+        for _bname, _btype in (analyzer.if_branch_decls.get(_stmt)
                                or {}).items():
             if _bname in frame_fields and _btype is not None:
                 lc.frame_local_types[_bname] = unwrap_ref_type(_btype)
@@ -1836,15 +1838,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                                          analyzer) is not None:
                         lc.value_opt_bindings[lv] = ValueOptKind.SCALAR
 
-    leaves: dict[int, THIRStmt] = {}
-    conds: dict[int, THIRExpr] = {}
-    await_args: dict[int, tuple[THIRExpr, ...]] = {}
-    return_values: dict[int, THIRExpr] = {}
-    yield_values: dict[int, THIRExpr] = {}
-    suspend_exprs: dict[int, THIRExpr] = {}
-    region_exprs: dict[int, THIRExpr] = {}
-    match_dispatches: dict[int, THIRStmt] = {}
-    deferred_returns: dict[int, THIRStmt] = {}
+    leaves: IdentityMap = IdentityMap()
+    conds: IdentityMap = IdentityMap()
+    await_args: IdentityMap = IdentityMap()
+    return_values: IdentityMap = IdentityMap()
+    yield_values: IdentityMap = IdentityMap()
+    suspend_exprs: IdentityMap = IdentityMap()
+    region_exprs: IdentityMap = IdentityMap()
+    match_dispatches: IdentityMap = IdentityMap()
+    deferred_returns: IdentityMap = IdentityMap()
 
     def _lower_leaf(stmt: TpyStmt) -> THIRStmt:
         try:
@@ -2083,7 +2085,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 reason = _with_enter_reject(stmt, analyzer, declared)
                 if reason is not None:
                     raise ThirUnsupported(reason)
-                region_exprs[id(stmt.item.context_expr)] = (
+                region_exprs[stmt.item.context_expr] = (
                     _strip_slot_leaf_deref(
                         _lower_expr(stmt.item.context_expr, lc, declared,
                                     # The owned `__with_ctx_N` emplace is a
@@ -2106,7 +2108,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # The async skeleton owns the indirect deref
                     # ((*(g)).__aiter__(), gen_async's is_indirect wrap)
                     # -- the leaf renders bare.
-                    region_exprs[id(stmt.iterable_expr)] = (
+                    region_exprs[stmt.iterable_expr] = (
                         _strip_slot_leaf_deref(
                             _lower_expr(stmt.iterable_expr, lc, declared,
                                         # The `__for_src` capture consumes
@@ -2127,14 +2129,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 saved = postif_saved[0]
                 if saved is None:
                     raise ThirUnsupported("res.narrowed_resume")
-                leaves[id(stmt)] = _flat_assert_narrow_leaf(stmt, saved)
+                leaves[stmt] = _flat_assert_narrow_leaf(stmt, saved)
                 continue
             leaf = _lower_leaf(stmt)
             if isinstance(stmt, TpyIf):
                 saved = postif_saved[0]
                 assert saved is not None
                 leaf = _apply_post_if_narrow(stmt, leaf, saved, bb)
-            leaves[id(stmt)] = leaf
+            leaves[stmt] = leaf
         t = bb.terminator
         if isinstance(t, rcfg.ReturnT):
             ret = t.return_stmt
@@ -2154,14 +2156,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # Value render shared with nested leaf returns (see
             # `_lower_resumable_return_value` for the position-blind
             # contract).
-            return_values[id(ret)] = _lower_resumable_return_value(
+            return_values[ret] = _lower_resumable_return_value(
                 ret, lc, declared)
             deferred = _resumable_deferred_recipe(ret, lc, declared)
             if deferred is not None:
-                deferred_returns[id(ret)] = deferred
+                deferred_returns[ret] = deferred
             _witness("res.return_value")
         elif isinstance(t, rcfg.RaiseT):
-            leaves[id(t.raise_stmt)] = _lower_leaf(t.raise_stmt)
+            leaves[t.raise_stmt] = _lower_leaf(t.raise_stmt)
         elif isinstance(t, rcfg.MatchDispatch):
             # The whole type-aware dispatch (subject + labels + guards)
             # lowers through the sync match tiers with arm BODIES replaced
@@ -2176,7 +2178,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             m_node = _match._lower_match(
                 t.match_stmt, m_route, lc, declared, frozenset(lc.pointers),
                 getattr(t.match_stmt, "loc", None), arm_body_hooks=True)
-            match_dispatches[id(t.match_stmt)] = m_node
+            match_dispatches[t.match_stmt] = m_node
             # Hook-mode captures bind frame fields BEFORE the arm's BB walk,
             # so the walk's flat `declared` must carry them; the frame slot
             # type is authoritative.
@@ -2203,7 +2205,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 pinfo = (None if info is not None
                          else _poly_narrow_info(t.cond, declared, analyzer))
                 if info is not None:
-                    conds[id(t.cond)] = _lower_narrow_cond(info, t.cond, lc,
+                    conds[t.cond] = _lower_narrow_cond(info, t.cond, lc,
                                                            declared)
                 elif (pinfo is not None
                       and pinfo[0] not in lc.narrow.narrowed
@@ -2213,13 +2215,13 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # nullptr)`) -- the extraction alias is the ARM
                     # entry's skeleton emission, not this condition's.
                     _witness("res.poly_cond")
-                    conds[id(t.cond)] = THIRDynIsinstanceMulti(
+                    conds[t.cond] = THIRDynIsinstanceMulti(
                         result_type=analyzer.get_expr_type(t.cond),
                         checks_cpp=_poly_cast_checks(
                             pinfo[0], (pinfo[1],), lc, declared),
                         loc=getattr(t.cond, "loc", None))
                 else:
-                    conds[id(t.cond)] = _lower_truthy(t.cond, lc, declared)
+                    conds[t.cond] = _lower_truthy(t.cond, lc, declared)
             except ThirUnsupported as ex:
                 # The landmark names the branch position; the condition's own
                 # reason rides it, or the tag names this catcher instead of
@@ -2262,7 +2264,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # The literal-vs-builder selection shared with the sgen
                     # tuple-yield ladder (borrow / generic / spelled value
                     # literal incl. Own-record storage elements).
-                    yield_values[id(ys)] = _lower_yield_tuple_literal(
+                    yield_values[ys] = _lower_yield_tuple_literal(
                         yv_src, yt_bare, lc, declared,
                         generic_face="res.btuple_yield_generic",
                         reject="res.btuple_yield_source",
@@ -2271,7 +2273,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         and (yv_src.name in borrow_tuple_locals
                              or _bare_yield_tuple_name_ok(
                                  yv_src.name, lc, declared))):
-                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                    yield_values[ys] = _lower_expr(yv_src, lc, declared)
                 elif (isinstance(yv_src, TpySubscript)
                         and yt_bare.has_pointer_repr_element()
                         and isinstance(yv_src.obj, TpyName)
@@ -2287,7 +2289,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # ::tpy::__getitem__((*items), 0));` -- the sgen
                     # elem-lift arm's resumable twin (the frame-slot deref
                     # rides the name read).
-                    yield_values[id(ys)] = THIRFormConvert(
+                    yield_values[ys] = THIRFormConvert(
                         result_type=yt_bare,
                         value=_lower_expr(yv_src, lc, declared,
                                           subscript_prechecked=True),
@@ -2312,7 +2314,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         and yv_src.then_expr.name in lc.frame_slots
                         and isinstance(yv_src.else_expr, TpyName)
                         and yv_src.else_expr.name in lc.frame_slots):
-                    yield_values[id(ys)] = THIRIfExpr(
+                    yield_values[ys] = THIRIfExpr(
                         result_type=yt_bare,
                         cond=_lower_truthy(yv_src.condition, lc, declared),
                         then=_lower_expr(yv_src.then_expr, lc, declared),
@@ -2326,19 +2328,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # frame-walrus dispatch (`return (x = &((*buf)), *x);`)
                     # -- the comma tail hands out the alias's deref lvalue,
                     # and un-landed walrus legs reject inside the dispatch.
-                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                    yield_values[ys] = _lower_expr(yv_src, lc, declared)
                     _witness("res.yield_container_walrus")
                     return
                 if (isinstance(yv_src, TpyName)
                         and _bare_yield_param_ok(yv_src.name, yt_bare, lc,
                                                  declared)):
-                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                    yield_values[ys] = _lower_expr(yv_src, lc, declared)
                     _witness("res.yield_container_param")
                     return
                 if not (isinstance(yv_src, TpyName)
                         and yv_src.name in lc.frame_slots):
                     raise ThirUnsupported("res.yield_type")
-                yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                yield_values[ys] = _lower_expr(yv_src, lc, declared)
                 _witness("res.yield_container_borrow")
                 return
             if _f1_record(yt_bare, analyzer):
@@ -2361,7 +2363,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # bare (`return __self.a;`) -- the storage member binds
                     # the val_or_ref slot directly, no deref (BORROW_BIND,
                     # like the for-head member bind).
-                    yield_values[id(ys)] = _lower_expr(
+                    yield_values[ys] = _lower_expr(
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
                     _witness("res.yield_record_field")
@@ -2374,7 +2376,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # Node(i)` at `Iterator[Own[Node]]`): the storage ctor
                     # render lands bare (`return Node(i);`). OWN slots only
                     # -- sema forbids a borrow-record ctor yield.
-                    yield_values[id(ys)] = _lower_expr(
+                    yield_values[ys] = _lower_expr(
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE))
                     _witness("res.yield_own_ctor")
@@ -2382,7 +2384,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if (isinstance(yv_src, TpyName)
                         and _bare_yield_param_ok(yv_src.name, yt_bare, lc,
                                                  declared)):
-                    yield_values[id(ys)] = _lower_expr(yv_src, lc, declared)
+                    yield_values[ys] = _lower_expr(yv_src, lc, declared)
                     _witness("res.yield_record_param")
                     return
                 if not (isinstance(yv_src, TpyName)
@@ -2392,7 +2394,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 yv_lowered = _lower_expr(yv_src, lc, declared)
                 if isinstance(yv_lowered, THIRName) and not yv_lowered.deref:
                     yv_lowered = replace(yv_lowered, deref=True)
-                yield_values[id(ys)] = yv_lowered
+                yield_values[ys] = yv_lowered
                 _witness("res.yield_record_borrow")
                 return
             yv_valopt = _value_opt_yield_slot(yt)
@@ -2400,7 +2402,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # `yield None` at a value-repr Optional slot: the storage
                 # nullopt. SLOT-typed, not NoneType-typed -- a NoneType
                 # STORAGE literal renders `std::monostate{}` instead.
-                yield_values[id(ys)] = THIRLiteral(
+                yield_values[ys] = THIRLiteral(
                     result_type=yt, value=None, form=Form.STORAGE,
                     loc=ys.loc)
                 _witness("res.yield_value_opt_none")
@@ -2436,7 +2438,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if not (isinstance(ys.value, TpyName)
                     and ys.value.name in owned_view_params):
                 yv_lowered = _wrap_view_owned_sink(yv_lowered, yt_bare, ys.loc)
-            yield_values[id(ys)] = _slot_literal_retype(yv_lowered, yt, lc)
+            yield_values[ys] = _slot_literal_retype(yv_lowered, yt, lc)
             _witness("res.yield_value")
         elif isinstance(t, rcfg.Yield):
             payload = t.payload
@@ -2463,7 +2465,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # The emplace is a statement position: arg temps (the
                     # vararg pack's std::array) flush before the suspend
                     # line.
-                    suspend_exprs[id(operand)] = _strip_slot_leaf_deref(
+                    suspend_exprs[operand] = _strip_slot_leaf_deref(
                         _lower_expr(
                             operand, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.SUSPEND,
@@ -2484,7 +2486,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 if (isinstance(operand, TpyMethodCall)
                         and operand.user_module_call is None
                         and operand.builtin_module_call is None):
-                    suspend_exprs[id(operand.obj)] = _lower_expr(operand.obj, lc, declared)
+                    suspend_exprs[operand.obj] = _lower_expr(operand.obj, lc, declared)
                     _witness("res.suspend_expr")
                 lowered_args = []
                 # The const verdict lives on the RAW fi only (substitution
@@ -2499,7 +2501,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         a, fi.params[i].type, lc, declared,
                         frame_capturing=True, temp_args=True,
                         readonly_target=(dcbp is not None and i in dcbp)))
-                await_args[id(operand)] = tuple(lowered_args)
+                await_args[operand] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")
 
@@ -2558,7 +2560,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     # Helper-based finally bodies live outside cfg.blocks (a member fn per
     # try); lower their statements into the SAME leaves table, keyed by
-    # id(stmt). `gen_coro_finally_top_def` emits them through the leaf seam.
+    # the nested def. `gen_coro_finally_top_def` emits them through the leaf seam.
     # A `return` inside a helper (async: Poll replay; generator: the
     # __finally_stop path) rejects via res.finally_return, keeping the
     # helper's render nuance out of the leaf-return hook.
@@ -2574,14 +2576,14 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             try:
                 for stmt in body_stmts:
                     if _flat_narrowing_assert(stmt):
-                        leaves[id(stmt)] = _flat_assert_narrow_leaf(
+                        leaves[stmt] = _flat_assert_narrow_leaf(
                             stmt, helper_saved)
                         continue
                     leaf = _lower_leaf(stmt)
                     if isinstance(stmt, TpyIf):
                         leaf = _apply_post_if_narrow(stmt, leaf, helper_saved,
                                                      None)
-                    leaves[id(stmt)] = leaf
+                    leaves[stmt] = leaf
             finally:
                 lc.narrow = saved_narrow
                 for _v, _t0 in helper_saved.items():
@@ -2598,19 +2600,19 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # emits it from THIR. The statement position keeps its
     # THIRFrameNestedDef marker; a member body outside the slice rejects the
     # WHOLE frame (all-or-nothing at the frame's granularity).
-    nested_def_bodies: dict[int, tuple] = {}
+    nested_def_bodies: IdentityMap = IdentityMap()
     for _nd in collect_frame_nested_defs(list(func.body)):
-        nested_def_bodies[id(_nd.func)] = _lower_member_nested_def(
+        nested_def_bodies[_nd.func] = _lower_member_nested_def(
             _nd, lc, declared)
 
     # Nested leaf returns (THIRResumableReturn): register their values so
     # the skeleton's `_make_async_return` value render (`render_return_value`,
-    # keyed by id(ast)) finds them exactly like ReturnT terminator values.
+    # keyed by the ast node) finds them exactly like ReturnT terminator values.
     for nr in lc.nested_returns:
         if nr.value is not None:
-            return_values[id(nr.ast_stmt)] = nr.value
+            return_values[nr.ast_stmt] = nr.value
         if nr.deferred is not None:
-            deferred_returns[id(nr.ast_stmt)] = nr.deferred
+            deferred_returns[nr.ast_stmt] = nr.deferred
 
     if saw_try_region:
         _witness("res.try_region")

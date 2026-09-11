@@ -8066,7 +8066,7 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
     here is what needs the decl node or the binding kind."""
     if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
         return True
-    svt = analyzer.var_types.get(id(stmt))
+    svt = analyzer.var_types.get(stmt)
     if isinstance(svt, OptionalType) and isinstance(svt.inner, ReadonlyType):
         return True
     if _expr_is_const_source(stmt.init, func, analyzer, const_locals,

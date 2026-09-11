@@ -577,7 +577,7 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     """Same structural gate the ordinary bodies get, applied to a resumable
     frame's leaf tables.
 
-    The frame skeleton holds the statements/expressions apart in id()-keyed
+    The frame skeleton holds the statements/expressions apart in identity-keyed
     maps instead of one linear body, so each seam is walked at the flush
     right its lowering grants. `return_type` stays out: a `return` in a
     resumable is a CFG terminator whose value renders through
@@ -609,7 +609,7 @@ def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     # holds the await operand (flushable) plus the bound-method receiver;
     # `region_exprs` the sync for-head iterable (flushable) plus the range
     # bounds, the with-manager and the async-for iterable. Pooling by
-    # expression id() leaves no way to tell them apart here, so both are
+    # expression identity leaves no way to tell them apart here, so both are
     # walked at the looser right: a temp reaching one of the four temp-free
     # seams, where the skeleton has no flush point, is NOT caught.
     for args in body.await_args.values():

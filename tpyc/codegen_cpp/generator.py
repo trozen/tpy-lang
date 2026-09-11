@@ -13,6 +13,7 @@ import io
 import sys as _sys
 
 from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteCoroType, unwrap_readonly, unwrap_own, unwrap_ref_type
+from ..identity_map import IdentityMap
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
@@ -495,9 +496,10 @@ class CodeGenerator:
                 return contextlib.nullcontext()
             return qualify_shadowed_nominals()
 
-        self.ctx.thir_functions = {}
-        self.ctx.thir_resumables = {}
-        self.ctx.thir_simple_gens = {}
+        self.ctx.thir_functions = IdentityMap()
+        self.ctx.thir_overload_functions = IdentityMap()
+        self.ctx.thir_resumables = IdentityMap()
+        self.ctx.thir_simple_gens = IdentityMap()
         for f, self_type in _thir_callables(module, self.analyzer):
             # A bodyless binding has no emit at all. A bodied `@dispatch`
             # variant does have one -- the function driver emits it standalone
@@ -522,10 +524,10 @@ class CodeGenerator:
                         render_resolve=self.types.resolve_type)
                 if sg is None:
                     reject_attempt("body", f)
-                self.ctx.thir_simple_gens[id(f)] = sg
+                self.ctx.thir_simple_gens[f] = sg
                 commit_attempt()
                 continue
-            stubs = self.analyzer.overload_groups.get(id(f))
+            stubs = self.analyzer.overload_groups.get(f)
             if stubs:
                 # Per-stub seeding: an @overload impl body is emitted
                 # once per stub, so each (impl, stub) pair lowers with
@@ -549,7 +551,8 @@ class CodeGenerator:
                 if entries is None:
                     reject_attempt("body", f)
                 for stub, stf in entries:
-                    self.ctx.thir_functions[(id(f), id(stub))] = stf
+                    self.ctx.thir_overload_functions.setdefault(
+                        f, IdentityMap())[stub] = stf
                 commit_attempt()
                 continue
             with _shadow_ctx(self_type):
@@ -560,9 +563,9 @@ class CodeGenerator:
                                  render_concept=_render_concept)
             if tf is None:
                 reject_attempt("body", f)
-            self.ctx.thir_functions[id(f)] = tf
+            self.ctx.thir_functions[f] = tf
             commit_attempt()
-        self.ctx.thir_constructors = {}
+        self.ctx.thir_constructors = IdentityMap()
         for rec, init, self_type in _thir_ctors(module, self.analyzer):
             if is_bodyless_binding(init):
                 continue
@@ -578,7 +581,7 @@ class CodeGenerator:
             if tc is None:
                 reject_attempt("ctor", init,
                                where=f"in the constructor of '{rec.name}'")
-            self.ctx.thir_constructors[id(init)] = tc
+            self.ctx.thir_constructors[init] = tc
             commit_attempt()
 
         hpp = io.StringIO()

@@ -23,6 +23,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
 )
 from ..type_def_registry import is_span, is_varargs, is_spanlike_view
+from ..identity_map import IdentityMap
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
@@ -321,38 +322,38 @@ class SemanticAnalyzer:
         self.expr.set_scopes(self.stmts.scopes)
 
         # Per-function/method pre-scan results (shared with codegen)
-        self.function_scan_results: dict[int, ScanResult] = {}
+        self.function_scan_results: IdentityMap = IdentityMap()
         self.top_level_scan_result: ScanResult | None = None
 
         # Per-function/method hoisted vars (try/finally + branch predecl)
-        self.function_hoisted_vars: dict[int, set[str]] = {}
+        self.function_hoisted_vars: IdentityMap = IdentityMap()
         self.top_level_hoisted_vars: set[str] = set()
 
         # Per-function/method move-through vars (lvalue alias promoted to rvalue)
-        self.function_move_through_vars: dict[int, set[str]] = {}
+        self.function_move_through_vars: IdentityMap = IdentityMap()
         self.top_level_move_through_vars: set[str] = set()
 
         # Per-function movable locals (owned, not hoisted/loop/lvalue-reassigned)
-        self.function_movable_locals: dict[int, set[str]] = {}
+        self.function_movable_locals: IdentityMap = IdentityMap()
 
         # Per-function locals ever bound to a fresh rvalue. A name absent here
         # is borrow-only: its storage must alias the source, never own a copy.
-        self.function_ever_owned_locals: dict[int, set[str]] = {}
+        self.function_ever_owned_locals: IdentityMap = IdentityMap()
 
         # Per-function statement-level borrow bindings (name -> any-const),
         # excluding names also bound by non-statement kinds (with-as, for,
         # match captures). Drives the branch pre-decl pointer (alias) form.
-        self.function_stmt_borrow_decls: dict[int, dict[str, bool]] = {}
+        self.function_stmt_borrow_decls: IdentityMap = IdentityMap()
 
         # Per-function `global x` declarations (for codegen)
-        self.function_global_decls: dict[int, set[str]] = {}
+        self.function_global_decls: IdentityMap = IdentityMap()
 
         # Branch-declared vars that need pre-declaration before if-statements
-        self.if_branch_decls: dict[int, dict[str, TpyType]] = {}
+        self.if_branch_decls: IdentityMap = IdentityMap()
 
-        # @overload dispatch groups: implementation func id -> list of stub TpyFunctions
+        # @overload dispatch groups: implementation func -> list of stub TpyFunctions
         # Used by codegen to emit per-overload specialized C++ functions.
-        self.overload_groups: dict[int, list[TpyFunction]] = {}
+        self.overload_groups: IdentityMap = IdentityMap()
 
         # Convenience aliases for public API
         self.registry = self.ctx.registry
@@ -373,11 +374,11 @@ class SemanticAnalyzer:
         return self.ctx.func.current_function
 
     @property
-    def expr_types(self) -> dict[int, TpyType]:
+    def expr_types(self) -> IdentityMap:
         return self.ctx.expr_types
 
     @property
-    def var_types(self) -> dict[int, TpyType]:
+    def var_types(self) -> IdentityMap:
         return self.ctx.var_types
 
     @property
@@ -922,7 +923,7 @@ class SemanticAnalyzer:
                     prop = record_info.properties.get(method.property_name)
                     method_fi = prop.setter if prop is not None else None
                 if method_fi is not None and method_fi.return_borrows_from is None:
-                    pending.add(id(method_fi))
+                    pending.add(method_fi)
         for func in module.functions:
             if func.is_inline and not func.is_stub:
                 continue
@@ -930,7 +931,7 @@ class SemanticAnalyzer:
                 continue
             func_overloads = self.ctx.registry.get_function(func.name)
             if func_overloads and func_overloads[-1].return_borrows_from is None:
-                pending.add(id(func_overloads[-1]))
+                pending.add(func_overloads[-1])
 
     def run_phase2_fixpoint(self, module: TpyModule) -> None:
         """Sub-phase 5: call-graph mutation-fact propagation + readonly
@@ -1685,11 +1686,11 @@ class SemanticAnalyzer:
 
     def _store_analysis_results(self, func: TpyFunction, scan: ScanResult) -> None:
         """Store prescan/liveness results for codegen consumption."""
-        self.function_scan_results[id(func)] = scan
+        self.function_scan_results[func] = scan
         if self.ctx.func.hoisted_vars:
-            self.function_hoisted_vars[id(func)] = self.ctx.func.hoisted_vars.copy()
+            self.function_hoisted_vars[func] = self.ctx.func.hoisted_vars.copy()
         if self.ctx.func.move_through_vars:
-            self.function_move_through_vars[id(func)] = self.ctx.func.move_through_vars.copy()
+            self.function_move_through_vars[func] = self.ctx.func.move_through_vars.copy()
         # Compute movable locals from ever_owned_locals (survives FlowFacts restores)
         movable = set()
         for name in self.ctx.func.ever_owned_locals:
@@ -1706,9 +1707,9 @@ class SemanticAnalyzer:
                 continue
             movable.add(name)
         if movable:
-            self.function_movable_locals[id(func)] = movable
+            self.function_movable_locals[func] = movable
         if self.ctx.func.ever_owned_locals:
-            self.function_ever_owned_locals[id(func)] = self.ctx.func.ever_owned_locals.copy()
+            self.function_ever_owned_locals[func] = self.ctx.func.ever_owned_locals.copy()
         borrow_decls = {
             name: const
             for name, const in self.ctx.func.stmt_borrow_decls.items()
@@ -1716,9 +1717,9 @@ class SemanticAnalyzer:
             or name in self.ctx.func.nonstmt_borrow_bindings
         }
         if borrow_decls:
-            self.function_stmt_borrow_decls[id(func)] = borrow_decls
+            self.function_stmt_borrow_decls[func] = borrow_decls
         if self.ctx.func.global_declarations:
-            self.function_global_decls[id(func)] = self.ctx.func.global_declarations.copy()
+            self.function_global_decls[func] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
 
     def _validate_named_defaults(self, func: TpyFunction) -> None:
@@ -1922,7 +1923,7 @@ class SemanticAnalyzer:
                 self._require_overload_form(
                     stubs, f"{record.name}.{method.name}", impl=method)
                 self._validate_method_overload_group(method, stubs, record.name)
-                self.overload_groups[id(method)] = stubs
+                self.overload_groups[method] = stubs
         for name, stubs in pending_stubs.items():
             self._require_overload_form(stubs, f"{record.name}.{name}", impl=None)
 
@@ -2212,7 +2213,7 @@ class SemanticAnalyzer:
         # via _analyze_function (which works on the TpyFunction directly).
 
         # Store the group mapping for codegen
-        self.overload_groups[id(impl)] = stubs
+        self.overload_groups[impl] = stubs
 
     def _validate_recursive_union_paths(self, module: TpyModule) -> None:
         """For every alias tagged as recursive in `resolve_refs`, verify that

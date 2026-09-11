@@ -327,7 +327,7 @@ The tpyc front-end is fast enough for realistic dev workflow at this stage; the 
 
 **Until the IR migration lands**, prefer cheap hygiene that does not fight the migration direction:
 - **Per-compilation state belongs on the `Compiler` instance, not module-level globals** -- add a field to `Compiler._init_shared`, read via `get_current_compiler()`. (`_dynamic_attached_qnames` in `type_def_registry.py` is the one known holdout.)
-- **A new sema->codegen fact belongs on a THIR node or the lowering context** -- not on a parse node, and never in a side table keyed by `id(node)`. THIR is the boundary codegen reads; a fact parked anywhere else has to be re-found at emit time.
+- **A new sema->codegen fact belongs on a THIR node or the lowering context** -- not on a parse node, and never in a raw side table keyed by `id(node)` -- use `tpyc/identity_map.py` where a table keyed on an object is right. THIR is the boundary codegen reads; a fact parked anywhere else has to be re-found at emit time.
 - **Tag a distinction where it is DECIDED, not where it is consumed.** "Consumer inspects shape and re-derives the fact" is exactly what THIR removes.
 - **BorrowTracker extensions must think in `Place`/`LoanInfo`, not string keys.** If the natural expression is a string key, the feature is not designed yet.
 - **Per-type C++ knowledge belongs on `TypeDef`,** not in codegen `if`-chains.

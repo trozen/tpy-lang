@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
+from ..identity_map import IdentityMap
 from ..typesys import TpyType
 from .reject import is_bodyless_binding
 from .lower import iter_module_callables, iter_module_constructors
@@ -701,7 +702,7 @@ def _resumable_lines(name: str, body: 'THIRResumableBody') -> list[str]:
             continue
         lines.append(f"  {label}:")
         # Keyed by skeleton node id -- renumbered sequentially in lowering
-        # order so the dump is stable across runs (a raw id() is not).
+        # order so the dump is stable across runs (an address is not).
         for i, key in enumerate(mapping):
             if stmt_render is not None:
                 rendered = stmt_render(mapping[key], 0)
@@ -751,7 +752,7 @@ def _constructor_lines(name: str, ctor: 'THIRConstructor') -> list[str]:
 
 
 def dump_codegen_thir(module_ast, analyzer, ctx,
-                      reasons: 'dict[int, str] | None' = None) -> str:
+                      reasons: 'IdentityMap | None' = None) -> str:
     """Dump the bodies CODEGEN lowered, read off its per-module THIR caches.
 
     Every body kind is shown -- sync, resumable, simple-generator,
@@ -763,12 +764,12 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
     it has no body to lower at all, lowering was attempted and rejected, or a
     reject earlier in the module ended emission before this body's turn.
     """
-    reasons = reasons or {}
+    reasons = reasons if reasons is not None else IdentityMap()
 
-    def _not_routed(kind: str, name: str, key: int, fn) -> str:
+    def _not_routed(kind: str, name: str, fn) -> str:
         if is_bodyless_binding(fn) or getattr(fn, "is_overload_stub", False):
             return f"{kind} {name}: <no body to lower>"
-        why = reasons.get(key)
+        why = reasons.get(fn)
         if why is not None:
             return f"{kind} {name}: <rejected: {why}>"
         return f"{kind} {name}: <not attempted: an earlier reject ended emission>"
@@ -783,7 +784,7 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
         if top is not None:
             lines.extend(_function_lines(top))
         else:
-            why = reasons.get(id(module_ast))
+            why = reasons.get(module_ast)
             lines.append(
                 f"top-level __tpy_init: <rejected: {why}>" if why is not None
                 else "top-level __tpy_init: "
@@ -791,34 +792,33 @@ def dump_codegen_thir(module_ast, analyzer, ctx,
         lines.append("")
         seen_any = True
     for func, _self_type in iter_module_callables(module_ast, analyzer):
-        key = id(func)
-        stubs = analyzer.overload_groups.get(key)
-        stub_fns = ([ctx.thir_functions.get((key, id(s))) for s in stubs]
+        stubs = analyzer.overload_groups.get(func)
+        per_stub = ctx.thir_overload_functions.get(func)
+        stub_fns = ([None if per_stub is None else per_stub.get(s) for s in stubs]
                     if stubs else [])
-        if key in ctx.thir_functions:
-            lines.extend(_function_lines(ctx.thir_functions[key]))
+        if func in ctx.thir_functions:
+            lines.extend(_function_lines(ctx.thir_functions[func]))
         elif stub_fns and all(fn is not None for fn in stub_fns):
             for fn in stub_fns:
                 lines.extend(_function_lines(fn))
                 lines.append("")
             lines.pop()
-        elif ctx.thir_resumables.get(key) is not None:
-            lines.extend(_resumable_lines(func.name, ctx.thir_resumables[key]))
-        elif key in ctx.thir_simple_gens:
+        elif ctx.thir_resumables.get(func) is not None:
+            lines.extend(_resumable_lines(func.name, ctx.thir_resumables[func]))
+        elif func in ctx.thir_simple_gens:
             lines.extend(_simple_gen_lines(func.name,
-                                           ctx.thir_simple_gens[key]))
+                                           ctx.thir_simple_gens[func]))
         else:
-            lines.append(_not_routed("fn", func.name, key, func))
+            lines.append(_not_routed("fn", func.name, func))
         lines.append("")
         seen_any = True
     for record, init, _self in iter_module_constructors(
             module_ast, analyzer):
-        key = id(init)
         name = f"{record.name}.__init__"
-        if key in ctx.thir_constructors:
-            lines.extend(_constructor_lines(name, ctx.thir_constructors[key]))
+        if init in ctx.thir_constructors:
+            lines.extend(_constructor_lines(name, ctx.thir_constructors[init]))
         else:
-            lines.append(_not_routed("ctor", name, key, init))
+            lines.append(_not_routed("ctor", name, init))
         lines.append("")
         seen_any = True
     if not seen_any:

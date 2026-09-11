@@ -25,6 +25,7 @@ from enum import IntEnum
 from functools import partial
 from typing import TYPE_CHECKING
 
+from ..identity_map import IdentityMap
 from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
@@ -2094,9 +2095,8 @@ class AsyncCoroCodegen:
         """Attempt-once THIR leaf lowering for this frame body, cached so a
         re-entered frame lowers exactly once."""
         cache = self.ctx.thir_resumables
-        key = id(func)
-        if key in cache:
-            return cache[key]
+        if func in cache:
+            return cache[func]
         from ..thir.reject import (begin_attempt, commit_attempt,
                                    reject_attempt)
         from ..thir.lower.resumable import lower_resumable
@@ -2113,7 +2113,7 @@ class AsyncCoroCodegen:
                              case_entry_ids=case_entry_ids,
                              native_globals=self.ctx.native_global_names,
                              frame_layout=self._frame_layout(func))
-        cache[key] = rb
+        cache[func] = rb
         if rb is None:
             reject_attempt("resumable", func)
         commit_attempt()
@@ -2539,11 +2539,11 @@ class AsyncCoroCodegen:
         # local_hoists below, committed to the state only after the walk
         # completes so a mid-walk `_CFGNotYetSupported` leaves nothing behind.
         dep_units_out: list[tuple[str, str | None]] = []
-        # {id(TpyForEach) -> GeneratorForInfo}: carries pointer_form_loop_var
+        # {TpyForEach -> GeneratorForInfo}: carries pointer_form_loop_var
         # so `setup_resumable_frame_locals` + the struct field emit render a
         # non-value loop var as an aliasing `T*` rather than a `frame_slot<T>`
         # value copy.
-        for_loop_info: dict[int, GeneratorForInfo] = {}
+        for_loop_info: IdentityMap = IdentityMap()
         info_by_uid: dict[int, GeneratorForInfo] = {}
         counter = [0]
         # Loop-var hoists are accumulated here and applied to
@@ -2604,7 +2604,7 @@ class AsyncCoroCodegen:
                                 "supported on the resumable path.", loc=s.loc)
                         fields_out.extend(info.fields)
                         dep_units_out.extend(info.dep_units)
-                    for_loop_info[id(s)] = info
+                    for_loop_info[s] = info
                     info_by_uid[cur_uid] = info
                     elem_t = (unwrap_ref_type(s.elem_type)
                               if s.elem_type else None)
@@ -2673,8 +2673,8 @@ class AsyncCoroCodegen:
         # Read per-function off the analyzer, not off ctx: this prescan runs at
         # struct-emit time, before the body scope that would seed ctx with it.
         analyzer = self.ctx.analyzer
-        borrow_decls = analyzer.function_stmt_borrow_decls.get(id(func), {})
-        ever_owned = analyzer.function_ever_owned_locals.get(id(func), set())
+        borrow_decls = analyzer.function_stmt_borrow_decls.get(func, {})
+        ever_owned = analyzer.function_ever_owned_locals.get(func, set())
 
         exc_bindings: set[str] = set()
 
@@ -3038,7 +3038,7 @@ class AsyncCoroCodegen:
                              self.types.type_to_cpp(unwrap_ref_type(ctx_t))))
                         per_item.append(cur_n)
                     if any(n is not None for n in per_item):
-                        state.with_owned_ctx_map[id(s)] = per_item
+                        state.with_owned_ctx_map[s] = per_item
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():
                         walk(b)
@@ -3100,7 +3100,7 @@ class AsyncCoroCodegen:
         Which writes need a slot is `ptr_slot_field_type`'s call (shared
         with the pointer-local reseat lowering, which rejects on a
         missing entry). Fields land on `state.ptr_slot_fields`; the site
-        map (`id(stmt) -> field`) on `state.ptr_slot_map`, seeded into the
+        map (`stmt -> field`) on `state.ptr_slot_map`, seeded into the
         body ctx by `setup_resumable_frame_locals`. Per-site fields (no
         shared rebind slot): an alias holding the previous value keeps a
         live target, and a loop's re-executed site destroys the prior
@@ -3118,7 +3118,7 @@ class AsyncCoroCodegen:
             return
         local_types = dict(func.generator_locals or [])
         fields: list[tuple[str, str]] = []
-        uid_map: dict[int, str] = {}
+        uid_map: IdentityMap = IdentityMap()
 
         def visit(stmt: TpyStmt, name: str, init: 'TpyExpr | None') -> None:
             if name not in ptr_names or init is None:
@@ -3134,7 +3134,7 @@ class AsyncCoroCodegen:
                 return
             fname = f"__ptr_slot_f{len(fields)}"
             fields.append((fname, field_cpp))
-            uid_map[id(stmt)] = fname
+            uid_map[stmt] = fname
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
@@ -3707,7 +3707,7 @@ class AsyncCoroCodegen:
                  and region.finally_helper_name is not None)
                     or isinstance(region, rcfg.WithRegion)):
                 self.ctx.finally_guard_counter += 1
-                self.ctx.resumable_region_guards[id(region)] = (
+                self.ctx.resumable_region_guards[region] = (
                     f"__fin_ran_{self.ctx.finally_guard_counter}")
         # Push FinallyContext entries so a `return` inside this case
         # body walks the right finally chain via _emit_finally_chain.
@@ -3846,7 +3846,7 @@ class AsyncCoroCodegen:
         actually set it -- so a catch tests (and _emit_case declares) a guard
         only when it can fire. Returns None for a region whose cleanup never
         runs on a normal exit (the guard would be dead)."""
-        guard = self.ctx.resumable_region_guards.get(id(region))
+        guard = self.ctx.resumable_region_guards.get(region)
         if guard is not None and guard in self.ctx.live_finally_guards:
             return guard
         return None
@@ -4026,7 +4026,7 @@ class AsyncCoroCodegen:
                 def _emit_finally(o: "TextIO", ind: str,
                                   r=with_region) -> None:
                     self._emit_with_exit(o, ind, r, on_exception=False)
-            guard = self.ctx.resumable_region_guards.get(id(region))
+            guard = self.ctx.resumable_region_guards.get(region)
             fctx = FinallyContext(
                 emit_finally=_emit_finally, terminates=False, loop_depth=0,
                 guard_name=guard)
@@ -4166,7 +4166,7 @@ class AsyncCoroCodegen:
             if builder is not None:
                 handler_entry = builder.get_handler_entry(region, handler)
             handler_stack_helpers: list = []
-            saved_guards: dict[int, str] = {}
+            saved_guards: IdentityMap = IdentityMap()
             if handler_entry is not None:
                 handler_bb = cfg.blocks[handler_entry]
                 handler_stack_helpers = self._finally_helpers_for_region_stack(
@@ -4176,9 +4176,9 @@ class AsyncCoroCodegen:
                 # guard, so a raising copy is not re-run by the inner catch.
                 if handler_guard is not None:
                     for r in handler_bb.region_stack:
-                        saved_guards[id(r)] = (
-                            self.ctx.resumable_region_guards.get(id(r)))
-                        self.ctx.resumable_region_guards[id(r)] = handler_guard
+                        saved_guards[r] = (
+                            self.ctx.resumable_region_guards.get(r))
+                        self.ctx.resumable_region_guards[r] = handler_guard
             self.ctx.finally_stack = []
             # Link the handler frames to handler_guard (written into
             # resumable_region_guards just above), so a return/break/continue
@@ -4217,11 +4217,14 @@ class AsyncCoroCodegen:
                 self.ctx.in_except_tier = old_except_tier
                 self.ctx.finally_stack = old_finally_stack
                 self._restore_pending_return_ctx(prev_pending)
-                for rid, prev in saved_guards.items():
+                # NOT `region`: that name holds the try region this whole
+                # method emits for, and a Python for-loop variable outlives
+                # its loop.
+                for saved_region, prev in saved_guards.items():
                     if prev is None:
-                        self.ctx.resumable_region_guards.pop(rid, None)
+                        self.ctx.resumable_region_guards.pop(saved_region, None)
                     else:
-                        self.ctx.resumable_region_guards[rid] = prev
+                        self.ctx.resumable_region_guards[saved_region] = prev
             hg = (handler_guard
                   if handler_guard is not None
                   and handler_guard in self.ctx.live_finally_guards
@@ -4370,7 +4373,7 @@ class AsyncCoroCodegen:
             # Set the region's guard (if its C++ try is still open in this
             # case) before its cleanup copy runs, so the region's own catch
             # skips re-running a copy that raised.
-            guard = guards.get(id(region))
+            guard = guards.get(region)
             if isinstance(region, rcfg.TryRegion):
                 if region.finally_helper_name is not None:
                     if guard is not None:

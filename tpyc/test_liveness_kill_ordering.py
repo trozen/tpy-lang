@@ -29,8 +29,8 @@ def _nested_def(name: str, body: list[TpyStmt]) -> TpyNestedDef:
         func=TpyFunction(name=name, params=[], return_type=None, body=body))
 
 
-def _is_last_use(marks: set[int], node: TpyName) -> bool:
-    return id(node) in marks
+def _is_last_use(marks, node: TpyName) -> bool:
+    return node in marks
 
 
 class TestSelfReferentialDefinition:

@@ -890,9 +890,9 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
     pointer form, single-bind rvalue names the owned optional slot. None
     rejects the whole match."""
     hoist_declared: list[tuple[str, TpyType, str]] = []
-    borrow_decls = analyzer.function_stmt_borrow_decls.get(id(lc.func), {})
-    ever_owned = analyzer.function_ever_owned_locals.get(id(lc.func), set())
-    for name, raw in analyzer.if_branch_decls.get(id(stmt), {}).items():
+    borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
+    ever_owned = analyzer.function_ever_owned_locals.get(lc.func, set())
+    for name, raw in analyzer.if_branch_decls.get(stmt, {}).items():
         if name in declared:
             continue
         if name in prescan.native_globals:

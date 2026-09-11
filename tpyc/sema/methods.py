@@ -260,7 +260,7 @@ class MethodAnalyzer:
                             self.ctx.func.current_scope.define(expr.obj.name, obj_type)
                         if self.ctx.func.current_ns:
                             self.ctx.func.current_ns.bind_variable(expr.obj.name, obj_type)
-            self.ctx.func.pre_analyzed_method_args[id(expr)] = pre_analyzed
+            self.ctx.func.pre_analyzed_method_args[expr] = pre_analyzed
             return obj_type
         return None
 
@@ -324,7 +324,7 @@ class MethodAnalyzer:
         the packer re-analyzes every arg from scratch.
         """
         if resolved.has_variadic:
-            self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
+            self.ctx.func.pre_analyzed_method_args.pop(expr, None)
             self.calls._analyze_and_pack_varargs(expr, resolved)
         else:
             # `*unpack` is only valid at a variadic param position; a
@@ -352,7 +352,7 @@ class MethodAnalyzer:
         corresponding param (using pre-analyzed types from empty list inference
         when available). Otherwise pre-analyzed arg_types are used.
         """
-        pre = self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
+        pre = self.ctx.func.pre_analyzed_method_args.pop(expr, None)
         for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
             if arg_types is not None:
                 at = arg_types[i]
@@ -478,7 +478,7 @@ class MethodAnalyzer:
                 # Pre-analyzed types no longer align with expanded expr.args;
                 # discard any stale empty-list inference cache so
                 # _check_and_coerce_args re-analyzes every arg with a param hint.
-                self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
+                self.ctx.func.pre_analyzed_method_args.pop(expr, None)
                 coerce_arg_types = None
             self._check_args_or_pack_varargs(expr, resolved, coerce_arg_types)
             # Overloaded methods with generic defaults: find unresolved counterpart
@@ -1758,7 +1758,7 @@ class MethodAnalyzer:
                 self.ctx.func.current_ns.bind_variable(info.variable_name, resolved_type)
             var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
             if var_decl:
-                self.ctx.var_types[id(var_decl)] = resolved_type
+                self.ctx.var_types[var_decl] = resolved_type
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved_type
 
         # Set constructor info now that we have concrete types

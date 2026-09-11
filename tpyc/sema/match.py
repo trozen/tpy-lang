@@ -758,7 +758,7 @@ class MatchAnalyzer:
         subj_str = ''.join(subj_parts)
         for mcall in deferred_calls:
             self.expr.calls.pending_match_subject_checks.append(
-                (mcall, subj_str, id(case)))
+                (mcall, subj_str, case))
 
     def _find_subject_mutation(
         self, body: list[TpyStmt], guard: TpyExpr | None,

@@ -601,18 +601,18 @@ class _Prescan:
         # The module-init walk has no per-function scan entry -- its facts come
         # from the analyzer's top_level_* results, passed in as overrides
         # (gen_module_init seeds ctx from exactly those three).
-        scan = (analyzer.function_scan_results.get(id(func))
+        scan = (analyzer.function_scan_results.get(func)
                 if scan_override is None else scan_override)
-        global_decls = analyzer.function_global_decls.get(id(func), set())
+        global_decls = analyzer.function_global_decls.get(func, set())
         self.reassigned = (scan.reassigned - global_decls) if scan else set()
         # F2d: the subset reassigned with an rvalue source (the rebind-slot
         # trigger -- mirrors codegen's `ctx.rvalue_reassigned_vars` seeding).
         self.rvalue_reassigned = (
             (scan.rvalue_reassigned - global_decls) if scan else set())
-        self.hoisted = (analyzer.function_hoisted_vars.get(id(func), set())
+        self.hoisted = (analyzer.function_hoisted_vars.get(func, set())
                         if hoisted_override is None else hoisted_override)
         self.move_through = (
-            analyzer.function_move_through_vars.get(id(func), set())
+            analyzer.function_move_through_vars.get(func, set())
             if move_through_override is None else move_through_override)
         # Alias facts for the `del x` move-sink skips: names some alias binds
         # to (codegen's `ctx.aliased_vars` -- moving from them would gut the
@@ -1365,7 +1365,7 @@ class _LowerCtx:
         # reject (top-level hoisting is reachable -- `module_init_local` temps
         # are locals of `__tpy_init`, not globals).
         self.unhandled_hoists = set(
-            analyzer.function_hoisted_vars.get(id(func), ())
+            analyzer.function_hoisted_vars.get(func, ())
             if hoisted_override is None else hoisted_override)
         # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
         # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
@@ -1426,7 +1426,7 @@ class _LowerCtx:
         # conflation that made a value-typed local (a view-promoted `str`, a
         # BigInt) and a ptr-variant alias move where they must be copied.
         self.sema_movable_locals: frozenset[str] = frozenset(
-            analyzer.function_movable_locals.get(id(func), ()))
+            analyzer.function_movable_locals.get(func, ()))
         # The WORKING set the move sites read -- codegen's `ctx.movable_locals`.
         # Starts at the param seeds below (codegen's seed_param_locals) and
         # grows during the body walk at exactly the decl arms that promote a

@@ -18,6 +18,7 @@ from typing import Any, Callable, Iterable, NamedTuple, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation
 from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
+from .identity_map import IdentityMap, IdentitySet
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
@@ -551,9 +552,9 @@ class _SkeletonSnapshot(NamedTuple):
     `_finalize_declarations`. See `Compiler._verify_skeleton_adoption`
     for the invariant being checked.
     """
-    records: dict[str, int]               # name -> id(RecordInfo)
-    protocols: dict[str, int]             # name -> id(ProtocolInfo)
-    functions: dict[str, tuple[int, int]] # name -> (id(list), id(list[0]))
+    records: dict[str, object]            # name -> the skeleton RecordInfo
+    protocols: dict[str, object]          # name -> the skeleton ProtocolInfo
+    functions: dict[str, tuple]           # name -> (skeleton list, its [0])
 
 
 @dataclass
@@ -676,9 +677,9 @@ class Compiler:
         self._thir_reject_reason: str | None = None
         self._thir_reject_detail: str | None = None
         self._thir_reject_loc: 'SourceLocation | None' = None
-        # First-reject reason per rejected body, keyed by id() of its AST
+        # First-reject reason per rejected body, keyed by its AST
         # callable, so `--dump-thir` can name why a lowering raised.
-        self._thir_reject_by_node: dict[int, str] = {}
+        self._thir_reject_by_node: IdentityMap = IdentityMap()
         # Arg-table reach tally (thir/lower/arg_table.py): (family, cell) ->
         # count of arguments that cell DECIDED. The stdlib gate asserts every
         # registered family is reached; the cell keys are the coverage
@@ -702,13 +703,11 @@ class Compiler:
         self._decorator_schemas: dict = {}
         # REPL mode: allow @error_return calls at top level (unwrap with panic)
         self.allow_top_level_error_unwrap: bool = False
-        # Records whose builtin self-refs have already been resolved (perf cache).
-        # Keyed by record object identity: _exports_to_module_info passes
+        # Records whose builtin self-refs have already been resolved (perf
+        # cache). Keyed by record identity: _exports_to_module_info passes
         # exports.records by reference, so the same RecordInfo appears in
-        # multiple ModuleInfo.records dicts. id() reuse is not a concern
-        # because RecordInfo objects live in Compiler.modules for the full
-        # compiler lifetime.
-        self._resolved_self_ref_records: set[int] = set()
+        # multiple ModuleInfo.records dicts.
+        self._resolved_self_ref_records: IdentitySet = IdentitySet()
         # Public-surface -> raw-private-submodule reverse map used by
         # `_canonicalize_import_sources` when a dependent's surface
         # module (e.g. `typing`) is not yet sema-analyzed but its
@@ -2274,17 +2273,19 @@ class Compiler:
         # NominalType identity, so the skeleton NominalType is just
         # a name carrier and `register_enum` is free to allocate a
         # fresh instance.
+        # The snapshot holds the skeleton OBJECTS, not their addresses: the
+        # very event it exists to catch (a registration replacing the
+        # skeleton) is also the event that frees it, and a recycled address
+        # would make the `is` check below pass on a fresh object.
         compiled._skeleton_ids = _SkeletonSnapshot(
-            records={n: id(o) for n, o
-                     in compiled.exports.records.items()},
-            protocols={n: id(o) for n, o
-                       in compiled.exports.protocols.items()},
-            # Record both the list and inner FI identity: register_overload_group
+            records=dict(compiled.exports.records),
+            protocols=dict(compiled.exports.protocols),
+            # Record both the list and inner FI: register_overload_group
             # mutates the skeleton list in place (list identity preserved);
             # register_function builds a new list but adopts the inner FI
             # (inner FI identity preserved). Either is a valid adoption shape.
             functions={
-                n: (id(lst), id(lst[0])) if lst else (0, 0)
+                n: (lst, lst[0]) if lst else (None, None)
                 for n, lst in compiled.exports.functions.items()
             },
         )
@@ -2671,11 +2672,11 @@ class Compiler:
             ("record", snap.records, compiled.exports.records),
             ("protocol", snap.protocols, compiled.exports.protocols),
         ):
-            for name, skel_id in skeleton_ids.items():
+            for name, skel in skeleton_ids.items():
                 cur = exports_dict.get(name)
                 if cur is None:
                     continue  # name was deleted (e.g. macro removed it)
-                assert id(cur) == skel_id, (
+                assert cur is skel, (
                     f"skeleton-adoption invariant violated: {kind} "
                     f"'{name}' in module '{mod}' has a fresh "
                     f"identity. `register_{kind}` must adopt the "
@@ -2690,17 +2691,17 @@ class Compiler:
         # if a regression swapped the list for an unrelated list
         # whose [0] happens to be the original FI identity by
         # coincidence, this would still pass. Low-risk in practice.
-        for name, (skel_list_id, skel_fi_id) in snap.functions.items():
+        for name, (skel_list, skel_fi) in snap.functions.items():
             cur = compiled.exports.functions.get(name)
-            # `(0, 0)` is the sentinel for an empty skeleton list,
+            # `(None, None)` is the sentinel for an empty skeleton list,
             # which the snapshot type admits but pre-populate never
             # produces (every minted skeleton is `[FunctionInfo(...)]`).
             # Defensive skip; unreachable in practice today.
-            if cur is None or skel_list_id == 0:
+            if cur is None or skel_list is None:
                 continue
-            if id(cur) == skel_list_id:
+            if cur is skel_list:
                 continue
-            if cur and id(cur[0]) == skel_fi_id:
+            if cur and cur[0] is skel_fi:
                 continue
             raise AssertionError(
                 f"skeleton-adoption invariant violated: function "
@@ -3472,10 +3473,9 @@ class Compiler:
             return t.map_inner_types(resolve)
         cache = self._resolved_self_ref_records
         for rec in module_info.records.values():
-            rec_id = id(rec)
-            if rec_id in cache:
+            if rec in cache:
                 continue
-            cache.add(rec_id)
+            cache.add(rec)
             for methods in rec.methods.values():
                 for method in methods:
                     for i, p in enumerate(method.params):
@@ -3551,11 +3551,19 @@ class Compiler:
             implicit_stdlib_modules=implicit_stdlib,
             cycle_peers=cycle_peers,
         )
+        # Per-@overload-stub specializations live in their own map but are
+        # routed bodies like any other, so both halves are counted.
+        overload_bodies = [fn for per_stub in
+                           codegen.ctx.thir_overload_functions.values()
+                           for fn in per_stub.values()]
         self._thir_routed_bodies += (len(codegen.ctx.thir_functions)
+                                     + len(overload_bodies)
                                      + len(codegen.ctx.thir_constructors))
-        if codegen.ctx.thir_functions or codegen.ctx.thir_constructors:
+        if (codegen.ctx.thir_functions or overload_bodies
+                or codegen.ctx.thir_constructors):
             self._thir_routed_names[mod_name] = frozenset(
                 [tf.name for tf in codegen.ctx.thir_functions.values()]
+                + [tf.name for tf in overload_bodies]
                 + [f"{tc.record_name}.__init__"
                    for tc in codegen.ctx.thir_constructors.values()]
             )
@@ -3612,10 +3620,10 @@ class Compiler:
         return sources
 
     @property
-    def thir_reject_by_node(self) -> dict[int, str]:
-        """First-reject reason per rejected body, keyed by id() of its AST
-        callable -- the public read of the diagnostic map `--dump-thir` names
-        reasons from."""
+    def thir_reject_by_node(self) -> IdentityMap:
+        """First-reject reason per rejected body, keyed by its AST callable --
+        the public read of the diagnostic map `--dump-thir` names reasons
+        from."""
         return self._thir_reject_by_node
 
     def generate_code_and_thir(self, compiled: CompiledModule,

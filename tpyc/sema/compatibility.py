@@ -1105,7 +1105,7 @@ class TypeCompatibility:
                     # iteration moves the element (mirrors the scalar case below).
                     if (isinstance(source_expr, TpyName)
                             and source_expr.name in self.ctx.func.loop_vars
-                            and id(source_expr) in self.ctx.all_last_uses):
+                            and source_expr in self.ctx.all_last_uses):
                         for diag_idx in range(before, len(self.ctx.diagnostics)):
                             self.ctx.func.deferred_loop_copy_warnings.setdefault(
                                 source_expr.name, []).append(diag_idx)
@@ -1133,7 +1133,7 @@ class TypeCompatibility:
                     # (elements at last use will be moved, not copied).
                     if (isinstance(source_expr, TpyName)
                             and source_expr.name in self.ctx.func.loop_vars
-                            and id(source_expr) in self.ctx.all_last_uses):
+                            and source_expr in self.ctx.all_last_uses):
                         diag_idx = len(self.ctx.diagnostics) - 1
                         self.ctx.func.deferred_loop_copy_warnings.setdefault(
                             source_expr.name, []).append(diag_idx)
@@ -2007,7 +2007,7 @@ class TypeCompatibility:
         (which reads all_last_uses directly) lands on the same decision.
         """
         if not (isinstance(expr, TpyName)
-                and id(expr) in self.ctx.all_last_uses
+                and expr in self.ctx.all_last_uses
                 and self._is_owned_var(expr.name)):
             return False
         return not self.demoted_by_hidden_borrow(expr)
@@ -2041,7 +2041,7 @@ class TypeCompatibility:
         known = (self.ctx.func.current_alias_sources.keys()
                  | self.ctx.func.current_chain_alias_sources.keys())
         if self.ctx.func.borrow_tracker.has_borrowers_outside(expr.name, known):
-            self.ctx.all_last_uses.discard(id(expr))
+            self.ctx.all_last_uses.discard(expr)
             return True
         return False
 

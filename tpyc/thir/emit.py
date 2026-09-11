@@ -4454,7 +4454,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # Scaffolding is skeleton in every position: the hook re-enters
         # `_make_async_return` / `_make_generator_resumable_return`, whose
         # value render loops back through `render_return_value` (the
-        # id(ast)-keyed table this node's value was registered into).
+        # identity-keyed table this node's value was registered into).
         # No temps.flush here: `_lower_resumable_return_value` lowers with
         # the default `_ExprUse()` (allow_temps=False), so the value can
         # never carry a THIRArgTemp -- widening that seam to temp-bearing
@@ -4719,7 +4719,7 @@ class ResumableLeafEmitter:
     from the ctx-backed sinks -- the same contract as `emit_thir_body`.
 
     The skeleton looks up exactly the leaves lowering stored, keyed by the
-    id() of the parse-tree node it holds; a missing key means the gate and
+    parse-tree node it holds; a missing key means the gate and
     the seam disagree on the routed body's shape -- a hard error, never
     silently skipped."""
 
@@ -4758,11 +4758,11 @@ class ResumableLeafEmitter:
             self._state.iter_counter = iter_counter
 
     def _lookup(self, table, node, what: str):
-        if id(node) not in table:
+        if node not in table:
             raise THIRCodeGenError(
                 f"resumable seam: routed body has no lowered {what} for "
                 f"{type(node).__name__} (lowering/seam disagreement)")
-        return table[id(node)]
+        return table[node]
 
     def emit_leaf_stmt(self, out: TextIO, stmt, indent_level: int) -> None:
         """Emit one BB leaf statement (or a RaiseT terminator's statement),
@@ -4847,7 +4847,7 @@ class ResumableLeafEmitter:
         """Emit a MatchDispatch's whole type-aware dispatch (subject +
         labels + guards) through THIR's match tiers -- the seam the skeleton
         calls for a match inside a resumable frame. `arm_hook` is the
-        skeleton's arm emitter keyed by id(case.body); it fires at each
+        skeleton's arm emitter keyed by the case body; it fires at each
         arm-body point, so arm bodies stay BB chains in the state
         machine."""
         node = self._lookup(self._body.match_dispatches, match_stmt,
@@ -4868,7 +4868,7 @@ class SimpleGenLeafEmitter:
     instance per routed body holds one `_EmitState` -- the same contract as
     `ResumableLeafEmitter`, but the seam sites are static (one loop, one
     yield), so the body's blocks and expressions are direct fields, not
-    id()-keyed tables."""
+    identity-keyed tables."""
 
     def __init__(self, body, *, comments: 'CommentSink',
                  temps: 'TempSink',

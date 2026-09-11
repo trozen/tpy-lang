@@ -803,7 +803,7 @@ class FunctionGenerator:
 
     def _get_reassigned_params(self, func: TpyFunction) -> set[str] | None:
         """Get the set of param names reassigned in the function body, or None."""
-        scan = self.ctx.analyzer.function_scan_results.get(id(func))
+        scan = self.ctx.analyzer.function_scan_results.get(func)
         if not scan:
             return None
         param_names = {pname for pname, _ in func.params}
@@ -918,7 +918,7 @@ class FunctionGenerator:
         must reflect the whole group, not just the impl signature."""
         if self._signature_is_template(func):
             return True
-        stubs = self.ctx.analyzer.overload_groups.get(id(func))
+        stubs = self.ctx.analyzer.overload_groups.get(func)
         if stubs and any(self._signature_is_template(s) for s in stubs):
             return True
         return False
@@ -942,7 +942,7 @@ class FunctionGenerator:
         if func.builtin_function_key is not None:
             return False
         # @overload implementation: emit forward decls for each stub instead
-        overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
+        overload_stubs = self.ctx.analyzer.overload_groups.get(func)
         if overload_stubs:
             if self._overload_stubs_are_literal_only(overload_stubs, func):
                 for stub in overload_stubs:
@@ -1034,7 +1034,7 @@ class FunctionGenerator:
             return False
 
         # @overload implementation with template params: emit specialized defs in header
-        overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
+        overload_stubs = self.ctx.analyzer.overload_groups.get(func)
         if overload_stubs:
             is_literal_only = self._overload_stubs_are_literal_only(overload_stubs, func)
             # Header-only when any stub (or the impl) is a template: a template
@@ -1123,7 +1123,7 @@ class FunctionGenerator:
             return
 
         # @overload implementation: emit per-stub specialized functions
-        overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
+        overload_stubs = self.ctx.analyzer.overload_groups.get(func)
         if overload_stubs:
             if self._overload_stubs_are_literal_only(overload_stubs, func):
                 for stub in overload_stubs:
@@ -1219,7 +1219,7 @@ class FunctionGenerator:
             if isinstance(stub_ptype, LiteralType):
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
-        self.ctx.thir_overload_key = (id(impl), id(stub))
+        self.ctx.thir_overload_key = (impl, stub)
         try:
             self.gen_body(out, impl.body, impl, return_cpp=ret_type)
         finally:
@@ -1294,7 +1294,7 @@ class FunctionGenerator:
         # equality-based dead-branch elim (if count == 0:) works alongside
         # isinstance-based elim (if x is None:).
         self._inject_literal_overload_facts(overload_types)
-        self.ctx.thir_overload_key = (id(impl), id(stub))
+        self.ctx.thir_overload_key = (impl, stub)
         try:
             self.gen_body(out, impl.body, impl, return_cpp=ret_type)
         finally:
@@ -1380,20 +1380,20 @@ class FunctionGenerator:
             loc=stub.loc,
         )
         # Copy scan results from impl so codegen can find pre-scan data
-        self.ctx.analyzer.function_scan_results[id(synth)] = (
-            self.ctx.analyzer.function_scan_results.get(id(impl), None)
+        self.ctx.analyzer.function_scan_results[synth] = (
+            self.ctx.analyzer.function_scan_results.get(impl, None)
         )
-        if id(impl) in self.ctx.analyzer.function_hoisted_vars:
-            self.ctx.analyzer.function_hoisted_vars[id(synth)] = (
-                self.ctx.analyzer.function_hoisted_vars[id(impl)]
+        if impl in self.ctx.analyzer.function_hoisted_vars:
+            self.ctx.analyzer.function_hoisted_vars[synth] = (
+                self.ctx.analyzer.function_hoisted_vars[impl]
             )
-        if id(impl) in self.ctx.analyzer.function_move_through_vars:
-            self.ctx.analyzer.function_move_through_vars[id(synth)] = (
-                self.ctx.analyzer.function_move_through_vars[id(impl)]
+        if impl in self.ctx.analyzer.function_move_through_vars:
+            self.ctx.analyzer.function_move_through_vars[synth] = (
+                self.ctx.analyzer.function_move_through_vars[impl]
             )
-        if id(impl) in self.ctx.analyzer.function_movable_locals:
-            self.ctx.analyzer.function_movable_locals[id(synth)] = (
-                self.ctx.analyzer.function_movable_locals[id(impl)]
+        if impl in self.ctx.analyzer.function_movable_locals:
+            self.ctx.analyzer.function_movable_locals[synth] = (
+                self.ctx.analyzer.function_movable_locals[impl]
             )
 
         # Set overload context
@@ -1401,7 +1401,7 @@ class FunctionGenerator:
         self._inject_literal_overload_facts(overload_types)
         self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
             missing_params, impl_defaults, start_idx=len(stub.params))
-        self.ctx.thir_overload_key = (id(impl), id(stub))
+        self.ctx.thir_overload_key = (impl, stub)
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
@@ -1444,20 +1444,20 @@ class FunctionGenerator:
             loc=stub.loc,
         )
         # Copy scan results from impl
-        self.ctx.analyzer.function_scan_results[id(synth)] = (
-            self.ctx.analyzer.function_scan_results.get(id(impl), None)
+        self.ctx.analyzer.function_scan_results[synth] = (
+            self.ctx.analyzer.function_scan_results.get(impl, None)
         )
-        if id(impl) in self.ctx.analyzer.function_hoisted_vars:
-            self.ctx.analyzer.function_hoisted_vars[id(synth)] = (
-                self.ctx.analyzer.function_hoisted_vars[id(impl)]
+        if impl in self.ctx.analyzer.function_hoisted_vars:
+            self.ctx.analyzer.function_hoisted_vars[synth] = (
+                self.ctx.analyzer.function_hoisted_vars[impl]
             )
-        if id(impl) in self.ctx.analyzer.function_move_through_vars:
-            self.ctx.analyzer.function_move_through_vars[id(synth)] = (
-                self.ctx.analyzer.function_move_through_vars[id(impl)]
+        if impl in self.ctx.analyzer.function_move_through_vars:
+            self.ctx.analyzer.function_move_through_vars[synth] = (
+                self.ctx.analyzer.function_move_through_vars[impl]
             )
-        if id(impl) in self.ctx.analyzer.function_movable_locals:
-            self.ctx.analyzer.function_movable_locals[id(synth)] = (
-                self.ctx.analyzer.function_movable_locals[id(impl)]
+        if impl in self.ctx.analyzer.function_movable_locals:
+            self.ctx.analyzer.function_movable_locals[synth] = (
+                self.ctx.analyzer.function_movable_locals[impl]
             )
 
         # Inject literal narrowing facts
@@ -1465,7 +1465,7 @@ class FunctionGenerator:
             if isinstance(stub_ptype, LiteralType):
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
-        self.ctx.thir_overload_key = (id(impl), id(stub))
+        self.ctx.thir_overload_key = (impl, stub)
         try:
             self.gen_method_def(out, synth, record_name, dynamic_overrides,
                                 record_type_param_bounds=record_type_param_bounds,
@@ -1781,13 +1781,15 @@ class FunctionGenerator:
         overload_key = self.ctx.thir_overload_key
         if overload_key is not None:
             # Per-stub specialization in flight: only the (impl, stub) entry
-            # may emit this body -- falling back to id(func) would hijack the
-            # specialization with the unspecialized lowering. Consume the key
-            # so nested bodies never see it.
+            # may emit this body -- falling back to the plain map would hijack
+            # the specialization with the unspecialized lowering. Consume the
+            # key so nested bodies never see it.
             self.ctx.thir_overload_key = None
-            thir_fn = self.ctx.thir_functions.get(overload_key)
+            impl, stub = overload_key
+            per_stub = self.ctx.thir_overload_functions.get(impl)
+            thir_fn = None if per_stub is None else per_stub.get(stub)
         else:
-            thir_fn = self.ctx.thir_functions.get(id(func))
+            thir_fn = self.ctx.thir_functions.get(func)
         if thir_fn is None:
             raise CodeGenError(
                 f"internal error: no lowered body for '{func.name}'", func.loc)

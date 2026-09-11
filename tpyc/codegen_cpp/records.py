@@ -638,7 +638,7 @@ class RecordGenerator:
             # body size -- the specialized-method emitters take a `mode` param
             # but it's always "inline" here (small/large split for those would
             # need partition-aware overload dispatch; not worth the wiring yet).
-            overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))
+            overload_stubs = self.ctx.analyzer.overload_groups.get(method)
             if overload_stubs:
                 overload_dispatched.add(method.name)
                 if self.functions._overload_stubs_are_literal_only(overload_stubs, method):
@@ -921,7 +921,7 @@ class RecordGenerator:
         The member-init list and body tail both come off the lowered
         THIRConstructor, which already carries the hoisted inits; the
         signature is emitted by the caller."""
-        thir_ctor = self.ctx.thir_constructors.get(id(record.init_method))
+        thir_ctor = self.ctx.thir_constructors.get(record.init_method)
         if thir_ctor is None:
             raise CodeGenError(
                 f"internal error: no lowered constructor for '{record.name}'",
@@ -1090,7 +1090,7 @@ class RecordGenerator:
             # the const clone of an `@auto_readonly @overload` impl, which
             # immediately follows the mutable impl in `record.methods`, also
             # gets skipped (the mutable clone already emitted both stubs).
-            overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))
+            overload_stubs = self.ctx.analyzer.overload_groups.get(method)
             if overload_stubs:
                 overload_dispatched.add(method.name)
                 continue

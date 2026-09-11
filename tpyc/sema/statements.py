@@ -247,7 +247,7 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         # consume to the copy path. Opaque stubs (native, builtin,
         # cpp_template, bodyless overloads) are not in the pending set --
         # for them None keeps meaning "borrows nothing".
-        if (id(fi) in ctx.pending_borrow_fact_fis
+        if (fi in ctx.pending_borrow_fact_fis
                 and _signature_may_return_borrow(fi)):
             for src in ([obj] if obj is not None else []) + list(args):
                 root = _borrow_storage_root(src)
@@ -727,7 +727,7 @@ class StatementAnalyzer:
         (tracked in BUGS.md).
         """
         if not (isinstance(stmt.value, TpyName)
-                and id(stmt.value) in self.ctx.finally_return_candidates
+                and stmt.value in self.ctx.finally_return_candidates
                 and self.compat._is_owned_var(stmt.value.name)):
             return
         exp = unwrap_ref_type(expected)
@@ -765,7 +765,7 @@ class StatementAnalyzer:
             eligible = (isinstance(declared, OptionalType)
                         and declared.uses_pointer_repr())
         if eligible:
-            self.ctx.all_last_uses.add(id(stmt.value))
+            self.ctx.all_last_uses.add(stmt.value)
             stmt.finally_deferred_capture = True
 
     def _is_in_constructor(self) -> bool:
@@ -1019,7 +1019,7 @@ class StatementAnalyzer:
             else ((n, self.ctx.func.var_decl_by_name[n]) for n in names if n in self.ctx.func.var_decl_by_name)
         )
         for name, var_decl in items:
-            canonical = self.ctx.var_types.get(id(var_decl))
+            canonical = self.ctx.var_types.get(var_decl)
             if canonical is None:
                 continue
             current = self.ctx.func.current_scope.lookup(name)
@@ -4386,7 +4386,7 @@ class StatementAnalyzer:
                     resolved = unwrap_readonly(var_type)
                     orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
                     if orig_decl:
-                        self.ctx.var_types[id(orig_decl)] = resolved
+                        self.ctx.var_types[orig_decl] = resolved
                     for key in self.ctx.declared_var_types:
                         if key[1] == stmt.name:
                             self.ctx.declared_var_types[key] = resolved
@@ -4500,7 +4500,7 @@ class StatementAnalyzer:
             # Own[...] instead of re-deriving the bare protocol from the
             # init expr (mirrors the collapsed-tuple recording below).
             if isinstance(var_type, OwnType):
-                self.ctx.var_types[id(stmt)] = var_type
+                self.ctx.var_types[stmt] = var_type
                 if stmt.name in self.ctx.func.unread_coro_locals:
                     self.ctx.warning(
                         f"rebinding '{stmt.name}' drops the previous "
@@ -4534,7 +4534,7 @@ class StatementAnalyzer:
                 collapsed = collapse_tuple_own_elements(var_type)
                 if collapsed is not var_type:
                     var_type = collapsed
-                    self.ctx.var_types[id(stmt)] = var_type
+                    self.ctx.var_types[stmt] = var_type
             # Track inferred writes for potential future retro-validation.
             self.deduction.record_write(stmt.name, stmt.init, init_type)
             # Annotate tuple literal element capture modes (local context)
@@ -5433,7 +5433,7 @@ class StatementAnalyzer:
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.func.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
-                    self.ctx.var_types[id(var_decl)] = resolved
+                    self.ctx.var_types[var_decl] = resolved
                 # Retroactively update declared_var_types for earlier lines
                 # so # tpyc: type() reflects the final variable type.
                 if resolved != unwrap_readonly(inner_target):
@@ -5865,7 +5865,7 @@ class StatementAnalyzer:
                     self.ctx.func.current_scope.define(name, effective_type)
                 var_decl = self.ctx.func.var_decl_by_name.get(name)
                 if var_decl:
-                    self.ctx.var_types[id(var_decl)] = effective_type
+                    self.ctx.var_types[var_decl] = effective_type
                 for key in self.ctx.declared_var_types:
                     if key[1] == name:
                         self.ctx.declared_var_types[key] = effective_type

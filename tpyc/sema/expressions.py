@@ -710,7 +710,7 @@ class ExpressionAnalyzer:
             if name not in self.ctx.func.current_reassigned_vars:
                 # Strip Own at last-use for auto-move (same as before)
                 if (isinstance(result, OwnType)
-                        and id(expr) in self.ctx.all_last_uses
+                        and expr in self.ctx.all_last_uses
                         and not self.compat.demoted_by_hidden_borrow(expr)):
                     return result.wrapped
                 return result
@@ -723,7 +723,7 @@ class ExpressionAnalyzer:
                 and name in self.ctx.func.owned_locals
                 and name not in self.ctx.func.hoisted_vars
                 and name not in self.ctx.func.loop_vars):
-            if (id(expr) not in self.ctx.all_last_uses
+            if (expr not in self.ctx.all_last_uses
                     or self.compat.demoted_by_hidden_borrow(expr)):
                 return OwnType(result)
         return result
@@ -2160,7 +2160,7 @@ class ExpressionAnalyzer:
         return (gen.owns_elements
                 and isinstance(inner, TpyName)
                 and inner.name == gen.var
-                and (is_last_sink or id(inner) in self.ctx.all_last_uses))
+                and (is_last_sink or inner in self.ctx.all_last_uses))
 
     def _warn_storage_element_copy(self, elem: TpyExpr, elem_type: TpyType) -> None:
         """A reference-type container-literal element is stored by value (the

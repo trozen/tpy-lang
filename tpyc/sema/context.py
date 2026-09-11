@@ -11,6 +11,7 @@ from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any, Iterator, Literal, TYPE_CHECKING
 
+from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation
 from .. import qnames
@@ -767,7 +768,9 @@ class FunctionTrackingState:
     # --- List/dict/set literal tracking ---
     variable_to_literal: dict[str, int] = field(default_factory=dict)
     pending_resolutions: list[int] = field(default_factory=list)
-    pre_analyzed_method_args: dict[int, list[TpyType]] = field(default_factory=dict)
+    # Keyed by the TpyMethodCall; survives `save_function_state`'s deep
+    # copy with its keys intact (see `IdentityMap.__deepcopy__`).
+    pre_analyzed_method_args: IdentityMap = field(default_factory=IdentityMap)
     variable_to_dict_literal: dict[str, int] = field(default_factory=dict)
     pending_dict_resolutions: list[int] = field(default_factory=list)
     variable_to_set_literal: dict[str, int] = field(default_factory=dict)
@@ -1112,8 +1115,8 @@ class SemanticContext:
     record_ctx: RecordContext = field(default_factory=RecordContext)
 
     # --- Type cache ---
-    expr_types: dict[int, TpyType] = field(default_factory=dict)
-    var_types: dict[int, TpyType] = field(default_factory=dict)
+    expr_types: IdentityMap = field(default_factory=IdentityMap)
+    var_types: IdentityMap = field(default_factory=IdentityMap)
 
     # --- Literal tracking (counters + registries persist across functions) ---
     literal_counter: int = 0
@@ -1191,7 +1194,7 @@ class SemanticContext:
     # Instantiations resolved in this module with a fully concrete
     # substitution -- the roots the discharge walks from.
     own_copy_roots: list = field(default_factory=list)
-    _own_copy_seen_roots: set = field(default_factory=set)
+    _own_copy_seen_roots: IdentityMap = field(default_factory=IdentityMap)
     # Generic callees instantiated with a payload that still names a type
     # param. Both this and `own_copy_obligations` are append-only and sliced
     # per body at `own_copy_mark` / `own_copy_drain`, rather than held on
@@ -1258,23 +1261,23 @@ class SemanticContext:
     _evaluating_record_noncopyable: set = field(default_factory=set)
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
-    all_last_uses: set[int] = field(default_factory=set)
-    # id(TpyName) of `return <name>` values under a non-suspending finally
+    all_last_uses: IdentitySet = field(default_factory=IdentitySet)
+    # The `return <name>` values under a non-suspending finally
     # (liveness.collect_finally_return_candidates; every such return -- the
     # finally can reach the local through aliases/closures, so candidacy is
     # structural, not read-based). Return analysis re-marks eligible
     # reference-type shapes as last-use and stamps
     # TpyReturn.finally_deferred_capture (codegen then materializes the
     # return value after the inline finally chain).
-    finally_return_candidates: set[int] = field(default_factory=set)
+    finally_return_candidates: IdentitySet = field(default_factory=IdentitySet)
 
-    # id(FunctionInfo) of this module's bodied functions/methods whose body
+    # This module's bodied functions/methods whose body
     # analysis has not run yet -- their return_borrows_from is still None
     # for ordering reasons, not because they cannot borrow. A call-result
     # bind from one of these registers a conservative OPAQUE borrow; once
     # the body is analyzed the fact becomes a frozenset and the set entry
     # is naturally inert (the None check short-circuits first).
-    pending_borrow_fact_fis: set[int] = field(default_factory=set)
+    pending_borrow_fact_fis: IdentitySet = field(default_factory=IdentitySet)
 
     # --- Consuming method tracking ---
     in_consuming_method: bool = False
@@ -1283,7 +1286,7 @@ class SemanticContext:
     expr_type_hint: TpyType | None = None
 
     # --- Branch-declared variable tracking ---
-    if_branch_decls: dict[int, dict[str, TpyType]] = field(default_factory=dict)
+    if_branch_decls: IdentityMap = field(default_factory=IdentityMap)
 
     # --- Extern symbol tracking ---
     extern_symbols: dict[str, str] = field(default_factory=dict)
@@ -1461,10 +1464,14 @@ class SemanticContext:
             self.own_copy_forwards.append(edge)
             return
         try:
-            key = (id(callee), pairs, is_record)
-            if key in self._own_copy_seen_roots:
+            # Dedup per callee IDENTITY -- the outer map owns the callee, so
+            # a substituted RecordInfo that dies cannot have its address
+            # recycled into a false hit (see tpyc/identity_map.py).
+            seen = self._own_copy_seen_roots.setdefault(callee, set())
+            key = (pairs, is_record)
+            if key in seen:
                 return
-            self._own_copy_seen_roots.add(key)
+            seen.add(key)
         except TypeError:
             # An unhashable type arg cannot be deduped; recording the edge
             # twice only costs a repeated (idempotent) discharge.
@@ -1698,7 +1705,7 @@ class SemanticContext:
         the analyze_expr return value directly (which preserves Ref/Own)
         for copy-warning detection.
         """
-        typ = self.expr_types.get(id(expr))
+        typ = self.expr_types.get(expr)
         if typ is None:
             return None
         typ = unwrap_ref_type(typ)
@@ -1711,11 +1718,11 @@ class SemanticContext:
 
         Used by copy-warning detection to see Ref/Own qualifiers.
         """
-        return self.expr_types.get(id(expr))
+        return self.expr_types.get(expr)
 
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""
-        self.expr_types[id(expr)] = typ
+        self.expr_types[expr] = typ
         # A COMPOSITE carrying a Pending* leaf (a non-array comprehension's
         # `list[Pending]`, a tuple of list literals) is read straight off this
         # cache by the var-decl codegen fallback; record it so resolve_all can
@@ -1740,11 +1747,11 @@ class SemanticContext:
         for typ in mapping.values():
             if typ is not None:
                 self._force_branch_decl_lists(typ)
-        existing = self.if_branch_decls.get(id(stmt))
+        existing = self.if_branch_decls.get(stmt)
         if existing is not None:
             existing.update(mapping)
             return existing
-        self.if_branch_decls[id(stmt)] = mapping
+        self.if_branch_decls[stmt] = mapping
         self.func.pending_branch_decl_maps.append(mapping)
         return mapping
 
@@ -1793,7 +1800,14 @@ class SemanticContext:
         self.func = FunctionTrackingState()
 
     def save_function_state(self) -> FunctionTrackingState:
-        """Snapshot per-function state (for nested def isolation)."""
+        """Snapshot per-function state (for nested def isolation).
+
+        The deep copy carries identity-keyed fields (`IdentityMap` /
+        `IdentitySet`, e.g. `pre_analyzed_method_args`) over by key
+        identity -- their `__deepcopy__` says why. The restore installs the
+        SNAPSHOT, so cloned keys would leave every later lookup, made with
+        the live AST node, missing.
+        """
         return deepcopy(self.func)
 
     def restore_function_state(self, saved: FunctionTrackingState) -> None:
@@ -1829,7 +1843,7 @@ class SemanticContext:
         not part of SemanticContext state.
         """
         saved_func = self.save_function_state()
-        saved_expr_types = dict(self.expr_types)
+        saved_expr_types = self.expr_types.copy()
         saved_literal_counter = self.literal_counter
         saved_list_literals = dict(self.list_literals)
         saved_dict_literals = dict(self.dict_literals)

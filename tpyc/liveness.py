@@ -15,6 +15,7 @@ and no longer constrains moves of the new h (detach-on-reassign).
 
 from __future__ import annotations
 
+from .identity_map import IdentitySet
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyRaise,
@@ -31,10 +32,10 @@ _Aliases = dict[str, set[str]]
 def analyze_last_uses(
     stmts: list[TpyStmt],
     alias_sources: dict[str, str] | None = None,
-) -> set[int]:
+) -> IdentitySet:
     """Analyze a function body to find last-use sites for auto-move.
 
-    Returns a set of id(TpyName) for name nodes that are at their last use --
+    Returns the TpyName nodes that are at their last use --
     the variable is not read again on any subsequent execution path without
     being reassigned first.
 
@@ -64,7 +65,7 @@ def analyze_last_uses(
     # later consume still kills the seed, which is sound: the closure reads
     # the rebound variable, not the old object.
     live: set[str] = _collect_nested_def_captures(stmts)
-    last_uses: set[int] = set()
+    last_uses: IdentitySet = IdentitySet()
     _analyze_stmts_backward(
         stmts, live, last_uses, source_aliases,
         detached_aliases, first_reassign_pos,
@@ -319,7 +320,7 @@ def _has_loop_break(stmts: list[TpyStmt]) -> bool:
 def _analyze_stmts_backward(
     stmts: list[TpyStmt],
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
     first_reassign_pos: dict[str, int] | None = None,
@@ -341,7 +342,7 @@ def _analyze_stmts_backward(
 def _analyze_stmt(
     stmt: TpyStmt,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -462,7 +463,7 @@ def _analyze_stmt(
 def _analyze_if(
     stmt: TpyIf,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -490,7 +491,7 @@ def _analyze_if(
 def _analyze_match(
     stmt: TpyMatch,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -516,7 +517,7 @@ def _analyze_match(
 def _analyze_while(
     stmt: TpyWhile,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -557,7 +558,7 @@ def _analyze_while(
 def _analyze_for_each(
     stmt: TpyForEach,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -609,8 +610,8 @@ def _all_read_names(stmts: list[TpyStmt]) -> list[TpyName]:
     return result
 
 
-def collect_finally_return_candidates(stmts: list[TpyStmt]) -> set[int]:
-    """ids of TpyName nodes that are the direct `return <name>` value inside
+def collect_finally_return_candidates(stmts: list[TpyStmt]) -> IdentitySet:
+    """The TpyName nodes that are the direct `return <name>` value inside
     a try with a non-suspending finally -- EVERY such return, regardless of
     whether the finally body mentions the name. The finally can reach the
     local's storage through channels no syntactic read-scan can enumerate
@@ -629,7 +630,7 @@ def collect_finally_return_candidates(stmts: list[TpyStmt]) -> set[int]:
     and to stamp TpyReturn.finally_deferred_capture for eligible
     reference-type shapes.
     """
-    out: set[int] = set()
+    out: IdentitySet = IdentitySet()
     rebound = _collect_nested_def_nonlocal_rebinds(stmts)
     _walk_finally_returns(stmts, 0, out, rebound, suppressed=False)
     return out
@@ -682,14 +683,14 @@ def _collect_nested_def_nonlocal_rebinds(stmts: list[TpyStmt]) -> set[str]:
 
 
 def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
-                          out: set[int], rebound: set[str],
+                          out: IdentitySet, rebound: set[str],
                           *, suppressed: bool) -> None:
     for stmt in stmts:
         if isinstance(stmt, TpyReturn):
             if (not suppressed and finally_depth > 0
                     and isinstance(stmt.value, TpyName)
                     and stmt.value.name not in rebound):
-                out.add(id(stmt.value))
+                out.add(stmt.value)
         elif isinstance(stmt, TpyNestedDef):
             # A nested def's returns exit the inner function; the enclosing
             # finallies never run for them. Its own analysis pass covers it.
@@ -717,7 +718,7 @@ def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
 def _analyze_with(
     stmt: TpyWith,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -751,7 +752,7 @@ def _analyze_with(
     if mgr_roots:
         for node in _all_read_names(stmt.body):
             if node.name in mgr_roots:
-                last_uses.discard(id(node))
+                last_uses.discard(node)
     for item in reversed(stmt.items):
         if item.target is not None:
             live.discard(item.target)
@@ -761,7 +762,7 @@ def _analyze_with(
 def _analyze_try(
     stmt: TpyTry,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -807,7 +808,7 @@ def _analyze_try(
     if exception_path_live:
         for node in _all_read_names(stmt.try_body):
             if node.name in exception_path_live:
-                last_uses.discard(id(node))
+                last_uses.discard(node)
     live |= exception_path_live
 
 
@@ -1001,7 +1002,7 @@ def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
 def _process_reads(
     expr: TpyExpr,
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -1012,7 +1013,7 @@ def _process_reads(
 def _process_reads_multi(
     exprs: list[TpyExpr],
     live: set[str],
-    last_uses: set[int],
+    last_uses: IdentitySet,
     source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> None:
@@ -1043,7 +1044,7 @@ def _process_reads_multi(
         if (name_counts[node.name] == 1
                 and node.name not in live
                 and not _has_live_alias(node.name, live, source_aliases, detached_aliases)):
-            last_uses.add(id(node))
+            last_uses.add(node)
 
     # Add all read names to live set
     for node in reads:

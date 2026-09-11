@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar
 
+from ..identity_map import IdentityMap
 from ..parse import SourceLocation
 from ..typesys import ResolvedBinop, TpyType
 
@@ -2768,7 +2769,7 @@ class THIRTry(THIRStmt):
     present. `err_opt_cpp` pre-renders the binding's error type for the
     `__err_opt_N` decl (None when the handler has no binding).
 
-    `hoist_decls` is the sema hoist (`if_branch_decls[id(stmt)]`) rendered at
+    `hoist_decls` is the sema hoist (`if_branch_decls[stmt]`) rendered at
     lowering as `(name, cpp_type)` pairs in sema's sorted order -- names spell
     RAW (no escape). The finally body re-emits at every exit
     site through the emit-state finally-frame stack (the with frames' stmt-list
@@ -3354,7 +3355,7 @@ class THIRConstructor:
 @dataclass(frozen=True)
 class THIRResumableBody:
     """A routed resumable (async) body's lowered LEAF content, keyed by the
-    id() of the AST node the shared state-machine skeleton holds.
+    AST node the shared state-machine skeleton holds.
 
     The skeleton (`resumable_cfg` + `gen_async`) owns the frame struct, case
     labels, region replay and suspend/resume plumbing -- structural emission,
@@ -3364,47 +3365,46 @@ class THIRResumableBody:
 
     `leaves` covers BB leaf statements and RaiseT terminator statements;
     `conds` the Branch terminator conditions; `await_args` each suspension's
-    sub-coro emplace arguments (keyed by id() of the await's operand call);
+    sub-coro emplace arguments (keyed by the await's operand call);
     `return_values` the value expression of ReturnT terminators and of
-    `_make_async_return`'s value renders (keyed by id() of the TpyReturn);
-    `yield_values` the generator-shape yield value (keyed by id() of the
-    TpyYield -- the coerce carrying the yield-type target is baked, so the
-    render is position-blind, unlike the async return)."""
-    leaves: 'Mapping[int, THIRStmt]'
-    conds: 'Mapping[int, THIRExpr]'
-    await_args: 'Mapping[int, tuple[THIRExpr, ...]]'
-    return_values: 'Mapping[int, THIRExpr]'
-    yield_values: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
-    # ERASED/BORROWED await operands (keyed by id() of the operand expr) and
-    # bound-method await receivers (keyed by id() of the receiver expr, R5):
+    `_make_async_return`'s value renders (keyed by the TpyReturn);
+    `yield_values` the generator-shape yield value (keyed by the TpyYield --
+    the coerce carrying the yield-type target is baked, so the render is
+    position-blind, unlike the async return)."""
+    leaves: 'IdentityMap'
+    conds: 'IdentityMap'
+    await_args: 'IdentityMap'
+    return_values: 'IdentityMap'
+    yield_values: 'IdentityMap' = field(default_factory=IdentityMap)
+    # ERASED/BORROWED await operands (keyed by the operand expr) and
+    # bound-method await receivers (keyed by the receiver expr, R5):
     # the skeleton keeps its move / & / .get() / __self-prepend wrap, the leaf
     # renders the bare expression.
-    suspend_exprs: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
-    # Region/loop pseudo-statement renders (keyed by id() of the AST
-    # EXPRESSION node the skeleton holds): the with-region manager
+    suspend_exprs: 'IdentityMap' = field(default_factory=IdentityMap)
+    # Region/loop pseudo-statement renders (keyed by the AST EXPRESSION
+    # node the skeleton holds): the with-region manager
     # (`item.context_expr`), the for-loop iterable, and each range() bound.
     # One map for all three kinds -- the skeleton keeps its emplace / &(..) /
     # static_cast wrap, the leaf renders the bare expression.
-    region_exprs: 'Mapping[int, THIRExpr]' = field(default_factory=dict)
-    # MatchDispatch dispatches (keyed by id() of the TpyMatch): the whole
+    region_exprs: 'IdentityMap' = field(default_factory=IdentityMap)
+    # MatchDispatch dispatches (keyed by the TpyMatch): the whole
     # type-aware dispatch (subject + labels + guards) lowered through the
     # sync match tiers with arm BODIES replaced by body_key hooks -- the
     # skeleton walks the arm BBs through its arm emitter at those points.
-    match_dispatches: 'Mapping[int, THIRStmt]' = field(default_factory=dict)
-    # Frame nested defs (keyed by id() of the nested TpyFunction): the
+    match_dispatches: 'IdentityMap' = field(default_factory=IdentityMap)
+    # Frame nested defs (keyed by the nested TpyFunction): the
     # member-function BODY statements, lowered under the nested function's
     # own per-function scope with the frame classifications kept (a member
     # reaches frame locals through the frame's fields via implicit this).
     # The skeleton keeps the signature/struct-decl lines; the statement
     # position keeps its THIRFrameNestedDef marker.
-    nested_def_bodies: 'Mapping[int, tuple[THIRStmt, ...]]' = (
-        field(default_factory=dict))
-    # Sema-stamped finally-deferred returns (keyed by id() of the TpyReturn):
+    nested_def_bodies: 'IdentityMap' = field(default_factory=IdentityMap)
+    # Sema-stamped finally-deferred returns (keyed by the TpyReturn):
     # the capture recipe the skeleton's return scaffolding consults. Present
     # for EVERY stamped return of a routed body -- lowering rejects the body
     # when the recipe table does not cover the shape -- so the seam never
     # decides anything at emit and a missing entry is a disagreement.
-    deferred_returns: 'Mapping[int, THIRStmt]' = field(default_factory=dict)
+    deferred_returns: 'IdentityMap' = field(default_factory=IdentityMap)
 
 
 @dataclass(frozen=True)
@@ -3416,9 +3416,8 @@ class THIRSimpleGenBody:
     types, loop-var decl and the per-pull optional return -- structural
     emission, like the resumable frame skeleton. The user-source leaves
     render from these fields instead. Unlike `THIRResumableBody`, the seam
-    sites are static
-    (one loop, one yield), so the blocks are direct fields, not id()-keyed
-    tables.
+    sites are static (one loop, one yield), so the blocks are direct fields,
+    not identity-keyed tables.
 
     `init` is the pre-loop statement block (`func.body[:-1]`); `pre_yield` /
     `post_yield` the loop-body statements around the single yield; `cond` the
