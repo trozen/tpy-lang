@@ -94,23 +94,717 @@ __coro_with_override with_override() {
     return __coro_with_override();
 }
 
+// async def inline_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_inline_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // return await add(5)                   # tpyc: ok
+        __sub_0.emplace(5);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def inline_default() -> Int32:
+__coro_inline_default inline_default() {
+    return __coro_inline_default();
+}
+
+// async def inline_override() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_inline_override::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // return await add(5, 2)                # tpyc: ok
+        __sub_0.emplace(5, 2);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def inline_override() -> Int32:
+__coro_inline_override inline_override() {
+    return __coro_inline_override();
+}
+
+// async def generic_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_generic_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // nums: list[Int32] = [1, 2, 3]
+        nums.emplace(std::vector<int32_t>{1, 2, 3});
+        // return await counted(nums)            # tpyc: ok
+        __sub_0.emplace((*nums));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def generic_default() -> Int32:
+__coro_generic_default generic_default() {
+    return __coro_generic_default();
+}
+
+// async def generic_override() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_generic_override::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // nums: list[Int32] = [1, 2, 3]
+        nums.emplace(std::vector<int32_t>{1, 2, 3});
+        // return await counted(nums, 3)         # tpyc: ok
+        __sub_0.emplace((*nums), 3);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def generic_override() -> Int32:
+__coro_generic_override generic_override() {
+    return __coro_generic_override();
+}
+
+// async def method_inline_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_method_inline_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // ad = Adder(100)
+        ad.emplace(Adder(100));
+        // return await ad.add(5)                # tpyc: ok
+        __sub_0.emplace((*ad), 5);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def method_inline_default() -> Int32:
+__coro_method_inline_default method_inline_default() {
+    return __coro_method_inline_default();
+}
+
+// async def method_inline_override() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_method_inline_override::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // ad = Adder(100)
+        ad.emplace(Adder(100));
+        // return await ad.add(5, 2)             # tpyc: ok
+        __sub_0.emplace((*ad), 5, 2);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def method_inline_override() -> Int32:
+__coro_method_inline_override method_inline_override() {
+    return __coro_method_inline_override();
+}
+
+// async def method_task_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_method_task_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // ad = Adder(100)
+        ad.emplace(Adder(100));
+        // t = asyncio.create_task(ad.add(5))    # tpyc: ok
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*ad).add(5))));
+        // return await t
+        __sub_0 = &((*t));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def method_task_default() -> Int32:
+__coro_method_task_default method_task_default() {
+    return __coro_method_task_default();
+}
+
+// async def method_task_override() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_method_task_override::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // ad = Adder(100)
+        ad.emplace(Adder(100));
+        // t = asyncio.create_task(ad.add(5, 2))  # tpyc: ok
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*ad).add(5, 2))));
+        // return await t
+        __sub_0 = &((*t));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def method_task_override() -> Int32:
+__coro_method_task_override method_task_override() {
+    return __coro_method_task_override();
+}
+
+// async def aenter_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_aenter_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // cm = CM()
+        cm.emplace(CM());
+        // out: Int32 = 0
+        out = 0;
+        __with_ctx_0 = &((*cm));
+        // async with cm as v:                   # tpyc: ok
+        __sub_0.emplace((*__with_ctx_0));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        v = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_2;
+        continue;
+    }
+    case S_RESUME_1: {
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        if (this->__finally_exc_0) {
+            std::exception_ptr __tmp = this->__finally_exc_0;
+            this->__finally_exc_0 = nullptr;
+            std::rethrow_exception(__tmp);
+        }
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        // async with cm as v:                   # tpyc: ok
+        __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_JOIN_1: {
+        // return out
+        __state = S_DONE;
+        int32_t __tpy_async_ret = out;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_2: {
+        try {
+            // out = v
+            out = v;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            this->__finally_exc_0 = std::current_exception();
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def aenter_default() -> Int32:
+__coro_aenter_default aenter_default() {
+    return __coro_aenter_default();
+}
+
+// async def aexit_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_aexit_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // cm = CM2()
+        cm.emplace(CM2());
+        __with_ctx_0 = &((*cm));
+        // async with cm:                        # tpyc: ok
+        __sub_0.emplace((*__with_ctx_0));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_2;
+        continue;
+    }
+    case S_RESUME_1: {
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        if (this->__finally_exc_0) {
+            std::exception_ptr __tmp = this->__finally_exc_0;
+            this->__finally_exc_0 = nullptr;
+            std::rethrow_exception(__tmp);
+        }
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        // async with cm:                        # tpyc: ok
+        __sub_1.emplace((*__with_ctx_0), ::std::monostate{}, ::std::monostate{}, ::std::monostate{});
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_JOIN_1: {
+        // return cm.seen
+        __state = S_DONE;
+        int32_t __tpy_async_ret = (*cm).seen;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_2: {
+        try {
+            // cm.hits += 1
+            (*cm).hits = ::tpy::add_check<int32_t>((*cm).hits, 1);
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            this->__finally_exc_0 = std::current_exception();
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def aexit_default() -> Int32:
+__coro_aexit_default aexit_default() {
+    return __coro_aexit_default();
+}
+
+// async def anext_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_anext_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // c = Counts(4)
+        c.emplace(Counts(4));
+        // total: Int32 = 0
+        total = 0;
+        __for_itr_0.emplace(((*c)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            // async for x in c:                     # tpyc: ok
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        // total += x
+        total = ::tpy::add_check<int32_t>(total, x);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        // return total
+        __state = S_DONE;
+        int32_t __tpy_async_ret = total;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def anext_default() -> Int32:
+__coro_anext_default anext_default() {
+    return __coro_anext_default();
+}
+
+// async def cross_module_default() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_cross_module_default::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // return await defmod.scaled(5)         # tpyc: ok
+        __sub_0.emplace(5);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def cross_module_default() -> Int32:
+__coro_cross_module_default cross_module_default() {
+    return __coro_cross_module_default();
+}
+
+// async def cross_module_override() -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_cross_module_override::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // return await defmod.scaled(5, 7)      # tpyc: ok
+        __sub_0.emplace(5, 7);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def cross_module_override() -> Int32:
+__coro_cross_module_override cross_module_override() {
+    return __coro_cross_module_override();
+}
+
 // def main() -> None:
 void main() {
-    // print(asyncio.run(with_default()))
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(with_default())) << "\n";
-    // print(asyncio.run(with_override()))
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(with_override())) << "\n";
+    // print("task-default", asyncio.run(with_default()))
+    std::cout << "task-default" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(with_default())) << "\n";
+    // print("task-override", asyncio.run(with_override()))
+    std::cout << "task-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(with_override())) << "\n";
+    // print("inline-default", asyncio.run(inline_default()))
+    std::cout << "inline-default" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(inline_default())) << "\n";
+    // print("inline-override", asyncio.run(inline_override()))
+    std::cout << "inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(inline_override())) << "\n";
+    // print("generic-inline", asyncio.run(generic_default()))
+    std::cout << "generic-inline" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(generic_default())) << "\n";
+    // print("generic-inline-override", asyncio.run(generic_override()))
+    std::cout << "generic-inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(generic_override())) << "\n";
+    // print("method-inline", asyncio.run(method_inline_default()))
+    std::cout << "method-inline" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_inline_default())) << "\n";
+    // print("method-inline-override", asyncio.run(method_inline_override()))
+    std::cout << "method-inline-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_inline_override())) << "\n";
+    // print("method-task", asyncio.run(method_task_default()))
+    std::cout << "method-task" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_task_default())) << "\n";
+    // print("method-task-override", asyncio.run(method_task_override()))
+    std::cout << "method-task-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(method_task_override())) << "\n";
+    // print("aenter", asyncio.run(aenter_default()))
+    std::cout << "aenter" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(aenter_default())) << "\n";
+    // print("aexit-extra", asyncio.run(aexit_default()))
+    std::cout << "aexit-extra" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(aexit_default())) << "\n";
+    // print("anext", asyncio.run(anext_default()))
+    std::cout << "anext" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(anext_default())) << "\n";
+    // print("xmod", asyncio.run(cross_module_default()))
+    std::cout << "xmod" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cross_module_default())) << "\n";
+    // print("xmod-override", asyncio.run(cross_module_override()))
+    std::cout << "xmod-override" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(cross_module_override())) << "\n";
 }
+
+// async def add(self, a: Int32, b: Int32 = 10) -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // return self.base + a + b
+        __state = S_DONE;
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(__self.base, a)), b));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def __aenter__(self, bump: Int32 = 5) -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // self.n += bump
+        __self.n = ::tpy::add_check<int32_t>(__self.n, bump);
+        // return self.n
+        __state = S_DONE;
+        int32_t __tpy_async_ret = __self.n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def __aexit__(self, exc_type: None, exc: None,
+// tb: None) -> bool:
+::tpystd::tpy::Poll<bool> __coro_CM___aexit__::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // return False
+        __state = S_DONE;
+        bool __tpy_async_ret = false;
+        return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def __aenter__(self) -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_CM2___aenter__::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // return 1
+        __state = S_DONE;
+        int32_t __tpy_async_ret = 1;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def __aexit__(self, exc_type: None, exc: None, tb: None,
+// extra: Int32 = 9) -> bool:
+::tpystd::tpy::Poll<bool> __coro_CM2___aexit__::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // self.seen = extra
+        __self.seen = extra;
+        // return False
+        __state = S_DONE;
+        bool __tpy_async_ret = false;
+        return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def __anext__(self, step: Int32 = 1) -> Int32:
+::tpystd::tpy::Poll<int32_t> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // if self.n <= 0:
+        if ((__self.n <= 0)) {
+            // raise StopAsyncIteration
+            throw ::tpy::StopAsyncIteration{};
+        }
+        // self.n -= step
+        __self.n = ::tpy::sub_check<int32_t>(__self.n, step);
+        // return self.n
+        __state = S_DONE;
+        int32_t __tpy_async_ret = __self.n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // # An async def with a default arg, called via create_task (the factory path),
-    // # applies the omitted default. (Inline `await add(5)` is a separate filed gap.)
+    // # An async def with a default arg applies the omitted default at every call
+    // # position. `create_task` goes through the factory; an inline `await` and the
+    // # synthetic `async with` / `async for` suspensions construct the frame ctor
+    // # directly, so the ctor is a second C++ callee that must carry the same
+    // # defaults. Every position is also called with an explicit argument, which
+    // # must beat the default.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
+    // import defmod
+    ::tpyapp::defmod::__tpy_init();
     // main()
     main();
 }

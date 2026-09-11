@@ -61,7 +61,7 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
         S_DONE = 6,
     };
 
-    __gen_repeat(::tpy::param_val_or_ref_t<T> object_, std::optional<int32_t> times_)
+    __gen_repeat(::tpy::param_val_or_ref_t<T> object_, std::optional<int32_t> times_ = std::nullopt)
         : __state(S_INITIAL), object(object_), times(std::move(times_)) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();

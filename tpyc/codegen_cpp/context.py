@@ -1086,6 +1086,22 @@ class CodeGenError(Exception):
         return f"{name}: error: {self.message}"
 
 
+@contextmanager
+def stamp_codegen_error_file(source_name: str, is_entry_point: bool):
+    """Stamp a codegen error raised while emitting a non-entry module with
+    that module's source name. Without it every codegen error in a
+    multi-module program formats against the ENTRY module's filename (the
+    `format()` fallback), so a `# tpyc: error(...)` annotation could never
+    sit on the real subject line. The caller supplies the spelling it wants
+    the user to see."""
+    try:
+        yield
+    except CodeGenError as e:
+        if e.filename is None and not is_entry_point:
+            e.filename = source_name
+        raise
+
+
 class ThirRejectError(CodeGenError):
     """A construct THIR has no lowering for. Kept distinct from other codegen
     diagnostics so tooling can tell a lowering GAP (the source is valid TPy;

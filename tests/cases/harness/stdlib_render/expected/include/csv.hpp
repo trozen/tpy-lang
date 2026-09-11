@@ -478,7 +478,7 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
         S_DONE = 3,
     };
 
-    __gen_reader(T_fp&& fp_, std::string_view delimiter_, std::string_view quotechar_, bool doublequote_, bool skipinitialspace_)
+    __gen_reader(T_fp&& fp_, std::string_view delimiter_ = ",", std::string_view quotechar_ = "\"", bool doublequote_ = true, bool skipinitialspace_ = false)
         : __state(S_INITIAL), fp(std::forward<T_fp>(fp_)), delimiter(std::string(delimiter_)), quotechar(std::string(quotechar_)), doublequote(std::move(doublequote_)), skipinitialspace(std::move(skipinitialspace_)) {}
 
     std::expected<std::vector<std::string>, ::tpy::StopIteration> __next__();

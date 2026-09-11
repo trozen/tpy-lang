@@ -37,3 +37,43 @@
 0
 1
 2
+--
+meth 0
+meth 1
+meth 2
+meth-explicit 0
+meth-explicit 1
+gmeth 10
+gmeth 20
+gmeth 10
+gmeth-explicit 10
+gmeth-explicit 20
+gmeth-explicit 30
+gmeth-explicit 10
+shapes-v 0
+shapes t True 0.5 True -1 3 -1 7
+shapes-v 1
+shapes-v 0
+shapes z True 0.5 True -1 3 -1 7
+shapes-v 1
+shapes-v 0
+shapes t False 0.5 True -1 3 -1 7
+shapes-v 1
+shapes-v 0
+shapes t True 1.5 True -1 3 -1 7
+shapes-v 1
+shapes-v 0
+shapes t True 0.5 False -1 3 -1 7
+shapes-v 1
+shapes-v 0
+shapes t True 0.5 True 9 3 -1 7
+shapes-v 1
+shapes-v 0
+shapes t True 0.5 True -1 8 -1 7
+shapes-v 1
+shapes-v 0
+shapes t True 0.5 True -1 3 -5 7
+shapes-v 1
+shapes-v 0
+shapes t True 0.5 True -1 3 -1 99
+shapes-v 1

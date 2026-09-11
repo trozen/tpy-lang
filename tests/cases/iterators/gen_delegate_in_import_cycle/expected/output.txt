@@ -1,0 +1,7 @@
+free: 0
+free: 1
+free: 2
+method: 20
+method: 7
+method: 8
+cycle: 11

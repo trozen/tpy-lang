@@ -378,12 +378,18 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     if (unwrapped is not None and is_protocol_type(unwrapped)
             and not is_dyn_protocol(unwrapped)):
         return True
-    # An OWN-wrapped static protocol (`s: Own[Sink]`) stays out: the frame's
-    # `T_s&&` ctor param deduces off the argument's value category, so an
-    # lvalue argument makes the frame BORROW what the signature says it
-    # owns (BUGS.md#own-static-protocol-frame-capture-borrows). Admitting it
-    # would make the declared ownership a lie; it rejects until the capture
-    # follows the argument's ownership.
+    # An OWN-wrapped static protocol (`s: Own[Sink]`) rides that same
+    # monomorphized capture: the field is the deduced `T_s s;` and the ctor
+    # member-inits `s(std::forward<T_s>(s_))`, so the ownership follows the
+    # ARGUMENT's value category -- and an `Own` slot's call-arg render is
+    # already `std::move(...)`, which deduces `T_s` to a value and makes the
+    # frame own. The lvalue-borrow risk lives at the AWAIT-arg forward into a
+    # sub-future, which re-deduces off the bare name and keeps its own reject
+    # (BUGS.md#own-static-protocol-frame-capture-borrows).
+    if (isinstance(unwrapped, OwnType)
+            and is_protocol_type(unwrapped.wrapped)
+            and not is_dyn_protocol(unwrapped.wrapped)):
+        return True
     # An `Own[@dynamic P]` param captures as a bare `unique_ptr<P>` frame
     # field (the ctor's `p(std::move(p_))` is skeleton), and its leaf reads
     # are the forward arg renders (`std::move(p)` at a same-protocol Own
@@ -1051,6 +1057,17 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
             # from the CAPTURE families below would render the arg BARE,
             # without the copy temp the enum payload needs.
             return "res.await_param_type"
+        if (isinstance(pt_u, OwnType)
+                and is_protocol_type(pt_u.wrapped)
+                and not is_dyn_protocol(pt_u.wrapped)):
+            # An `Own[static P]` slot clears the frame-PARAM families, but the
+            # AWAIT position captures differently: the sub-future field is
+            # spelled `__coro_inner<await_arg_capture_t<decltype((s))>>` and
+            # the emplace re-deduces off the bare name, so an lvalue argument
+            # makes the sub-frame BORROW what the slot says it owns
+            # (BUGS.md#own-static-protocol-frame-capture-borrows). Carved out
+            # here rather than left to the families below, which now admit it.
+            return "res.await_param_type:own_protocol.static"
         if not (own_dyn_slot or own_val_slot or _res_param_ok(pt, analyzer)):
             # Slots beyond the param families (optional-ptr / protocol
             # adapter / union lift) trigger the emplace coercion ladder and,

@@ -1,0 +1,1 @@
+main.py:12: error: cannot iterate 'walk(...)' here: the imported generator has a single yield in a loop and cannot yet be embedded in this frame; bind the elements first (e.g. `xs = list(...)`) and iterate those, or give it a second yield

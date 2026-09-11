@@ -7,19 +7,336 @@
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
 #include "tpystd/asyncio/_executor/_executor.hpp"
+#include "defmod.hpp"
 
 namespace tpyapp::main {
+
+struct Adder;
+struct CM;
+struct CM2;
+struct Counter;
+struct Counts;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_add;
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+struct __coro_counted;
 struct __coro_with_default;
 struct __coro_with_override;
+struct __coro_inline_default;
+struct __coro_inline_override;
+struct __coro_generic_default;
+struct __coro_generic_override;
+struct __coro_method_inline_default;
+struct __coro_method_inline_override;
+struct __coro_method_task_default;
+struct __coro_method_task_override;
+struct __coro_aenter_default;
+struct __coro_aexit_default;
+struct __coro_anext_default;
+struct __coro_cross_module_default;
+struct __coro_cross_module_override;
+struct __coro_Adder_add;
+struct __coro_CM___aenter__;
+struct __coro_CM___aexit__;
+struct __coro_CM2___aenter__;
+struct __coro_CM2___aexit__;
+struct __coro_Counter___anext__;
 
 __coro_add add(int32_t a, int32_t b = 10);
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+__coro_counted<T, T_it> counted(T_it&& it, int32_t skip = 7);
 __coro_with_default with_default();
 __coro_with_override with_override();
+__coro_inline_default inline_default();
+__coro_inline_override inline_override();
+__coro_generic_default generic_default();
+__coro_generic_override generic_override();
+__coro_method_inline_default method_inline_default();
+__coro_method_inline_override method_inline_override();
+__coro_method_task_default method_task_default();
+__coro_method_task_override method_task_override();
+__coro_aenter_default aenter_default();
+__coro_aexit_default aexit_default();
+__coro_anext_default anext_default();
+__coro_cross_module_default cross_module_default();
+__coro_cross_module_override cross_module_override();
 void main();
+
+// class Adder:
+struct Adder {
+    // base: Int32
+    int32_t base;
+
+    // def __init__(self, base: Int32) -> None:
+    Adder() = default;
+    explicit Adder(int32_t base);
+
+    __coro_Adder_add add(int32_t a, int32_t b = 10) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
+    ::tpy::print_object_default(os, "Adder", obj);
+    return os;
+}
+
+// class CM:
+struct CM {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self) -> None:
+    CM();
+
+    __coro_CM___aenter__ __aenter__(int32_t bump = 5);
+
+    __coro_CM___aexit__ __aexit__(std::monostate exc_type, std::monostate exc, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CM";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
+    ::tpy::print_object_default(os, "CM", obj);
+    return os;
+}
+
+// class CM2:
+struct CM2 {
+    // hits: Int32
+    int32_t hits;
+    // seen: Int32
+    int32_t seen;
+
+    // def __init__(self) -> None:
+    CM2();
+
+    __coro_CM2___aenter__ __aenter__() const;
+
+    __coro_CM2___aexit__ __aexit__(std::monostate exc_type, std::monostate exc, std::monostate tb, int32_t extra = 9);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CM2";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const CM2& obj) {
+    ::tpy::print_object_default(os, "CM2", obj);
+    return os;
+}
+
+// class Counter:
+struct Counter {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self, n: Int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t n);
+
+    __coro_Counter___anext__ __anext__(int32_t step = 1);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
+    ::tpy::print_object_default(os, "Counter", obj);
+    return os;
+}
+
+// class Counts:
+struct Counts {
+    // start: Int32
+    int32_t start;
+
+    // def __init__(self, start: Int32) -> None:
+    Counts() = default;
+    explicit Counts(int32_t start);
+
+    // def __aiter__(self) -> Own[Counter]:
+    Counter __aiter__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counts";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Counts& obj) {
+    ::tpy::print_object_default(os, "Counts", obj);
+    return os;
+}
+
+// Async coroutine: Adder.add
+struct __coro_Adder_add {
+    int32_t __state;
+    bool __cancel_pending;
+    const Adder& __self;
+    int32_t a;
+    int32_t b;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_Adder_add(const Adder& __self, int32_t a_, int32_t b_ = 10)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self), a(std::move(a_)), b(std::move(b_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_Adder_add&) {
+        return os << "<coroutine Adder.add>";
+    }
+};
+
+inline __coro_Adder_add Adder::add(int32_t a, int32_t b) const {
+    return __coro_Adder_add(*this, a, b);
+}
+
+// Async coroutine: CM.__aenter__
+struct __coro_CM___aenter__ {
+    int32_t __state;
+    bool __cancel_pending;
+    CM& __self;
+    int32_t bump;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_CM___aenter__(CM& __self, int32_t bump_ = 5)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self), bump(std::move(bump_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_CM___aenter__&) {
+        return os << "<coroutine CM.__aenter__>";
+    }
+};
+
+inline __coro_CM___aenter__ CM::__aenter__(int32_t bump) {
+    return __coro_CM___aenter__(*this, bump);
+}
+
+// Async coroutine: CM.__aexit__
+struct __coro_CM___aexit__ {
+    int32_t __state;
+    bool __cancel_pending;
+    const CM& __self;
+    std::monostate exc_type;
+    std::monostate exc;
+    std::monostate tb;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_CM___aexit__(const CM& __self, std::monostate exc_type_, std::monostate exc_, std::monostate tb_)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self), exc_type(std::move(exc_type_)), exc(std::move(exc_)), tb(std::move(tb_)) {}
+
+    ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_CM___aexit__&) {
+        return os << "<coroutine CM.__aexit__>";
+    }
+};
+
+inline __coro_CM___aexit__ CM::__aexit__(std::monostate exc_type, std::monostate exc, std::monostate tb) const {
+    return __coro_CM___aexit__(*this, exc_type, exc, tb);
+}
+
+// Async coroutine: CM2.__aenter__
+struct __coro_CM2___aenter__ {
+    int32_t __state;
+    bool __cancel_pending;
+    const CM2& __self;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_CM2___aenter__(const CM2& __self)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_CM2___aenter__&) {
+        return os << "<coroutine CM2.__aenter__>";
+    }
+};
+
+inline __coro_CM2___aenter__ CM2::__aenter__() const {
+    return __coro_CM2___aenter__(*this);
+}
+
+// Async coroutine: CM2.__aexit__
+struct __coro_CM2___aexit__ {
+    int32_t __state;
+    bool __cancel_pending;
+    CM2& __self;
+    std::monostate exc_type;
+    std::monostate exc;
+    std::monostate tb;
+    int32_t extra;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_CM2___aexit__(CM2& __self, std::monostate exc_type_, std::monostate exc_, std::monostate tb_, int32_t extra_ = 9)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self), exc_type(std::move(exc_type_)), exc(std::move(exc_)), tb(std::move(tb_)), extra(std::move(extra_)) {}
+
+    ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_CM2___aexit__&) {
+        return os << "<coroutine CM2.__aexit__>";
+    }
+};
+
+inline __coro_CM2___aexit__ CM2::__aexit__(std::monostate exc_type, std::monostate exc, std::monostate tb, int32_t extra) {
+    return __coro_CM2___aexit__(*this, exc_type, exc, tb, extra);
+}
+
+// Async coroutine: Counter.__anext__
+struct __coro_Counter___anext__ {
+    int32_t __state;
+    bool __cancel_pending;
+    Counter& __self;
+    int32_t step;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_Counter___anext__(Counter& __self, int32_t step_ = 1)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self), step(std::move(step_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_Counter___anext__&) {
+        return os << "<coroutine Counter.__anext__>";
+    }
+};
+
+inline __coro_Counter___anext__ Counter::__anext__(int32_t step) {
+    return __coro_Counter___anext__(*this, step);
+}
 
 // Async coroutine: add
 struct __coro_add {
@@ -35,7 +352,7 @@ struct __coro_add {
         S_DONE = 2,
     };
 
-    __coro_add(int32_t a_, int32_t b_)
+    __coro_add(int32_t a_, int32_t b_ = 10)
         : __state(S_INITIAL), __cancel_pending(false), a(std::move(a_)), b(std::move(b_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
@@ -45,6 +362,77 @@ struct __coro_add {
         return os << "<coroutine add>";
     }
 };
+
+// Async coroutine: counted
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+struct __coro_counted {
+    int32_t __state;
+    bool __cancel_pending;
+    T_it it;
+    int32_t skip;
+    int32_t c;
+    ::tpy::frame_slot<T> _x;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_counted(T_it&& it_, int32_t skip_ = 7)
+        : __state(S_INITIAL), __cancel_pending(false), it(std::forward<T_it>(it_)), skip(std::move(skip_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_counted<T, T_it>&) {
+        return os << "<coroutine counted>";
+    }
+};
+// async def counted[T](it: Iterable[T], skip: Int32 = 7) -> Int32:
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+::tpystd::tpy::Poll<int32_t> __coro_counted<T, T_it>::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await asyncio.sleep(0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // c: Int32 = 0
+        c = 0;
+        // for _x in it:
+        auto& __src_0 = it;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& _x = ::tpy::unwrap_ref(*__r_1);
+            // c += 1
+            c = ::tpy::add_check<int32_t>(c, 1);
+        }
+        // return c + skip
+        __state = S_DONE;
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(c, skip));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def counted[T](it: Iterable[T], skip: Int32 = 7) -> Int32:
+template <typename T, ::tpystd::typing::Iterable<T> T_it>
+__coro_counted<T, T_it> counted(T_it&& it, int32_t skip) {
+    return __coro_counted<T, T_it>(std::forward<T_it>(it), skip);
+}
 
 // Async coroutine: with_default
 struct __coro_with_default {
@@ -94,5 +482,358 @@ struct __coro_with_override {
     }
 };
 
+// Async coroutine: inline_default
+struct __coro_inline_default {
+    int32_t __state;
+    bool __cancel_pending;
+    std::optional<__coro_add> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_inline_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_inline_default&) {
+        return os << "<coroutine inline_default>";
+    }
+};
+
+// Async coroutine: inline_override
+struct __coro_inline_override {
+    int32_t __state;
+    bool __cancel_pending;
+    std::optional<__coro_add> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_inline_override()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_inline_override&) {
+        return os << "<coroutine inline_override>";
+    }
+};
+
+// Async coroutine: generic_default
+struct __coro_generic_default {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<std::vector<int32_t>> nums;
+    std::optional<__coro_counted<int32_t, ::tpy::await_arg_capture_t<decltype(((*nums)))>>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_generic_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_generic_default&) {
+        return os << "<coroutine generic_default>";
+    }
+};
+
+// Async coroutine: generic_override
+struct __coro_generic_override {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<std::vector<int32_t>> nums;
+    std::optional<__coro_counted<int32_t, ::tpy::await_arg_capture_t<decltype(((*nums)))>>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_generic_override()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_generic_override&) {
+        return os << "<coroutine generic_override>";
+    }
+};
+
+// Async coroutine: method_inline_default
+struct __coro_method_inline_default {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Adder> ad;
+    std::optional<__coro_Adder_add> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_method_inline_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_method_inline_default&) {
+        return os << "<coroutine method_inline_default>";
+    }
+};
+
+// Async coroutine: method_inline_override
+struct __coro_method_inline_override {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Adder> ad;
+    std::optional<__coro_Adder_add> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_method_inline_override()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_method_inline_override&) {
+        return os << "<coroutine method_inline_override>";
+    }
+};
+
+// Async coroutine: method_task_default
+struct __coro_method_task_default {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Adder> ad;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
+    ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_method_task_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_method_task_default&) {
+        return os << "<coroutine method_task_default>";
+    }
+};
+
+// Async coroutine: method_task_override
+struct __coro_method_task_override {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Adder> ad;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
+    ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_method_task_override()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_method_task_override&) {
+        return os << "<coroutine method_task_override>";
+    }
+};
+
+// Async coroutine: aenter_default
+struct __coro_aenter_default {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<CM> cm;
+    int32_t out;
+    int32_t v;
+    CM* __with_ctx_0 = nullptr;
+    std::exception_ptr __finally_exc_0;
+    std::optional<__coro_CM___aenter__> __sub_0;
+    std::optional<__coro_CM___aexit__> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_JOIN_2 = 5,
+        S_DONE = 6,
+    };
+
+    __coro_aenter_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_aenter_default&) {
+        return os << "<coroutine aenter_default>";
+    }
+};
+
+// Async coroutine: aexit_default
+struct __coro_aexit_default {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<CM2> cm;
+    CM2* __with_ctx_0 = nullptr;
+    std::exception_ptr __finally_exc_0;
+    std::optional<__coro_CM2___aenter__> __sub_0;
+    std::optional<__coro_CM2___aexit__> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_JOIN_2 = 5,
+        S_DONE = 6,
+    };
+
+    __coro_aexit_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_aexit_default&) {
+        return os << "<coroutine aexit_default>";
+    }
+};
+
+// Async coroutine: anext_default
+struct __coro_anext_default {
+    int32_t __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<Counts> c;
+    int32_t total;
+    int32_t x;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
+    std::optional<__coro_Counter___anext__> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_anext_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_anext_default&) {
+        return os << "<coroutine anext_default>";
+    }
+};
+
+// Async coroutine: cross_module_default
+struct __coro_cross_module_default {
+    int32_t __state;
+    bool __cancel_pending;
+    std::optional<::tpyapp::defmod::__coro_scaled> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_cross_module_default()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_cross_module_default&) {
+        return os << "<coroutine cross_module_default>";
+    }
+};
+
+// Async coroutine: cross_module_override
+struct __coro_cross_module_override {
+    int32_t __state;
+    bool __cancel_pending;
+    std::optional<::tpyapp::defmod::__coro_scaled> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_cross_module_override()
+        : __state(S_INITIAL), __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_cross_module_override&) {
+        return os << "<coroutine cross_module_override>";
+    }
+};
+
+
+// def __init__(self, base: Int32) -> None:
+inline Adder::Adder(int32_t base) : base(base) {}
+
+// def __init__(self) -> None:
+inline CM::CM() : n(0) {}
+
+// def __init__(self) -> None:
+inline CM2::CM2() : hits(0), seen(0) {}
+
+// def __init__(self, n: Int32) -> None:
+inline Counter::Counter(int32_t n) : n(n) {}
+
+// def __init__(self, start: Int32) -> None:
+inline Counts::Counts(int32_t start) : start(start) {}
+
+// def __aiter__(self) -> Own[Counter]:
+inline Counter Counts::__aiter__() const {
+    // return Counter(self.start)
+    return Counter(this->start);
+}
 void __tpy_init();
 } // namespace tpyapp::main

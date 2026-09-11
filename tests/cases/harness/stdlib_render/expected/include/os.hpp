@@ -236,7 +236,7 @@ struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, std::tuple<std::st
         S_DONE = 9,
     };
 
-    __gen_walk(std::string_view top_, bool topdown_, std::optional<std::function<void(const ::tpy::OSError&)>> onerror_, bool followlinks_)
+    __gen_walk(std::string_view top_, bool topdown_ = true, std::optional<std::function<void(const ::tpy::OSError&)>> onerror_ = std::nullopt, bool followlinks_ = false)
         : __state(S_INITIAL), top(std::string(top_)), topdown(std::move(topdown_)), onerror(std::move(onerror_)), followlinks(std::move(followlinks_)) {}
 
     std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __next__();

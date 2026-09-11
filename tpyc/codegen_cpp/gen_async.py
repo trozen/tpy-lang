@@ -70,10 +70,7 @@ from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_str_view_type, is_bytes_view_type,
                                   is_free_copy_scalar, view_owned_copy_init)
 from . import emit_prims
-from .context import (
-    INDENT, escape_cpp_name, CodeGenError, FinallyContext,
-    module_to_cpp_namespace, qualified_cpp_name, resumable_struct_name,
-)
+from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, qualified_cpp_name
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp, default_emittable
 from . import resumable_cfg as rcfg
@@ -339,16 +336,12 @@ class AsyncCoroCodegen:
         """Resumable-frame struct name for the CURRENT function. Shape-aware:
         `__gen_<funcname>` (/ `__gen_<Record>_<funcname>`) for the generator
         shape, `__coro_<funcname>` (/ `__coro_<Record>_<funcname>`) for the
-        async shape. Awaited-callee sub-coro structs
-        are named via `_sub_struct_name` (always `__coro_`)."""
-        prefix = "__gen_" if self._is_generator_shape() else "__coro_"
-        return AsyncCoroCodegen._sub_struct_name(func.name, record_name, prefix)
-
-    @staticmethod
-    def _sub_struct_name(name: str, owner_record: str | None = None,
-                         prefix: str = "__coro_") -> str:
-        """Shared frame identifier for declarations, await and async-with."""
-        return resumable_struct_name(name, owner_record, prefix)
+        async shape -- so the struct name reflects what it is (the
+        `operator<<` repr uses the same `__gen_` convention). The grammar
+        itself lives in
+        `rcfg.frame_struct_name`, shared with every call site that embeds
+        someone else's frame."""
+        return rcfg.frame_struct_name(func.name, record_name, self._shape)
 
     def _frame_deep_const_verdict(
             self, func: TpyFunction,
@@ -749,34 +742,55 @@ class AsyncCoroCodegen:
             return bare
         return f"{bare}<{', '.join(all_args)}>"
 
+    def _default_suffix(self, func: TpyFunction, param_index: int) -> str:
+        """`" = <cpp>"` for a param whose default C++ can express, else `""`.
+
+        The one place the resumable emitter spells a default, so the factory
+        declaration and the frame constructor cannot drift -- a call that
+        omits an argument lands on one or the other. `param_index` indexes
+        `func.params`, which has no `__self` cparam, so a caller walking
+        cparams subtracts that offset first.
+        """
+        defaults = func.defaults or []
+        ptype = func.params[param_index][1]
+        if not default_emittable(defaults, param_index, len(func.params),
+                                 ptype, func.params, func.is_method):
+            return ""
+        return f" = {default_to_cpp(self.ctx, defaults[param_index], ptype)}"
+
     def _emit_params_decl(self, func: TpyFunction, *,
                           emit_defaults: bool = False) -> str:
         # Defaults belong on the factory's forward declaration only -- the
         # definition would redefine them (C++ error). Aligned to func.params
         # (a free-function factory has no __self cparam).
-        defaults = func.defaults or []
         parts: list[str] = []
         for i, cp in enumerate(self._classify_params(func)):
             decl = cp.factory_param_decl()
-            if (emit_defaults
-                    and default_emittable(defaults, i, len(func.params),
-                                          func.params[i][1], func.params,
-                                          func.is_method)):
-                decl += f" = {default_to_cpp(self.ctx, defaults[i], func.params[i][1])}"
+            if emit_defaults:
+                decl += self._default_suffix(func, i)
             parts.append(decl)
         return ", ".join(parts)
 
-    def _emit_method_params_decl(self, method: TpyFunction, record_name: str) -> str:
+    def _emit_method_params_decl(self, method: TpyFunction, record_name: str,
+                                 *, emit_defaults: bool = False) -> str:
         """User-facing factory signature params for a generator/async *method*
         (`Z::voices(...)`), derived from the SAME `_classify_params` the frame
         field and ctor use -- so the signature's per-param const-ness (union
         deep-const per the verdict, ref params mutable) matches the field by
         construction. `__self` is implicit via `*this`, so it's dropped.
-        Mirrors `_emit_params_decl` for free functions."""
-        return ", ".join(
-            p.factory_param_decl()
-            for p in self._classify_params(method, record_name)
-            if p.cpp_name != "__self")
+        Mirrors `_emit_params_decl` for free functions.
+
+        `emit_defaults` is True only at the in-class declaration -- for a
+        method that IS the canonical first declaration, and C++ rejects a
+        default repeated on the out-of-line definition."""
+        parts: list[str] = []
+        for i, cp in enumerate(p for p in self._classify_params(method, record_name)
+                               if p.cpp_name != "__self"):
+            decl = cp.factory_param_decl()
+            if emit_defaults:
+                decl += self._default_suffix(method, i)
+            parts.append(decl)
+        return ", ".join(parts)
 
     def _ret_cpp(self, func: TpyFunction) -> str:
         """The coro's Poll payload C++ type, per `async_return_form`:
@@ -1497,8 +1511,17 @@ class AsyncCoroCodegen:
         out.write(f"{INDENT}{INDENT}S_DONE = {next_val},\n")
         out.write(f"{INDENT}}};\n\n")
 
-        # Constructor.
-        ctor_param_list = ", ".join(p.ctor_param_decl() for p in ctor_params)
+        # Constructor. It is a second C++ callee for the same TPy function --
+        # an inline `await` and the synthetic async-with / async-for
+        # suspensions construct the frame directly instead of going through
+        # the factory -- so it carries the same defaults the factory
+        # declaration does. `__self` leads and is never defaulted, so the
+        # trailing-defaults requirement holds wherever the factory's does.
+        self_offset = 1 if record_name else 0
+        ctor_param_list = ", ".join(
+            p.ctor_param_decl()
+            + ("" if i < self_offset else self._default_suffix(func, i - self_offset))
+            for i, p in enumerate(ctor_params))
         init_parts = ["__state(S_INITIAL)", *self._resumable_extra_ctor_inits()]
         init_parts.extend(p.ctor_init() for p in ctor_params)
         out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
@@ -5288,55 +5311,13 @@ def sub_struct_qualname(
         *, module_qual: str | None = None,
         extra_template_args: 'list[str] | None' = None,
         loc=None) -> str:
-    """Module-level core of `_sub_struct_qualname` (see that method's
-    docstring for the naming grammar) -- also the renderer for
-    ConcreteCoroType (a bound coroutine's frame struct), which needs the
-    same naming from the type-to-C++ path where no AsyncCoroCodegen
-    instance exists. `types` is the TypeResolver.
+    """The sub-coro struct name for a statically-resolved await -- the
+    async face of `rcfg.frame_struct_qualname` (which owns the naming
+    grammar; see its docstring). Also the renderer for ConcreteCoroType (a
+    bound coroutine's frame struct), which needs the same naming from the
+    type-to-C++ path where no AsyncCoroCodegen instance exists.
     """
-    ns_qual = ""
-    owner_name = None
-    owner_args_suffix = ""
-    if owner is not None:
-        record = types.ctx.analyzer.registry.get_record_for_type(owner)
-        owner_name = record.name if record is not None else owner.name
-        if record is not None:
-            # Frames live beside their defining record, outside class scopes.
-            owner_module = record.defining_module or record.module
-            if owner_module and owner_module != types.ctx.analyzer.ctx.module_name:
-                ns_qual = f"::{module_to_cpp_namespace(owner_module)}::"
-        if owner.type_args:
-            # A call/await site must name the base coro struct with concrete
-            # type args. An unbound TypeParamRef here means the MRO-resolved
-            # owner's args were not bound to concrete types -- compute_mro_
-            # ancestors records each base with the defining class's own type
-            # params, so a generic subclass of a generic base (Child[U](Box[U]))
-            # or a multi-level chain (C(B[Int32]) where B[U](A[U])) leaves them
-            # unbound. Emit a clean diagnostic rather than ill-formed C++.
-            if any(isinstance(ta, TypeParamRef) for ta in owner.type_args):
-                raise CodeGenError(
-                    f"inherited async method on generic base '{owner.name}' "
-                    "is not yet supported here: its type parameters are not "
-                    "bound to concrete types (this happens with a generic "
-                    "subclass of a generic base, or a multi-level generic "
-                    "inheritance chain); flatten the hierarchy or make the "
-                    "base concrete", loc=loc)
-            inner_cpps = [types.type_to_cpp(ta)
-                          for ta in owner.type_args]
-            owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"
-    elif module_qual is not None:
-        # Cross-module free function: qualify with the callee module's
-        # C++ namespace.
-        ns_qual = f"::{module_to_cpp_namespace(module_qual)}::"
-    bare = AsyncCoroCodegen._sub_struct_name(method, owner_name)
-    # Combined template-arg list: callee's explicit `[T1, ...]` from
-    # the call's inferred substitution, followed by any
-    # `T_<pname>` extras deduced from static-protocol args.
-    all_args: list[str] = []
-    if inferred_type_args and not (owner is not None and owner.type_args):
-        all_args.extend(types.type_to_cpp(ta)
-                        for ta in inferred_type_args)
-    if extra_template_args:
-        all_args.extend(extra_template_args)
-    suffix = ("<" + ", ".join(all_args) + ">") if all_args else ""
-    return f"{ns_qual}{bare}{owner_args_suffix}{suffix}"
+    return rcfg.frame_struct_qualname(
+        types, owner, method, inferred_type_args,
+        module_qual=module_qual, extra_template_args=extra_template_args,
+        shape=rcfg.ResumableShape.ASYNC, loc=loc)

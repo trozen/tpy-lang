@@ -7,23 +7,73 @@
 
 namespace tpyapp::main {
 
+enum class Mode : int32_t {
+    A = 1,
+    B = 2,
+};
+
+} // namespace tpyapp::main
+
+template<>
+struct tpy::EnumUtil<::tpyapp::main::Mode> {
+    static constexpr std::string_view type_name = "Mode";
+    static std::string_view name(::tpyapp::main::Mode e);
+    static const std::array<::tpyapp::main::Mode, 2> members;
+    static ::tpyapp::main::Mode from_value(int32_t v);
+    static ::tpyapp::main::Mode from_name(std::string_view s);
+    static std::optional<::tpyapp::main::Mode> try_parse(std::string_view s);
+};
+
+namespace tpyapp::main {
+
+inline std::ostream& operator<<(std::ostream& __os, Mode __e) {
+    return __os << "Mode." << ::tpy::EnumUtil<Mode>::name(__e);
+}
+
+struct Rec;
 struct Box;
+template<typename T> struct Box2;
 
 inline constexpr std::string_view __name__ = "__main__";
 inline constexpr int32_t DEFAULT_STOP = 4;
+inline constexpr int32_t WIDTH = 7;
 
 struct __gen_bounded;
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 struct __gen_head;
+struct __gen_Box_bounded_m;
+struct __gen_Box_shapes;
+template <typename T>
+struct __gen_Box2_take;
 
 __gen_bounded bounded(int32_t limit = 2);
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 __gen_head<T, T_it> head(T_it&& it, int32_t n = 2);
 void main();
 
+// class Rec:
+struct Rec {
+    // v: Int32
+    int32_t v;
+
+    // def __init__(self, v: Int32) -> None:
+    Rec() = default;
+    explicit Rec(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
+    ::tpy::print_object_default(os, "Rec", obj);
+    return os;
+}
+
 // class Box:
 struct Box {
+    // base: Int32
+    int32_t base;
 
+    // def __init__(self) -> None:
+    Box();
 
     // def upto_m(self, stop: Int32 = 2) -> Iterator[Int32]:
     auto upto_m(int32_t stop = 2) const {
@@ -41,11 +91,35 @@ struct Box {
             }
         );
     }
+
+    __gen_Box_bounded_m bounded_m(int32_t limit = 2) const;
+
+    __gen_Box_shapes shapes(std::string_view tag = "t", bool flag = true, double ratio = 0.5, Mode m = Mode::B, Rec* r = nullptr, int32_t w = 3, int32_t neg = -1, int32_t f = WIDTH) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     ::tpy::print_object_default(os, "Box", obj);
+    return os;
+}
+
+// class Box2[T]:
+template<typename T>
+struct Box2 {
+    // items: list[T]
+    std::vector<T> items;
+
+    // def __init__(self, items: Own[list[T]]) -> None:
+    Box2() = default;
+    explicit Box2(std::vector<T>&& items) : items(std::move(items)) {}
+
+    __gen_Box2_take<T> take(int32_t n = 2);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box2";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Box2<T>& obj) {
+    ::tpy::print_object_default(os, "Box2", obj);
     return os;
 }
 
@@ -63,7 +137,7 @@ struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_bounded(int32_t limit_)
+    __gen_bounded(int32_t limit_ = 2)
         : __state(S_INITIAL), limit(std::move(limit_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
@@ -93,7 +167,7 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
         S_DONE = 4,
     };
 
-    __gen_head(T_it&& it_, int32_t n_)
+    __gen_head(T_it&& it_, int32_t n_ = 2)
         : __state(S_INITIAL), it(std::forward<T_it>(it_)), n(std::move(n_)) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
@@ -152,6 +226,161 @@ __gen_head<T, T_it> head(T_it&& it, int32_t n) {
     return __gen_head<T, T_it>(std::forward<T_it>(it), n);
 }
 
+// Generator: Box.bounded_m
+struct __gen_Box_bounded_m : public ::tpy::next_iter_mixin<__gen_Box_bounded_m, int32_t> {
+    int32_t __state;
+    const Box& __self;
+    int32_t limit;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_Box_bounded_m(const Box& __self, int32_t limit_ = 2)
+        : __state(S_INITIAL), __self(__self), limit(std::move(limit_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Box_bounded_m& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box_bounded_m&) {
+        return os << "<generator Box.bounded_m>";
+    }
+};
+
+inline __gen_Box_bounded_m Box::bounded_m(int32_t limit) const {
+    return __gen_Box_bounded_m(*this, limit);
+}
+
+// Generator: Box.shapes
+struct __gen_Box_shapes : public ::tpy::next_iter_mixin<__gen_Box_shapes, int32_t> {
+    int32_t __state;
+    const Box& __self;
+    std::string tag;
+    bool flag;
+    double ratio;
+    Mode m;
+    Rec* r;
+    int32_t w;
+    int32_t neg;
+    int32_t f;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Box_shapes(const Box& __self, std::string_view tag_ = "t", bool flag_ = true, double ratio_ = 0.5, Mode m_ = Mode::B, Rec* r_ = nullptr, int32_t w_ = 3, int32_t neg_ = -1, int32_t f_ = WIDTH)
+        : __state(S_INITIAL), __self(__self), tag(std::string(tag_)), flag(std::move(flag_)), ratio(std::move(ratio_)), m(std::move(m_)), r(r_), w(std::move(w_)), neg(std::move(neg_)), f(std::move(f_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Box_shapes& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box_shapes&) {
+        return os << "<generator Box.shapes>";
+    }
+};
+
+inline __gen_Box_shapes Box::shapes(std::string_view tag, bool flag, double ratio, Mode m, Rec* r, int32_t w, int32_t neg, int32_t f) const {
+    return __gen_Box_shapes(*this, tag, flag, ratio, m, r, w, neg, f);
+}
+
+// Generator: Box2.take
+template <typename T>
+struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, T> {
+    int32_t __state;
+    Box2<T>& __self;
+    int32_t n;
+    int32_t c;
+    T* x = nullptr;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_Box2_take(Box2<T>& __self, int32_t n_ = 2)
+        : __state(S_INITIAL), __self(__self), n(std::move(n_)) {}
+
+    std::expected<T, ::tpy::StopIteration> __next__();
+    __gen_Box2_take& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Box2_take<T>&) {
+        return os << "<generator Box2.take>";
+    }
+};
+
+// def take(self, n: Int32 = 2) -> Iterator[T]:
+template <typename T>
+std::expected<T, ::tpy::StopIteration> __gen_Box2_take<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // c: Int32 = 0
+        c = 0;
+        __for_it_0.emplace((__self.items).begin());
+        __for_end_0.emplace((__self.items).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        // c += 1
+        c = ::tpy::add_check<int32_t>(c, 1);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_JOIN_1;
+            continue;
+        }
+        x = &(*((*__for_it_0))++);
+        if ((c >= n)) {
+            __state = S_JOIN_1;
+            continue;
+        } else {
+            // yield x
+            __state = S_RESUME_0;
+            return (*x);
+        }
+    }
+    case S_JOIN_1: {
+        // yield self.items[0]
+        __state = S_RESUME_1;
+        return ::tpy::__getitem__(__self.items, 0);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+template <typename T>
+inline __gen_Box2_take<T> Box2<T>::take(int32_t n) {
+    return __gen_Box2_take<T>(*this, n);
+}
+
+
+// def __init__(self, v: Int32) -> None:
+inline Rec::Rec(int32_t v) : v(v) {}
+
+// def __init__(self) -> None:
+inline Box::Box() : base(0) {}
 inline auto upto(int32_t stop = 3, int32_t step = 1) {
     // i: Int32 = 0
     int32_t i = 0;

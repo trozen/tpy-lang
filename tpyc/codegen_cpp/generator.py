@@ -19,7 +19,7 @@ from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protoco
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
 from .resumable_cfg import (
-    ResumableShape, resumable_state,
+    ResumableShape, recursive_delegation_error, resumable_state,
 )
 
 from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr
@@ -880,10 +880,7 @@ class CodeGenerator:
         to a fixpoint: forcing a callee makes it resumable, which may
         surface its own embeddings."""
         gens: dict[tuple[str, str | None], TpyFunction] = {}
-        generic_owners: set[str] = set()
         for record in module.all_records():
-            if record.type_params:
-                generic_owners.add(record.name)
             for m in record.methods:
                 if m.is_generator:
                     gens[(m.name, record.name)] = m
@@ -897,7 +894,6 @@ class CodeGenerator:
         for f in gens.values():
             f.force_resumable = False
         self.gen_generators.same_module_generators = gens
-        self.gen_generators.generic_owner_names = generic_owners
 
         # A simple generator delegating to ITSELF never enters the worklist
         # below (simple consumers use the lambda `__src` capture, not a frame
@@ -1029,14 +1025,8 @@ class CodeGenerator:
                     f"asyncio.create_task (the Task provides the heap "
                     f"indirection) or restructure.",
                     loc=units[stuck][0].loc)
-            raise CodeGenError(
-                f"recursive generator delegation involving "
-                f"'{units[stuck][0].name}' is not supported: the delegated "
-                f"generator source is stored by value in the consumer's "
-                f"frame, so the cycle would be infinite-size. Break the "
-                f"recursion (e.g. materialize the inner elements with "
-                f"`list(...)`).",
-                loc=units[stuck][0].loc)
+            raise recursive_delegation_error(units[stuck][0].name,
+                                             loc=units[stuck][0].loc)
         for i in order:
             func, rn, is_async = units[i]
             if is_async:
@@ -1093,6 +1083,8 @@ class CodeGenerator:
                 record_tps = self.gen_async._record_template_args(record_name)
                 if record_tps:
                     cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
+                # No defaults here: the in-class declaration carries them and
+                # C++ rejects the same default on both declarations.
                 params = self.gen_async._emit_method_params_decl(
                     func, record_name)
                 args = self.gen_async._factory_args_forwarded(
@@ -1143,6 +1135,8 @@ class CodeGenerator:
         record_tps = self.gen_async._record_template_args(record_name)
         if record_tps:
             cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
+        # No defaults here: the in-class declaration carries them and C++
+        # rejects the same default on both declarations.
         params = self.gen_async._emit_method_params_decl(func, record_name)
         args = self.gen_async._factory_args_forwarded(
             func, receiver=(record_name, "*this"))

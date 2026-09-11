@@ -766,7 +766,8 @@ def _run_cli(is_runner: bool) -> int:
     from .parse import ParseError
     from .sema import SemanticError, DiagnosticLevel
     from .explain import explain_send_sync
-    from .codegen_cpp import CodeGenOptions, CodeGenError
+    from .codegen_cpp import (CodeGenOptions, CodeGenError,
+                              stamp_codegen_error_file)
     from .compiler import Compiler, CompileError, BuildLayout
 
     try:
@@ -875,24 +876,18 @@ def _run_cli(is_runner: bool) -> int:
                 # resumable bodies only lower at frame emission (their CFG
                 # needs live codegen state), so nothing short of a real
                 # codegen pass sees every body kind. The C++ is discarded.
-                try:
+                with stamp_codegen_error_file(source_name,
+                                              compiled.is_entry_point):
                     ctx = compiler.collect_thir(compiled, CodeGenOptions(),
                                                 tolerate_reject=True)
-                except CodeGenError as e:
-                    if e.filename is None and not compiled.is_entry_point:
-                        e.filename = source_name
-                    raise
                 print(dump_codegen_thir(compiled.ast, compiled.analyzer, ctx,
                                         compiler.thir_reject_by_node), end="")
                 continue
 
             if args.dump_code:
-                try:
+                with stamp_codegen_error_file(source_name,
+                                              compiled.is_entry_point):
                     hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
-                except CodeGenError as e:
-                    if e.filename is None and not compiled.is_entry_point:
-                        e.filename = source_name
-                    raise
                 if hpp_code:
                     print(f"// === include/{compiled.name}.hpp ===")
                     print(hpp_code)
@@ -903,12 +898,9 @@ def _run_cli(is_runner: bool) -> int:
 
             # -vv: show generated C++ inline
             if args.verbose >= 2:
-                try:
+                with stamp_codegen_error_file(source_name,
+                                              compiled.is_entry_point):
                     hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
-                except CodeGenError as e:
-                    if e.filename is None and not compiled.is_entry_point:
-                        e.filename = source_name
-                    raise
                 print(f"// === include/{compiled.name}.hpp ===")
                 print(hpp_code)
                 if cpp_code:
@@ -916,13 +908,10 @@ def _run_cli(is_runner: bool) -> int:
                     print(cpp_code)
 
             t_file_start = time.monotonic()
-            try:
+            with stamp_codegen_error_file(source_name,
+                                          compiled.is_entry_point):
                 hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options,
-                                                                flat=explicit_output)
-            except CodeGenError as e:
-                if e.filename is None and not compiled.is_entry_point:
-                    e.filename = source_name
-                raise
+                                                            flat=explicit_output)
             t_file = time.monotonic() - t_file_start
             if cpp_path is not None:
                 all_cpp_paths.append(cpp_path)

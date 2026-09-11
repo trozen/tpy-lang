@@ -12,17 +12,36 @@ from ..parse.nodes import (
     TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
     TpyBreak, TpyContinue,
 )
-from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
+from ..compilation_context import get_current_compiler
+from ..symbol_binding import SymbolKind, lookup_imported
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
                                   is_owned_in_coro_frame, view_owned_copy_init)
 from . import emit_prims
-from .context import (
-    INDENT, CodeGenError, escape_cpp_name, contains_named_expr,
-    resumable_struct_name,
-)
-from .resumable_cfg import _stmts_have_any_suspension, same_module_dep_unit
+from .context import INDENT, CodeGenError, escape_cpp_name, contains_named_expr
+from .resumable_cfg import (ResumableShape, _stmts_have_any_suspension,
+                            frame_struct_qualname, recursive_delegation_error,
+                            same_module_dep_unit)
 from .protocols import protocol_param_template_name
+
+
+@dataclass(frozen=True)
+class _DelegatedGenerator:
+    """A resolved `for x in gen(...)` whose callee frame the enclosing
+    resumable frame embeds by value in a `__for_src` field."""
+    func: TpyFunction
+    # Receiver type for a method callee; None for a free function. Carries
+    # both the callee's namespace and its owner type args, so a generic
+    # owner needs nothing extra.
+    owner: 'NominalType | None'
+    # Namespace qualifier for a cross-module FREE function. None for a
+    # method (the owner supplies it) and for a same-module callee.
+    module_qual: str | None
+    # Where the callee is defined -- the axis the residual rejects key on,
+    # not a spelling input.
+    defining_module: str
+    call: TpyExpr
 
 
 @dataclass
@@ -238,12 +257,12 @@ class GeneratorCodegen:
         self.types = types
         self.functions = functions
         # Generators defined in the module being emitted, keyed
-        # (name, owner_record), plus the names of generic records (whose
-        # method-generator structs can't be spelled as a `__for_src` field
-        # type yet). Filled by the per-module pre-scan before any emit pass.
+        # (name, owner_record). Filled by the per-module pre-scan before any
+        # emit pass; its entries carry that scan's `force_resumable` marks,
+        # which is why a same-module callee is looked up here rather than
+        # re-resolved through the binding table.
         self.same_module_generators: dict[
             tuple[str, str | None], TpyFunction] = {}
-        self.generic_owner_names: set[str] = set()
 
     def _gen_template_header(self, func: TpyFunction, indent: str = "") -> str:
         """Generate template header for a generic generator function.
@@ -1103,48 +1122,117 @@ class GeneratorCodegen:
             return ()
         return (dep,)
 
-    def _resolve_same_module_generator_call(
+    @staticmethod
+    def _module_generator(module: str, name: str,
+                          owner_record: str | None) -> TpyFunction | None:
+        """The `TpyFunction` for a generator defined in `module`, or None
+        when the name does not resolve there or is not a generator. Every
+        module is fully analyzed before any of them emits, so a callee's
+        AST is available whatever the emit order."""
+        compiler = get_current_compiler()
+        compiled = compiler.modules.get(module) if compiler else None
+        if compiled is None:
+            return None
+        mod_ast = compiled.ast
+        if owner_record is not None:
+            for record in mod_ast.all_records():
+                if record.name != owner_record:
+                    continue
+                for m in record.methods:
+                    if m.name == name and m.is_generator:
+                        return m
+            return None
+        for f in mod_ast.functions:
+            if f.name == name and f.is_generator and not f.skip_codegen:
+                return f
+        return None
+
+    def _resolve_generator_call(
             self, expr: TpyExpr,
-    ) -> tuple[TpyFunction, str | None, TpyExpr] | None:
-        """Resolve a direct call to a generator defined in the module being
-        emitted: (callee_func, owner_record_name, peeled_call_node). None for
-        any other shape (cross-module call, non-call expression, unknown
-        callee). The lookup map is populated by the generator pre-scan in
-        generator.py."""
+    ) -> '_DelegatedGenerator | None':
+        """Resolve a direct call to a generator whose frame a `__for_src`
+        field can embed by value, wherever that generator is defined. None
+        for any other shape (non-call expression, unknown callee, a call
+        through a variable).
+
+        The same-module map is consulted first because it is the pre-scan's
+        own view of this module (its `force_resumable` marks live on those
+        `TpyFunction`s); anything else is resolved through the binding that
+        named the callee, which is what makes the callee's defining module
+        -- and so its C++ namespace -- known.
+        """
         e = expr
         while isinstance(e, TpyCoerce):
             e = e.expr
+        cur = self.ctx.analyzer.ctx.module_name
         if isinstance(e, TpyCall) and isinstance(e.func, TpyName):
             f = self.same_module_generators.get((e.func_name, None))
-            return (f, None, e) if f is not None else None
+            if f is not None:
+                return _DelegatedGenerator(f, None, None, cur, e)
+            # `from m import g; ... for x in g():` -- the attribute table's
+            # binding is chain-flattened and shadow-correct, and carries the
+            # name the callee is defined under in its own module.
+            qual = lookup_imported(self.ctx.analyzer.ctx.module_attributes,
+                                   e.func_name, SymbolKind.FUNCTION)
+            if qual is None or qual[0] == cur:
+                return None
+            f = self._module_generator(qual[0], qual[1], None)
+            return (_DelegatedGenerator(f, None, qual[0], qual[0], e)
+                    if f is not None else None)
         if isinstance(e, TpyMethodCall):
-            if e.user_module_call or e.builtin_module_call:
-                return None
+            mod = e.user_module_call or e.builtin_module_call
+            if mod is not None:
+                # `import m; ... for x in m.g():` -- a free function reached
+                # through the module object, not a method.
+                f = self._module_generator(mod, e.method, None)
+                if f is None:
+                    return None
+                return _DelegatedGenerator(
+                    f, None, None if mod == cur else mod, mod, e)
             recv = unwrap_ref_type(self.types.get_resolved_type(e.obj))
-            owner = getattr(recv, "name", None)
-            if owner is None:
+            owner_name = getattr(recv, "name", None)
+            if owner_name is None:
                 return None
-            f = self.same_module_generators.get((e.method, owner))
-            return (f, owner, e) if f is not None else None
+            f = self.same_module_generators.get((e.method, owner_name))
+            if f is not None:
+                return _DelegatedGenerator(f, recv, None, cur, e)
+            qname = recv.qualified_name() if isinstance(recv, NominalType) \
+                else None
+            if not qname or "." not in qname:
+                return None
+            owner_mod = qname.rsplit(".", 1)[0]
+            if owner_mod == cur:
+                return None
+            f = self._module_generator(owner_mod, e.method, owner_name)
+            return (_DelegatedGenerator(f, recv, None, owner_mod, e)
+                    if f is not None else None)
         return None
 
     def _temp_iterator_field_cpp(self, stmt: TpyForEach) -> str:
         """C++ frame-field type for a temporary `typing.Iterator` source:
-        the callee generator's struct name. Only a same-module callee is
-        spellable -- a cross-module *simple* generator has no named struct
-        (its factory returns an `inline auto` lambda wrapper) and simplicity
-        is not visible across the module boundary, so cross-module sources
-        are rejected with a clean diagnostic instead of miscompiling."""
-        resolved = self._resolve_same_module_generator_call(stmt.iterable)
+        the callee generator's frame-struct name, qualified by
+        `rcfg.frame_struct_qualname` so a callee in another module is
+        spelled through its own namespace (its header is included here, and
+        its struct is complete at the field declaration).
+
+        Three shapes still reject, each because the field would be
+        ill-formed rather than merely unhandled: a callee that is a SIMPLE
+        generator in another module (its factory returns an unnameable
+        lambda wrapper, and unlike a same-module one the pre-scan cannot
+        promote it to a named struct); a callee in a module that imports
+        this one back (mutually infinite-size); and a source that is not a
+        resolvable direct generator call at all.
+        """
+        resolved = self._resolve_generator_call(stmt.iterable)
         if resolved is None:
             raise CodeGenError(
                 "a for-loop with a yield/await in its body over an "
                 "Iterator-returning expression is only supported for a "
-                "direct call to a generator defined in the same module; "
-                "bind the elements first (e.g. `xs = list(...)`) and "
-                "iterate those, or move the callee into this module",
+                "direct call to a generator; bind the elements first "
+                "(e.g. `xs = list(...)`) and iterate those",
                 loc=stmt.loc)
-        callee, owner, call_node = resolved
+        callee = resolved.func
+        call_node = resolved.call
         if self.functions.protocols.get_all_protocol_params(callee.params):
             raise CodeGenError(
                 f"cannot iterate '{callee.name}(...)' here: a generator "
@@ -1152,14 +1240,20 @@ class GeneratorCodegen:
                 "resumable frame yet; bind the elements first "
                 "(e.g. `xs = list(...)`) and iterate those",
                 loc=stmt.loc)
-        if owner is not None and owner in self.generic_owner_names:
+        # `cycle_peers` includes this module itself, so the membership test
+        # only means "mutually infinite-size" for a callee defined elsewhere.
+        if (resolved.defining_module != self.ctx.analyzer.ctx.module_name
+                and resolved.defining_module in self.ctx.cycle_peers):
+            raise recursive_delegation_error(callee.name, loc=stmt.loc)
+        if (resolved.defining_module != self.ctx.analyzer.ctx.module_name
+                and self.is_simple_generator(callee)):
             raise CodeGenError(
-                f"cannot iterate '{owner}.{callee.name}(...)' here: a "
-                "generator method on a generic class cannot be embedded in "
-                "a resumable frame yet; bind the elements first "
-                "(e.g. `xs = list(...)`) and iterate those",
-                loc=stmt.loc)
-        base = resumable_struct_name(callee.name, owner, "__gen_")
+                f"cannot iterate '{callee.name}(...)' here: the imported "
+                "generator has a single yield in a loop and cannot yet be "
+                "embedded in this frame; bind the elements first "
+                "(e.g. `xs = list(...)`) and iterate those, or give it a "
+                "second yield", loc=stmt.loc)
+        inferred: tuple | None = None
         if callee.type_params:
             args = getattr(call_node, "inferred_type_args", None)
             if not args or len(args) != len(callee.type_params):
@@ -1167,9 +1261,11 @@ class GeneratorCodegen:
                     f"cannot iterate '{callee.name}(...)' here: the generic "
                     "generator's type arguments were not resolved at the "
                     "call site", loc=stmt.loc)
-            base += "<" + ", ".join(
-                self.types.type_to_cpp(a) for a in args) + ">"
-        return base
+            inferred = tuple(args)
+        return frame_struct_qualname(
+            self.types, resolved.owner, callee.name, inferred,
+            module_qual=resolved.module_qual,
+            shape=ResumableShape.GENERATOR, loc=stmt.loc)
 
     def _for_src_generator_targets(
             self, func: TpyFunction) -> list[tuple[str, str | None]]:
@@ -1188,10 +1284,17 @@ class GeneratorCodegen:
                     if (t is not None and is_protocol_type(t)
                             and t.qualified_name() == "typing.Iterator"
                             and self.ctx.is_temporary_expr(s.iterable)):
-                        r = self._resolve_same_module_generator_call(
-                            s.iterable)
-                        if r is not None:
-                            targets.append((r[0].name, r[1]))
+                        r = self._resolve_generator_call(s.iterable)
+                        # Same-module only: the keys are bare `(name, owner)`
+                        # pairs, so a cross-module callee would match a
+                        # same-named local unit and fabricate an edge -- and
+                        # it needs neither ordering (its header is complete)
+                        # nor a peephole demotion (its module already emitted).
+                        if (r is not None and r.defining_module ==
+                                self.ctx.analyzer.ctx.module_name):
+                            owner = r.owner.name if r.owner is not None \
+                                else None
+                            targets.append((r.func.name, owner))
                 for b in (s.sub_bodies() if hasattr(s, "sub_bodies") else ()):
                     walk(b)
 

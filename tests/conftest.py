@@ -1,6 +1,7 @@
 """Shared fixtures and utilities for TurboPython tests."""
 
 import concurrent.futures
+import contextlib
 import dataclasses
 import difflib
 import fcntl
@@ -43,7 +44,8 @@ def _log(msg: str, *, err: bool = False) -> None:
 # Import the compiler
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import get_module_name
-from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
+from tpyc.codegen_cpp import (CodeGenOptions, CodeGenError,
+                              stamp_codegen_error_file)
 from tpyc.codegen_cpp.context import ThirRejectError
 # The committed cutover gate owns the body/skeleton boundary; a second copy of
 # the module list here would drift the moment the boundary moves.
@@ -934,6 +936,13 @@ def _frontend_registry_for(src_file: Path):
     return reg, extra_lib_dirs
 
 
+def _codegen_error_from(mod):
+    """The CLI's filename stamp, spelled with the bare basename: a case's
+    `expected/diag.txt` is byte-compared on every host, so the path it names
+    cannot depend on the working directory."""
+    return stamp_codegen_error_file(mod.path.name, mod.is_entry_point)
+
+
 def compile_with_diagnostics(
         src_file: Path, output_dir: Path, default_int: str | None = None,
         snapshot_lib_modules: frozenset[str] = frozenset()) -> CompileResult:
@@ -998,10 +1007,11 @@ def compile_with_diagnostics(
 
         all_modules = []
         for mod in local_mods:
-            hpp_path, cpp_path = compiler.generate_code(
-                mod, output_dir, entry_module_name=entry_module.name,
-                options=TEST_CODEGEN_OPTIONS
-            )
+            with _codegen_error_from(mod):
+                hpp_path, cpp_path = compiler.generate_code(
+                    mod, output_dir, entry_module_name=entry_module.name,
+                    options=TEST_CODEGEN_OPTIONS
+                )
             # cpp_path is None for native_module (binding-only) modules
             all_modules.append((mod.name, hpp_path, cpp_path, True))
 
@@ -1010,10 +1020,11 @@ def compile_with_diagnostics(
         matched_patterns: set[str] = set()
         lib_paths: dict[str, tuple[Path | None, Path | None]] = {}
         for mod in lib_mods:
-            hpp_path, cpp_path = compiler.generate_code(
-                mod, output_dir, entry_module_name=entry_module.name,
-                options=TEST_CODEGEN_OPTIONS
-            )
+            with _codegen_error_from(mod):
+                hpp_path, cpp_path = compiler.generate_code(
+                    mod, output_dir, entry_module_name=entry_module.name,
+                    options=TEST_CODEGEN_OPTIONS
+                )
             all_modules.append((mod.name, hpp_path, cpp_path, False))
             lib_paths[mod.name] = (hpp_path, cpp_path)
             hits = snapshot_lib_pattern_hits(mod.name, snapshot_lib_modules)

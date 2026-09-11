@@ -122,6 +122,9 @@ def early_sync(n: int) -> int:
     assert "__gen_simple" not in hpp + cpp
     assert re.search(r"^inline auto simple\(.*\) \{", hpp, re.M)
     assert not re.search(r"^[^\n]* simple\([^\n]*\);$", hpp, re.M)
-    assert hpp.count(" = ::tpy::BigInt(3)") == 3
+    # Once per declaration a TPy call can land on: the factory forward
+    # decl AND the frame ctor for `coro` and `gen` (an inline await or a
+    # synthetic suspension constructs the frame directly), plus `sync`.
+    assert hpp.count(" = ::tpy::BigInt(3)") == 5
     assert " = ::tpy::BigInt(3)" not in cpp
     assert not compiler.diagnostics

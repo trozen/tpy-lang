@@ -1,0 +1,36 @@
+free: 0
+free: 1
+free: 2
+modcall: 10
+modcall: 1
+modcall: 2
+method: 20
+method: 7
+method: 8
+generic: 30
+generic: 1
+generic: 2
+genowner-imported: 40
+genowner-imported: 5
+genowner-imported: 6
+genowner-local: 50
+genowner-local: 8
+genowner-local: 9
+mutate: 60
+mutate: 0
+mutate: 5
+mutate: after 10
+lazy: 70
+lazy: consumer pulled
+  callee: before 1
+lazy: 1
+lazy: consumer pulled
+  callee: after 1
+lazy: 2
+lazy: consumer pulled
+  callee: after 2
+abandon: 80
+abandon: 1
+  callee: cleanup
+abandon: after break
+async: 3

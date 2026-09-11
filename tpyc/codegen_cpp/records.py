@@ -608,7 +608,7 @@ class RecordGenerator:
                         struct_name = self.gen_async._struct_name_templated(
                             method, record.name)
                     params = self.gen_async._emit_method_params_decl(
-                        method, record.name)
+                        method, record.name, emit_defaults=True)
                     const_suffix = " const" if method.is_readonly else ""
                     out.write("\n")
                     # In-class method declaration: do NOT pass record_name --
@@ -624,7 +624,7 @@ class RecordGenerator:
             if method.is_async:
                 struct_name = self.gen_async._struct_name_templated(method, record.name)
                 params = self.gen_async._emit_method_params_decl(
-                    method, record.name)
+                    method, record.name, emit_defaults=True)
                 const_suffix = " const" if method.is_readonly else ""
                 out.write("\n")
                 # In-class method declaration: do NOT pass record_name --

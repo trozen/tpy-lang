@@ -1,2 +1,15 @@
-15
-7
+task-default 15
+task-override 7
+inline-default 15
+inline-override 7
+generic-inline 10
+generic-inline-override 6
+method-inline 115
+method-inline-override 107
+method-task 115
+method-task-override 107
+aenter 5
+aexit-extra 9
+anext 6
+xmod 35
+xmod-override 12

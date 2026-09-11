@@ -1,0 +1,11 @@
+reference: 0 101
+reference: 1 102
+value: 0 10
+value: 0 10
+value: 1 20
+value: 1 20
+reuse: 0 30
+reuse: 0 30
+reuse: 1 40
+reuse: 1 40
+reuse: len 3

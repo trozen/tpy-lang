@@ -1,0 +1,1 @@
+main.py:27: error: in function 'outer': this construct is not yet supported by C++ code generation (res.await_param_type:own_protocol.static)
