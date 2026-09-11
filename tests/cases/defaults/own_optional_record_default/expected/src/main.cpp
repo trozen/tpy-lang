@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // def store(r: Own[Rec | None] = None) -> Own[Holder]:
 Holder store(std::optional<Rec>&& r) {
     // return Holder(r)
-    return Holder(std::move(r ? std::optional<Rec>(std::move(*r)) : std::nullopt));
+    return Holder(r ? std::optional<Rec>(std::move(*r)) : std::nullopt);
 }
 
 // def main() -> None:

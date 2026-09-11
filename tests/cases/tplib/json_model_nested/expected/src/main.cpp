@@ -594,7 +594,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     if ((!coord.has_value())) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'coord'"));
     }
-    return Profile(name, age, score, precision, active, big_id, (*role), std::move((*address)), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, std::move(alt_address ? std::optional<Address>(std::move(*alt_address)) : std::nullopt), email);
+    return Profile(name, age, score, precision, active, big_id, (*role), std::move((*address)), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, alt_address ? std::optional<Address>(std::move(*alt_address)) : std::nullopt, email);
 }
 
 void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {

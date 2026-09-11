@@ -536,6 +536,10 @@ _RECORD_TEMP_FLUSH_USE = _ExprUse(record_ctor=_RecordCtorUse.RECORD_TEMP,
 
 
 from .checks import (
+    _is_move_source_facts,
+    _own_opt_ptr_name_move_arg_facts,
+    _r_own_opt_ptr_name_move,
+    _r_opt_own_ptr_opt_name_move,
     _r_container_comp,
     _r_own_container_comp,
     _own_container_comp_arg,
@@ -1517,26 +1521,12 @@ def _own_opt_ptr_name_move_arg(a: TpyExpr, ptype: 'TpyType | None',
                                declared: dict[str, TpyType]) -> 'OptionalType | None':
     """The LAST-USE slice of `_own_opt_ptr_name_arg`: a pointer-repr Optional
     name whose occurrence moves. Only that slice renders the null-safe rebuild
-    under `std::move`; a non-last-use occurrence needs the Own-slot copy
+    (a prvalue moving the pointee); a non-last-use occurrence needs the Own-slot copy
     -TEMP cascade (`Holder(std::move(__tmp_N))`), an entirely different render,
     so it stays a reject."""
     return _own_opt_ptr_name_move_arg_facts(
         a, ptype, declared, frozenset(lc.narrow.narrowed), lc.analyzer,
         lc.movable_locals, getattr(lc.func, "name", None))
-
-
-def _own_opt_ptr_name_move_arg_facts(
-        a: TpyExpr, ptype: 'TpyType | None', declared: dict[str, TpyType],
-        narrowed: 'set[str] | frozenset[str]', analyzer,
-        movable_locals: 'set[str] | frozenset[str]',
-        func_name: 'str | None') -> 'OptionalType | None':
-    """`_own_opt_ptr_name_move_arg` over the discrete facts -- see
-    `_is_move_source_facts` for why the split exists."""
-    slot = _own_opt_ptr_name_arg(a, ptype, declared, narrowed, analyzer)
-    if slot is None or not _is_move_source_facts(a, movable_locals, analyzer,
-                                                 func_name):
-        return None
-    return slot
 
 
 def _value_opt_pass_arg(arg: TpyExpr, ptype: 'TpyType | None',
@@ -1677,19 +1667,6 @@ def _r_own_move_source_slice(req: _ArgReq) -> bool:
     return _own_move_source_slice_facts(
         req.a, req.ptype, req.analyzer, req.locals_, req.param_names,
         req.narrowed, req.inline_narrowed, req.movable_locals, req.func_name)
-
-
-def _r_own_opt_ptr_name_move(req: _ArgReq) -> bool:
-    return _own_opt_ptr_name_move_arg_facts(
-        req.a, req.ptype, req.locals_, req.narrowed, req.analyzer,
-        req.movable_locals, req.func_name) is not None
-
-
-def _r_opt_own_ptr_opt_name_move(req: _ArgReq) -> bool:
-    return (_opt_own_ptr_opt_name_arg(req.a, req.ptype, req.locals_,
-                                      req.analyzer) is not None
-            and _is_move_source_facts(req.a, req.movable_locals, req.analyzer,
-                                      req.func_name))
 
 
 def _r_opt_own_container_name(req: _ArgReq) -> bool:
@@ -2179,7 +2156,9 @@ def _require_method_call_arg(
             temps_ok=temp_args, narrowed=frozenset(lc.narrow.narrowed),
             param_names=lc.prescan.param_names,
             tparam_bounds=lc.tparam_bounds,
-            error_return_ok=error_return_ok):
+            error_return_ok=error_return_ok,
+            movable_locals=lc.movable_locals,
+            func_name=getattr(lc.func, "name", None)):
         raise ThirUnsupported(call_reject_reason("expr.method_call"))
 
 
@@ -12726,7 +12705,9 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
                 a, ptype, declared, analyzer, temps_ok=temp_args,
                 narrowed=frozenset(lc.narrow.narrowed),
                 param_names=lc.prescan.param_names,
-                self_this=_self_captures_this(lc))
+                self_this=_self_captures_this(lc),
+                movable_locals=lc.movable_locals,
+                func_name=getattr(lc.func, "name", None))
             if not ok and _borrow_tuple_name_arg(
                     a, ptype, declared, _borrow_tuple_bare_names(lc, declared),
                     analyzer):
@@ -14076,13 +14057,14 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # slot wants, moved over the whole ternary. Gated to the last-use
         # slice: a non-last-use occurrence needs a copy TEMP instead, a
         # different render.
+        # The rebuild is a prvalue (its pointee is moved inside the
+        # ternary), so it binds an `&&` slot and initializes a by-value one
+        # bare; a `std::move` around it would only defeat elision.
         _witness("own.opt_ptr_name_rebuild")
-        rebuild = THIROwnOptRebuild(
+        return THIROwnOptRebuild(
             result_type=own_opt, name=a.name,
             inner_cpp=lc.render_type(unwrap_readonly(own_opt.inner)),
             form=Form.VALUE, loc=getattr(a, "loc", None))
-        return THIRMove(result_type=own_opt, value=rebuild, form=Form.VALUE,
-                        loc=getattr(a, "loc", None))
     none_opt = _none_value_opt_arg(a, ptype, lc.analyzer)
     if none_opt is not None:
         # A `None` literal into a value-repr Optional slot -> `std::nullopt`
@@ -17299,16 +17281,3 @@ def _is_move_source(value: TpyExpr, lc: _LowerCtx,
     return (isinstance(inner, TpyName)
             and inner.name in movable_names
             and inner in lc.analyzer.ctx.all_last_uses)
-
-
-def _is_move_source_facts(value: TpyExpr,
-                          movable_locals: 'set[str] | frozenset[str]',
-                          analyzer, func_name: 'str | None') -> bool:
-    """`_is_move_source`'s DEFAULT (movable-locals) question over the discrete
-    facts rather than the lowering context, so the arg table can ask it: the
-    table carries facts, never the context. `_is_move_source` delegates here
-    so the two cannot answer differently."""
-    inner = _peel_coerce(value)
-    return (isinstance(inner, TpyName)
-            and inner.name in movable_locals
-            and inner in analyzer.ctx.all_last_uses)

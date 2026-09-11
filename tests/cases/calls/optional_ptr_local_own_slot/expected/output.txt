@@ -1,0 +1,19 @@
+append_try_reassigned 11
+append_try_reassigned none
+append_branch_reassigned 11
+append_branch_reassigned none
+append_none_declared none
+free_own_optional 15
+opt_own_spelling 6
+method_own_optional 17
+static_method 25
+static_method 18
+free_own_optional none
+opt_own_spelling 0
+method_own_optional none
+static_method none
+static_method none
+setdefault_slot 1 13
+generator 1
+generator 2
+generator 3

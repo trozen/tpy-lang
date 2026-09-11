@@ -4806,13 +4806,16 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        temps_ok: bool,
                        narrowed: 'set[str] | frozenset[str]',
                        param_names: 'set[str] | frozenset[str]' = frozenset(),
-                       self_this: bool = False) -> bool:
+                       self_this: bool = False,
+                       movable_locals: 'set[str] | frozenset[str]' = frozenset(),
+                       func_name: 'str | None' = None) -> bool:
     """The plain (non-native, non-marker) free-callee family's arg rows --
     the reference ladder the other families were copied from.
     Rows: `_PLAIN_ARG_SINK`."""
     return arg_ok(_PLAIN_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
-                  temps_ok=temps_ok, self_this=self_this)
+                  temps_ok=temps_ok, self_this=self_this,
+                  movable_locals=movable_locals, func_name=func_name)
 
 
 def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -6698,6 +6701,46 @@ def _own_opt_ptr_name_arg(a: TpyExpr, ptype: TpyType | None,
     if not (isinstance(atu, OptionalType) and atu.uses_pointer_repr()):
         return None
     return w if unwrap_readonly(atu.inner) == unwrap_readonly(w.inner) else None
+
+
+def _is_move_source_facts(value: TpyExpr,
+                          movable_locals: 'set[str] | frozenset[str]',
+                          analyzer, func_name: 'str | None') -> bool:
+    """`_is_move_source`'s DEFAULT (movable-locals) question over the discrete
+    facts rather than the lowering context, so the arg table can ask it: the
+    table carries facts, never the context. `_is_move_source` delegates here
+    so the two cannot answer differently."""
+    inner = _peel_coerce(value)
+    return (isinstance(inner, TpyName)
+            and inner.name in movable_locals
+            and inner in analyzer.ctx.all_last_uses)
+
+
+def _own_opt_ptr_name_move_arg_facts(
+        a: TpyExpr, ptype: 'TpyType | None', declared: dict[str, TpyType],
+        narrowed: 'set[str] | frozenset[str]', analyzer,
+        movable_locals: 'set[str] | frozenset[str]',
+        func_name: 'str | None') -> 'OptionalType | None':
+    """`_own_opt_ptr_name_move_arg` over the discrete facts -- see
+    `_is_move_source_facts` for why the split exists."""
+    slot = _own_opt_ptr_name_arg(a, ptype, declared, narrowed, analyzer)
+    if slot is None or not _is_move_source_facts(a, movable_locals, analyzer,
+                                                 func_name):
+        return None
+    return slot
+
+
+def _r_own_opt_ptr_name_move(req: _ArgReq) -> bool:
+    return _own_opt_ptr_name_move_arg_facts(
+        req.a, req.ptype, req.locals_, req.narrowed, req.analyzer,
+        req.movable_locals, req.func_name) is not None
+
+
+def _r_opt_own_ptr_opt_name_move(req: _ArgReq) -> bool:
+    return (_opt_own_ptr_opt_name_arg(req.a, req.ptype, req.locals_,
+                                      req.analyzer) is not None
+            and _is_move_source_facts(req.a, req.movable_locals, req.analyzer,
+                                      req.func_name))
 
 
 def _copy_own_arg(a: TpyExpr, ptype: TpyType | None,
@@ -9323,7 +9366,9 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                         temps_ok: bool,
                         narrowed: 'set[str] | frozenset[str]',
                         param_names: 'AbstractSet[str]'
-                        = frozenset()) -> bool:
+                        = frozenset(),
+                        movable_locals: 'set[str] | frozenset[str]' = frozenset(),
+                        func_name: 'str | None' = None) -> bool:
     """The receiver-less marker-call families' arg rows.
 
     THREE families, not one, and `kind[0]` picks which: a `template` callee
@@ -9342,7 +9387,8 @@ def _marker_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
         sink = _MARKER_NATIVE_ARG_SINK
     return arg_ok(sink, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
-                  temps_ok=temps_ok)
+                  temps_ok=temps_ok, movable_locals=movable_locals,
+                  func_name=func_name)
 
 
 def _dyn_own_handle_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -9985,7 +10031,9 @@ def _union_member_ctor_slot_arg(a: TpyExpr, ptype: 'TpyType | None',
 def _stub_method_arg_ok(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         analyzer, *, param_names: 'set[str] | frozenset[str]',
-        narrowed: 'set[str] | frozenset[str]') -> bool:
+        narrowed: 'set[str] | frozenset[str]',
+        movable_locals: 'set[str] | frozenset[str]' = frozenset(),
+        func_name: 'str | None' = None) -> bool:
     """The builtin-stub receivers' call into the one method-arg sink --
     container, bytearray, str/bytes view, scalar, and the ptr-template arm,
     which all render their args through the builtin-stub loop. No resolved
@@ -10000,7 +10048,8 @@ def _stub_method_arg_ok(
     view fence. The premise is structural, not a runtime fact: an assert here
     could only restate the argument this call spells."""
     return arg_ok(_METHOD_ARG_SINK, a, ptype, locals_, analyzer,
-                  param_names=param_names, narrowed=narrowed, temps_ok=False)
+                  param_names=param_names, narrowed=narrowed, temps_ok=False,
+                  movable_locals=movable_locals, func_name=func_name)
 
 
 def _opt_view_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10352,7 +10401,9 @@ def _method_call_arg_ok(
         narrowed: 'set[str] | frozenset[str]',
         param_names: 'set[str] | frozenset[str]',
         tparam_bounds: 'dict | None' = None,
-        error_return_ok: bool = False) -> bool:
+        error_return_ok: bool = False,
+        movable_locals: 'set[str] | frozenset[str]' = frozenset(),
+        func_name: 'str | None' = None) -> bool:
     if isinstance(a, TpyGeneratorExpression):
         # A genexpr arg renders its make_generator IIFE in place at any
         # method slot (`", ".join(str(x) for x in nums)` -- the render is
@@ -10379,20 +10430,24 @@ def _method_call_arg_ok(
                 and _marker_call_arg_ok(
                     a, ptype, kind, locals_, analyzer,
                     temps_ok=temps_ok, narrowed=narrowed,
-                    param_names=param_names))
+                    param_names=param_names,
+                    movable_locals=movable_locals, func_name=func_name))
 
     recv_type = _method_receiver_type(e.obj, locals_, analyzer)
     fam = _method_recv_family(recv_type, analyzer, tparam_bounds, e.method)
     if fam is not None:
         return fam.arg_ok(a, ptype, locals_, analyzer,
-                          param_names=param_names, narrowed=narrowed)
+                          param_names=param_names, narrowed=narrowed,
+                          movable_locals=movable_locals, func_name=func_name)
 
     if recv_type is not None and recv_type.is_pointer():
         # The ptr-template arm's args (`p.span(n)`): scalar positional
         # slots expanded bare -- the builtin-stub rows.
         return _stub_method_arg_ok(a, ptype, locals_, analyzer,
                                    param_names=param_names,
-                                   narrowed=narrowed)
+                                   narrowed=narrowed,
+                                   movable_locals=movable_locals,
+                                   func_name=func_name)
     recv = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
     if isinstance(recv, OwnType):
         recv = unwrap_readonly(recv.wrapped)
@@ -10446,7 +10501,8 @@ def _method_call_arg_ok(
         a, ptype, index, overloads[0], locals_, analyzer,
         temps_ok=temps_ok, narrowed=narrowed, param_names=param_names,
         frame_capturing=(mfi is not None
-                         and (mfi.is_generator or mfi.is_async)))
+                         and (mfi.is_generator or mfi.is_async)),
+        movable_locals=movable_locals, func_name=func_name)
 
 def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                    analyzer, *, stmt_position: bool,
@@ -12385,6 +12441,13 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # the free/ctor ladders' rows.
         _ArgRow("own_optional_record_rvalue", _r_own_optional_record_rvalue),
         _ArgRow("own_opt_slot", _r_own_opt_slot),
+        # The pointer-repr Optional NAME (un-narrowed, may be null) at the
+        # same `Own[record | None]` slot: rebuilt null-safely and moved at
+        # its last use -- the constructor sink's row, one render for every
+        # loop.
+        _ArgRow("own_opt_ptr_name_move", _r_own_opt_ptr_name_move),
+        # ... and the `Optional[Own[record]]` by-value spelling's sibling.
+        _ArgRow("opt_own_ptr_opt_name_move", _r_opt_own_ptr_opt_name_move),
         # A `None` literal at a pointer-variant union method slot
         # (`s.post(url, None, ..)` at `bytes | dict[str, str] | None` ->
         # the fully spelled `pv{std::monostate{}}`, NOT `std::nullopt`):
@@ -12555,6 +12618,11 @@ _MARKER_ROWS: 'tuple[_ArgRow, ...]' = (
     # (`_urlopen(..., conn)` -> bare `std::move(conn)`); the
     # lowering enforces the move verdict.
     _ArgRow("opt_own_record_name", _r_opt_own_record_name),
+    # A pointer-repr Optional NAME (may be null) at an `Own[record | None]`
+    # slot and at the `Optional[Own[record]]` spelling: the null-safe
+    # rebuild moved in at its last use -- the ctor/method/free rows.
+    _ArgRow("own_opt_ptr_name_move", _r_own_opt_ptr_name_move),
+    _ArgRow("opt_own_ptr_opt_name_move", _r_opt_own_ptr_opt_name_move),
     _ArgRow("readonly_record_ctor", _r_readonly_record_ctor),
     _ArgRow("union_pass_through", _r_union_pass_through),
     _ArgRow("union_member_lift", _r_union_member_lift),
@@ -12647,6 +12715,7 @@ _MARKER_OWN_ROWS = frozenset({
     "str_owned_slot", "own_move", "own_lvalue", "own_union_ctor",
     "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
     "own_container_literal", "own_container_comp",
+    "own_opt_ptr_name_move", "opt_own_ptr_opt_name_move",
 })
 
 assert _MARKER_OWN_ROWS <= {r.row for r in _MARKER_ROWS}
@@ -12851,6 +12920,13 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         # `Own[record | None]` slot (`take(a)` -> `std::move(a)`,
         # `take(make(13))` -> bare prvalue).
         _ArgRow("own_opt_slot", _r_own_opt_slot),
+        # The pointer-repr Optional NAME (un-narrowed, may be null) at the
+        # same `Own[record | None]` slot: rebuilt null-safely and moved at
+        # its last use -- the constructor sink's row, one render for every
+        # loop.
+        _ArgRow("own_opt_ptr_name_move", _r_own_opt_ptr_name_move),
+        # ... and the `Optional[Own[record]]` by-value spelling's sibling.
+        _ArgRow("opt_own_ptr_opt_name_move", _r_opt_own_ptr_opt_name_move),
         # An Array-returning call rvalue at a matching Array slot binds
         # the std::array prvalue inline (a VALUE container).
         _ArgRow("value_array_call", _r_value_array_call),
@@ -13012,11 +13088,14 @@ _GENERIC_PLAIN_ARG_SINK = register_sink(_ArgSink(
 def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                             locals_: dict[str, TpyType], analyzer, *,
                             param_names: 'set[str] | frozenset[str]',
-                            narrowed: 'set[str] | frozenset[str]') -> bool:
+                            narrowed: 'set[str] | frozenset[str]',
+                            movable_locals: 'set[str] | frozenset[str]' = frozenset(),
+                            func_name: 'str | None' = None) -> bool:
     """The bare-protocol / Own[@dynamic P] receiver family's arg rows.
     Rows: `_PROTOCOL_ARG_SINK`."""
     return arg_ok(_PROTOCOL_ARG_SINK, a, ptype, locals_, analyzer,
-                  param_names=param_names, narrowed=narrowed, temps_ok=False)
+                  param_names=param_names, narrowed=narrowed, temps_ok=False,
+                  movable_locals=movable_locals, func_name=func_name)
 
 
 def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
@@ -13609,14 +13688,17 @@ def _record_method_arg_ok(
         locals_: dict[str, TpyType], analyzer, *, temps_ok: bool,
         narrowed: 'set[str] | frozenset[str]',
         param_names: 'AbstractSet[str]' = frozenset(),
-        frame_capturing: bool = False) -> bool:
+        frame_capturing: bool = False,
+        movable_locals: 'set[str] | frozenset[str]' = frozenset(),
+        func_name: 'str | None' = None) -> bool:
     """A user record's method call into the one method-arg sink: the position,
     the resolved overload and the flush slot the signature-reading rows want.
     Prologue + rows: `_METHOD_ARG_SINK`."""
     return arg_ok(_METHOD_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok, index=index, overload=overload,
-                  frame_capturing=frame_capturing)
+                  frame_capturing=frame_capturing,
+                  movable_locals=movable_locals, func_name=func_name)
 
 
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],

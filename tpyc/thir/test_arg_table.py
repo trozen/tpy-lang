@@ -269,6 +269,8 @@ class TestMethodArgSinkShape:
             "opt_own_record_name",
             "own_optional_record_rvalue",
             "own_opt_slot",
+            "own_opt_ptr_name_move",
+            "opt_own_ptr_opt_name_move",
             "union_member_lift_none",
             "optional_ptr_no_temp",
             "container_field_pass",
@@ -305,7 +307,7 @@ class TestMethodArgSinkShape:
         # already name: 15 shapes were written twice, and the leading cell is
         # now the only one deciding them.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 105
+        assert len(rows) == 107
         assert len(rows[:self.STUB_ROWS]) == 50
         assert rows[self.STUB_ROWS] == "lambda"
 
@@ -494,7 +496,7 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 44
+        assert len([r for r in rows if r in others]) == 46
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",
@@ -646,6 +648,8 @@ class TestMarkerSinkSplit:
             "own_lvalue",
             "optional_ptr",
             "opt_own_record_name",
+            "own_opt_ptr_name_move",
+            "opt_own_ptr_opt_name_move",
             "readonly_record_ctor",
             "union_pass_through",
             "union_member_lift",
@@ -705,7 +709,8 @@ class TestMarkerSinkSplit:
             "own_record_rvalue", "own_tparam_call_rvalue", "copy_own",
             "own_move", "own_lvalue", "own_union_ctor", "str_owned_slot",
             "dyn_own_coro_factory", "dyn_own_handle", "dyn_own_forward_call",
-            "own_container_literal", "own_container_comp"})
+            "own_container_literal", "own_container_comp",
+            "own_opt_ptr_name_move", "opt_own_ptr_opt_name_move"})
 
     def test_own_capability_is_row_membership_not_a_flag(self):
         # The Own capability IS which cells the family holds -- there is no
@@ -856,6 +861,8 @@ class TestPlainSinkShape:
             "str_literal_value_opt_coerced",
             "opt_string_literal",
             "own_opt_slot",
+            "own_opt_ptr_name_move",
+            "opt_own_ptr_opt_name_move",
             "value_array_call",
             "recursive_union_borrow_call",
             "record_elem_subscript",
@@ -938,7 +945,7 @@ class TestPlainSinkShape:
                      _METHOD_ARG_SINK, _MARKER_QUALIFIED_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 44
+        assert len(shared) == 46
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -1053,7 +1060,7 @@ class TestGenericPlainSinkShape:
         # quietly fill one and call it a transcription. The count is what
         # closes the gap: naming a subset leaves the unnamed absences free
         # to be filled silently.
-        assert len(set(plain) - set(generic)) == 50
+        assert len(set(plain) - set(generic)) == 52
         assert {"callable_field", "value_union_temp", "record_rvalue_temp",
                 "str_owned_slot", "bytes_owned_slot", "own_coerce_cast",
                 "container_literal", "covariant_temp", "union_pass_through",
@@ -1770,8 +1777,6 @@ class TestRecordCtorSharedAndNewRows:
             "value_opt_name_pass",
             "tparam_name_pass",
             "own_move_source_slice",
-            "own_opt_ptr_name_move",
-            "opt_own_ptr_opt_name_move",
             "opt_own_container_name",
             "copy_open_elem",
             "generic_open_slot_elem",
@@ -1788,7 +1793,7 @@ class TestRecordCtorSharedAndNewRows:
             "protocol_slot_ctor",
             "record_rvalue_temp_ctor",
         ]
-        assert len([r for r in rows if r in others]) == 35
+        assert len([r for r in rows if r in others]) == 37
 
     def test_the_shadow_rows_hold_a_different_predicate(self):
         # Each of these SHADOWS a shared row name and had to be given its

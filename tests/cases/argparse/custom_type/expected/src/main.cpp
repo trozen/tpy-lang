@@ -73,7 +73,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     }
     if (!((__tpy_argparse_acc_input != nullptr))) ::tpy::raise_assertion_error();
     Tag input = Tag((*__tpy_argparse_acc_input));
-    return __tpy_builder_argparse_args_1(std::move(input), std::move(out ? std::optional<Tag>(std::move(*out)) : std::nullopt), std::move((*label)));
+    return __tpy_builder_argparse_args_1(std::move(input), out ? std::optional<Tag>(std::move(*out)) : std::nullopt, std::move((*label)));
 }
 
 void __tpy_init() {

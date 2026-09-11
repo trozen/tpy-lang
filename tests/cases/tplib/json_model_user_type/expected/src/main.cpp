@@ -193,7 +193,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
     if ((default_duration == nullptr)) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'default_duration'"));
     }
-    return Schedule(std::move(events), std::move((*default_duration)), std::move(deadline ? std::optional<Seconds>(std::move(*deadline)) : std::nullopt));
+    return Schedule(std::move(events), std::move((*default_duration)), deadline ? std::optional<Seconds>(std::move(*deadline)) : std::nullopt);
 }
 
 void Schedule::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {
