@@ -55,7 +55,7 @@ void main() {
         }
     }
     // ba: bytearray = bytearray(b"")
-    ::tpy::ByteArray ba = ::tpy::ByteArray(std::span<const uint8_t>{});
+    ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::BytesView{});
     // try:
     {
         try {

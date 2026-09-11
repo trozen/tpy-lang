@@ -55,7 +55,7 @@ The table consolidates what's in `runtime/cpp/include/tpy/type_traits.hpp`, `tpy
 | Type form | Send | Sync | Notes |
 |-----------|------|------|-------|
 | Owning value types (`int`, `Int32`, `bool`, `float`, `Char`, ...) | Yes | Yes | Copied at every boundary; no aliasing |
-| Dual-form value types (`str`, `bytes`) | Yes | Yes | Immutable. TPy storage form is owned (`std::string`, `::tpy::Bytes`); param form is a borrow view (`std::string_view`, `std::span<const uint8_t>`). Send-ness applies to the storage form -- transferring `str` ownership moves the underlying buffer. Frame slots that store the borrow form follow the OQ3 storage-form rules. |
+| Dual-form value types (`str`, `bytes`) | Yes | Yes | Immutable. TPy storage form is owned (`std::string`, `::tpy::Bytes`); param form is a borrow view (`std::string_view`, `::tpy::BytesView`). Send-ness applies to the storage form -- transferring `str` ownership moves the underlying buffer. Frame slots that store the borrow form follow the OQ3 storage-form rules. |
 | `bytearray` | Yes | No | Mutable buffer (`::tpy::ByteArray`) -- same Sync rule as `list[T]`. A reference type, so neither trait defaults on; the registry carries an explicit `is_send=True`, `is_sync=False` and the runtime spells the Send row beside the type (the `std::vector` partial specialization does not match a derived class). |
 | Pure non-owning views (`tpy.StrView`, `tpy.BytesView`) | No | Yes | Pure view types; always borrow originating-thread storage. Sema explicitly overrides `is_send=False, is_sync=True` on their TypeDefs in `type_def_registry.py`. |
 | `Ptr[T]` | No | No | Raw mutable pointer, no ownership guarantee |

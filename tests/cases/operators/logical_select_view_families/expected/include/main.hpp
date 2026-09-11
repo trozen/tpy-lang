@@ -11,10 +11,10 @@ struct Store;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t pick(std::span<const uint8_t> a, std::span<const uint8_t> b);
-int32_t pick_local(std::span<const uint8_t> a, std::span<const uint8_t> b);
-int32_t pick_rebound(std::span<const uint8_t> a, std::span<const uint8_t> __param_b);
-::tpy::Bytes pick_owned(std::span<const uint8_t> a, std::span<const uint8_t> b);
+int32_t pick(::tpy::BytesView a, ::tpy::BytesView b);
+int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b);
+int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b);
+::tpy::Bytes pick_owned(::tpy::BytesView a, ::tpy::BytesView b);
 void main();
 
 // class Store:
@@ -23,10 +23,10 @@ struct Store {
     ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
-    explicit Store(std::span<const uint8_t> data);
+    explicit Store(::tpy::BytesView data);
 
     // def put(self, a: bytes, b: bytes) -> None:
-    void put(std::span<const uint8_t> a, std::span<const uint8_t> b);
+    void put(::tpy::BytesView a, ::tpy::BytesView b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";
 };
 
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const Store& obj) {
 
 
 // def __init__(self, data: bytes) -> None:
-inline Store::Store(std::span<const uint8_t> data) : data(::tpy::Bytes(data)) {}
+inline Store::Store(::tpy::BytesView data) : data(::tpy::Bytes(data)) {}
 
 // def put(self, a: bytes, b: bytes) -> None:
-inline void Store::put(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+inline void Store::put(::tpy::BytesView a, ::tpy::BytesView b) {
     // # An OWNED `bytes` field sink over the same view-spelled select: the
     // # store copies, so the field keeps the bytes after the caller's
     // # argument buffers are gone.

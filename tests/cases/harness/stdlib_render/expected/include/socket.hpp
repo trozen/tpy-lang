@@ -178,17 +178,17 @@ struct socket {
     std::tuple<socket, std::tuple<std::string, int32_t>> _accept_nonblocking() const;
 
     // def send(self, data: bytes) -> Int32:
-    int32_t send(std::span<const uint8_t> data) const;
+    int32_t send(::tpy::BytesView data) const;
 
     // # Send the suffix `data[offset:]` without materializing it -- the async
     // # `_SockSendAll` advances `offset` across parks, so slicing a fresh
     // # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
     // # Underscore-private: not part of CPython's socket surface.
     // def _send_from(self, data: bytes, offset: UInt64) -> Int32:
-    int32_t _send_from(std::span<const uint8_t> data, uint64_t offset) const;
+    int32_t _send_from(::tpy::BytesView data, uint64_t offset) const;
 
     // def sendall(self, data: bytes) -> None:
-    void sendall(std::span<const uint8_t> data) const;
+    void sendall(::tpy::BytesView data) const;
 
     // def recv(self, bufsize: Int32) -> bytes:
     ::tpy::Bytes recv(int32_t bufsize) const;
@@ -381,7 +381,7 @@ inline std::tuple<socket, std::tuple<std::string, int32_t>> socket::_accept_nonb
 }
 
 // def send(self, data: bytes) -> Int32:
-inline int32_t socket::send(std::span<const uint8_t> data) const {
+inline int32_t socket::send(::tpy::BytesView data) const {
     // return self._send_from(data, 0)
     return this->_send_from(data, 0);
 }
@@ -391,7 +391,7 @@ inline int32_t socket::send(std::span<const uint8_t> data) const {
 // # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
 // # Underscore-private: not part of CPython's socket surface.
 // def _send_from(self, data: bytes, offset: UInt64) -> Int32:
-inline int32_t socket::_send_from(std::span<const uint8_t> data, uint64_t offset) const {
+inline int32_t socket::_send_from(::tpy::BytesView data, uint64_t offset) const {
     // data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
     const uint8_t* data_ptr = data.data();
     // n = posix_socket.send(self.fd,

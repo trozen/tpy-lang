@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def second_has_auth(location: bytes) -> bool:
-bool second_has_auth(std::span<const uint8_t> location) {
+bool second_has_auth(::tpy::BytesView location) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));

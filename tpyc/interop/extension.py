@@ -568,7 +568,7 @@ class ExtensionGenerator:
         """The C++ value an omitted slot binds. Shares `default_to_cpp` with
         the ordinary parameter-default render (one answer for what a default
         MEANS), then pins it to the boundary's own storage form: the plain
-        param takes `bytes` as a borrow (`span<const uint8_t>`), while the
+        param takes `bytes` as a borrow (`::tpy::BytesView`), while the
         boundary local owns its copy, so the span literal would not convert.
         Everything else brace-initializes the boundary type directly, which
         pins the slot's type independently of what the renderer produced."""
@@ -605,7 +605,7 @@ class ExtensionGenerator:
         param copies in O(n) via the recursive glue; a Span[T] param copies in
         via the buffer protocol into a vector that implicitly converts to the
         function's span<T>/span<const T> param, the same "owned local outlives
-        the call" trick str/bytes use for string_view/span<const uint8_t>.
+        the call" trick str/bytes use for string_view/::tpy::BytesView.
 
         A defaulted param binds from its slot when the caller supplied one and
         from the rendered default otherwise, so the C++ call always happens at

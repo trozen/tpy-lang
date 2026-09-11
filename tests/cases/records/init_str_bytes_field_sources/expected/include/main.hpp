@@ -46,7 +46,7 @@ struct Buf {
     ::tpy::Bytes empty;
 
     // def __init__(self, data: bytes):
-    explicit Buf(std::span<const uint8_t> data);
+    explicit Buf(::tpy::BytesView data);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buf";
 };
 
@@ -60,6 +60,6 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
 inline Meta::Meta(std::string_view title, std::string_view v) : title(std::string(v)), tag("fixed"), view(title), label("lit") {}
 
 // def __init__(self, data: bytes):
-inline Buf::Buf(std::span<const uint8_t> data) : data(::tpy::Bytes(data)), lit(::tpy::bytes_literal_owned("\x01\x02", 2)), empty(::tpy::Bytes()) {}
+inline Buf::Buf(::tpy::BytesView data) : data(::tpy::Bytes(data)), lit(::tpy::bytes_literal_owned("\x01\x02", 2)), empty(::tpy::Bytes()) {}
 void __tpy_init();
 } // namespace tpyapp::main

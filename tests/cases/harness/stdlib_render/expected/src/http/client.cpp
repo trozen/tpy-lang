@@ -62,7 +62,7 @@ int32_t _hex_val(int32_t c) {
 }
 
 // def _parse_chunk_size(line: bytes) -> int:
-::tpy::BigInt _parse_chunk_size(std::span<const uint8_t> line) {
+::tpy::BigInt _parse_chunk_size(::tpy::BytesView line) {
     // # Hex chunk size; stops at the first non-hex byte, which transparently
     // # handles chunk extensions (";ext"), the trailing CR/LF, and any spaces.
     // n = len(line)
@@ -90,7 +90,7 @@ int32_t _hex_val(int32_t c) {
 }
 
 // def _content_length(method: str, body: bytes | None) -> int:
-::tpy::BigInt _content_length(std::string_view method, std::optional<std::span<const uint8_t>> body) {
+::tpy::BigInt _content_length(std::string_view method, std::optional<::tpy::BytesView> body) {
     // if body is not None:
     if ((body.has_value())) {
         // return len(body)
@@ -110,7 +110,7 @@ int32_t _hex_val(int32_t c) {
 // def _build_request(method: str, url: str, body: bytes | None,
 // headers: dict[str, str] | None,
 // host: str, port: Int32, default_port: Int32) -> bytes:
-::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port) {
+::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port) {
     // lines: list[str] = []
     std::vector<std::string> lines = std::vector<std::string>{};
     // lines.append(method + " " + url + " HTTP/1.1")

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"hello world"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("hello world", 11);
+    ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
     // print(data.hex())
     std::cout << ::tpy::bytes_hex(data) << "\n";
     // print(data.find(b"world"))
@@ -36,7 +36,7 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::span<const uint8_t> p = *__beg_0;
+        ::tpy::BytesView p = *__beg_0;
         // print(p)
         std::cout << ::tpy::BytesPrinter(p) << "\n";
     }
@@ -46,7 +46,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(joined) << "\n";
     // # BytesView (from slice) -- methods work on views
     // v = data[0:11]
-    std::span<const uint8_t> v = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11});
+    ::tpy::BytesView v = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11});
     // print(v.find(b"world"))
     std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("world", 5)) << "\n";
     // print(v.replace(b"world", b"there"))
@@ -58,7 +58,7 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        std::span<const uint8_t> vp = *__beg_1;
+        ::tpy::BytesView vp = *__beg_1;
         // print(vp)
         std::cout << ::tpy::BytesPrinter(vp) << "\n";
     }

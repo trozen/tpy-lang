@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def attempt(response: bytes) -> None:
-void attempt(std::span<const uint8_t> response) {
+void attempt(::tpy::BytesView response) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -48,7 +48,7 @@ void main() {
     // attempt(b"HTTP/1.1 spam OK\r\n\r\n")      # non-numeric status code
     attempt(::tpy::bytes_literal("HTTP/1.1 spam OK\r\n\r\n", 20));
     // attempt(b"")                              # peer closed, nothing sent
-    attempt(std::span<const uint8_t>{});
+    attempt(::tpy::BytesView{});
     // attempt(b"HTTP/2.0 200 OK\r\n\r\n")       # unsupported protocol version
     attempt(::tpy::bytes_literal("HTTP/2.0 200 OK\r\n\r\n", 19));
 }

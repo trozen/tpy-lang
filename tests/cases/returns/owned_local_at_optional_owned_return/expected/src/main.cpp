@@ -31,7 +31,7 @@ std::optional<std::string> from_concat(std::string_view k) {
 }
 
 // def from_bytes(k: bytes) -> bytes | None:
-std::optional<::tpy::Bytes> from_bytes(std::span<const uint8_t> k) {
+std::optional<::tpy::Bytes> from_bytes(::tpy::BytesView k) {
     // if len(k) > 0:
     if ((::tpy::__len__(k) > 0)) {
         // v = bytes(k)

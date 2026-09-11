@@ -15,18 +15,18 @@ template<typename T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
 bool has_item_str(const std::vector<std::string>& xs, std::string_view v);
 bool has_item_string(const std::vector<::tpy::String>& xs, const ::tpy::String& v);
-bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, std::span<const uint8_t> v);
-int32_t size_of(std::span<const uint8_t> p);
+bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v);
+int32_t size_of(::tpy::BytesView p);
 template<typename T>
 ::tpy::val_or_ref_t<T> echo_ref(::tpy::param_val_or_ref_t<T> v);
 template<typename T>
 void store(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
 void store_str(std::vector<std::string>& xs, std::string_view v);
-void store_bytes(std::vector<::tpy::Bytes>& xs, std::span<const uint8_t> v);
+void store_bytes(std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v);
 void str_family(std::string_view k);
-void bytes_family(std::span<const uint8_t> p);
+void bytes_family(::tpy::BytesView p);
 void u8_list();
-void storing(std::string_view k, std::span<const uint8_t> p);
+void storing(std::string_view k, ::tpy::BytesView p);
 void readonly_method(std::string_view k);
 void main();
 

@@ -114,7 +114,7 @@ namespace tpyapp::main {
     case S_JOIN_2: {
         try {
             // await reader.readuntil(b"")
-            __sub_1.emplace((*reader), std::span<const uint8_t>{});
+            __sub_1.emplace((*reader), ::tpy::BytesView{});
             __state = S_RESUME_1;
             continue;
         } catch (const ::tpy::ValueError&) {

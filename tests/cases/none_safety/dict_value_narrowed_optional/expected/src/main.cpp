@@ -25,7 +25,7 @@ void store_str(std::optional<std::string_view> a) {
 }
 
 // def store_bytes(a: bytes | None) -> None:
-void store_bytes(std::optional<std::span<const uint8_t>> a) {
+void store_bytes(std::optional<::tpy::BytesView> a) {
     // out: dict[str, bytes] = {}
     ::tpy::ordered_map<std::string, ::tpy::Bytes> out = ::tpy::ordered_map<std::string, ::tpy::Bytes>();
     // if a is not None:

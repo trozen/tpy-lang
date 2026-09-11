@@ -20,9 +20,9 @@ void main() {
     // print(b64decode(b"TQ=="))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TQ==", 4))) << "\n";
     // print(b64encode(b""))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(std::span<const uint8_t>{})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::BytesView{})) << "\n";
     // print(b64decode(b""))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(std::span<const uint8_t>{})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::BytesView{})) << "\n";
     // print(b64encode(b"hello world"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("hello world", 11))) << "\n";
     // print(b64decode(b"aGVsbG8gd29ybGQ="))
@@ -34,7 +34,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n";
     // # urlsafe: bytes that trigger + and / in the standard alphabet get -/_.
     // raw: bytes = b"\xfb\xff"
-    std::span<const uint8_t> raw = ::tpy::bytes_literal("\xfb\xff", 2);
+    ::tpy::BytesView raw = ::tpy::bytes_literal("\xfb\xff", 2);
     // print(b64encode(raw))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw)) << "\n";
     // print(urlsafe_b64encode(raw))
@@ -45,7 +45,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("+/8=", 4))) << "\n";
     // # b16: all-zero, simple, roundtrip.
     // print(b16encode(b""))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(std::span<const uint8_t>{})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::BytesView{})) << "\n";
     // print(b16encode(b"\x00"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("\000", 1))) << "\n";
     // print(b16encode(b"Hi!"))
@@ -54,7 +54,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(::tpy::bytes_literal("486921", 6))) << "\n";
     // # b32: every input-length mod 5 triggers a different pad count.
     // print(b32encode(b""))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(std::span<const uint8_t>{})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::BytesView{})) << "\n";
     // print(b32encode(b"f"))         # 1 -> 6 pads
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("f", 1))) << "\n";
     // print(b32encode(b"fo"))        # 2 -> 4 pads
@@ -106,7 +106,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(ba)) << "\n";
     // # encodebytes: MIME-style 76-char line wrap + trailing newline.
     // print(encodebytes(b""))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(std::span<const uint8_t>{})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::BytesView{})) << "\n";
     // print(encodebytes(b"hello"))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::bytes_literal("hello", 5))) << "\n";
     // print(encodebytes(b"a" * 76))

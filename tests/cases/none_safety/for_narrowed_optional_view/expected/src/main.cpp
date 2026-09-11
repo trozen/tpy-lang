@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # A for-loop / comprehension over a narrowed `str | None` / `bytes | None`
 // # (proven non-None) iterates the contained value.
 // def sum_bytes(b: bytes | None) -> int:
-::tpy::BigInt sum_bytes(std::optional<std::span<const uint8_t>> b) {
+::tpy::BigInt sum_bytes(std::optional<::tpy::BytesView> b) {
     // if b is None:
     if ((!b.has_value())) {
         // return -1
@@ -51,7 +51,7 @@ namespace tpyapp::main {
 }
 
 // def comp_bytes(b: bytes | None) -> int:
-::tpy::BigInt comp_bytes(std::optional<std::span<const uint8_t>> b) {
+::tpy::BigInt comp_bytes(std::optional<::tpy::BytesView> b) {
     // if b is None:
     if ((!b.has_value())) {
         // return -1
@@ -93,7 +93,7 @@ namespace tpyapp::main {
 }
 
 // def byte_map(b: bytes | None) -> int:
-::tpy::BigInt byte_map(std::optional<std::span<const uint8_t>> b) {
+::tpy::BigInt byte_map(std::optional<::tpy::BytesView> b) {
     // if b is None:
     if ((!b.has_value())) {
         // return -1

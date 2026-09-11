@@ -51,7 +51,7 @@ void bytearray_slice_view() {
     // ba = bytearray(b"   padded long bytes that dodge the small buffer here   ")
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("   padded long bytes that dodge the small buffer here   ", 56));
     // v = ba[3:9]
-    std::span<const uint8_t> v = ::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9});
+    ::tpy::BytesView v = ::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9});
     // print(len(v))
     std::cout << ::tpy::__len__(v) << "\n";
     // ba.append(33)  # tpyc: warning(/while borrowed/)

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // padded = b"  hello  "
-    std::span<const uint8_t> padded = ::tpy::bytes_literal("  hello  ", 9);
+    ::tpy::BytesView padded = ::tpy::bytes_literal("  hello  ", 9);
     // print(padded.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(padded)) << "\n";
     // print(padded.lstrip())
@@ -16,26 +16,26 @@ void main() {
     // print(padded.rstrip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_view(padded)) << "\n";
     // tabs = b"\thello\n"
-    std::span<const uint8_t> tabs = ::tpy::bytes_literal("\thello\n", 7);
+    ::tpy::BytesView tabs = ::tpy::bytes_literal("\thello\n", 7);
     // print(tabs.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(tabs)) << "\n";
     // no_ws = b"hello"
-    std::span<const uint8_t> no_ws = ::tpy::bytes_literal("hello", 5);
+    ::tpy::BytesView no_ws = ::tpy::bytes_literal("hello", 5);
     // print(no_ws.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(no_ws)) << "\n";
     // empty = b""
-    std::span<const uint8_t> empty = std::span<const uint8_t>{};
+    ::tpy::BytesView empty = ::tpy::BytesView{};
     // print(empty.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(empty)) << "\n";
     // only_ws = b"   "
-    std::span<const uint8_t> only_ws = ::tpy::bytes_literal("   ", 3);
+    ::tpy::BytesView only_ws = ::tpy::bytes_literal("   ", 3);
     // print(only_ws.strip())
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(only_ws)) << "\n";
     // # BytesView (from slice) -- strip/lstrip/rstrip return views
     // bv_data: bytes = b"  hi  "
-    std::span<const uint8_t> bv_data = ::tpy::bytes_literal("  hi  ", 6);
+    ::tpy::BytesView bv_data = ::tpy::bytes_literal("  hi  ", 6);
     // v = bv_data[0:6]
-    std::span<const uint8_t> v = ::tpy::bytes_slice(bv_data, ::tpy::BasicSlice{0, 6});
+    ::tpy::BytesView v = ::tpy::bytes_slice(bv_data, ::tpy::BasicSlice{0, 6});
     // print(len(v.strip()))
     std::cout << ::tpy::__len__(::tpy::bytes_strip_view(v)) << "\n";
     // print(len(v.lstrip()))

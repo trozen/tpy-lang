@@ -124,7 +124,7 @@ std::vector<::tpy::BigInt> byte_lengths(const std::vector<::tpy::Bytes>& chunks)
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::span<const uint8_t> c = *__beg_0;
+        ::tpy::BytesView c = *__beg_0;
         out.push_back(::tpy::BigInt(::tpy::__len__(c)));
     }
     return out;

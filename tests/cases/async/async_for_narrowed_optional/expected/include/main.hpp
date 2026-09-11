@@ -16,7 +16,7 @@ struct __gen_each_byte;
 struct __coro_count_chars;
 struct __coro_main_coro;
 
-__gen_each_byte each_byte(std::optional<std::span<const uint8_t>> b);
+__gen_each_byte each_byte(std::optional<::tpy::BytesView> b);
 __coro_count_chars count_chars(std::optional<std::string_view> s);
 __coro_main_coro main_coro();
 void main();
@@ -91,7 +91,7 @@ struct __gen_each_byte : public ::tpy::next_iter_mixin<__gen_each_byte, ::tpy::B
         S_DONE = 3,
     };
 
-    __gen_each_byte(std::optional<std::span<const uint8_t>> b_)
+    __gen_each_byte(std::optional<::tpy::BytesView> b_)
         : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();

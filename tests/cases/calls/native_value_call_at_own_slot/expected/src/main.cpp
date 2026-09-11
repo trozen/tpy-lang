@@ -11,7 +11,7 @@ int32_t take(::tpy::Bytes b) {
 }
 
 // def f(v: bytes) -> None:
-void f(std::span<const uint8_t> v) {
+void f(::tpy::BytesView v) {
     // # A bytes method result at an owning parameter.
     // print(take(v.strip()))
     std::cout << take(::tpy::Bytes(::tpy::bytes_strip_view(v))) << "\n";

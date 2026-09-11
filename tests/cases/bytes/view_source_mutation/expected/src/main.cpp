@@ -9,7 +9,7 @@ void test_list_view() {
     // items: list[bytes] = [b"alice", b"bob"]
     std::vector<::tpy::Bytes> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     // x = items[Int32(0)]  # tpyc: type(BytesView)
-    std::span<const uint8_t> x = ::tpy::__getitem__(items, 0);
+    ::tpy::BytesView x = ::tpy::__getitem__(items, 0);
     // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }

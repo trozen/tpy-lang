@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def take(b: bytes) -> int:
-::tpy::BigInt take(std::span<const uint8_t> b) {
+::tpy::BigInt take(::tpy::BytesView b) {
     // return len(b)
     return ::tpy::BigInt(::tpy::__len__(b));
 }

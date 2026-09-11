@@ -27,7 +27,7 @@ struct Holder {
     std::string tag;
 
     // def __init__(self, data: bytes, tag: str) -> None:
-    explicit Holder(std::span<const uint8_t> data, std::string_view tag);
+    explicit Holder(::tpy::BytesView data, std::string_view tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def __init__(self, data: bytes, tag: str) -> None:
-inline Holder::Holder(std::span<const uint8_t> data, std::string_view tag) {
+inline Holder::Holder(::tpy::BytesView data, std::string_view tag) {
     // print("constructing", tag)
     std::cout << "constructing" << " " << tag << "\n";
     // self.data = data

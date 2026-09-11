@@ -30,7 +30,7 @@ namespace tpyapp::main {
 
 
 // async def consume(data: bytes) -> int:
-__coro_consume consume(std::span<const uint8_t> data) {
+__coro_consume consume(::tpy::BytesView data) {
     return __coro_consume(data);
 }
 
@@ -60,7 +60,7 @@ __coro_consume consume(std::span<const uint8_t> data) {
 
 
 // async def head(data: bytes) -> int:
-__coro_head head(std::span<const uint8_t> data) {
+__coro_head head(::tpy::BytesView data) {
     return __coro_head(data);
 }
 

@@ -19,7 +19,7 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void _hop(::tpystd::tplib::requests::Session& s, std::span<const uint8_t> response);
+void _hop(::tpystd::tplib::requests::Session& s, ::tpy::BytesView response);
 void main();
 
 void __tpy_init();

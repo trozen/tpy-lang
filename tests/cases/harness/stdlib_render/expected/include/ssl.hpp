@@ -175,10 +175,10 @@ struct SSLSocket {
     ::tpy::Bytes recv(int32_t bufsize);
 
     // def send(self, data: bytes) -> Int32:
-    int32_t send(std::span<const uint8_t> data);
+    int32_t send(::tpy::BytesView data);
 
     // def sendall(self, data: bytes) -> None:
-    void sendall(std::span<const uint8_t> data);
+    void sendall(::tpy::BytesView data);
 
     // def makefile(self) -> Own[BufferedReader]:
     ::tpystd::io::BufferedReader makefile();
@@ -418,7 +418,7 @@ inline ::tpy::Bytes SSLSocket::recv(int32_t bufsize) {
 }
 
 // def send(self, data: bytes) -> Int32:
-inline int32_t SSLSocket::send(std::span<const uint8_t> data) {
+inline int32_t SSLSocket::send(::tpy::BytesView data) {
     // rc = mbedtls.tls_write(self._session.get().raw(), unsafe_ptr(data),
     // UInt64(len(data)))
     int32_t rc = ::tpy_tls_write(this->_session.get().raw(), data.data(), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)));

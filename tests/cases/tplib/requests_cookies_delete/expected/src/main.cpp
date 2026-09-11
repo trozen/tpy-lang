@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def _hop(s: requests.Session, response: bytes) -> None:
-void _hop(::tpystd::tplib::requests::Session& s, std::span<const uint8_t> response) {
+void _hop(::tpystd::tplib::requests::Session& s, ::tpy::BytesView response) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));

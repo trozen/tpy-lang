@@ -5,7 +5,7 @@ C++ runtime decides it again for every generic body -- `param_val_or_ref_t<T>`,
 `val_or_ref_t<T>`, `val_or_ptr_t<T>`, `opt_param_t<T>` and the `ValueType`
 concept all read `tpy::is_value_type<T>`. The two lists are written by hand in
 different languages, so they drift: before this guard the runtime called `float`
-(Float32), `std::span<const uint8_t>` (BytesView), the spans, the dict views,
+(Float32), the bytes view, the spans, the dict views,
 Range and the slices reference types, which made a generic slot at any of them a
 MUTABLE `T&`. `bytes` was undecidable until it stopped sharing
 `std::vector<uint8_t>` with `bytearray` and `list[UInt8]`; the one entry left in

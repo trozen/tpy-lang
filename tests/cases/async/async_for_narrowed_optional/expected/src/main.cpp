@@ -40,7 +40,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_each_byte::__next__() {
 
 
 // def each_byte(b: bytes | None) -> Iterator[int]:
-__gen_each_byte each_byte(std::optional<std::span<const uint8_t>> b) {
+__gen_each_byte each_byte(std::optional<::tpy::BytesView> b) {
     return __gen_each_byte(b);
 }
 

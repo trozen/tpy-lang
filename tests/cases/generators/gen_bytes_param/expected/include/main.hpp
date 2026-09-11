@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-inline auto byte_vals(std::span<const uint8_t> data) {
+inline auto byte_vals(::tpy::BytesView data) {
     // i = 0
     int32_t i = 0;
     return ::tpy::make_generator<::tpy::BigInt>(

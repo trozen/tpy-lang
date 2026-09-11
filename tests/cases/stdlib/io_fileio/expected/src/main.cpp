@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def feed(data: bytes) -> Int64:
-int64_t feed(std::span<const uint8_t> data) {
+int64_t feed(::tpy::BytesView data) {
     // r, w = os.pipe()
     auto __tup_1 = ::tpystd::os::pipe();
     int64_t r = std::get<0>(__tup_1);

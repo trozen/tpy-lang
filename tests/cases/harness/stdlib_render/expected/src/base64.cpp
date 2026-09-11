@@ -27,7 +27,7 @@ int32_t _NEWLINE{};
 int32_t _MIME_LINE{};
 
 // def _b64_encode(data: bytes, alphabet: bytes) -> bytes:
-::tpy::Bytes _b64_encode(std::span<const uint8_t> data, std::span<const uint8_t> alphabet) {
+::tpy::Bytes _b64_encode(::tpy::BytesView data, ::tpy::BytesView alphabet) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
@@ -118,7 +118,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 }
 
 // def _b64_decode(data: bytes, c62: Int32, c63: Int32) -> bytes:
-::tpy::Bytes _b64_decode(std::span<const uint8_t> data, int32_t c62, int32_t c63) {
+::tpy::Bytes _b64_decode(::tpy::BytesView data, int32_t c62, int32_t c63) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 4 != 0:
@@ -187,7 +187,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 }
 
 // def _build_altchars_alphabet(altchars: bytes) -> bytes:
-::tpy::Bytes _build_altchars_alphabet(std::span<const uint8_t> altchars) {
+::tpy::Bytes _build_altchars_alphabet(::tpy::BytesView altchars) {
     // if len(altchars) != 2:
     if ((::tpy::__len__(altchars) != 2)) {
         // raise ValueError("altchars must be 2 bytes")
@@ -213,7 +213,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 }
 
 // def _filter_b64_input(data: bytes, c62: Int32, c63: Int32) -> bytes:
-::tpy::Bytes _filter_b64_input(std::span<const uint8_t> data, int32_t c62, int32_t c63) {
+::tpy::Bytes _filter_b64_input(::tpy::BytesView data, int32_t c62, int32_t c63) {
     // # CPython's validate=False default silently drops non-alphabet chars
     // # (matching RFC 4648's MIME-mode leniency). Keep padding chars.
     // buf: bytearray = bytearray()
@@ -258,7 +258,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 }
 
 // def b64encode(data: bytes, altchars: bytes | None = None) -> bytes:
-::tpy::Bytes b64encode(std::span<const uint8_t> data, std::optional<std::span<const uint8_t>> altchars) {
+::tpy::Bytes b64encode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars) {
     // if altchars is None:
     if ((!altchars.has_value())) {
         // return _b64_encode(data, _B64_STD)
@@ -270,7 +270,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 
 // @dispatch
 // def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False) -> bytes:
-::tpy::Bytes b64decode(std::span<const uint8_t> data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
+::tpy::Bytes b64decode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars, bool validate) {
     // c62: Int32 = _CHAR_PLUS
     int32_t c62 = _CHAR_PLUS;
     // c63: Int32 = _CHAR_SLASH
@@ -298,20 +298,20 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 
 // @dispatch
 // def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
-::tpy::Bytes b64decode(std::string_view data, std::optional<std::span<const uint8_t>> altchars, bool validate) {
+::tpy::Bytes b64decode(std::string_view data, std::optional<::tpy::BytesView> altchars, bool validate) {
     // return b64decode(data.encode(), altchars, validate)
     return b64decode(::tpy::bytes_from_str(data), altchars ? std::make_optional(::tpy::Bytes(*altchars)) : std::nullopt, validate);
 }
 
 // def standard_b64encode(data: bytes) -> bytes:
-::tpy::Bytes standard_b64encode(std::span<const uint8_t> data) {
+::tpy::Bytes standard_b64encode(::tpy::BytesView data) {
     // return _b64_encode(data, _B64_STD)
     return _b64_encode(data, _B64_STD);
 }
 
 // @dispatch
 // def standard_b64decode(data: bytes) -> bytes:
-::tpy::Bytes standard_b64decode(std::span<const uint8_t> data) {
+::tpy::Bytes standard_b64decode(::tpy::BytesView data) {
     // return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH)
     return _b64_decode(_filter_b64_input(data, _CHAR_PLUS, _CHAR_SLASH), _CHAR_PLUS, _CHAR_SLASH);
 }
@@ -324,14 +324,14 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 }
 
 // def urlsafe_b64encode(data: bytes) -> bytes:
-::tpy::Bytes urlsafe_b64encode(std::span<const uint8_t> data) {
+::tpy::Bytes urlsafe_b64encode(::tpy::BytesView data) {
     // return _b64_encode(data, _B64_URL)
     return _b64_encode(data, _B64_URL);
 }
 
 // @dispatch
 // def urlsafe_b64decode(data: bytes) -> bytes:
-::tpy::Bytes urlsafe_b64decode(std::span<const uint8_t> data) {
+::tpy::Bytes urlsafe_b64decode(::tpy::BytesView data) {
     // return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER)
     return _b64_decode(_filter_b64_input(data, _CHAR_MINUS, _CHAR_UNDER), _CHAR_MINUS, _CHAR_UNDER);
 }
@@ -344,7 +344,7 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63) {
 }
 
 // def b16encode(data: bytes) -> bytes:
-::tpy::Bytes b16encode(std::span<const uint8_t> data) {
+::tpy::Bytes b16encode(::tpy::BytesView data) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // result: bytearray = bytearray()
@@ -389,7 +389,7 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
 
 // @dispatch
 // def b16decode(data: bytes, casefold: bool = False) -> bytes:
-::tpy::Bytes b16decode(std::span<const uint8_t> data, bool casefold) {
+::tpy::Bytes b16decode(::tpy::BytesView data, bool casefold) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 2 != 0:
@@ -424,7 +424,7 @@ int32_t _b16_char_to_value(int32_t c, bool casefold) {
 }
 
 // def b32encode(data: bytes) -> bytes:
-::tpy::Bytes b32encode(std::span<const uint8_t> data) {
+::tpy::Bytes b32encode(::tpy::BytesView data) {
     // # 5 input bytes (40 bits) -> 8 output chars (5 bits each).
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
@@ -572,7 +572,7 @@ int32_t _b32_char_to_value(int32_t c) {
 }
 
 // def _b32_preprocess(data: bytes, casefold: bool, map01: bytes | None) -> bytes:
-::tpy::Bytes _b32_preprocess(std::span<const uint8_t> data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
+::tpy::Bytes _b32_preprocess(::tpy::BytesView data, bool casefold, std::optional<::tpy::BytesView> map01) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // buf: bytearray = bytearray()
@@ -625,7 +625,7 @@ int32_t _b32_char_to_value(int32_t c) {
 
 // @dispatch
 // def b32decode(data: bytes, casefold: bool = False, map01: bytes | None = None) -> bytes:
-::tpy::Bytes b32decode(std::span<const uint8_t> data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
+::tpy::Bytes b32decode(::tpy::BytesView data, bool casefold, std::optional<::tpy::BytesView> map01) {
     // if casefold or map01 is not None:
     if ((casefold || (map01.has_value()))) {
         // return _b32decode_impl(_b32_preprocess(data, casefold, map01))
@@ -637,13 +637,13 @@ int32_t _b32_char_to_value(int32_t c) {
 
 // @dispatch
 // def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
-::tpy::Bytes b32decode(std::string_view data, bool casefold, std::optional<std::span<const uint8_t>> map01) {
+::tpy::Bytes b32decode(std::string_view data, bool casefold, std::optional<::tpy::BytesView> map01) {
     // return b32decode(data.encode(), casefold, map01)
     return b32decode(::tpy::bytes_from_str(data), casefold, map01 ? std::make_optional(::tpy::Bytes(*map01)) : std::nullopt);
 }
 
 // def _b32decode_impl(data: bytes) -> bytes:
-::tpy::Bytes _b32decode_impl(std::span<const uint8_t> data) {
+::tpy::Bytes _b32decode_impl(::tpy::BytesView data) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // if n % 8 != 0:
@@ -737,7 +737,7 @@ int32_t _b32_char_to_value(int32_t c) {
 }
 
 // def encodebytes(data: bytes) -> bytes:
-::tpy::Bytes encodebytes(std::span<const uint8_t> data) {
+::tpy::Bytes encodebytes(::tpy::BytesView data) {
     // # MIME-style: standard base64 with a newline every 76 output chars and
     // # a trailing newline. For empty input, returns b'' (no newline).
     // encoded: bytes = _b64_encode(data, _B64_STD)
@@ -769,7 +769,7 @@ int32_t _b32_char_to_value(int32_t c) {
 }
 
 // def decodebytes(data: bytes) -> bytes:
-::tpy::Bytes decodebytes(std::span<const uint8_t> data) {
+::tpy::Bytes decodebytes(::tpy::BytesView data) {
     // # MIME-style: tolerate newlines and whitespace in input.
     // return b64decode(data)
     return b64decode(data);

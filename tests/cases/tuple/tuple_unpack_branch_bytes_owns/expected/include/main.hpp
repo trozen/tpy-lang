@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<::tpy::Bytes, ::tpy::Bytes> make(std::span<const uint8_t> tag);
+std::tuple<::tpy::Bytes, ::tpy::Bytes> make(::tpy::BytesView tag);
 void main();
 
 void __tpy_init();

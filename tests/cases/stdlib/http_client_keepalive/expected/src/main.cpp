@@ -55,7 +55,7 @@ void keepalive_cycles() {
 }
 
 // def will_close_response(response: bytes) -> bool:
-bool will_close_response(std::span<const uint8_t> response) {
+bool will_close_response(::tpy::BytesView response) {
     // # One connection per variant: after a will_close response CPython's
     // # getresponse() auto-closes the connection (TPy defers that to the caller
     // # -- a declared divergence), so a follow-up request on the same injected

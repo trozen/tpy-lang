@@ -433,7 +433,7 @@ std::string _rebuild_method(std::string_view method, int32_t status) {
 // def _send_recv(conn: Box[_Connection], method: str, target: str,
 // body: bytes | None, hdrs: dict[str, str],
 // url: str) -> Own[HTTPResponse]:
-::tpystd::http::client::HTTPResponse _send_recv(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view target, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>& hdrs, std::string_view url) {
+::tpystd::http::client::HTTPResponse _send_recv(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view target, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& hdrs, std::string_view url) {
     // # Send the request and read the response head, re-wrapping socket errors
     // # into the requests surface. Order matters -- each arm's exception is an
     // # OSError subclass and the first matching handler wins: ssl.SSLError
@@ -590,7 +590,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
         // # caller since its socket is mid-body. Move resp into the Response.
         // return Response(status, reason, url, out_headers, b"", resp_cookies,
         // resp)
-        return Response(status, reason, url, std::move(out_headers), std::span<const uint8_t>{}, std::move(resp_cookies), std::move(resp));
+        return Response(status, reason, url, std::move(out_headers), ::tpy::BytesView{}, std::move(resp_cookies), std::move(resp));
     }
     // # Non-stream: read the full body, re-wrapping read errors the same way the
     // # send phase does.
@@ -1363,7 +1363,7 @@ void CookieJar::_ingest(std::string_view raw, std::string_view req_host, std::st
 // headers: Own[CaseInsensitiveDict], content: bytes,
 // cookies: Own[CookieJar],
 // raw: Own[HTTPResponse] | None = None) -> None:
-Response::Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, std::span<const uint8_t> content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw) : status_code(status_code), reason(reason), url(url), headers(std::move(headers)), content(::tpy::Bytes(content)), cookies(std::move(cookies)), history(std::vector<Response>{}), _raw(std::move(raw)) {}
+Response::Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, ::tpy::BytesView content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw) : status_code(status_code), reason(reason), url(url), headers(std::move(headers)), content(::tpy::Bytes(content)), cookies(std::move(cookies)), history(std::vector<Response>{}), _raw(std::move(raw)) {}
 
 // def __init__(self) -> None:
 Session::Session() : headers(::tpy::ordered_map<std::string, std::string>()), params(::tpy::ordered_map<std::string, std::string>()), auth(std::nullopt), cookies(CookieJar()), _connection(std::nullopt), _redirect_connections(std::vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>{}), _pool(::tpy::ordered_map<std::string, ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>>()), max_redirects(30) {}

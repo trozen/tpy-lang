@@ -155,7 +155,7 @@ struct BytesIO {
     bool _closed;
 
     // def __init__(self, initial: bytes | None = None) -> None:
-    explicit BytesIO(std::optional<std::span<const uint8_t>> initial = std::nullopt);
+    explicit BytesIO(std::optional<::tpy::BytesView> initial = std::nullopt);
     // non-copyable (@nocopy)
     BytesIO(const BytesIO&) = delete;
     BytesIO& operator=(const BytesIO&) = delete;
@@ -163,7 +163,7 @@ struct BytesIO {
     BytesIO& operator=(BytesIO&&) = default;
 
     // def write(self, data: bytes) -> Int32:
-    int32_t write(std::span<const uint8_t> data);
+    int32_t write(::tpy::BytesView data);
 
     // def read(self, size: Int32 = -1) -> bytes:
     ::tpy::Bytes read(int32_t size = -1);
@@ -615,7 +615,7 @@ inline void StringIO::_check_open() const {
 }
 
 // def __init__(self, initial: bytes | None = None) -> None:
-inline BytesIO::BytesIO(std::optional<std::span<const uint8_t>> initial) : _chunks(std::vector<::tpy::Bytes>{}), _pos(0), _total(0) {
+inline BytesIO::BytesIO(std::optional<::tpy::BytesView> initial) : _chunks(std::vector<::tpy::Bytes>{}), _pos(0), _total(0) {
     // if initial is not None and len(initial) > 0:
     if (((initial.has_value()) && (::tpy::__len__((*initial)) > 0))) {
         // self._chunks.append(bytes(initial))

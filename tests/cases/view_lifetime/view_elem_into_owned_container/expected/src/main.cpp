@@ -67,7 +67,7 @@ void str_slice(std::string_view s) {
 }
 
 // def bytes_sinks(b: bytes) -> None:
-void bytes_sinks(std::span<const uint8_t> b) {
+void bytes_sinks(::tpy::BytesView b) {
     // # Print lengths/element bytes, not the bytes objects: TPy renders list[bytes]
     // # as int lists, which would diverge from CPython's b'...' repr.
     // lit: list[bytes] = [b]
@@ -83,7 +83,7 @@ void bytes_sinks(std::span<const uint8_t> b) {
 }
 
 // def bytes_optional_deref(b: bytes | None) -> None:
-void bytes_optional_deref(std::optional<std::span<const uint8_t>> b) {
+void bytes_optional_deref(std::optional<::tpy::BytesView> b) {
     // out: list[bytes] = []
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     // if b is not None:

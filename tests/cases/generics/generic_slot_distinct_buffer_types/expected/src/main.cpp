@@ -41,15 +41,15 @@ bool has_item_string(const std::vector<::tpy::String>& xs, const ::tpy::String& 
 }
 
 // def has_item_bytes(xs: list[bytes], v: bytes) -> bool:
-bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, std::span<const uint8_t> v) {
+bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
     // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::span<const uint8_t> x = *__beg_0;
+        ::tpy::BytesView x = *__beg_0;
         // if x == v:
-        if ((::tpy::bytes_eq(x, v))) {
+        if ((x == v)) {
             // return True
             return true;
         }
@@ -59,7 +59,7 @@ bool has_item_bytes(const std::vector<::tpy::Bytes>& xs, std::span<const uint8_t
 }
 
 // def size_of(p: bytes) -> Int32:
-int32_t size_of(std::span<const uint8_t> p) {
+int32_t size_of(::tpy::BytesView p) {
     // # a BORROWING `bytes` slot: the parameter form is the span, so a bytearray
     // # argument is viewed, never copied -- the render carries no copy helper
     // return len(p)
@@ -73,7 +73,7 @@ void store_str(std::vector<std::string>& xs, std::string_view v) {
 }
 
 // def store_bytes(xs: list[bytes], v: bytes) -> None:
-void store_bytes(std::vector<::tpy::Bytes>& xs, std::span<const uint8_t> v) {
+void store_bytes(std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
     // xs.append(v)
     xs.push_back(::tpy::Bytes(v));
 }
@@ -95,7 +95,7 @@ void str_family(std::string_view k) {
 }
 
 // def bytes_family(p: bytes) -> None:
-void bytes_family(std::span<const uint8_t> p) {
+void bytes_family(::tpy::BytesView p) {
     // # bytes: the slot is the span, so the caller passes the param bare
     // keys = [b"a", b"b"]
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
@@ -150,7 +150,7 @@ void u8_list() {
 }
 
 // def storing(k: str, p: bytes) -> None:
-void storing(std::string_view k, std::span<const uint8_t> p) {
+void storing(std::string_view k, ::tpy::BytesView p) {
     // # the store body at both view families, each beside its twin
     // a: list[str] = []
     std::vector<std::string> a = std::vector<std::string>{};

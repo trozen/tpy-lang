@@ -166,7 +166,7 @@ C++ requires explicit conversion from `string_view` to `string` in two contexts:
 
 Assignment (`s = sv;` where `s` is already `std::string`) works implicitly via `operator=`.
 
-`bytes` has the parallel boundary: a `BytesView` (`std::span<const uint8_t>`) returned/init into an owned `bytes` (`::tpy::Bytes`) slot is copied via `::tpy::Bytes(span)` -- the owned type constructs from its own family's view, so the copy is the constructor. Both str and bytes share one codegen helper (`_wrap_view_to_storage` in `statements.py`), so the view->owned-storage rule stays identical across return, var-decl init, and sync/async.
+`bytes` has the parallel boundary: a `BytesView` (`::tpy::BytesView`) returned/init into an owned `bytes` (`::tpy::Bytes`) slot is copied via `::tpy::Bytes(view)` -- the owned type constructs from its own family's view, so the copy is the constructor. Both str and bytes share one codegen helper (`_wrap_view_to_storage` in `statements.py`), so the view->owned-storage rule stays identical across return, var-decl init, and sync/async.
 
 ## Coercions
 

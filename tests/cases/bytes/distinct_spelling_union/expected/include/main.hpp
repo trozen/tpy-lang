@@ -12,6 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t bytes_or_bytearray(::tpy::Union<const ::tpy::ByteArray*, const ::tpy::Bytes*> u);
 int32_t str_or_string_slot(const ::tpy::Union<::tpy::String, std::string>& u);
 int32_t list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_t>*> u);
+int32_t span_or_bytesview(const ::tpy::Union<::tpy::BytesView, std::span<const uint8_t>>& u);
 ::tpy::Union<::tpy::ByteArray, ::tpy::Bytes> own_union_return(int32_t n);
 void main();
 

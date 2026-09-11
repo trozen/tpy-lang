@@ -13,7 +13,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 void keepalive_cycles();
-bool will_close_response(std::span<const uint8_t> response);
+bool will_close_response(::tpy::BytesView response);
 void will_close_variants();
 void main();
 

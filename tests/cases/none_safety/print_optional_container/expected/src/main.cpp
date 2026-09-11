@@ -23,9 +23,9 @@ void show_set_param(const ::tpy::ordered_set<int32_t>* s) {
 }
 
 // def show_bytes_param(b: bytes | None) -> None:
-void show_bytes_param(std::optional<std::span<const uint8_t>> b) {
+void show_bytes_param(std::optional<::tpy::BytesView> b) {
     // print(b)
-    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, std::span<const uint8_t>>(b) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::BytesPrinter, ::tpy::BytesView>(b) << "\n";
 }
 
 // def show_bytearray_param(b: bytearray | None) -> None:

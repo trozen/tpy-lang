@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"hello world"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("hello world", 11);
+    ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
     // print(data[0:5])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5})) << "\n";
     // print(data[6:11])
@@ -24,7 +24,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(::tpy::bytes_literal_owned("abcdef", 6), ::tpy::BasicSlice{1, 4})) << "\n";
     // # Slice passed to function
     // chunk = data[0:5]
-    std::span<const uint8_t> chunk = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5});
+    ::tpy::BytesView chunk = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5});
     // print(len(chunk))
     std::cout << ::tpy::__len__(chunk) << "\n";
     // print(chunk)

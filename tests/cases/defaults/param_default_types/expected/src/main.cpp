@@ -71,7 +71,7 @@ std::string bracket(char ch) {
 }
 
 // def raw(b: bytes = b"ab") -> Int32:
-int32_t raw(std::span<const uint8_t> b) {
+int32_t raw(::tpy::BytesView b) {
     // return len(b)
     return ::tpy::__len__(b);
 }

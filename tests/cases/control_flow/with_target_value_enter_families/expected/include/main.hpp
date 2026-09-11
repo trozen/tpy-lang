@@ -14,7 +14,7 @@ struct Either;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t sum_pair(const std::tuple<int32_t, int32_t>& t);
-int32_t first_byte(std::span<const uint8_t> b);
+int32_t first_byte(::tpy::BytesView b);
 void main();
 
 // class Pair:

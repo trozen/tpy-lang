@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pick(a: bytes, b: bytes) -> Int32:
-int32_t pick(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+int32_t pick(::tpy::BytesView a, ::tpy::BytesView b) {
     // # Both operands are PARAMS, so both spell `std::span<const uint8_t>` at
     // # runtime although their resolved type is the owned `bytes`; the select
     // # compares the runtime spellings, not the resolved ones.
@@ -14,17 +14,17 @@ int32_t pick(std::span<const uint8_t> a, std::span<const uint8_t> b) {
 }
 
 // def pick_local(a: bytes, b: bytes) -> Int32:
-int32_t pick_local(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b) {
     // # The same span-spelled select at a LOCAL sink: the local keeps the view,
     // # so no owning conversion is taken here.
     // v = a or b  # tpyc: ok
-    std::span<const uint8_t> v = ((!a.empty()) ? a : b);
+    ::tpy::BytesView v = ((!a.empty()) ? a : b);
     // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_rebound(a: bytes, b: bytes) -> Int32:
-int32_t pick_rebound(std::span<const uint8_t> a, std::span<const uint8_t> __param_b) {
+int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
     ::tpy::Bytes b = ::tpy::Bytes(__param_b);
     // # A REBOUND `bytes` param is still a view for the select's purposes, so
     // # the pair stays same-spelling and the span composes over the live owned
@@ -32,13 +32,13 @@ int32_t pick_rebound(std::span<const uint8_t> a, std::span<const uint8_t> __para
     // b = bytes([113, 114])
     b = ::tpy::bytes_from_int_iterable(std::array<int32_t, 2>{113, 114});
     // v = a or b  # tpyc: ok
-    std::span<const uint8_t> v = ((!a.empty()) ? a : b);
+    ::tpy::BytesView v = ((!a.empty()) ? a : b);
     // return len(v)
     return ::tpy::__len__(v);
 }
 
 // def pick_owned(a: bytes, b: bytes) -> bytes:
-::tpy::Bytes pick_owned(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+::tpy::Bytes pick_owned(::tpy::BytesView a, ::tpy::BytesView b) {
     // # The owned-RETURN sibling of the same select.
     // return a or b  # tpyc: ok
     return ::tpy::Bytes(((!a.empty()) ? a : b));
@@ -47,9 +47,9 @@ int32_t pick_rebound(std::span<const uint8_t> a, std::span<const uint8_t> __para
 // def main() -> None:
 void main() {
     // empty = b""
-    std::span<const uint8_t> empty = std::span<const uint8_t>{};
+    ::tpy::BytesView empty = ::tpy::BytesView{};
     // data = b"xy"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("xy", 2);
+    ::tpy::BytesView data = ::tpy::bytes_literal("xy", 2);
     // # bytes: the empty operand is falsy, so `or` yields the other one.
     // print(len(empty or data))  # tpyc: ok
     std::cout << ::tpy::__len__(((!empty.empty()) ? empty : data)) << "\n";
@@ -58,22 +58,22 @@ void main() {
     // print(len(data or empty))  # tpyc: ok
     std::cout << ::tpy::__len__(((!data.empty()) ? data : empty)) << "\n";
     // print(pick(b"", b"xyz"))  # tpyc: ok
-    std::cout << pick(std::span<const uint8_t>{}, ::tpy::bytes_literal("xyz", 3)) << "\n";
+    std::cout << pick(::tpy::BytesView{}, ::tpy::bytes_literal("xyz", 3)) << "\n";
     // print(pick_local(b"", b"abcd"))  # tpyc: ok
-    std::cout << pick_local(std::span<const uint8_t>{}, ::tpy::bytes_literal("abcd", 4)) << "\n";
+    std::cout << pick_local(::tpy::BytesView{}, ::tpy::bytes_literal("abcd", 4)) << "\n";
     // print(pick_rebound(b"", b"z"))  # tpyc: ok
-    std::cout << pick_rebound(std::span<const uint8_t>{}, ::tpy::bytes_literal("z", 1)) << "\n";
+    std::cout << pick_rebound(::tpy::BytesView{}, ::tpy::bytes_literal("z", 1)) << "\n";
     // # The owned sinks print the CHOSEN operand's bytes; a select that kept
     // # the span here would not build (a span into an owned slot), so the
     // # value check guards the operand choice, the C++ type guards the copy.
     // st = Store(b"z")
     Store st = Store(::tpy::bytes_literal("z", 1));
     // st.put(b"", b"pq")
-    st.put(std::span<const uint8_t>{}, ::tpy::bytes_literal("pq", 2));
+    st.put(::tpy::BytesView{}, ::tpy::bytes_literal("pq", 2));
     // print(st.data)
     std::cout << ::tpy::BytesPrinter(st.data) << "\n";
     // print(pick_owned(b"", b"ab"))
-    std::cout << ::tpy::BytesPrinter(pick_owned(std::span<const uint8_t>{}, ::tpy::bytes_literal("ab", 2))) << "\n";
+    std::cout << ::tpy::BytesPrinter(pick_owned(::tpy::BytesView{}, ::tpy::bytes_literal("ab", 2))) << "\n";
     // xs = [1, 2, 3]
     std::array<int32_t, 3> xs = {1, 2, 3};
     // ys: list[Int32] = []

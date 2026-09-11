@@ -67,7 +67,7 @@ int32_t from_text_param(std::optional<std::string_view> t) {
 }
 
 // def from_blob_param(t: bytes | None) -> Int32:
-int32_t from_blob_param(std::optional<std::span<const uint8_t>> t) {
+int32_t from_blob_param(std::optional<::tpy::BytesView> t) {
     // # The bytes face of the same copy: `optional<span>` never converts to
     // # `optional<vector>` on its own.
     // if (b := t) is not None:               # tpyc: ok -- a `bytes | None` param

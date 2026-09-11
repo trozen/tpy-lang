@@ -75,7 +75,7 @@ void removedirs(std::string_view name);
 int64_t open(std::string_view path, int64_t flags, int64_t mode = 511);
 void close(int64_t fd);
 ::tpy::Bytes read(int64_t fd, int64_t n);
-int64_t write(int64_t fd, std::span<const uint8_t> data);
+int64_t write(int64_t fd, ::tpy::BytesView data);
 int64_t lseek(int64_t fd, int64_t pos, int64_t how);
 std::tuple<int64_t, int64_t> pipe();
 int64_t dup(int64_t fd);

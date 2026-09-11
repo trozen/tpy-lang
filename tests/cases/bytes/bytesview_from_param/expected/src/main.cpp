@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def from_param(b: bytes) -> BytesView:
-std::span<const uint8_t> from_param(std::span<const uint8_t> b) {
+::tpy::BytesView from_param(::tpy::BytesView b) {
     // return b
     return b;
 }
 
 // def from_param_sliced(b: bytes) -> BytesView:
-std::span<const uint8_t> from_param_sliced(std::span<const uint8_t> b) {
+::tpy::BytesView from_param_sliced(::tpy::BytesView b) {
     // return b[1:]
     return ::tpy::bytes_slice(b, ::tpy::BasicSlice{1, std::nullopt});
 }
 
 // def from_literal() -> BytesView:
-std::span<const uint8_t> from_literal() {
+::tpy::BytesView from_literal() {
     // bv: BytesView = b"hello"
-    std::span<const uint8_t> bv = ::tpy::bytes_literal("hello", 5);
+    ::tpy::BytesView bv = ::tpy::bytes_literal("hello", 5);
     // return bv
     return bv;
 }
@@ -27,7 +27,7 @@ std::span<const uint8_t> from_literal() {
 // def main() -> None:
 void main() {
     // data = b"abcdef"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("abcdef", 6);
+    ::tpy::BytesView data = ::tpy::bytes_literal("abcdef", 6);
     // print(from_param(data).decode())
     std::cout << ::tpy::bytes_decode(from_param(data)) << "\n";
     // print(from_param_sliced(data).decode())

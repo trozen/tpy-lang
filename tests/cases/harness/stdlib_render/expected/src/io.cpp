@@ -325,7 +325,7 @@ int32_t StringIO::truncate(int32_t size) {
 }
 
 // def write(self, data: bytes) -> Int32:
-int32_t BytesIO::write(std::span<const uint8_t> data) {
+int32_t BytesIO::write(::tpy::BytesView data) {
     // self._check_open()
     this->_check_open();
     // n: Int32 = Int32(len(data))

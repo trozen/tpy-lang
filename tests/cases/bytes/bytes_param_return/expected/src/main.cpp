@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def echo(b: bytes) -> bytes:
-::tpy::Bytes echo(std::span<const uint8_t> b) {
+::tpy::Bytes echo(::tpy::BytesView b) {
     // return b
     return ::tpy::Bytes(b);
 }
 
 // def first_or_empty(b: bytes) -> bytes:
-::tpy::Bytes first_or_empty(std::span<const uint8_t> b) {
+::tpy::Bytes first_or_empty(::tpy::BytesView b) {
     // if len(b) == 0:
     if ((::tpy::__len__(b) == 0)) {
         // return b"empty"
@@ -22,7 +22,7 @@ namespace tpyapp::main {
 }
 
 // def opt_or_default(b: Optional[bytes]) -> bytes:
-::tpy::Bytes opt_or_default(std::optional<std::span<const uint8_t>> b) {
+::tpy::Bytes opt_or_default(std::optional<::tpy::BytesView> b) {
     // return b if b is not None else b"none"
     return ::tpy::Bytes((((b.has_value())) ? ((*b)) : (::tpy::bytes_literal_owned("none", 4))));
 }
@@ -32,11 +32,11 @@ void main() {
     // r = echo(b"hello")
     ::tpy::Bytes r = echo(::tpy::bytes_literal("hello", 5));
     // print(len(r), r == b"hello")
-    std::cout << ::tpy::__len__(r) << " " << ::tpy::print_bool((::tpy::bytes_eq(r, ::tpy::bytes_literal_owned("hello", 5)))) << "\n";
+    std::cout << ::tpy::__len__(r) << " " << ::tpy::print_bool((r == ::tpy::bytes_literal("hello", 5))) << "\n";
     // print(len(first_or_empty(b"")))
-    std::cout << ::tpy::__len__(first_or_empty(std::span<const uint8_t>{})) << "\n";
+    std::cout << ::tpy::__len__(first_or_empty(::tpy::BytesView{})) << "\n";
     // print(opt_or_default(b"xy") == b"xy", opt_or_default(None) == b"none")
-    std::cout << ::tpy::print_bool((::tpy::bytes_eq(opt_or_default(::tpy::bytes_literal_owned("xy", 2)), ::tpy::bytes_literal_owned("xy", 2)))) << " " << ::tpy::print_bool((::tpy::bytes_eq(opt_or_default(std::nullopt), ::tpy::bytes_literal_owned("none", 4)))) << "\n";
+    std::cout << ::tpy::print_bool((opt_or_default(::tpy::bytes_literal_owned("xy", 2)) == ::tpy::bytes_literal("xy", 2))) << " " << ::tpy::print_bool((opt_or_default(std::nullopt) == ::tpy::bytes_literal("none", 4))) << "\n";
 }
 
 void __tpy_init() {

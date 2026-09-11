@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # Bytes literals render readably in generated C++ (printable ASCII raw,
 // # control/high bytes as \xNN, greedy-\x break) in borrow and storage positions.
 // def take(x: bytes) -> int:
-::tpy::BigInt take(std::span<const uint8_t> x) {
+::tpy::BigInt take(::tpy::BytesView x) {
     // return len(x)
     return ::tpy::BigInt(::tpy::__len__(x));
 }
@@ -23,21 +23,21 @@ void main() {
     // print(take(b"hello"))
     std::cout << take(::tpy::bytes_literal("hello", 5)) << "\n";
     // print(take(b""))
-    std::cout << take(std::span<const uint8_t>{}) << "\n";
+    std::cout << take(::tpy::BytesView{}) << "\n";
     // g = make_greeting()
     ::tpy::Bytes g = make_greeting();
     // print(len(g), g[0])
     std::cout << ::tpy::__len__(g) << " " << static_cast<int>(::tpy::bytes_getitem(g, 0)) << "\n";
     // quoted = b'a"b\\c'
-    std::span<const uint8_t> quoted = ::tpy::bytes_literal("a\"b\\c", 5);
+    ::tpy::BytesView quoted = ::tpy::bytes_literal("a\"b\\c", 5);
     // print(len(quoted), quoted[1])
     std::cout << ::tpy::__len__(quoted) << " " << static_cast<int>(::tpy::bytes_getitem(quoted, 1)) << "\n";
     // binary = b"\x00\x80\xff"
-    std::span<const uint8_t> binary = ::tpy::bytes_literal("\000\x80\xff", 3);
+    ::tpy::BytesView binary = ::tpy::bytes_literal("\000\x80\xff", 3);
     // print(len(binary), binary[0], binary[1], binary[2])
     std::cout << ::tpy::__len__(binary) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(binary, 2)) << "\n";
     // greedy = b"\x1fab"
-    std::span<const uint8_t> greedy = ::tpy::bytes_literal("\x1f" "ab", 3);
+    ::tpy::BytesView greedy = ::tpy::bytes_literal("\x1f" "ab", 3);
     // print(len(greedy), greedy[0], greedy[1], greedy[2])
     std::cout << ::tpy::__len__(greedy) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(greedy, 2)) << "\n";
     // # b"" lands in an owned (vector) element -- exercises the empty-owned slot

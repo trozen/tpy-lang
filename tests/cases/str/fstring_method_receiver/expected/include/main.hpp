@@ -11,7 +11,7 @@ struct Page;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt take(std::span<const uint8_t> b);
+::tpy::BigInt take(::tpy::BytesView b);
 ::tpy::Bytes render(const ::tpy::BigInt& n);
 void main();
 

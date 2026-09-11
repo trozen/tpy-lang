@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"hello world"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("hello world", 11);
+    ::tpy::BytesView data = ::tpy::bytes_literal("hello world", 11);
     // print(b"world" in data)   # True
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("world", 5)))) << "\n";
     // print(b"xyz" in data)     # False

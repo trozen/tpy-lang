@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def free_text(b: bytes) -> str:       # free function, owned return
-std::string free_text(std::span<const uint8_t> b) {
+std::string free_text(::tpy::BytesView b) {
     // return b.decode()
     return ::tpy::bytes_decode(b);
 }

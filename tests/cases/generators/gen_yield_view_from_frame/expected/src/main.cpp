@@ -207,7 +207,7 @@ void main() {
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            std::span<const uint8_t> c = ::tpy::unwrap_ref(*__r_3);
+            ::tpy::BytesView c = ::tpy::unwrap_ref(*__r_3);
         // print(len(c))
         std::cout << ::tpy::__len__(c) << "\n";
         }

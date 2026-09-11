@@ -41,6 +41,16 @@ int32_t list_or_bytes(::tpy::Union<const ::tpy::Bytes*, const std::vector<uint8_
     return (::tpy::add_check<int32_t>(60, ::tpy::__len__(__u)));
 }
 
+// def span_or_bytesview(u: Span[readonly[UInt8]] | BytesView) -> Int32:
+int32_t span_or_bytesview(const ::tpy::Union<::tpy::BytesView, std::span<const uint8_t>>& u) {
+    // # the VIEW pair, the last to get its own C++ type (`::tpy::BytesView` over
+    // # the bare span), pinned by its signature like the str-family pair: not
+    // # CALLED (same gap as above), and its isinstance arm is the widened
+    // # member class's own gap, BUGS.md#bytesview-union-member-rejects
+    // return 8  # tpyc: ok
+    return 8;
+}
+
 // def own_union_return(n: Int32) -> Own[bytes | bytearray]:
 ::tpy::Union<::tpy::ByteArray, ::tpy::Bytes> own_union_return(int32_t n) {
     // # the Own[union] STORAGE slot, the second consumer of the member class.

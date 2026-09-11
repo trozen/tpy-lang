@@ -17,10 +17,10 @@ template<typename __F0>
   }
 std::string apply_str(__F0&& f, std::string_view s);
 template<typename __F0>
-  requires requires(__F0& __fn, std::span<const uint8_t> __a0) {
+  requires requires(__F0& __fn, ::tpy::BytesView __a0) {
       { __fn(__a0) } -> std::convertible_to<::tpy::Bytes>;
   }
-int32_t apply_bytes(__F0&& f, std::span<const uint8_t> b);
+int32_t apply_bytes(__F0&& f, ::tpy::BytesView b);
 void main();
 
 // def identity[T](x: T) -> T:
@@ -40,10 +40,10 @@ std::string apply_str(__F0&& f, std::string_view s) {
 }
 // def apply_bytes(f: Fn[[bytes], bytes], b: bytes) -> Int32:
 template<typename __F0>
-  requires requires(__F0& __fn, std::span<const uint8_t> __a0) {
+  requires requires(__F0& __fn, ::tpy::BytesView __a0) {
       { __fn(__a0) } -> std::convertible_to<::tpy::Bytes>;
   }
-int32_t apply_bytes(__F0&& f, std::span<const uint8_t> b) {
+int32_t apply_bytes(__F0&& f, ::tpy::BytesView b) {
     // return Int32(len(f(b)))
     return ::tpy::__len__(f(b));
 }

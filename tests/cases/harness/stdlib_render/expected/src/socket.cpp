@@ -348,7 +348,7 @@ std::tuple<int32_t, std::tuple<std::string, int32_t>> socket::_accept_fd() const
 }
 
 // def sendall(self, data: bytes) -> None:
-void socket::sendall(std::span<const uint8_t> data) const {
+void socket::sendall(::tpy::BytesView data) const {
     // total: UInt64 = UInt64(len(data))
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
     // sent: UInt64 = 0

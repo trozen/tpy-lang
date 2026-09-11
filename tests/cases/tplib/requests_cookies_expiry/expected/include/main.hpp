@@ -24,8 +24,8 @@ extern ::tpy::Bytes ASCTIME;
 extern double AFTER_2099;
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpystd::tplib::requests::Response one(std::span<const uint8_t> set_cookie);
-void _cookie_line(std::span<const uint8_t> sent);
+::tpystd::tplib::requests::Response one(::tpy::BytesView set_cookie);
+void _cookie_line(::tpy::BytesView sent);
 void live_cookie_resent();
 void main();
 

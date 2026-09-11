@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def show_request(method: str, url: str, body: bytes | None,
 // headers: dict[str, str]) -> None:
-void show_request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>& headers) {
+void show_request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& headers) {
     // # Capture exactly what HTTPConnection writes for this method/headers combo.
     // # (headers is always a dict -- CPython's request() rejects a None headers.)
     // a, b = socket.socketpair()

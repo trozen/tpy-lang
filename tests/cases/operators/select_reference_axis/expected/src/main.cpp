@@ -75,7 +75,7 @@ void main() {
     // print(len(s1), len(se))          # the add landed on s1, not on se
     std::cout << ::tpy::__len__(s1) << " " << ::tpy::__len__(se) << "\n";
     // be = bytearray(b"")
-    ::tpy::ByteArray be = ::tpy::ByteArray(std::span<const uint8_t>{});
+    ::tpy::ByteArray be = ::tpy::ByteArray(::tpy::BytesView{});
     // b1 = bytearray(b"xyz")
     ::tpy::ByteArray b1 = ::tpy::ByteArray(::tpy::bytes_literal("xyz", 3));
     // print(pick_bytearray(be, b1))

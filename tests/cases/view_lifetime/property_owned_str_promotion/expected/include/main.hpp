@@ -11,7 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string free_text(std::span<const uint8_t> b);
+std::string free_text(::tpy::BytesView b);
 void main();
 
 // class Box:
@@ -22,7 +22,7 @@ struct Box {
     std::string label;
 
     // def __init__(self, payload: bytes, label: str) -> None:
-    explicit Box(std::span<const uint8_t> payload, std::string_view label);
+    explicit Box(::tpy::BytesView payload, std::string_view label);
 
     // def m_text(self) -> str:          # method, owned return
     std::string m_text() const;
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 
 // def __init__(self, payload: bytes, label: str) -> None:
-inline Box::Box(std::span<const uint8_t> payload, std::string_view label) : payload(::tpy::Bytes(payload)), label(label) {}
+inline Box::Box(::tpy::BytesView payload, std::string_view label) : payload(::tpy::Bytes(payload)), label(label) {}
 
 // def m_text(self) -> str:          # method, owned return
 inline std::string Box::m_text() const {

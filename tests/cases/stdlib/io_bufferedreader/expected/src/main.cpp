@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def feed(data: bytes) -> Int64:
-int64_t feed(std::span<const uint8_t> data) {
+int64_t feed(::tpy::BytesView data) {
     // r, w = os.pipe()
     auto __tup_1 = ::tpystd::os::pipe();
     int64_t r = std::get<0>(__tup_1);
@@ -79,7 +79,7 @@ void main() {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        std::span<const uint8_t> line = ::tpy::unwrap_ref(*__r_1);
+        ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_1);
         // print(line)
         std::cout << ::tpy::BytesPrinter(line) << "\n";
     }
@@ -94,7 +94,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        std::span<const uint8_t> ln = *__beg_2;
+        ::tpy::BytesView ln = *__beg_2;
         // print(ln)
         std::cout << ::tpy::BytesPrinter(ln) << "\n";
     }
@@ -108,7 +108,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(r8.read()) << "\n";
     // # Empty source: EOF on the first fill, no looping.
     // r9 = BufferedReader(FileIO(feed(b"")))
-    ::tpystd::io::BufferedReader r9 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(std::span<const uint8_t>{}))));
+    ::tpystd::io::BufferedReader r9 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::BytesView{}))));
     // print(r9.read())          # b''
     std::cout << ::tpy::BytesPrinter(r9.read()) << "\n";
     // print(r9.readline())      # b''

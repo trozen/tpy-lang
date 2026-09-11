@@ -19,7 +19,7 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-bool second_has_auth(std::span<const uint8_t> location);
+bool second_has_auth(::tpy::BytesView location);
 void main();
 
 void __tpy_init();

@@ -38,7 +38,7 @@ void lines_chunked() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> line = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_1);
         // print("line:", line.decode())
         std::cout << "line:" << " " << ::tpy::bytes_decode(line) << "\n";
         }
@@ -81,7 +81,7 @@ void lines_trailing_newline() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> line = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_1);
         // lines.append(line.decode())
         lines.push_back(::tpy::bytes_decode(line));
         }
@@ -137,7 +137,7 @@ void lines_crlf() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> line = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView line = ::tpy::unwrap_ref(*__r_1);
         // print("crlf:", line.decode(), "len", len(line))
         std::cout << "crlf:" << " " << ::tpy::bytes_decode(line) << " " << "len" << " " << ::tpy::__len__(line) << "\n";
         }

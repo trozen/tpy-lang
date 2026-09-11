@@ -25,7 +25,7 @@ void bytesview_pinned_alias_warns() {
     // b = b"hello" + b"world"
     ::tpy::Bytes b = (::tpy::bytes_concat(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)));
     // bv: BytesView = b
-    std::span<const uint8_t> bv = b;
+    ::tpy::BytesView bv = b;
     // print(len(bv))
     std::cout << ::tpy::__len__(bv) << "\n";
     // b = b"other"  # tpyc: warning(/Mutation of 'b'.*reassignment invalidates view 'bv'/)

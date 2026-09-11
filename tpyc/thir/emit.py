@@ -646,7 +646,7 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     if rb.method.cpp_template:
         result = expand_cpp_template(rb.method.cpp_template, wl, wr)
     else:
-        # A @native free-function dunder (bytes `==` -> `::tpy::bytes_eq`):
+        # A @native free-function dunder (list `+` -> `::tpy::list_concat`):
         # the free function takes both operands as arguments. The gate
         # admits a template-less rb only in this shape.
         result = (f"{qualify_native_name(rb.method.native_name)}"
@@ -1483,13 +1483,13 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRStrLiteral):
         return cpp_string_literal_expr(e.value)
     if isinstance(e, THIRBytesLiteral):
-        # The owned/span verdict was decided at lowering from the sink and
-        # rides the form tag (see the node's doc); an empty span literal
-        # spells the bare `std::span<const uint8_t>{}`.
+        # The owned/view verdict was decided at lowering from the sink and
+        # rides the form tag (see the node's doc); an empty view literal
+        # spells the bare `::tpy::BytesView{}`.
         if e.form is Form.STORAGE:
             return cpp_bytes_literal_owned(e.value)
         if not e.value:
-            return "std::span<const uint8_t>{}"
+            return "::tpy::BytesView{}"
         return cpp_bytes_literal_span(e.value)
     if isinstance(e, THIRFString):
         return _emit_fstring(e, state)

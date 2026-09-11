@@ -42,7 +42,7 @@ void stream_content_length() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
         // print("chunk:", chunk.decode())
         std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n";
         // got += chunk
@@ -90,7 +90,7 @@ void stream_chunked() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
         // got += chunk
         got = ::tpy::bytearray_concat(got, chunk);
         }
@@ -182,7 +182,7 @@ void stream_context_manager() {
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
-                std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
+                ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
             // got += chunk
             got = ::tpy::bytearray_concat(got, chunk);
             }
@@ -241,7 +241,7 @@ void stream_empty_body() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
         // chunks += 1
         chunks = ::tpy::add_check<int32_t>(chunks, 1);
         }
@@ -286,7 +286,7 @@ void non_streamed_iter_content() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
         // got += chunk
         got = ::tpy::bytearray_concat(got, chunk);
         }

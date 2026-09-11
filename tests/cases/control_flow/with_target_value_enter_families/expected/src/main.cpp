@@ -11,7 +11,7 @@ int32_t sum_pair(const std::tuple<int32_t, int32_t>& t) {
 }
 
 // def first_byte(b: bytes) -> Int32:
-int32_t first_byte(std::span<const uint8_t> b) {
+int32_t first_byte(::tpy::BytesView b) {
     // return b[0]
     return static_cast<int32_t>(::tpy::bytes_getitem(b, 0));
 }

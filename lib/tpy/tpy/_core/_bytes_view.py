@@ -3,15 +3,15 @@
 from .._typing import Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, dispatch
 from .._bootstrap._decorators import Own
-from ._types import UInt8, UInt64, Int32, NativeIterable
+from ._types import UInt8, UInt64, Int32, Comparable, Equatable, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("tpy.BytesView")
-@native("std::span<const uint8_t>")
-class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
+@native("::tpy::BytesView")
+class BytesView(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @dispatch
-    @cpp_template("std::span<const uint8_t>()")
+    @cpp_template("::tpy::BytesView()")
     def __init__(self) -> None: ...
 
     @native("tpy::__iter__", function=True)
@@ -47,10 +47,15 @@ class BytesView(NativeIterable[UInt8], Iterable[UInt8]):
     @pure
     def __contains__(self, value: UInt8) -> bool: ...
 
-    @native("tpy::bytes_eq", function=True)
+    @cpp_template("{self} == {0}")
     @readonly
     @pure
     def __eq__(self, other: BytesView) -> bool: ...
+
+    @cpp_template("{self} < {0}")
+    @readonly
+    @pure
+    def __lt__(self, other: BytesView) -> bool: ...
 
     @cpp_template("::tpy::__hash__({self})")
     @readonly

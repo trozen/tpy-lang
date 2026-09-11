@@ -1081,9 +1081,9 @@ char raise `ValueError`. Padding errors always raise.
 | `b32encode(data)` | Done | RFC 4648 base32; all five padding remainders covered |
 | `b32decode(data, casefold=False, map01=None)` | Done | Strict by default; `casefold=True` accepts lowercase; `map01` maps `'0'`->`'O'` and `'1'`->`'I'` or `'L'` |
 | `encodebytes(data)` / `decodebytes(data)` | Done | MIME-style 76-char line wrap with trailing `\n`; decode passes through `b64decode` (lax) |
-| `bytes` / `bytearray` inputs | Done | Auto-converted via `__span__` (generated signature is `std::span<const uint8_t>`) |
+| `bytes` / `bytearray` inputs | Done | Auto-converted via `__span__` (generated signature is `::tpy::BytesView`) |
 | `str` input on decoders (`b64decode`, `standard_b64decode`, `urlsafe_b64decode`, `b32decode`, `b16decode`) | Done | `@dispatch` delegating through `.encode()`; matches CPython which accepts ASCII str on decoders |
-| `BytesView` input | Partial | Works as C++ span but TPy-level coercion not yet tested |
+| `BytesView` input | Partial | Works as `::tpy::BytesView` but TPy-level coercion not yet tested |
 | `b85encode`/`b85decode`, `a85encode`/`a85decode` | Missing | Rare; separate ~100-LOC algorithms |
 | `memoryview` input | Blocked | Depends on `memoryview` builtin (see `builtins` section) |
 

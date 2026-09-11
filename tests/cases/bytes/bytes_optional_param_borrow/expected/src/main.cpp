@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def first_or_empty(b: bytes | None) -> bytes:
-::tpy::Bytes first_or_empty(std::optional<std::span<const uint8_t>> b) {
+::tpy::Bytes first_or_empty(std::optional<::tpy::BytesView> b) {
     // if b is None:
     if ((!b.has_value())) {
         // return b""
@@ -16,7 +16,7 @@ namespace tpyapp::main {
 }
 
 // def collect(b: bytes | None) -> int:
-::tpy::BigInt collect(std::optional<std::span<const uint8_t>> b) {
+::tpy::BigInt collect(std::optional<::tpy::BytesView> b) {
     // out: list[bytes] = []
     std::vector<::tpy::Bytes> out = std::vector<::tpy::Bytes>{};
     // if b is not None:
@@ -29,7 +29,7 @@ namespace tpyapp::main {
 }
 
 // def reassigned(b: bytes | None) -> int:
-::tpy::BigInt reassigned(std::optional<std::span<const uint8_t>> __param_b) {
+::tpy::BigInt reassigned(std::optional<::tpy::BytesView> __param_b) {
     std::optional<::tpy::Bytes> b = __param_b ? std::make_optional(::tpy::Bytes(*__param_b)) : std::nullopt;
     // if b is None:
     if ((!b.has_value())) {
@@ -41,7 +41,7 @@ namespace tpyapp::main {
 }
 
 // def reassigned_plain(b: bytes, c: bool) -> int:
-::tpy::BigInt reassigned_plain(std::span<const uint8_t> __param_b, bool c) {
+::tpy::BigInt reassigned_plain(::tpy::BytesView __param_b, bool c) {
     ::tpy::Bytes b = ::tpy::Bytes(__param_b);
     // if c:
     if (c) {
@@ -53,7 +53,7 @@ namespace tpyapp::main {
 }
 
 // def forward(data: bytes) -> int:
-::tpy::BigInt forward(std::span<const uint8_t> data) {
+::tpy::BigInt forward(::tpy::BytesView data) {
     // return len(first_or_empty(data))   # real bytes value into bytes|None param
     return ::tpy::BigInt(::tpy::__len__(first_or_empty(data)));
 }
@@ -91,7 +91,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
 
 
 // def gen(b: bytes | None) -> Iterator[int]:
-__gen_gen gen(std::optional<std::span<const uint8_t>> b) {
+__gen_gen gen(std::optional<::tpy::BytesView> b) {
     return __gen_gen(b);
 }
 

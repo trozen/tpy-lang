@@ -16,8 +16,8 @@ struct __coro_consume;
 struct __coro_head;
 struct __coro_main;
 
-__coro_consume consume(std::span<const uint8_t> data);
-__coro_head head(std::span<const uint8_t> data);
+__coro_consume consume(::tpy::BytesView data);
+__coro_head head(::tpy::BytesView data);
 __coro_main main();
 
 // Async coroutine: consume
@@ -33,7 +33,7 @@ struct __coro_consume {
         S_DONE = 2,
     };
 
-    __coro_consume(std::span<const uint8_t> data_)
+    __coro_consume(::tpy::BytesView data_)
         : __state(S_INITIAL), __cancel_pending(false), data(::tpy::Bytes(data_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
@@ -57,7 +57,7 @@ struct __coro_head {
         S_DONE = 2,
     };
 
-    __coro_head(std::span<const uint8_t> data_)
+    __coro_head(::tpy::BytesView data_)
         : __state(S_INITIAL), __cancel_pending(false), data(::tpy::Bytes(data_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

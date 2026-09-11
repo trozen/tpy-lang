@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void show_list_param(const std::vector<::tpy::BigInt>* lst);
 void show_dict_param(const ::tpy::ordered_map<std::string, int32_t>* d);
 void show_set_param(const ::tpy::ordered_set<int32_t>* s);
-void show_bytes_param(std::optional<std::span<const uint8_t>> b);
+void show_bytes_param(std::optional<::tpy::BytesView> b);
 void show_bytearray_param(const ::tpy::ByteArray* b);
 void main();
 
@@ -40,7 +40,7 @@ struct Bag {
     // buf: bytearray | None,
     // ) -> None:
     Bag() = default;
-    explicit Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::span<const uint8_t>> data, const ::tpy::ByteArray* buf);
+    explicit Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<::tpy::BytesView> data, const ::tpy::ByteArray* buf);
 
     // def show_fields(self) -> None:
     void show_fields() const;
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // data: bytes | None,
 // buf: bytearray | None,
 // ) -> None:
-inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::span<const uint8_t>> data, const ::tpy::ByteArray* buf) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), data(data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt), buf(::tpy::ptr_to_optional(buf)) {}
+inline Bag::Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<::tpy::BytesView> data, const ::tpy::ByteArray* buf) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), data(data ? std::make_optional(::tpy::Bytes(*data)) : std::nullopt), buf(::tpy::ptr_to_optional(buf)) {}
 
 // def show_fields(self) -> None:
 inline void Bag::show_fields() const {

@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 std::optional<std::string> from_local(std::string_view k);
 std::optional<std::string> from_concat(std::string_view k);
-std::optional<::tpy::Bytes> from_bytes(std::span<const uint8_t> k);
+std::optional<::tpy::Bytes> from_bytes(::tpy::BytesView k);
 std::optional<std::string> from_own_param(std::string k);
 void main();
 

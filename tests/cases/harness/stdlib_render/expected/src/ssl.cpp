@@ -269,7 +269,7 @@ bool SSLSocket::do_handshake() {
 }
 
 // def sendall(self, data: bytes) -> None:
-void SSLSocket::sendall(std::span<const uint8_t> data) {
+void SSLSocket::sendall(::tpy::BytesView data) {
     // total: UInt64 = UInt64(len(data))
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data));
     // sent: UInt64 = 0

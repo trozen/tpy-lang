@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
-::tpy::Bytes first_or_empty(std::optional<std::span<const uint8_t>> b);
-::tpy::BigInt collect(std::optional<std::span<const uint8_t>> b);
-::tpy::BigInt reassigned(std::optional<std::span<const uint8_t>> __param_b);
-::tpy::BigInt reassigned_plain(std::span<const uint8_t> __param_b, bool c);
-::tpy::BigInt forward(std::span<const uint8_t> data);
-__gen_gen gen(std::optional<std::span<const uint8_t>> b);
+::tpy::Bytes first_or_empty(std::optional<::tpy::BytesView> b);
+::tpy::BigInt collect(std::optional<::tpy::BytesView> b);
+::tpy::BigInt reassigned(std::optional<::tpy::BytesView> __param_b);
+::tpy::BigInt reassigned_plain(::tpy::BytesView __param_b, bool c);
+::tpy::BigInt forward(::tpy::BytesView data);
+__gen_gen gen(std::optional<::tpy::BytesView> b);
 void main();
 
 // class Holder:
@@ -30,7 +30,7 @@ struct Holder {
     Holder();
 
     // def store(self, b: bytes | None) -> None:
-    void store(std::optional<std::span<const uint8_t>> b);
+    void store(std::optional<::tpy::BytesView> b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -52,7 +52,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
         S_DONE = 4,
     };
 
-    __gen_gen(std::optional<std::span<const uint8_t>> b_)
+    __gen_gen(std::optional<::tpy::BytesView> b_)
         : __state(S_INITIAL), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
@@ -68,7 +68,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
 inline Holder::Holder() : data(::tpy::Bytes{}) {}
 
 // def store(self, b: bytes | None) -> None:
-inline void Holder::store(std::optional<std::span<const uint8_t>> b) {
+inline void Holder::store(std::optional<::tpy::BytesView> b) {
     // if b is not None:
     if ((b.has_value())) {
         // self.data = b         # narrowed bytes|None param -> bare bytes field

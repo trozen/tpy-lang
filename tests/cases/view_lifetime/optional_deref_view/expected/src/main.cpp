@@ -31,7 +31,7 @@ void str_compound(std::optional<std::string_view> a, std::string_view b) {
 }
 
 // def bytes_compound(a: bytes | None, b: bytes) -> None:
-void bytes_compound(std::optional<std::span<const uint8_t>> a, std::span<const uint8_t> b) {
+void bytes_compound(std::optional<::tpy::BytesView> a, ::tpy::BytesView b) {
     // # bytes Optional param is borrow-form (span); the local converts to owned.
     // if a is not None:
     if ((a.has_value())) {

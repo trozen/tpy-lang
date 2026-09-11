@@ -19,9 +19,9 @@ extern std::vector<uint32_t>* _SHA256_H0;
 extern std::vector<uint32_t>* _SHA256_K;
 inline constexpr std::string_view __name__ = "hashlib";
 
-uint32_t _load_be32(std::span<const uint8_t> data, int32_t off);
+uint32_t _load_be32(::tpy::BytesView data, int32_t off);
 void _pack_be32(::tpy::ByteArray& out, uint32_t v);
-SHA256 sha256(std::span<const uint8_t> data = {});
+SHA256 sha256(::tpy::BytesView data = {});
 
 // class SHA256:
 struct SHA256 {
@@ -42,13 +42,13 @@ struct SHA256 {
     SHA256();
 
     // def update(self, data: bytes) -> None:
-    void update(std::span<const uint8_t> data);
+    void update(::tpy::BytesView data);
 
     // def _drain_blocks(self) -> None:
     void _drain_blocks();
 
     // def _process_block(self, data: bytes, off: Int32) -> None:
-    void _process_block(std::span<const uint8_t> data, int32_t off);
+    void _process_block(::tpy::BytesView data, int32_t off);
 
     // def digest(self) -> bytes:
     ::tpy::Bytes digest() const;
@@ -68,7 +68,7 @@ inline std::ostream& operator<<(std::ostream& os, const SHA256& obj) {
 
 
 // def update(self, data: bytes) -> None:
-inline void SHA256::update(std::span<const uint8_t> data) {
+inline void SHA256::update(::tpy::BytesView data) {
     // n: Int32 = Int32(len(data))
     int32_t n = ::tpy::__len__(data);
     // self.length = UInt64.add_wrap(self.length, UInt64(n))

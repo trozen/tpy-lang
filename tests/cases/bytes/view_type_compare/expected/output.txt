@@ -1,0 +1,19 @@
+method True False True False
+contains True True True
+own_slot True False
+generic_slot True False True
+pairs True True True True True True
+order True True True True False
+mutated False True
+alias bytearray(b'a!')
+tuple True False
+list True False
+set True False False
+dict True True True
+view True True False
+sort [b'a', b'b', b'c']
+hash True True True
+gen b'COLORMAP'
+gen b'b'
+comp [b'a']
+generic True False True

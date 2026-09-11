@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // # NIST FIPS 180-4 vectors.
     // h0 = sha256(b"")
-    ::tpystd::hashlib::SHA256 h0 = ::tpystd::hashlib::sha256(std::span<const uint8_t>{});
+    ::tpystd::hashlib::SHA256 h0 = ::tpystd::hashlib::sha256(::tpy::BytesView{});
     // print(h0.hexdigest())
     std::cout << h0.hexdigest() << "\n";
     // h1 = sha256(b"abc")

@@ -46,7 +46,7 @@ void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, 
 }
 
 // def drop_bytes(al: ArrayList[bytes, 4], k: bytes) -> None:
-void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, std::span<const uint8_t> k) {
+void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, ::tpy::BytesView k) {
     // # The bytes twin: the slot wants std::vector<uint8_t>, the key is a span.
     // al.remove(k)  # tpyc: ok
     al.remove(k);
@@ -185,7 +185,7 @@ void main() {
     // bl.append(b"b")
     bl.append(::tpy::bytes_literal_owned("b", 1));
     // bk = b"a"
-    std::span<const uint8_t> bk = ::tpy::bytes_literal("a", 1);
+    ::tpy::BytesView bk = ::tpy::bytes_literal("a", 1);
     // drop_bytes(bl, bk)
     drop_bytes(bl, bk);
     // print("lib_bytes", len(bl), bl[0])
@@ -202,7 +202,7 @@ void main() {
     // keys = [b"p", b"q"]
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("p", 1), ::tpy::bytes_literal_owned("q", 1)};
     // bnk = b"p"
-    std::span<const uint8_t> bnk = ::tpy::bytes_literal("p", 1);
+    ::tpy::BytesView bnk = ::tpy::bytes_literal("p", 1);
     // print("free_fn", has_item(keys, bnk))
     std::cout << "free_fn" << " " << ::tpy::print_bool(has_item<::tpy::Bytes>(keys, bnk)) << "\n";
 }

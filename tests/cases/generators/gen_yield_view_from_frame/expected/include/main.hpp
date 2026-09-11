@@ -72,7 +72,7 @@ struct __gen_static_source_view : public ::tpy::next_iter_mixin<__gen_static_sou
 // Generator: static_bytes_view
 struct __gen_static_bytes_view : public ::tpy::next_iter_mixin<__gen_static_bytes_view, ::tpy::Bytes> {
     int32_t __state;
-    std::span<const uint8_t> raw;
+    ::tpy::BytesView raw;
 
     enum : int32_t {
         S_INITIAL = 0,

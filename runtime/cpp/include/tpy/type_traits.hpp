@@ -75,10 +75,10 @@ template<> struct is_value_type<BigInt> : std::true_type {};
 template<> struct is_value_type<std::monostate> : std::true_type {};
 
 // A borrowed view is copied, not aliased, at a generic slot. One row covers
-// three TypeDefs -- Span[T], Span[readonly[T]] and BytesView
-// (std::span<const uint8_t>). `tests/test_runtime_value_type_parity.py` holds
-// every such row (here and in the defining headers) against the registry, with
-// the two C++ types that cannot be decided at all.
+// two TypeDefs -- Span[T] and Span[readonly[T]]; BytesView is its own type
+// (buffer_types.hpp). `tests/test_runtime_value_type_parity.py` holds every
+// such row (here and in the defining headers) against the registry, with the
+// two C++ types that cannot be decided at all.
 template<typename T, std::size_t E> struct is_value_type<std::span<T, E>> : std::true_type {};
 
 // Tuples are value types (immutable in Python, always copied/moved)

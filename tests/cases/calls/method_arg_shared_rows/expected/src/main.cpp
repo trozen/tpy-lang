@@ -24,7 +24,7 @@ void main() {
     // # A bytes NAME at the same slot: the by-value vector slot takes a copy
     // # (`bytes_copy`), so `blob` still reads its own value afterwards.
     // blob = b"pqrs"
-    std::span<const uint8_t> blob = ::tpy::bytes_literal("pqrs", 4);
+    ::tpy::BytesView blob = ::tpy::bytes_literal("pqrs", 4);
     // k.store_blob(blob)  # tpyc: ok
     k.store_blob(::tpy::Bytes(blob));
     // print(k.n, len(blob))

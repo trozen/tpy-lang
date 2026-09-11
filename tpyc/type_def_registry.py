@@ -743,7 +743,7 @@ def view_to_owned_conv(t: "TpyType") -> str:
 def has_view_param_form(t: "TpyType") -> bool:
     """True when `t`'s PARAM form is a DISTINCT view type over its own owning
     storage form -- `str` (`std::string_view` over `std::string`) and `bytes`
-    (`std::span<const uint8_t>` over `std::vector<uint8_t>`) today.
+    (`::tpy::BytesView` over `::tpy::Bytes`) today.
 
     Derived from the TypeDef's two formatters rather than enumerated, so a
     future family joins by registering its forms. `String` and `bytearray`
@@ -984,8 +984,9 @@ def _populate() -> None:
 
     # Bytes family. bytes/bytearray are heap-backed (each its own class over
     # std::vector<uint8_t>, so a trait keyed on the C++ type can tell them --
-    # and list[UInt8] -- apart), BytesView borrows (std::span<const uint8_t>).
-    # Element type is UInt8.
+    # and list[UInt8] -- apart), BytesView borrows (its own class over
+    # std::span<const uint8_t>, for the same reason against
+    # Span[readonly[UInt8]]). Element type is UInt8.
     def _u8_elem(args):
         from tpyc.typesys import UINT8
         return UINT8
@@ -993,7 +994,7 @@ def _populate() -> None:
     register(TypeDef(
         "builtins.bytes", TC.BYTES, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "::tpy::Bytes",
-        param_cpp_formatter=lambda args: "std::span<const uint8_t>",
+        param_cpp_formatter=lambda args: "::tpy::BytesView",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         element_of=_u8_elem,
     ))
@@ -1015,8 +1016,8 @@ def _populate() -> None:
     register(TypeDef(
         "tpy.BytesView", TC.BYTES, is_value_type=True,
         is_send=False, is_sync=True,
-        cpp_formatter=lambda args: "std::span<const uint8_t>",
-        param_cpp_formatter=lambda args: "std::span<const uint8_t>",
+        cpp_formatter=lambda args: "::tpy::BytesView",
+        param_cpp_formatter=lambda args: "::tpy::BytesView",
         element_of=_u8_elem,
     ))
 

@@ -5,13 +5,13 @@ namespace tpyapp::main {
 
 
 // def _cookie_line(sent: bytes) -> None:
-void _cookie_line(std::span<const uint8_t> sent) {
+void _cookie_line(::tpy::BytesView sent) {
     // for line in sent.split(b"\r\n"):
     auto __obj_0 = ::tpy::bytes_split(sent, ::tpy::bytes_literal("\r\n", 2));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::span<const uint8_t> line = *__beg_0;
+        ::tpy::BytesView line = *__beg_0;
         // if line.startswith(b"Cookie:"):
         if (::tpy::bytes_startswith(line, ::tpy::bytes_literal("Cookie:", 7))) {
             // print(line)

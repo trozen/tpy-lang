@@ -42,7 +42,7 @@ extern const std::tuple<int32_t, int32_t> ORIGIN;
 std::string greet(std::string_view name, std::string_view greeting = "Hello", bool excited = false);
 int64_t advance(int64_t n, int64_t by = STEP);
 double scale(double x, double factor = 0.5);
-int32_t tag(std::span<const uint8_t> data = ::tpy::bytes_literal("ab", 2));
+int32_t tag(::tpy::BytesView data = ::tpy::bytes_literal("ab", 2));
 int32_t offset(const std::tuple<int32_t, int32_t>& at = ORIGIN);
 int32_t paint(Color shade = Color::BLUE);
 int64_t combine(int64_t a, int64_t b, int64_t c = 5);

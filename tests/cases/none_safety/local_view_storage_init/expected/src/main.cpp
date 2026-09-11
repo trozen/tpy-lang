@@ -13,7 +13,7 @@ namespace tpyapp::main {
 }
 
 // def bytes_or(a: Optional[bytes], b: bytes) -> int:
-::tpy::BigInt bytes_or(std::optional<std::span<const uint8_t>> a, std::span<const uint8_t> b) {
+::tpy::BigInt bytes_or(std::optional<::tpy::BytesView> a, ::tpy::BytesView b) {
     // y: bytes = a if a is not None else b  # tpyc: type(bytes)
     ::tpy::Bytes y = ::tpy::Bytes((((a.has_value())) ? ((*a)) : (b)));
     // return len(y)
@@ -29,9 +29,9 @@ namespace tpyapp::main {
 }
 
 // def passthrough_bytes(b: bytes) -> int:
-::tpy::BigInt passthrough_bytes(std::span<const uint8_t> b) {
+::tpy::BigInt passthrough_bytes(::tpy::BytesView b) {
     // local: bytes = b  # tpyc: type(BytesView)
-    std::span<const uint8_t> local = b;
+    ::tpy::BytesView local = b;
     // return len(local)
     return ::tpy::BigInt(::tpy::__len__(local));
 }

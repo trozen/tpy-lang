@@ -9,11 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt sum_bytes(std::optional<std::span<const uint8_t>> b);
+::tpy::BigInt sum_bytes(std::optional<::tpy::BytesView> b);
 ::tpy::BigInt sum_chars(std::optional<std::string_view> s);
-::tpy::BigInt comp_bytes(std::optional<std::span<const uint8_t>> b);
+::tpy::BigInt comp_bytes(std::optional<::tpy::BytesView> b);
 ::tpy::BigInt distinct_chars(std::optional<std::string_view> s);
-::tpy::BigInt byte_map(std::optional<std::span<const uint8_t>> b);
+::tpy::BigInt byte_map(std::optional<::tpy::BytesView> b);
 ::tpy::BigInt sum_list(const std::vector<::tpy::BigInt>* xs);
 void main();
 

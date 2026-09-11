@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // # the None-test and the return sinks (None -> nullopt, bytes-literal -> owned,
 // # param -> the view->owned `bytes` constructor). Truthiness/print stay AST (BUGS.md).
 // def is_absent(b: bytes | None) -> bool:
-bool is_absent(std::optional<std::span<const uint8_t>> b) {
+bool is_absent(std::optional<::tpy::BytesView> b) {
     // return b is None
     return (!b.has_value());
 }
@@ -25,7 +25,7 @@ std::optional<::tpy::Bytes> pick(bool keep) {
 }
 
 // def forward(b: bytes | None) -> bytes | None:
-std::optional<::tpy::Bytes> forward(std::optional<std::span<const uint8_t>> b) {
+std::optional<::tpy::Bytes> forward(std::optional<::tpy::BytesView> b) {
     // return b
     return b ? std::make_optional(::tpy::Bytes(*b)) : std::nullopt;
 }

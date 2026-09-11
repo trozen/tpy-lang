@@ -2932,7 +2932,7 @@ def _binop_operand_suffix(e: TpyBinOp, declared: dict[str, TpyType],
 
 def _view_at_runtime(e: TpyExpr, lc: '_LowerCtx') -> bool:
     """Whether a str/bytes-family operand spells its family's VIEW type at
-    C++ runtime (`std::string_view` / `std::span<const uint8_t>`).
+    C++ runtime (`std::string_view` / `::tpy::BytesView`).
 
     The RESOLVED type is not the answer: a plain `str`/`bytes` PARAM is
     declared owned but its signature slot is the view, so judging an operand
@@ -3748,11 +3748,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # Both operands are the SAME open `T`, whose two C++ spellings can
             # differ at an instantiation: a `T` parameter arrives in its own
             # type's parameter form (a view for `str` / `bytes`) while a `T`
-            # element or field is the storage form, and a span has no `==`
-            # against its owning buffer. `::tpy::eq` is `==` where the two
-            # forms compare and element-wise where they do not, so the one
-            # emitted body serves every instantiation. Ordering has no such
-            # form-neutral helper: BUGS.md#open-tparam-ordering-needs-one-form.
+            # element or field is the storage form. `::tpy::eq` is `==` where
+            # the two forms compare and element-wise where they do not, so
+            # the one emitted body serves every instantiation. Every builtin
+            # family compares across its forms now (the bytes view is its
+            # own type with the family's `==` / `<=>`), so ordering renders
+            # the bare operator.
             _witness("binop.open_tparam_eq")
             open_eq_tpl = ("::tpy::eq({self}, {0})" if e.op == "=="
                            else "(!::tpy::eq({self}, {0}))")
@@ -3853,18 +3854,22 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     elif e.op in _MEMBERSHIP_OPS and isinstance(e.right, TpyTupleLiteral):
         # `x in (a, b, ...)` / `not in`: a tuple-literal membership expands to an
         # OR-chain of `==` compares (no `__contains__`). Value-comparable
-        # (scalar / str) needle + elements only, so each `==` renders plainly.
+        # (scalar / str / bytes) needle + elements only, so each `==` renders
+        # plainly.
         lt = _declared_type(e.left, declared, analyzer)
         left_scalar = lt is not None and _resolved_scalar(lt, analyzer)
         left_str = (lt is not None
                     and _resolved_str_value(lt, analyzer) is not None)
-        if not (left_scalar or left_str) or not e.right.elements:
+        left_bytes = (lt is not None
+                      and _resolved_bytes_value(lt, analyzer) is not None)
+        if not (left_scalar or left_str or left_bytes) or not e.right.elements:
             reject()
         for el in e.right.elements:
             et = analyzer.get_expr_type(el)
             if et is None or (
                     left_scalar and not _resolved_scalar(et, analyzer)) or (
-                    left_str and _resolved_str_value(et, analyzer) is None):
+                    left_str and _resolved_str_value(et, analyzer) is None) or (
+                    left_bytes and not _bytes_compare_operand(el, et, analyzer)):
                 reject()
     elif e.op in _MEMBERSHIP_OPS and _bytes_membership_ok(e, declared, analyzer):
         # `needle in b` over a bytes / BytesView container: the native
@@ -3901,7 +3906,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and _resolved_str_value(rt, analyzer) is None
                     and _resolved_bytes_value(rt, analyzer) is None
                     and (_resolved_scalar(lt, analyzer)
-                         or _resolved_str_value(lt, analyzer) is not None
+                         or _resolved_viewfam_value(lt, analyzer) is not None
                          # An open-T needle inside a generic body (`key in
                          # self._data` on `dict[T, int]`): the needle
                          # renders by name per instantiation and
@@ -3974,7 +3979,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                     is not None))))
             if not (recv_ok
                     and (_resolved_scalar(lt, analyzer)
-                         or _resolved_str_value(lt, analyzer) is not None)):
+                         or _resolved_viewfam_value(lt, analyzer) is not None)):
                 reject()
             user_contains = True
         elif (isinstance(e.right, (TpyName, TpySetLiteral))
@@ -4006,7 +4011,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     analyzer.get_expr_type(e.right))))
                 if ct is not None:
                     ct = resolve_pending_container(ct, analyzer) or ct
-            # A str needle renders bare into `contains(...)`
+            # A str or bytes needle renders bare into `contains(...)`
             # (literal / view name / owned local -- the container's transparent
             # lookup absorbs the form), exactly like a scalar needle. An
             # F1-RECORD needle name reads bare the same way (the record-keyed
@@ -4034,6 +4039,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                   or (is_str_view_type(_vkc)
                                       and bool(_witness(
                                           "binop.contains_view_key")))))
+                         or (_resolved_bytes_value(lt, analyzer) is not None
+                             and view_key_target(ct) is None)
                          # A BYTES literal needle at a BYTES-VIEW key
                          # target: the static view spelling
                          # (`contains(::tpy::bytes_literal("hello", 5))`)
@@ -4051,10 +4058,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                   e.right, declared, analyzer, methods=("values", "keys"))):
             # `x in d.values()` / `x in d.keys()`: the view rvalue renders
             # `::tpy::dict_values(d).contains(x)`; the needle is the dict's
-            # value/key (scalar or bare-str). `.items()` needs a tuple needle,
-            # a later cell.
+            # value/key (scalar or bare-str / bytes). `.items()` needs a
+            # tuple needle, a later cell.
             if not (_resolved_scalar(lt, analyzer)
-                    or _resolved_str_value(lt, analyzer) is not None):
+                    or _resolved_viewfam_value(lt, analyzer) is not None):
                 reject()
         else:
             reject()
@@ -4075,10 +4082,17 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # expression.
         need_temp = (len(elems) > 1
                      and not emit_prims.is_trivial_needle(e.left))
+        # A bytes-family chain compares through `::tpy::BytesView`, so its
+        # literal elements take the static span (the compare arm's rule).
+        retag = (_retag_bytes_literal_span
+                 if _resolved_bytes_value(
+                     _declared_type(e.left, declared, analyzer), analyzer)
+                 is not None else (lambda v: v))
         return THIRTupleMembership(
             result_type=rtype,
-            left=_lower_expr(e.left, lc, declared),
-            elements=tuple(_lower_expr(el, lc, declared) for el in elems),
+            left=retag(_lower_expr(e.left, lc, declared)),
+            elements=tuple(retag(_lower_expr(el, lc, declared))
+                           for el in elems),
             negate=e.op == "not in",
             need_temp=need_temp,
             loc=loc)
@@ -4143,7 +4157,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                                                   declared),
                 form=Form.STORAGE, loc=loc)
         else:
-            needle = _lower_expr(e.left, lc, declared)
+            # A bytes literal needle takes the static span: the element
+            # compare reads through `::tpy::BytesView` (a str literal is
+            # bare for the same reason).
+            needle = _retag_bytes_literal_span(
+                _lower_expr(e.left, lc, declared))
         return THIRMembership(
             result_type=rtype,
             receiver=_lower_expr(e.right, lc, declared,
@@ -4192,13 +4210,20 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         needle = _lower_expr(
             e.left, lc, declared,
             field_owned_str_ok=isinstance(e.left, TpyFieldAccess))
-        # A bytes literal needle at a BYTES-VIEW key target takes the
-        # static view spelling (`::tpy::bytes_literal("hello", 5)` --
-        # view_key_target threads into the literal render).
-        _mvk = view_key_target(unwrap_readonly(unwrap_ref_type(
-            unwrap_send_sync(analyzer.get_expr_type(e.right)))))
-        if _mvk is not None and is_bytes_view_type(_mvk):
-            needle = _retag_bytes_literal_view(needle, _mvk)
+        # A bytes literal needle takes the static view spelling
+        # (`::tpy::bytes_literal("hello", 5)`): the container's transparent
+        # lookup and a user `__contains__`'s `bytes` slot both read it
+        # through `::tpy::BytesView`, so the owned render would build a
+        # buffer per lookup that nothing keeps. A user slot that OWNS the
+        # argument (`Own[bytes]`, `::tpy::Bytes` by value) keeps the owned
+        # render: the view does not convert to the owner. An open `T` slot
+        # is the instantiation's parameter form, the view at `bytes`.
+        if not (user_contains and e.resolved_contains.params
+                and not (_bytes_literal_view_slot(unwrap_readonly(
+                             e.resolved_contains.params[0].type))
+                         or _is_type_param_slot(
+                             e.resolved_contains.params[0].type))):
+            needle = _retag_bytes_literal_span(needle)
         if user_contains and e.resolved_contains.params:
             # A runtime-BigInt needle against the user __contains__'s
             # declared fixed-int param takes the checked call-arg narrow
@@ -4536,7 +4561,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # Compare operands are target-less EXCEPT opposite a record's own
         # comparison dunder: the emitted friend operator declares a real
         # param slot (`friend bool operator==(const Blob&,
-        # std::span<const uint8_t>)`), so a bytes literal there takes the
+        # ::tpy::BytesView)`), so a bytes literal there takes the
         # non-allocating static span the identically-shaped call arg spells
         # -- the owning render builds a heap vector per comparison for a span
         # the operator only reads through.
@@ -4547,6 +4572,13 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 left = _retag_bytes_literal_span(left)
             else:
                 right = _retag_bytes_literal_span(right)
+        if (_bytes_compare_operand(e.left, lt, analyzer)
+                and _bytes_compare_operand(e.right, rt, analyzer)):
+            # A bytes-family pair compares through `::tpy::BytesView`, which
+            # only reads the buffer, so a literal operand takes the same
+            # static span for the same reason.
+            left = _retag_bytes_literal_span(left)
+            right = _retag_bytes_literal_span(right)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
 
@@ -5517,7 +5549,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if _value_opt_view_binding(e.name, lc):
             # A value-repr Optional[view] binding -- str
             # (`std::optional<std::string_view>` param / `<std::string>` local)
-            # or bytes (`<std::span<const uint8_t>>` param / `<vector>` local).
+            # or bytes (`<::tpy::BytesView>` param / `<::tpy::Bytes>` local).
             # A NARROWED read (sema retyped it to the inner view, `rtype` no
             # longer Optional) unwraps `(*s)`. For a PARAM that deref is a
             # BORROW view, so an owned sink still gets the family copy

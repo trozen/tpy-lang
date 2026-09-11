@@ -21,9 +21,9 @@ void view_from_borrowing_call(std::string_view s) {
 }
 
 // def bytes_view_from_param(bv: BytesView) -> None:
-void bytes_view_from_param(std::span<const uint8_t> bv) {
+void bytes_view_from_param(::tpy::BytesView bv) {
     // label: bytes = bv  # tpyc: ok
-    std::span<const uint8_t> label = bv;
+    ::tpy::BytesView label = bv;
     // print(label, len(label))
     std::cout << ::tpy::BytesPrinter(label) << " " << ::tpy::__len__(label) << "\n";
 }

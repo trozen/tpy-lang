@@ -11,7 +11,7 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::span<const uint8_t> view_of(std::span<const uint8_t> b);
+::tpy::BytesView view_of(::tpy::BytesView b);
 void main();
 
 // class Sink:
@@ -25,10 +25,10 @@ struct Sink {
     Sink();
 
     // def add_view(self, b: bytes) -> None:
-    void add_view(std::span<const uint8_t> b);
+    void add_view(::tpy::BytesView b);
 
     // def add_owned(self, b: bytes) -> None:
-    void add_owned(std::span<const uint8_t> b);
+    void add_owned(::tpy::BytesView b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
 
@@ -42,14 +42,14 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 inline Sink::Sink() : chunks(std::vector<::tpy::Bytes>{}), owned(std::vector<::tpy::Bytes>{}) {}
 
 // def add_view(self, b: bytes) -> None:
-inline void Sink::add_view(std::span<const uint8_t> b) {
+inline void Sink::add_view(::tpy::BytesView b) {
     // # The call's result is a BytesView: materialized into the element.
     // self.chunks.append(view_of(b))
     this->chunks.push_back(::tpy::Bytes(view_of(b)));
 }
 
 // def add_owned(self, b: bytes) -> None:
-inline void Sink::add_owned(std::span<const uint8_t> b) {
+inline void Sink::add_owned(::tpy::BytesView b) {
     // # INVERSE: a bytes PARAM read is the view form too, so it takes the
     // # same materialize -- what tells the two apart is the FORM, and an
     // # owned local is what stays bare (the str twin pins that leg).

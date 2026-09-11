@@ -7774,7 +7774,7 @@ def _bytes_owned_slot_arg(a: TpyExpr, ptype: TpyType | None,
     literal face is its own row): a span-form source at an `Own[bytes]`
     container element slot materializes `::tpy::Bytes(x)` via the S6
     view->owned THIRFormConvert. Three faces: a bytes PARAM name (the
-    signature spells `std::span<const uint8_t>`, so its read is BORROW --
+    signature spells `::tpy::BytesView`, so its read is BORROW --
     including a narrowed `bytes | None` param whose deref reads `(*b)`), a
     `BytesView`-resolved local, and a SLICE rvalue arriving under the sema
     `bytesview_to_bytes` coerce (the coerce IS that copy; the render arm
@@ -7843,7 +7843,7 @@ def _bytes_owned_call_rvalue_arg(a: TpyExpr, ptype: TpyType | None,
 def _bytes_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
     """A bytes-slice arg into a non-Own `bytes`/`BytesView` param slot. The
-    param renders `std::span<const uint8_t>`; a param/view local IS a span, an
+    param renders `::tpy::BytesView`; a param/view local IS a view, an
     owned local (vector) converts implicitly, and a literal takes the
     static-span pin (`::tpy::bytes_literal(...)`, lowered BORROW). The
     pin keys on the RAW ptype (`is_bytes_type(ptype) or is_bytes_view_type(
@@ -14530,7 +14530,7 @@ def _optional_print_inner_cpp(a: TpyExpr, inner: TpyType,
                               params: dict[str, TpyType]) -> str:
     """A borrow-form Optional
     VIEW param renders as the view storage (`optional<string_view>` /
-    `optional<span<const uint8_t>>`), so its explicit template arg must be the
+    `optional<::tpy::BytesView>`), so its explicit template arg must be the
     view, not the owned inner. `params` is the declared PARAM map, so a local
     of the same type is unaffected."""
     fam = view_family_for_type(inner)

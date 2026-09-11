@@ -37,7 +37,7 @@ namespace tpyapp::main {
 
 
 // async def first_bytes(b: bytes | None) -> int:
-__coro_first_bytes first_bytes(std::optional<std::span<const uint8_t>> b) {
+__coro_first_bytes first_bytes(std::optional<::tpy::BytesView> b) {
     return __coro_first_bytes(b);
 }
 

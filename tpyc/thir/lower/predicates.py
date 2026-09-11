@@ -2010,8 +2010,8 @@ def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
 
 def _resolved_bytes_value(t: TpyType | None, analyzer) -> TpyType | None:
     """The bytes twin of `_resolved_str_value`: the sema-RESOLVED bytes-slice
-    type -- owned `bytes` (`std::vector<uint8_t>` storage / `std::span<const
-    uint8_t>` param) or `BytesView` (span) -- or None outside the slice. A
+    type -- owned `bytes` (`::tpy::Bytes` storage / `::tpy::BytesView`
+    param) or `BytesView` -- or None outside the slice. A
     bytes local's binding stays `PendingBytesType`; resolve it through the
     family's ViewVarInfo. `bytearray` (a reference type, different axis) and
     `Literal[bytes]` bindings are out of the slice."""
@@ -2036,7 +2036,7 @@ def _own_viewfam_param(t: TpyType | None) -> 'TpyType | None':
     declaration, or None. Such a param's C++ signature spells the OWNED type
     by value (`std::string` / `std::vector<uint8_t>`), so its name reads are
     STORAGE form -- unlike a plain `str`/`bytes` param, whose signature is the
-    view (`std::string_view` / `std::span<const uint8_t>`) and whose reads are
+    view (`std::string_view` / `::tpy::BytesView`) and whose reads are
     BORROW. View-ness keys on `is_str_type(<declared param type>)`, which is
     False for the Own wrapper. (`Own[StrView]` / `Own[BytesView]` params are
     the no-op Own
@@ -2053,13 +2053,17 @@ def _own_viewfam_param(t: TpyType | None) -> 'TpyType | None':
     return None
 
 def _bytes_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
-    """A bytes-slice comparison operand: a bytes literal (rendered OWNED --
-    no compare target is threaded for bytes, so the literal takes its owned
-    render) or a bytes/BytesView value.
+    """A bytes-family comparison operand: a bytes literal, a bytes/BytesView
+    value, or a bytearray -- every spelling of the family compares against
+    every other through `::tpy::BytesView` (buffer_types.hpp), the way the
+    str family does through `std::string_view`.
     Guards the compare arm's operand pin -- see `_lower_binop`."""
     if isinstance(e, TpyBytesLiteral):
         return True
-    return _resolved_bytes_value(t, analyzer) is not None
+    if _resolved_bytes_value(t, analyzer) is not None:
+        return True
+    return t is not None and is_bytearray_type(
+        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
 
 def _str_compare_operand(e: TpyExpr, t: TpyType | None, analyzer) -> bool:
     """A str-slice comparison operand: a str literal (its expr type is
@@ -2178,7 +2182,7 @@ def _bytes_name_form(name: str, resolved: TpyType, param_names: set[str],
                      ) -> Form:
     """The bytes twin of `_str_name_form`: a `BytesView`-resolved binding and
     a `bytes`-typed
-    param (the signature spells `std::span<const uint8_t>`) are view/BORROW --
+    param (the signature spells `::tpy::BytesView`) are view/BORROW --
     they drive the owned-sink `::tpy::Bytes(x)` -- while an owned local is
     `std::vector<uint8_t>` (STORAGE). `owned_params` carves out the
     `Own[bytes]` params (owned `std::vector<uint8_t>` by value -- STORAGE),
@@ -5171,7 +5175,7 @@ def _value_opt_string_owned(t: 'TpyType | None') -> 'OptionalType | None':
 
 def _value_opt_bytes(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """The value-repr `Optional[bytes]` type: `bytes | None` / `BytesView | None`,
-    bound `std::optional<std::span<const uint8_t>>` at the param boundary (borrow
+    bound `std::optional<::tpy::BytesView>` at the param boundary (borrow
     form) and an owned `std::optional<std::vector<uint8_t>>` elsewhere -- the
     bytes twin of `_value_opt_str`. Every position renders family-neutrally
     (`has_value()`, the narrowed `(*b)` span read, `::tpy::is_truthy(b)`) except
@@ -10054,7 +10058,7 @@ def _owned_form_bytes_name(a: TpyExpr, locals_: 'dict[str, TpyType] | None',
                            analyzer) -> bool:
     """An OWNED-form bytes NAME -- `_owned_form_str_name`'s bytes twin, read
     off the sema-resolved type. A `bytes` PARAM's slot is the
-    `std::span<const uint8_t>` view the copy rows convert from, unless the
+    `::tpy::BytesView` view the copy rows convert from, unless the
     signature declared it `Own[bytes]` (owned `std::vector<uint8_t>` by
     value); everything else resolving to `bytes` is owned storage."""
     if not isinstance(a, TpyName) or locals_ is None:

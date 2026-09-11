@@ -437,7 +437,7 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                                is_expensive_copy=True, param_needs_copy_for_reassign=True,
                                is_compile_time_only=False,
                                to_cpp="::tpy::Bytes",
-                               to_cpp_param_type="std::span<const uint8_t>",
+                               to_cpp_param_type="::tpy::BytesView",
                                element_qname="tpy.UInt8"),
     "builtins.bytearray": dict(category=TypeCategory.BYTES, is_value_type=False,
                                is_send=True, is_sync=False, subscript_borrows=False,
@@ -450,8 +450,8 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
                                is_send=False, is_sync=True, subscript_borrows=False,
                                is_expensive_copy=False, param_needs_copy_for_reassign=False,
                                is_compile_time_only=False,
-                               to_cpp="std::span<const uint8_t>",
-                               to_cpp_param_type="std::span<const uint8_t>",
+                               to_cpp="::tpy::BytesView",
+                               to_cpp_param_type="::tpy::BytesView",
                                element_qname="tpy.UInt8"),
 
     # --- Slices ----------------------------------------------------------

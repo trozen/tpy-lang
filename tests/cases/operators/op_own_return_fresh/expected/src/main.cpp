@@ -58,7 +58,7 @@ void test_list_concat_fresh() {
 // def test_bytes_concat_fresh():
 void test_bytes_concat_fresh() {
     // p = b"ab"
-    std::span<const uint8_t> p = ::tpy::bytes_literal("ab", 2);
+    ::tpy::BytesView p = ::tpy::bytes_literal("ab", 2);
     // q = p.__add__(b"cd")
     ::tpy::Bytes q = ::tpy::bytes_concat(p, ::tpy::bytes_literal("cd", 2));
     // print(q, p)
@@ -93,7 +93,7 @@ void test_bytearray_fresh() {
     // # CPython returns bytearray (filed divergence), so the repr can't be
     // # printed parity-safely -- equality is content-based on both sides.
     // print(ba[::2] == b"a", ba[::-1] == b"ba")
-    std::cout << ::tpy::print_bool((::tpy::bytes_eq(::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, 2}), ::tpy::bytes_literal_owned("a", 1)))) << " " << ::tpy::print_bool((::tpy::bytes_eq(::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, -1}), ::tpy::bytes_literal_owned("ba", 2)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, 2}) == ::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool((::tpy::bytes_stepped_slice(ba, ::tpy::Slice{std::nullopt, std::nullopt, -1}) == ::tpy::bytes_literal("ba", 2))) << "\n";
 }
 
 // def main():

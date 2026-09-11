@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // # Bytes view optimization: param assignment stays as span,
 // # concat/augassign promotes to owned vector
 // def process(data: bytes) -> None:
-void process(std::span<const uint8_t> data) {
+void process(::tpy::BytesView data) {
     // b = data         # should be span (view)
-    std::span<const uint8_t> b = data;
+    ::tpy::BytesView b = data;
     // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
     // c = data + b"!"  # concat -> owned
@@ -19,7 +19,7 @@ void process(std::span<const uint8_t> data) {
 }
 
 // def augassign(data: bytes) -> None:
-void augassign(std::span<const uint8_t> data) {
+void augassign(::tpy::BytesView data) {
     // b = data         # starts as view
     ::tpy::Bytes b = ::tpy::Bytes(data);
     // b += b"!"        # augassign promotes to owned
@@ -31,7 +31,7 @@ void augassign(std::span<const uint8_t> data) {
 // def literal_view() -> None:
 void literal_view() {
     // b = b"hello"     # literal -> view (static storage)
-    std::span<const uint8_t> b = ::tpy::bytes_literal("hello", 5);
+    ::tpy::BytesView b = ::tpy::bytes_literal("hello", 5);
     // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
 }

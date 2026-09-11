@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def run(method: str, response: bytes) -> None:
-void run(std::string_view method, std::span<const uint8_t> response) {
+void run(std::string_view method, ::tpy::BytesView response) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));

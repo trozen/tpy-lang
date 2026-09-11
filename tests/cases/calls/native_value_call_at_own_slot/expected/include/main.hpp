@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take(::tpy::Bytes b);
-void f(std::span<const uint8_t> v);
+void f(::tpy::BytesView v);
 void main();
 
 void __tpy_init();

@@ -20,7 +20,7 @@ using ::tpystd::http::client::HTTPConnection;
 inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::Bytes _send(const ::tpy::ordered_map<std::string, std::string>* headers, const ::tpy::ordered_map<std::string, std::string>* cookies);
-void _cookie_line(std::span<const uint8_t> sent);
+void _cookie_line(::tpy::BytesView sent);
 void main();
 
 void __tpy_init();

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // # so they must own (tpy::bytes / std::vector), not alias it -- a view would
 // # dangle. A shared `t` name would hoist the source and make a view safe.
 // def make(tag: bytes) -> tuple[bytes, bytes]:
-std::tuple<::tpy::Bytes, ::tpy::Bytes> make(std::span<const uint8_t> tag) {
+std::tuple<::tpy::Bytes, ::tpy::Bytes> make(::tpy::BytesView tag) {
     // return (tag + b"-alpha-long-enough-to-heap", tag + b"-beta-long-enough-to-heap")
     return std::tuple<::tpy::Bytes, ::tpy::Bytes>{(::tpy::bytes_concat(tag, ::tpy::bytes_literal_owned("-alpha-long-enough-to-heap", 26))), (::tpy::bytes_concat(tag, ::tpy::bytes_literal_owned("-beta-long-enough-to-heap", 25)))};
 }

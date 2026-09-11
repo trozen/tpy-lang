@@ -26,11 +26,11 @@
 
 namespace tpy {
 
-// `Bytes` and `ByteArray` are the two owning byte-buffer classes (declared in
-// buffer_types.hpp); the helpers below work in `BytesView` and return `Bytes`,
-// the `bytes` storage form. A `bytearray`-returning method respells the result
+// `Bytes` and `ByteArray` are the two owning byte-buffer classes and
+// `BytesView` the family's view (all three declared in buffer_types.hpp); the
+// helpers below work in `BytesView` and return `Bytes`, the `bytes` storage
+// form. A `bytearray`-returning method respells the result
 // (`::tpy::ByteArray(...)`, a move) unless the helper is bytearray-only.
-using BytesView = std::span<const uint8_t>;
 
 // -- Static bytes literal ---------------------------------------------------
 
@@ -64,16 +64,22 @@ inline void write_byte_repr(std::ostream& os, uint8_t b) {
 
 }  // namespace detail
 
+// The printers take the bare vector too: a `list[UInt8]` never prints as
+// bytes, but the buffer-family helpers below hand them a plain vector, so
+// the span is spelled rather than converted (`BytesView` refuses a bare
+// vector by design).
 struct BytesPrinter {
     BytesView value;
     explicit BytesPrinter(BytesView v) : value(v) {}
-    explicit BytesPrinter(const std::vector<uint8_t>& v) : value(v) {}
+    explicit BytesPrinter(const std::vector<uint8_t>& v)
+        : value(std::span<const uint8_t>(v)) {}
 };
 
 struct ByteArrayPrinter {
     BytesView value;
     explicit ByteArrayPrinter(BytesView v) : value(v) {}
-    explicit ByteArrayPrinter(const std::vector<uint8_t>& v) : value(v) {}
+    explicit ByteArrayPrinter(const std::vector<uint8_t>& v)
+        : value(std::span<const uint8_t>(v)) {}
 };
 
 namespace detail {
@@ -446,12 +452,6 @@ inline Bytes bytes_stepped_slice(BytesView b, Slice sl) {
     return bytes_stepped_slice(b, sl.start.value_or(SLICE_NONE),
                                sl.stop.value_or(SLICE_NONE),
                                sl.step.value_or(1));
-}
-
-// -- Equality ---------------------------------------------------------------
-
-inline bool bytes_eq(BytesView a, BytesView b) {
-    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
 }
 
 // -- bytearray-returning siblings -------------------------------------------

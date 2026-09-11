@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def view_of(b: bytes) -> BytesView:
-std::span<const uint8_t> view_of(std::span<const uint8_t> b) {
+::tpy::BytesView view_of(::tpy::BytesView b) {
     // return b
     return b;
 }

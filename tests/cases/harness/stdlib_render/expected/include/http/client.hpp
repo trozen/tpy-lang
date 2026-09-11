@@ -33,7 +33,7 @@ concept ___Connection_Concept__ = requires(T& t) {
 
 struct _Connection {
     virtual void connect() = 0;
-    virtual void request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>* headers) = 0;
+    virtual void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) = 0;
     virtual HTTPResponse getresponse() = 0;
     virtual void close() = 0;
     virtual ~_Connection() = default;
@@ -57,9 +57,9 @@ inline constexpr int32_t HTTPS_PORT = 443;
 
 int32_t _hex_val(int32_t c);
 ::tpy::BigInt _digits_to_int(std::string_view s);
-::tpy::BigInt _parse_chunk_size(std::span<const uint8_t> line);
-::tpy::BigInt _content_length(std::string_view method, std::optional<std::span<const uint8_t>> body);
-::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port);
+::tpy::BigInt _parse_chunk_size(::tpy::BytesView line);
+::tpy::BigInt _content_length(std::string_view method, std::optional<::tpy::BytesView> body);
+::tpy::Bytes _build_request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, const ::tpy::ordered_map<std::string, std::string>* headers, std::string_view host, int32_t port, int32_t default_port);
 
 // class HTTPException(Exception):
 struct HTTPException : ::tpy::Exception {
@@ -193,7 +193,7 @@ struct HTTPConnection : _Connection {
 
     // def request(self, method: str, url: str, body: bytes | None = None,
     // headers: dict[str, str] | None = None) -> None:
-    void request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body = std::nullopt, ::tpy::ordered_map<std::string, std::string>* headers = nullptr) override;
+    void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body = std::nullopt, ::tpy::ordered_map<std::string, std::string>* headers = nullptr) override;
 
     // def getresponse(self) -> Own[HTTPResponse]:
     HTTPResponse getresponse() override;
@@ -238,7 +238,7 @@ struct HTTPSConnection : _Connection {
 
     // def request(self, method: str, url: str, body: bytes | None = None,
     // headers: dict[str, str] | None = None) -> None:
-    void request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body = std::nullopt, ::tpy::ordered_map<std::string, std::string>* headers = nullptr) override;
+    void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body = std::nullopt, ::tpy::ordered_map<std::string, std::string>* headers = nullptr) override;
 
     // def getresponse(self) -> Own[HTTPResponse]:
     HTTPResponse getresponse() override;
@@ -295,7 +295,7 @@ struct tpy::Adapter<tpystd::http::client::_Connection, T> : tpystd::http::client
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     void connect() override { inner.connect(); }
-    void request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>* headers) override { inner.request(method, url, body, headers); }
+    void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) override { inner.request(method, url, body, headers); }
     tpystd::http::client::HTTPResponse getresponse() override { return inner.getresponse(); }
     void close() override { inner.close(); }
 };
@@ -305,7 +305,7 @@ struct tpy::RefAdapter<tpystd::http::client::_Connection, T> : tpystd::http::cli
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     void connect() override { inner.connect(); }
-    void request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>* headers) override { inner.request(method, url, body, headers); }
+    void request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) override { inner.request(method, url, body, headers); }
     tpystd::http::client::HTTPResponse getresponse() override { return inner.getresponse(); }
     void close() override { inner.close(); }
 };
@@ -439,7 +439,7 @@ inline void HTTPConnection::connect() {
 
 // def request(self, method: str, url: str, body: bytes | None = None,
 // headers: dict[str, str] | None = None) -> None:
-inline void HTTPConnection::request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>* headers) {
+inline void HTTPConnection::request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) {
     // self.connect()
     this->connect();
     // self._method = method
@@ -501,7 +501,7 @@ inline void HTTPSConnection::connect() {
 
 // def request(self, method: str, url: str, body: bytes | None = None,
 // headers: dict[str, str] | None = None) -> None:
-inline void HTTPSConnection::request(std::string_view method, std::string_view url, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>* headers) {
+inline void HTTPSConnection::request(std::string_view method, std::string_view url, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>* headers) {
     // self.connect()
     this->connect();
     // self._method = method

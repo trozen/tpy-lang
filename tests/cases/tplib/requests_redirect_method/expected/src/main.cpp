@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def run_redirect(status_line: bytes) -> tuple[bytes, bool, bool]:
-std::tuple<::tpy::Bytes, bool, bool> run_redirect(std::span<const uint8_t> status_line) {
+std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) {
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -58,10 +58,10 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(std::span<const uint8_t> statu
 }
 
 // def report(status_line: bytes) -> None:
-void report(std::span<const uint8_t> status_line) {
+void report(::tpy::BytesView status_line) {
     // line, has_body, has_ct = run_redirect(status_line)
     auto __tup_1 = run_redirect(status_line);
-    std::span<const uint8_t> line = std::get<0>(__tup_1);
+    ::tpy::BytesView line = std::get<0>(__tup_1);
     bool has_body = std::get<1>(__tup_1);
     bool has_ct = std::get<2>(__tup_1);
     // print(line, has_body, has_ct)

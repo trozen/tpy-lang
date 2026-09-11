@@ -14,7 +14,7 @@ std::optional<::tpy::Bytes> maybe_blob(int32_t k);
 int32_t text_len(int32_t k);
 int32_t blob_len(int32_t k);
 int32_t from_text_param(std::optional<std::string_view> t);
-int32_t from_blob_param(std::optional<std::span<const uint8_t>> t);
+int32_t from_blob_param(std::optional<::tpy::BytesView> t);
 int32_t reassigned(int32_t k);
 void main();
 

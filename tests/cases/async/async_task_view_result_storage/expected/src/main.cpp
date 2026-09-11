@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // async def sub() -> BytesView:
-::tpystd::tpy::Poll<std::span<const uint8_t>> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BytesView> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
         // return b"x"
         __state = S_DONE;
-        std::span<const uint8_t> __tpy_async_ret = ::tpy::bytes_literal("x", 1);
-        return ::tpystd::tpy::Poll<std::span<const uint8_t>>::ready(std::move(__tpy_async_ret));
+        ::tpy::BytesView __tpy_async_ret = ::tpy::bytes_literal("x", 1);
+        return ::tpystd::tpy::Poll<::tpy::BytesView>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -31,7 +31,7 @@ __coro_sub sub() {
     case S_INITIAL: {
         // # The task's payload type keeps this declaration on the storage row.
         // t = asyncio.create_task(sub())
-        t.emplace(::tpystd::asyncio::create_task<std::span<const uint8_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::span<const uint8_t>>>(sub())));
+        t.emplace(::tpystd::asyncio::create_task<::tpy::BytesView>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BytesView>>(sub())));
         // print(len(await t))
         __sub_0 = &((*t));
         __state = S_RESUME_0;

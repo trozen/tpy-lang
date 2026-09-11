@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // # Bytes as function parameters (passed as span), boolean context
 // def byte_len(data: bytes) -> int:
-::tpy::BigInt byte_len(std::span<const uint8_t> data) {
+::tpy::BigInt byte_len(::tpy::BytesView data) {
     // return len(data)
     return ::tpy::BigInt(::tpy::__len__(data));
 }
 
 // def first_byte(data: bytes) -> int:
-::tpy::BigInt first_byte(std::span<const uint8_t> data) {
+::tpy::BigInt first_byte(::tpy::BytesView data) {
     // return data[0]
     return ::tpy::BigInt(::tpy::bytes_getitem(data, 0));
 }
 
 // def is_empty(data: bytes) -> bool:
-bool is_empty(std::span<const uint8_t> data) {
+bool is_empty(::tpy::BytesView data) {
     // if data:
     if ((!data.empty())) {
         // return False
@@ -29,7 +29,7 @@ bool is_empty(std::span<const uint8_t> data) {
 }
 
 // def copy_bytes(data: bytes) -> bytes:
-::tpy::Bytes copy_bytes(std::span<const uint8_t> data) {
+::tpy::Bytes copy_bytes(::tpy::BytesView data) {
     // return bytes(data)
     return ::tpy::Bytes(data);
 }
@@ -37,7 +37,7 @@ bool is_empty(std::span<const uint8_t> data) {
 // def main() -> None:
 void main() {
     // b = b"hello"
-    std::span<const uint8_t> b = ::tpy::bytes_literal("hello", 5);
+    ::tpy::BytesView b = ::tpy::bytes_literal("hello", 5);
     // print(byte_len(b))
     std::cout << byte_len(b) << "\n";
     // print(first_byte(b))
@@ -45,13 +45,13 @@ void main() {
     // print(is_empty(b))
     std::cout << ::tpy::print_bool(is_empty(b)) << "\n";
     // print(is_empty(b""))
-    std::cout << ::tpy::print_bool(is_empty(std::span<const uint8_t>{})) << "\n";
+    std::cout << ::tpy::print_bool(is_empty(::tpy::BytesView{})) << "\n";
     // copied = copy_bytes(b)
     ::tpy::Bytes copied = copy_bytes(b);
     // print(copied)
     std::cout << ::tpy::BytesPrinter(copied) << "\n";
     // print(copied == b)
-    std::cout << ::tpy::print_bool((::tpy::bytes_eq(copied, b))) << "\n";
+    std::cout << ::tpy::print_bool((copied == b)) << "\n";
 }
 
 void __tpy_init() {

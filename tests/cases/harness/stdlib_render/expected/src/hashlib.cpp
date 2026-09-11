@@ -30,7 +30,7 @@ std::vector<uint32_t>* _SHA256_H0{};
 std::vector<uint32_t>* _SHA256_K{};
 
 // def _load_be32(data: bytes, off: Int32) -> UInt32:
-uint32_t _load_be32(std::span<const uint8_t> data, int32_t off) {
+uint32_t _load_be32(::tpy::BytesView data, int32_t off) {
     // return (UInt32(data[off]) << 24) | (UInt32(data[off + 1]) << 16) | (UInt32(data[off + 2]) << 8) | UInt32(data[off + 3])
     return (static_cast<uint32_t>((static_cast<uint32_t>((static_cast<uint32_t>((::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, off)), 24)) | (::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 1)))), 16)))) | (::tpy::lshift_check<uint32_t>(::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 2)))), 8)))) | ::tpy::int_cast_check<uint32_t>(::tpy::bytes_getitem(data, (::tpy::add_check<int32_t>(off, 3))))));
 }
@@ -48,7 +48,7 @@ void _pack_be32(::tpy::ByteArray& out, uint32_t v) {
 }
 
 // def sha256(data: bytes = b"") -> Own[SHA256]:
-SHA256 sha256(std::span<const uint8_t> data) {
+SHA256 sha256(::tpy::BytesView data) {
     // h: SHA256 = SHA256()
     SHA256 h = SHA256();
     // h.update(data)
@@ -106,7 +106,7 @@ void SHA256::_drain_blocks() {
 }
 
 // def _process_block(self, data: bytes, off: Int32) -> None:
-void SHA256::_process_block(std::span<const uint8_t> data, int32_t off) {
+void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
     // w: list[UInt32] = []
     std::vector<uint32_t> w = std::vector<uint32_t>{};
     // i: Int32 = 0

@@ -13,7 +13,7 @@ void main() {
     // print("len300", len(os.urandom(300)))       # 300 (crosses the 256 chunk)
     std::cout << "len300" << " " << ::tpy::__len__(::tpystd::os::urandom(300)) << "\n";
     // print("differ", os.urandom(16) != os.urandom(16))   # True
-    std::cout << "differ" << " " << ::tpy::print_bool((!(::tpy::bytes_eq(::tpystd::os::urandom(16), ::tpystd::os::urandom(16))))) << "\n";
+    std::cout << "differ" << " " << ::tpy::print_bool((::tpystd::os::urandom(16) != ::tpystd::os::urandom(16))) << "\n";
 }
 
 void __tpy_init() {

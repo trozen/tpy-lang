@@ -4,7 +4,7 @@
  * A container LOOKUP (`list.remove`/`index`/`count`, set and dict membership,
  * erase and the dict key reads) takes its key as a READ-ONLY argument, so it
  * arrives in the read form -- `std::string_view` or a bare `const char[N]`
- * literal for a stored `std::string`, `std::span<const uint8_t>` for a stored
+ * literal for a stored `std::string`, `tpy::BytesView` for a stored
  * `tpy::Bytes` / `tpy::ByteArray` -- while the container stores the owned
  * form. These helpers compare and hash a key in the STORED type's domain, so a
  * lookup never builds an element to find one.
@@ -20,9 +20,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <functional>
-#include <span>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -50,19 +48,6 @@ inline constexpr bool is_std_tuple<std::tuple<Ts...>> = true;
 
 }  // namespace detail
 
-// A contiguous run of bytes -- `tpy::Bytes` (owned) or `tpy::BytesView`
-// (borrowed). Neither has an `operator==` against the other, which is the one
-// comparison the standard leaves us to write. Spelled as these two types
-// rather than as a structural data()/size() test, so a user type that happens
-// to expose a byte buffer keeps its own `==` and `std::hash` (which a
-// byte-wise answer here could contradict, and a hash table cannot survive
-// that).
-template<typename X>
-concept byte_range_key =
-    std::same_as<std::remove_cvref_t<X>, Bytes>
-    || std::same_as<std::remove_cvref_t<X>, ByteArray>
-    || std::same_as<std::remove_cvref_t<X>, std::span<const std::uint8_t>>;
-
 // A bare string literal (`const char[N]`, the form a member call's literal
 // argument arrives in) or a `const char*`. Read as NUL-terminated, which is
 // also how `std::string`'s `operator==(const char*)` reads it, so hash and
@@ -80,12 +65,6 @@ template<typename T, typename U>
 constexpr bool key_eq(const T& stored, const U& key) {
     if constexpr (requires { { stored == key } -> std::convertible_to<bool>; }) {
         return stored == key;
-    } else if constexpr (byte_range_key<T> && byte_range_key<U>) {
-        // memcmp on a null pointer is UB even at length 0, and an empty span
-        // is allowed to hold (nullptr, 0).
-        return stored.size() == key.size()
-               && (stored.empty()
-                   || std::memcmp(stored.data(), key.data(), stored.size()) == 0);
     } else {
         // A key that only CONVERTS: the last resort, and the one shape that
         // still builds an element to compare against.
@@ -95,15 +74,15 @@ constexpr bool key_eq(const T& stored, const U& key) {
 
 // Hash a key (or a stored element) so that equal values hash alike whatever
 // their spelling -- the invariant a heterogeneous hash lookup rests on.
-// Whether hashing U cannot throw. Every str/bytes spelling the hash table
-// probes with is a string_view hash (noexcept by the standard); a tuple and a
-// user type answer for themselves. Spelled as a function, not a
-// `noexcept(expr)`, because `std::hash` has no specialization for a span or a
-// tuple and the expression form would instantiate one.
+// Whether hashing U cannot throw. Every str spelling the hash table probes
+// with is a string_view hash (noexcept by the standard), the bytes family's
+// `std::hash` is declared noexcept (buffer_types.hpp); a tuple and a user
+// type answer for themselves. Spelled as a function, not a `noexcept(expr)`,
+// because `std::hash` has no specialization for a tuple and the expression
+// form would instantiate one.
 template<typename U>
 consteval bool key_hash_nothrow() {
-    if constexpr (byte_range_key<U>
-                  || c_string_key<U>
+    if constexpr (c_string_key<U>
                   || std::same_as<std::remove_cvref_t<U>, std::string>
                   || std::same_as<std::remove_cvref_t<U>, String>
                   || std::same_as<std::remove_cvref_t<U>, std::string_view>) {
@@ -121,13 +100,7 @@ consteval bool key_hash_nothrow() {
 
 template<typename U>
 std::size_t key_hash_value(const U& v) noexcept(key_hash_nothrow<U>()) {
-    if constexpr (byte_range_key<U>) {
-        // The empty case cannot go through string_view: an empty span may
-        // hold (nullptr, 0), whose string_view hash is implementation-defined.
-        return v.empty() ? 0u
-                         : std::hash<std::string_view>{}(std::string_view(
-                               reinterpret_cast<const char*>(v.data()), v.size()));
-    } else if constexpr (std::same_as<std::remove_cvref_t<U>, std::string>
+    if constexpr (std::same_as<std::remove_cvref_t<U>, std::string>
                          || std::same_as<std::remove_cvref_t<U>, String>
                          || std::same_as<std::remove_cvref_t<U>, std::string_view>
                          || c_string_key<U>) {
@@ -173,7 +146,7 @@ concept lookup_key_for =
      && (std::same_as<std::remove_cvref_t<U>, std::string_view>
          || c_string_key<U>))
     || ((std::same_as<T, Bytes> || std::same_as<T, ByteArray>)
-        && std::same_as<std::remove_cvref_t<U>, std::span<const std::uint8_t>>);
+        && std::same_as<std::remove_cvref_t<U>, BytesView>);
 
 // A literal key resolves to the transparent path, not to the owned overload:
 // `s.discard("c")` and `d["c"]` must not build a std::string to find one.
@@ -187,6 +160,7 @@ static_assert(lookup_key_for<std::string, std::string_view>);
 static_assert(!lookup_key_for<std::string, std::string>,
               "the stored form is not a key spelling -- it is the element");
 static_assert(lookup_key_for<String, std::string_view>);
-static_assert(lookup_key_for<Bytes, std::span<const std::uint8_t>>);
+static_assert(lookup_key_for<Bytes, BytesView>);
+static_assert(lookup_key_for<ByteArray, BytesView>);
 
 }  // namespace tpy

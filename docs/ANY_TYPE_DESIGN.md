@@ -432,7 +432,7 @@ address, not the pointee).
 #### Owning conversion at the storage site
 
 `Any` owns its contents, but several TPy types are non-owning views (`str`
-is `std::string_view`, `bytes`/`BytesView` is `std::span<const uint8_t>`).
+is `std::string_view`, `bytes`/`BytesView` is `::tpy::BytesView`).
 Storing a view directly would silently extend nothing -- the underlying
 buffer can die while the `Any` still references it.
 
@@ -443,7 +443,7 @@ owning type, not the view type.
 | Source static type | Stored type (typeid) | Notes |
 |---|---|---|
 | `str` / `StrView` (`std::string_view`) | `std::string` | Copies the view contents into an owned string. |
-| `bytes` / `BytesView` (`std::span<const uint8_t>`) | `tpy::Bytes` | Copies into the owning bytes type. |
+| `bytes` / `BytesView` (`::tpy::BytesView`) | `tpy::Bytes` | Copies into the owning bytes type. |
 | All other copyable types | unchanged | Stored as-is. |
 
 Symmetrically, `cast(str, x)` and `isinstance(x, str)` check

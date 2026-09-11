@@ -20,8 +20,8 @@ void remove_element_read(std::vector<std::string>& xs);
 ::tpy::BigInt find(const std::vector<std::string>& xs, std::string_view k);
 ::tpy::BigInt tally(const std::vector<std::string>& xs, std::string_view k);
 void drop_bytes_literal(std::vector<::tpy::Bytes>& bs);
-void drop_bytes_param(std::vector<::tpy::Bytes>& bs, std::span<const uint8_t> k);
-void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, std::span<const uint8_t> bk);
+void drop_bytes_param(std::vector<::tpy::Bytes>& bs, ::tpy::BytesView k);
+void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, ::tpy::BytesView bk);
 ::tpy::BigInt key_len(std::string_view k);
 void main();
 

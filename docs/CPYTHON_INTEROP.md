@@ -355,7 +355,7 @@ for numeric data and shares that gap.
 **v1 default: copy-in (implemented).** For `str`/`bytes` args, v1 *copies on
 entry* (always sound): the marshaller produces the owned form (`std::string` /
 `::tpy::Bytes`) and the generated wrapper passes it to the function's
-borrow-form param (`std::string_view` / `std::span<const uint8_t>`) by implicit
+borrow-form param (`std::string_view` / `::tpy::BytesView`) by implicit
 conversion, the owned local outliving the call -- so the boundary marshals a
 type's *owned* form (`to_cpp()`) with no special-casing in the glue emitter.
 The borrow forms `StrView`/`BytesView` are rejected for now (they need the
@@ -383,7 +383,7 @@ fixed-width int or `float`) bind to any object exposing the buffer protocol
 - The owned `std::vector<T>` implicitly converts to the function's
   `std::span<T>`/`std::span<const T>` param at the call site -- the same
   "owned local outlives the call" trick `str`/`bytes` use for
-  `string_view`/`span<const uint8_t>` (no borrow/storage-form special-casing
+  `string_view`/`::tpy::BytesView` (no borrow/storage-form special-casing
   in the glue emitter).
 - **v1.0 = copy-in (spike outcome), for BOTH `Span[T]` and
   `Span[readonly[T]]`.** The intended zero-copy path needed a *non-escaping*

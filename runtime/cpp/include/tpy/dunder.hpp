@@ -595,14 +595,13 @@ inline uint64_t __hash__(const char* x) {
     return static_cast<uint64_t>(std::hash<std::string_view>{}(std::string_view(x)));
 }
 
-// Bytes (std::vector<uint8_t>) and BytesView (std::span<const uint8_t>)
-inline uint64_t __hash__(const std::vector<uint8_t>& x) {
-    return static_cast<uint64_t>(std::hash<std::string_view>{}(
-        std::string_view(reinterpret_cast<const char*>(x.data()), x.size())));
+// The bytes family hashes as one (buffer_types.hpp), so `hash(b)` on a view
+// agrees with the table that stores the owner.
+inline uint64_t __hash__(const Bytes& x) {
+    return static_cast<uint64_t>(std::hash<Bytes>{}(x));
 }
-inline uint64_t __hash__(std::span<const uint8_t> x) {
-    return static_cast<uint64_t>(std::hash<std::string_view>{}(
-        std::string_view(reinterpret_cast<const char*>(x.data()), x.size())));
+inline uint64_t __hash__(BytesView x) {
+    return static_cast<uint64_t>(std::hash<BytesView>{}(x));
 }
 
 // Enum types

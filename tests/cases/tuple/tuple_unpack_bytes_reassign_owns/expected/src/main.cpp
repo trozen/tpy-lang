@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // # bytes sibling: a bytes tuple-unpack target reassigned in a loop owns its
 // # element (a span into the per-iteration tuple temp would dangle).
 // def split_b(b: bytes) -> tuple[bytes, bytes]:
-std::tuple<::tpy::Bytes, ::tpy::Bytes> split_b(std::span<const uint8_t> b) {
+std::tuple<::tpy::Bytes, ::tpy::Bytes> split_b(::tpy::BytesView b) {
     // n = len(b) // 2
     int32_t n = (::tpy::div_floor<int32_t>(::tpy::__len__(b), 2));
     // return (b[:n], b[n:])
@@ -25,7 +25,7 @@ void main() {
         // head, tail = split_b(head)
         auto __tup_1 = split_b(head);
         head = std::get<0>(__tup_1);
-        std::span<const uint8_t> tail = std::get<1>(__tup_1);
+        ::tpy::BytesView tail = std::get<1>(__tup_1);
         // acc = acc + len(tail)
         acc = (::tpy::add_check<int32_t>(acc, ::tpy::__len__(tail)));
     }

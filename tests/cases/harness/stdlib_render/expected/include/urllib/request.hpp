@@ -35,8 +35,8 @@ inline constexpr std::string_view __name__ = "urllib.request";
 inline constexpr int32_t HTTP_PORT = 80;
 inline constexpr int32_t HTTPS_PORT = 443;
 
-::tpystd::http::client::HTTPResponse urlopen(std::string_view url, std::optional<std::span<const uint8_t>> data = std::nullopt, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
-::tpystd::http::client::HTTPResponse _urlopen(std::string_view url, std::optional<std::span<const uint8_t>> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context, std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> injected);
+::tpystd::http::client::HTTPResponse urlopen(std::string_view url, std::optional<::tpy::BytesView> data = std::nullopt, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
+::tpystd::http::client::HTTPResponse _urlopen(std::string_view url, std::optional<::tpy::BytesView> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context, std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> injected);
 
 // # Subclasses OSError like CPython's URLError, so `except OSError` catches it.
 // class URLError(OSError):

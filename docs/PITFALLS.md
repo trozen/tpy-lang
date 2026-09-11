@@ -144,8 +144,7 @@ is TPy's default, so the declaration is the only place the contract can be state
 `T: ValueType` bound silence it; a non-copyable instantiation (`@nocopy`, or a record with
 `__del__`) promotes the same line to the twin's error. Do not "fix" this drift back toward
 the twin -- see `docs/LANGUAGE_FEATURES.md`, "the copy contract of a generic body".
-(open: `BUGS.md#open-tparam-ordering-needs-one-form`,
-`BUGS.md#generic-own-slot-borrow-call-unwarned`,
+(open: `BUGS.md#generic-own-slot-borrow-call-unwarned`,
 `BUGS.md#generic-optional-return-committed-to-pointer`,
 `BUGS.md#simple-generator-captures-open-t-param-by-reference`)
 
@@ -160,7 +159,7 @@ the twin is a probe.
 ### `view-not-copy`
 
 **Rule.** `str` and `bytes` are value types; the view-vs-owned distinction is an optimization,
-not a semantics. A borrowed use takes a view (`std::string_view`, `std::span<const uint8_t>`);
+not a semantics. A borrowed use takes a view (`std::string_view`, `::tpy::BytesView`);
 materializing `std::string` or a byte copy where a view would do is a defect. `Own[str]` and
 `Own[bytes]` transfer nothing, and at a parameter they select the owned form (`std::string` by
 value) over the view, so they are idiomatic only where the callee must own the buffer (a field

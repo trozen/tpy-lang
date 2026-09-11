@@ -13,7 +13,7 @@ using ::tpystd::io::FileIO;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int64_t feed(std::span<const uint8_t> data);
+int64_t feed(::tpy::BytesView data);
 void main();
 
 void __tpy_init();

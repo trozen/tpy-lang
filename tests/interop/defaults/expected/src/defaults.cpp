@@ -59,7 +59,7 @@ double scale(double x, double factor) {
     return ((x) * (factor));
 }
 
-int32_t tag(std::span<const uint8_t> data) {
+int32_t tag(::tpy::BytesView data) {
     return ::tpy::__len__(data);
 }
 

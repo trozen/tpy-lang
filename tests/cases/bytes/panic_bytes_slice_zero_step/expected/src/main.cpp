@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data: bytes = b"hello"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("hello", 5);
+    ::tpy::BytesView data = ::tpy::bytes_literal("hello", 5);
     // print(data[::0])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_stepped_slice(data, ::tpy::Slice{std::nullopt, std::nullopt, 0})) << "\n";
 }

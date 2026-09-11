@@ -19,7 +19,7 @@ struct Blob {
     ::tpy::Bytes data;
 
     // def __init__(self, v: BytesView) -> None:
-    explicit Blob(std::span<const uint8_t> v);
+    explicit Blob(::tpy::BytesView v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Blob";
 };
 
@@ -30,6 +30,6 @@ inline std::ostream& operator<<(std::ostream& os, const Blob& obj) {
 
 
 // def __init__(self, v: BytesView) -> None:
-inline Blob::Blob(std::span<const uint8_t> v) : data(::tpy::Bytes(v)) {}
+inline Blob::Blob(::tpy::BytesView v) : data(::tpy::Bytes(v)) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -131,7 +131,7 @@ class THIRBytesLiteral(THIRExpr):
     `::tpy::Bytes{}` -- the default, matching every target-less
     position: print args, compare operands, owned decl inits/returns), BORROW
     the static-storage span (`::tpy::bytes_literal(...)` / empty
-    `std::span<const uint8_t>{}`, the view-targeted positions: view-local
+    `::tpy::BytesView{}`, the view-targeted positions: view-local
     inits/reassigns, bytes/BytesView call args). Never VALUE. The owned-sink
     view->owned wraps still never fire on a literal: they key on an owned
     (`bytes`) target, and a bytes-targeted literal lowers STORAGE."""
@@ -431,7 +431,7 @@ class THIROptViewArg(THIRExpr):
     another value-repr `Optional[view]` slot of the same family (a call arg or a
     return) -- the same-TPy-type ARG split.
     The borrow-form `std::optional<std::string_view>` /
-    `std::optional<std::span<const uint8_t>>` binding is converted to the
+    `std::optional<::tpy::BytesView>` binding is converted to the
     owned-storage `std::optional<std::string>` / `std::optional<std::vector<
     uint8_t>>` the slot's boundary needs: `x ? std::make_optional(<conv>(*x)) :
     std::nullopt`, where `<conv>` is `std::string` / `::tpy::Bytes` per the
@@ -1452,7 +1452,7 @@ class THIRStrSlice(THIRExpr):
 
       * non-stepped `s[a:b]` -- `::tpy::str_slice({self}, {0})` over a
         `::tpy::BasicSlice{lo, hi}` initializer; a `std::string_view` /
-        `std::span<const uint8_t>` VIEW result (`form` BORROW).
+        `::tpy::BytesView` VIEW result (`form` BORROW).
       * stepped `s[a:b:c]` (`stepped`) -- `::tpy::str_stepped_slice` over a
         `::tpy::Slice{lo, hi, step}` initializer; the family's OWNED type
         (`std::string` / `std::vector<uint8_t>`, `form` STORAGE), landing

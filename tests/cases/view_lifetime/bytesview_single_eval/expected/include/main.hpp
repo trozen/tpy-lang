@@ -30,7 +30,7 @@ struct Holder {
     Holder();
 
     // def set_bytes(self, x: bytes) -> None:
-    void set_bytes(std::span<const uint8_t> x);
+    void set_bytes(::tpy::BytesView x);
 
     // def set_str(self, x: str) -> None:
     void set_str(std::string_view x);
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 inline Holder::Holder() : b(::tpy::Bytes{}), s("") {}
 
 // def set_bytes(self, x: bytes) -> None:
-inline void Holder::set_bytes(std::span<const uint8_t> x) {
+inline void Holder::set_bytes(::tpy::BytesView x) {
     // self.b = x[1:3]
     this->b = ::tpy::Bytes(::tpy::bytes_slice(x, ::tpy::BasicSlice{1, 3}));
 }

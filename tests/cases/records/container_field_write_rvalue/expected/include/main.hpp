@@ -29,7 +29,7 @@ struct Buf {
     explicit Buf(int32_t k);
 
     // def load(self, src: bytes) -> None:
-    void load(std::span<const uint8_t> src);
+    void load(::tpy::BytesView src);
 
     // def own_call(self) -> None:
     void own_call();
@@ -64,7 +64,7 @@ inline Buf::Buf(int32_t k) : n(k) {
 }
 
 // def load(self, src: bytes) -> None:
-inline void Buf::load(std::span<const uint8_t> src) {
+inline void Buf::load(::tpy::BytesView src) {
     // # The converting construction: `this->ba = ::tpy::ByteArray(src);`
     // self.ba = bytearray(src)
     this->ba = ::tpy::ByteArray(src);

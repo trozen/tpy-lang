@@ -13,7 +13,7 @@ struct __gen_gen_frame;
 
 void view_from_param(std::string_view sv);
 void view_from_borrowing_call(std::string_view s);
-void bytes_view_from_param(std::span<const uint8_t> bv);
+void bytes_view_from_param(::tpy::BytesView bv);
 void view_reassigned_from_view(std::string_view sv, std::string_view sv2);
 std::string mutated_stays_owned(std::string_view sv);
 std::string owned_return_still_copies(std::string_view sv);

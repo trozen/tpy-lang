@@ -97,7 +97,7 @@ self-check additionally requires `Python.h`.
   `str` raises `UnicodeEncodeError`, while the unbounded source accepts them.
 - **`bytes_vals/`** (`bytes_vals.py`) -- the `bytes` boundary (copy-in): `echo`,
   `cat` (concat), `shout` (`.upper()`) marshal PyBytes <-> `std::vector<uint8_t>`
-  (owned form in the wrapper, `std::span<const uint8_t>` borrow in the function).
+  (owned form in the wrapper, `::tpy::BytesView` borrow in the function).
   `driver.py` round-trips empty / raw-with-NUL-and-high-byte / concatenated
   values; `ext_checks.py` covers the ext-only `TypeError`s -- a `str`, a
   `bytearray` (mutable buffer, rejected by value), and a non-bytes arg.

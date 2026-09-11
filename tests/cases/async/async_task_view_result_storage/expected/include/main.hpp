@@ -32,7 +32,7 @@ struct __coro_sub {
     __coro_sub()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<std::span<const uint8_t>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::BytesView> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_sub&) {
@@ -44,9 +44,9 @@ struct __coro_sub {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::span<const uint8_t>>> t;
-    std::span<const uint8_t> __await_lift_0;
-    ::tpystd::asyncio::_executor::Task<std::span<const uint8_t>>* __sub_0 = nullptr;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BytesView>> t;
+    ::tpy::BytesView __await_lift_0;
+    ::tpystd::asyncio::_executor::Task<::tpy::BytesView>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

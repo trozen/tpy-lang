@@ -81,7 +81,7 @@ std::string _host_of(std::string_view url);
 bool _should_strip_auth(std::string_view old_url, std::string_view new_url);
 void _drop_body_headers(::tpy::ordered_map<std::string, std::string>& headers);
 std::string _rebuild_method(std::string_view method, int32_t status);
-::tpystd::http::client::HTTPResponse _send_recv(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view target, std::optional<std::span<const uint8_t>> body, ::tpy::ordered_map<std::string, std::string>& hdrs, std::string_view url);
+::tpystd::http::client::HTTPResponse _send_recv(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view target, std::optional<::tpy::BytesView> body, ::tpy::ordered_map<std::string, std::string>& hdrs, std::string_view url);
 Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>& conn, std::string_view method, std::string_view url, const ::tpy::ordered_map<std::string, std::string>* params, ::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, const ::tpy::ordered_map<std::string, FileField>* files, const ::tpystd::json::JsonValue* json, const ::tpy::ordered_map<std::string, std::string>* headers, std::optional<std::tuple<std::string, std::string>> auth, CookieJar& send_cookies, bool stream = false, bool follow = false);
 ::tpystd::ssl::SSLContext _ssl_context_for(const ::tpy::Union<bool, std::string>& verify);
 ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection> _connect(std::string_view url, std::optional<double> timeout = std::nullopt, const ::tpy::Union<bool, std::string>& verify = true);
@@ -368,7 +368,7 @@ struct Response {
     // headers: Own[CaseInsensitiveDict], content: bytes,
     // cookies: Own[CookieJar],
     // raw: Own[HTTPResponse] | None = None) -> None:
-    explicit Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, std::span<const uint8_t> content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw = std::nullopt);
+    explicit Response(int32_t status_code, std::string_view reason, std::string_view url, CaseInsensitiveDict&& headers, ::tpy::BytesView content, CookieJar&& cookies, std::optional<::tpystd::http::client::HTTPResponse> raw = std::nullopt);
     // non-copyable (field 'history')
     Response(const Response&) = delete;
     Response& operator=(const Response&) = delete;

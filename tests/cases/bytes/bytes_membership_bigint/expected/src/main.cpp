@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // def main():
 void main() {
     // b = b"ABC"
-    std::span<const uint8_t> b = ::tpy::bytes_literal("ABC", 3);
+    ::tpy::BytesView b = ::tpy::bytes_literal("ABC", 3);
     // k: int = 66
     ::tpy::BigInt k = ::tpy::BigInt(66);
     // print(k in b)

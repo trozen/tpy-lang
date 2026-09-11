@@ -19,8 +19,8 @@ using ::tpystd::http::client::HTTPConnection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void _cookie_line(std::span<const uint8_t> sent);
-void redirect_cookie(std::span<const uint8_t> set_cookies, std::span<const uint8_t> location);
+void _cookie_line(::tpy::BytesView sent);
+void redirect_cookie(::tpy::BytesView set_cookies, ::tpy::BytesView location);
 void cookies_arg_crosses_host();
 void path_scoping();
 void main();

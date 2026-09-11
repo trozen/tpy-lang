@@ -16,7 +16,7 @@ struct __coro_first_bytes;
 struct __coro_str_len;
 struct __coro_main_coro;
 
-__coro_first_bytes first_bytes(std::optional<std::span<const uint8_t>> b);
+__coro_first_bytes first_bytes(std::optional<::tpy::BytesView> b);
 __coro_str_len str_len(std::optional<std::string_view> s);
 __coro_main_coro main_coro();
 void main();
@@ -34,7 +34,7 @@ struct __coro_first_bytes {
         S_DONE = 2,
     };
 
-    __coro_first_bytes(std::optional<std::span<const uint8_t>> b_)
+    __coro_first_bytes(std::optional<::tpy::BytesView> b_)
         : __state(S_INITIAL), __cancel_pending(false), b(b_ ? std::make_optional(::tpy::Bytes(*b_)) : std::nullopt) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);

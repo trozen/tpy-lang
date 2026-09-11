@@ -287,7 +287,7 @@ def default_to_cpp_from_analyzer(analyzer, expr: TpyExpr,
     if isinstance(expr, TpyBytesLiteral):
         if not expr.value:
             return "{}"
-        # bytes/BytesView params both lower to span<const uint8_t>; pinning
+        # bytes/BytesView params both lower to ::tpy::BytesView; pinning
         # the literal to static storage avoids a per-call vector allocation.
         if is_bytes_view_type(ptype) or is_bytes_type(ptype):
             return cpp_bytes_literal_span(expr.value)

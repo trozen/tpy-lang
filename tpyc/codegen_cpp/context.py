@@ -218,7 +218,7 @@ def escape_cpp_string(value: str) -> str:
 
 def cpp_bytes_literal_span(value: bytes) -> str:
     """Render a bytes literal as a `::tpy::bytes_literal(...)` call --
-    a `std::span<const uint8_t>` over a C++ string literal (static
+    a `::tpy::BytesView` over a C++ string literal (static
     storage), avoiding the heap allocation of a temporary vector."""
     return f'::tpy::bytes_literal("{_escape_cpp_byte_seq(value)}", {len(value)})'
 

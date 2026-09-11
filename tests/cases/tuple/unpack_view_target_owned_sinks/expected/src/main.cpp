@@ -24,8 +24,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 ::tpy::Bytes first_bytes(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
     // x, y = src
     const auto& __tup_1 = src;
-    std::span<const uint8_t> x = std::get<0>(__tup_1);
-    std::span<const uint8_t> y = std::get<1>(__tup_1);
+    ::tpy::BytesView x = std::get<0>(__tup_1);
+    ::tpy::BytesView y = std::get<1>(__tup_1);
     // return x
     return ::tpy::Bytes(x);
 }
@@ -40,8 +40,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 ::tpy::BigInt bytes_elements(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
     // x, y = src
     const auto& __tup_1 = src;
-    std::span<const uint8_t> x = std::get<0>(__tup_1);
-    std::span<const uint8_t> y = std::get<1>(__tup_1);
+    ::tpy::BytesView x = std::get<0>(__tup_1);
+    ::tpy::BytesView y = std::get<1>(__tup_1);
     // xs: list[bytes] = [x, y]
     std::vector<::tpy::Bytes> xs = {::tpy::Bytes(x), ::tpy::Bytes(y)};
     // xs.append(x)
@@ -54,8 +54,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 ::tpy::Bytes bytes_accumulate(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& t) {
     // a, b = t
     const auto& __tup_1 = t;
-    std::span<const uint8_t> a = std::get<0>(__tup_1);
-    std::span<const uint8_t> b = std::get<1>(__tup_1);
+    ::tpy::BytesView a = std::get<0>(__tup_1);
+    ::tpy::BytesView b = std::get<1>(__tup_1);
     // out = a
     ::tpy::Bytes out = ::tpy::Bytes(a);
     // out = out + b

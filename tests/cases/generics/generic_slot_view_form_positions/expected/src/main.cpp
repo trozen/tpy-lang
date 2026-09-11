@@ -47,16 +47,16 @@ bool peek_str(const std::vector<std::string>& xs, std::string_view v) {
 }
 
 // def peek_bytes(xs: list[bytes], v: readonly[bytes]) -> bool:
-bool peek_bytes(const std::vector<::tpy::Bytes>& xs, std::span<const uint8_t> v) {
+bool peek_bytes(const std::vector<::tpy::Bytes>& xs, ::tpy::BytesView v) {
     // # The monomorphic twin of peek[bytes]: `readonly[bytes]` is still the span.
     // for x in xs:
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::span<const uint8_t> x = *__beg_0;
+        ::tpy::BytesView x = *__beg_0;
         // if x == v:
-        if ((::tpy::bytes_eq(x, v))) {
+        if ((x == v)) {
             // return True
             return true;
         }
@@ -275,7 +275,7 @@ std::expected<bool, MyErr> er_body_str(std::string_view k) {
 }
 
 // def bytes_positions(k: bytes) -> None:
-void bytes_positions(std::span<const uint8_t> k) {
+void bytes_positions(::tpy::BytesView k) {
     // # the bytes family at the same slot, whose resolved slot is a MUTABLE ref
     // keys = [b"a", b"b"]
     std::vector<::tpy::Bytes> keys = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
@@ -284,7 +284,7 @@ void bytes_positions(std::span<const uint8_t> k) {
 }
 
 // def readonly_slot(k: str, b: bytes) -> None:
-void readonly_slot(std::string_view k, std::span<const uint8_t> b) {
+void readonly_slot(std::string_view k, ::tpy::BytesView b) {
     // # readonly[T] free function, str and bytes, each beside its twin: the const
     // # slot is `readonly_form_t<T>`, which at a view family IS the view
     // keys = [b"a", b"b"]

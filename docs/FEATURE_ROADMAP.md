@@ -2927,8 +2927,8 @@ data: bytes = b"hello"
 first_byte: Int32 = data[0]
 ```
 
-Maps to `std::vector<uint8_t>`. `bytearray` is a mutable alias. `BytesView` maps to
-`std::span<const uint8_t>` for zero-copy views.
+Maps to `::tpy::Bytes`; `bytearray` is `::tpy::ByteArray`, a distinct mutable type. `BytesView` maps to
+`::tpy::BytesView` (over `std::span<const uint8_t>`) for zero-copy views.
 
 **Why it matters**: Needed for binary I/O, network protocols, and file handling.
 

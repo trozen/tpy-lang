@@ -57,7 +57,7 @@ void main() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            std::span<const uint8_t> chunk = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
         // got += chunk
         got = ::tpy::bytearray_concat(got, chunk);
         }

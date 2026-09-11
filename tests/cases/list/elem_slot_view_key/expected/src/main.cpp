@@ -87,13 +87,13 @@ void drop_bytes_literal(std::vector<::tpy::Bytes>& bs) {
 }
 
 // def drop_bytes_param(bs: list[bytes], k: bytes) -> None:
-void drop_bytes_param(std::vector<::tpy::Bytes>& bs, std::span<const uint8_t> k) {
+void drop_bytes_param(std::vector<::tpy::Bytes>& bs, ::tpy::BytesView k) {
     // bs.remove(k)  # tpyc: ok
     ::tpy::list_remove(bs, k);
 }
 
 // def empty_keys(xs: list[str], bs: list[bytes], k: str, bk: bytes) -> None:
-void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, std::span<const uint8_t> bk) {
+void empty_keys(std::vector<std::string>& xs, std::vector<::tpy::Bytes>& bs, std::string_view k, ::tpy::BytesView bk) {
     // # An EMPTY key: the comparison is a size check before any data read,
     // # which matters for bytes -- an empty span may carry a null pointer.
     // print(xs.count(k), xs.index(k), bs.count(bk), bs.index(bk))
@@ -167,7 +167,7 @@ void main() {
     // empty_keys(["", "a"], [b"", b"a"], "", b"")
     std::vector<std::string> __tmp_1 = {"", "a"};
     std::vector<::tpy::Bytes> __tmp_2 = {::tpy::Bytes{}, ::tpy::bytes_literal_owned("a", 1)};
-    empty_keys(__tmp_1, __tmp_2, "", std::span<const uint8_t>{});
+    empty_keys(__tmp_1, __tmp_2, "", ::tpy::BytesView{});
     // print(key_len("abcd"))
     std::cout << key_len("abcd") << "\n";
 }

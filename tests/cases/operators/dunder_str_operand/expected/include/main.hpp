@@ -76,12 +76,12 @@ struct Blob {
     ::tpy::Bytes data;
 
     // def __init__(self, data: bytes) -> None:
-    explicit Blob(std::span<const uint8_t> data);
+    explicit Blob(::tpy::BytesView data);
 
     // def __eq__(self, other: bytes) -> bool:
-    bool __eq__(std::span<const uint8_t> other) const;
+    bool __eq__(::tpy::BytesView other) const;
 
-    friend bool operator==(const Blob& lhs, std::span<const uint8_t> other) {
+    friend bool operator==(const Blob& lhs, ::tpy::BytesView other) {
         return lhs.__eq__(other);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Blob";
@@ -164,12 +164,12 @@ inline bool Count::__eq__(int32_t other) const {
 }
 
 // def __init__(self, data: bytes) -> None:
-inline Blob::Blob(std::span<const uint8_t> data) : data(::tpy::Bytes(data)) {}
+inline Blob::Blob(::tpy::BytesView data) : data(::tpy::Bytes(data)) {}
 
 // def __eq__(self, other: bytes) -> bool:
-inline bool Blob::__eq__(std::span<const uint8_t> other) const {
+inline bool Blob::__eq__(::tpy::BytesView other) const {
     // return self.data == other
-    return (::tpy::bytes_eq(this->data, other));
+    return (this->data == other);
 }
 
 // def __init__(self, r: Float64) -> None:

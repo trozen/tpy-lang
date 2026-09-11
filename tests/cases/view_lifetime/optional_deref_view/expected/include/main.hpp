@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void str_single(std::optional<std::string_view> a);
 void str_compound(std::optional<std::string_view> a, std::string_view b);
-void bytes_compound(std::optional<std::span<const uint8_t>> a, std::span<const uint8_t> b);
+void bytes_compound(std::optional<::tpy::BytesView> a, ::tpy::BytesView b);
 void main();
 
 void __tpy_init();

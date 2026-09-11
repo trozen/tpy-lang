@@ -146,7 +146,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
 
 
 // def bytes_branch(b: bytes) -> Iterator[Int32]:
-__gen_bytes_branch bytes_branch(std::span<const uint8_t> b) {
+__gen_bytes_branch bytes_branch(::tpy::BytesView b) {
     return __gen_bytes_branch(b);
 }
 
@@ -443,7 +443,7 @@ void main() {
     // print("str", list(str_branch("x")), list(str_branch("")))
     std::cout << "str" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(str_branch("x"))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(str_branch(""))) << "\n";
     // print("bytes", list(bytes_branch(b"x")), list(bytes_branch(b"")))
-    std::cout << "bytes" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(::tpy::bytes_literal("x", 1)))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(std::span<const uint8_t>{}))) << "\n";
+    std::cout << "bytes" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(::tpy::bytes_literal("x", 1)))) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(bytes_branch(::tpy::BytesView{}))) << "\n";
     // print("len", list(record_len_branch(Bag(3))),
     // list(record_len_branch(Bag(0))))
     Bag __tmp_6 = Bag(3);

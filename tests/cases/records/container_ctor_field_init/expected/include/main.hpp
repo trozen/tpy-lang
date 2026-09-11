@@ -39,7 +39,7 @@ struct Seeded {
     ::tpy::ByteArray buf;
 
     // def __init__(self, seed: bytes) -> None:
-    explicit Seeded(std::span<const uint8_t> seed);
+    explicit Seeded(::tpy::BytesView seed);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Seeded";
 };
 
@@ -83,7 +83,7 @@ inline std::ostream& operator<<(std::ostream& os, const Copied& obj) {
 inline Empty::Empty() : buf(::tpy::ByteArray()), tags(std::vector<int32_t>()) {}
 
 // def __init__(self, seed: bytes) -> None:
-inline Seeded::Seeded(std::span<const uint8_t> seed) : buf(::tpy::ByteArray(seed)) {}
+inline Seeded::Seeded(::tpy::BytesView seed) : buf(::tpy::ByteArray(seed)) {}
 
 // def __init__(self, n: Int32) -> None:
 inline Sized::Sized(int32_t n) : buf(::tpy::bytearray_from_size(n)) {}

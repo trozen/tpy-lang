@@ -16,10 +16,10 @@ void drop_param(::tpy::ordered_map<std::string, std::vector<int32_t>>& d, std::s
 void push_literal(::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
 int32_t pop_literal(::tpy::ordered_map<std::string, std::vector<int32_t>>& d);
 int32_t empty_key(const ::tpy::ordered_map<std::string, int32_t>& d, std::string_view k);
-int32_t read_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k);
-bool get_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k);
-void drop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k);
-int32_t pop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, std::span<const uint8_t> k);
+int32_t read_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
+bool get_bytes_param(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
+void drop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
+int32_t pop_bytes_param(::tpy::ordered_map<::tpy::Bytes, int32_t>& d, ::tpy::BytesView k);
 void main();
 
 void __tpy_init();

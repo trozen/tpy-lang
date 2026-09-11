@@ -2,14 +2,14 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, dispatch
-from .._core._types import UInt8, UInt64, Int32, Equatable, NativeIterable
+from .._core._types import UInt8, UInt64, Int32, Comparable, Equatable, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 from tpy import BytesView
 
 
 @builtin_type("builtins.bytes")
 @native("::tpy::Bytes")
-class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
+class bytes(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::Bytes()")
     def __init__(self) -> None: ...
@@ -100,10 +100,15 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def __rmul__(self, n: Int32) -> bytes: ...
 
-    @native("tpy::bytes_eq", function=True)
+    @cpp_template("{self} == {0}")
     @readonly
     @pure
     def __eq__(self, other: bytes) -> bool: ...
+
+    @cpp_template("{self} < {0}")
+    @readonly
+    @pure
+    def __lt__(self, other: bytes) -> bool: ...
 
     @cpp_template("::tpy::__hash__({self})")
     @readonly
@@ -192,7 +197,7 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
 
 @builtin_type("builtins.bytearray")
 @native("::tpy::ByteArray")
-class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
+class bytearray(NativeIterable[UInt8], Iterable[UInt8], Comparable, Equatable):
     @dispatch
     @cpp_template("::tpy::ByteArray()")
     def __init__(self) -> None: ...
@@ -246,6 +251,16 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     def __getitem__(self, index: slice) -> bytes: ...
 
     @dispatch
+    @cpp_template("{self} == {0}")
+    @readonly
+    @pure
+    def __eq__(self, other: bytearray) -> bool: ...
+
+    @cpp_template("{self} < {0}")
+    @readonly
+    @pure
+    def __lt__(self, other: bytearray) -> bool: ...
+
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
@@ -276,11 +291,6 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @readonly
     @pure
     def __mul__(self, n: Int32) -> Own[bytearray]: ...
-
-    @native("tpy::bytes_eq", function=True)
-    @readonly
-    @pure
-    def __eq__(self, other: bytearray) -> bool: ...
 
     @native("push_back")
     def append(self, value: UInt8) -> None: ...

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_set_with_literals() -> None:
 void test_set_with_literals() {
     // s: set[BytesView] = set()
-    ::tpy::ordered_set<std::span<const uint8_t>> s = ::tpy::ordered_set<std::span<const uint8_t>>();
+    ::tpy::ordered_set<::tpy::BytesView> s = ::tpy::ordered_set<::tpy::BytesView>();
     // s.add(b"hello")
     s.insert(::tpy::bytes_literal("hello", 5));
     // s.add(b"world")
@@ -25,7 +25,7 @@ void test_set_with_literals() {
 // def test_dict_with_literals() -> None:
 void test_dict_with_literals() {
     // d: dict[BytesView, int] = {}
-    ::tpy::ordered_map<std::span<const uint8_t>, ::tpy::BigInt> d = ::tpy::ordered_map<std::span<const uint8_t>, ::tpy::BigInt>();
+    ::tpy::ordered_map<::tpy::BytesView, ::tpy::BigInt> d = ::tpy::ordered_map<::tpy::BytesView, ::tpy::BigInt>();
     // d[b"alice"] = 1
     ::tpy::__setitem__(d, ::tpy::bytes_literal("alice", 5), ::tpy::BigInt(1));
     // d[b"bob"] = 2

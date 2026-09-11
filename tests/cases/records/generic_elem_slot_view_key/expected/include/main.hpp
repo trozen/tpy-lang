@@ -22,7 +22,7 @@ void drop_from_record(Labels<int32_t, 4>& box, int32_t k);
 void drop_str_param(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view k);
 void drop_str_local(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al);
 void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, std::string_view src);
-void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, std::span<const uint8_t> k);
+void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, ::tpy::BytesView k);
 bool has_str(Labels<std::string, 4>& box, std::string_view k);
 template<::tpystd::tpy::Equatable T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);

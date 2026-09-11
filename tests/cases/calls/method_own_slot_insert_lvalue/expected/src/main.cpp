@@ -47,7 +47,7 @@ void main() {
     // blobs: list[bytes] = []
     std::vector<::tpy::Bytes> blobs = std::vector<::tpy::Bytes>{};
     // data = b"pq"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("pq", 2);
+    ::tpy::BytesView data = ::tpy::bytes_literal("pq", 2);
     // # A bytes NAME at `list[bytes].append`'s Own[bytes] slot -- the
     // # `bytes_owned_name` cell; `data` still reads its own value afterwards.
     // blobs.append(data)  # tpyc: ok

@@ -7,7 +7,7 @@ namespace tpystd::urllib::request {
 // def urlopen(url: str, data: bytes | None = None,
 // timeout: float | None = None,
 // context: ssl.SSLContext | None = None) -> Own[HTTPResponse]:
-::tpystd::http::client::HTTPResponse urlopen(std::string_view url, std::optional<std::span<const uint8_t>> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context) {
+::tpystd::http::client::HTTPResponse urlopen(std::string_view url, std::optional<::tpy::BytesView> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context) {
     // # `context` mirrors CPython's urlopen(context=...) for https (default
     // # verification when None, against the vendored Mozilla roots + the system
     // # CA bundle); pass a context with load_verify_locations for custom CAs.
@@ -18,7 +18,7 @@ namespace tpystd::urllib::request {
 // def _urlopen(url: str, data: bytes | None, timeout: float | None,
 // context: ssl.SSLContext | None,
 // injected: Own[Box[_Connection]] | None) -> Own[HTTPResponse]:
-::tpystd::http::client::HTTPResponse _urlopen(std::string_view url, std::optional<std::span<const uint8_t>> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context, std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> injected) {
+::tpystd::http::client::HTTPResponse _urlopen(std::string_view url, std::optional<::tpy::BytesView> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context, std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> injected) {
     std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> __slot_1;
     // # `injected` is an offline test seam: a pre-connected `Box[_Connection]` used
     // # instead of dialing from the URL (the suite can't do real connects). It

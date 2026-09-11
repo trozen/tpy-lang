@@ -17,7 +17,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal("\000", 1))) << "\n";
     // # BytesView (from slice) -- rstrip returns a view
     // data: bytes = b"hello\x00\x00\x00end"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("hello\000\000\000end", 11);
+    ::tpy::BytesView data = ::tpy::bytes_literal("hello\000\000\000end", 11);
     // print(len(data[0:8].rstrip(b"\x00")))          # 5
     std::cout << ::tpy::__len__(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 8}), ::tpy::bytes_literal("\000", 1))) << "\n";
 }

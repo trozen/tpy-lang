@@ -218,7 +218,7 @@ struct _SockSendAll {
     bool _cancel_pending;
 
     // def __init__(self, sock: Ptr[socket], data: bytes) -> None:
-    explicit _SockSendAll(::tpystd::socket::socket* sock, std::span<const uint8_t> data);
+    explicit _SockSendAll(::tpystd::socket::socket* sock, ::tpy::BytesView data);
     // non-copyable (@nocopy)
     _SockSendAll(const _SockSendAll&) = delete;
     _SockSendAll& operator=(const _SockSendAll&) = delete;
@@ -1460,7 +1460,7 @@ struct EventLoop {
     _SockRecv sock_recv(::tpystd::socket::socket& sock, int32_t n) const;
 
     // def sock_sendall(self, sock: socket, data: bytes) -> Own[_SockSendAll]:
-    _SockSendAll sock_sendall(::tpystd::socket::socket& sock, std::span<const uint8_t> data) const;
+    _SockSendAll sock_sendall(::tpystd::socket::socket& sock, ::tpy::BytesView data) const;
 
     // def sock_accept(self, sock: socket
     // ) -> Own[_SockAccept]:
@@ -1485,7 +1485,7 @@ struct IncompleteReadError : ::tpy::EOFError {
     std::optional<int32_t> expected;
 
     // def __init__(self, partial: bytes, expected: Int32 | None) -> None:
-    explicit IncompleteReadError(std::span<const uint8_t> partial, std::optional<int32_t> expected);
+    explicit IncompleteReadError(::tpy::BytesView partial, std::optional<int32_t> expected);
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<IncompleteReadError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }
@@ -1530,7 +1530,7 @@ struct StreamReader {
 
     __coro_StreamReader_readline readline();
 
-    __coro_StreamReader_readuntil readuntil(std::span<const uint8_t> separator);
+    __coro_StreamReader_readuntil readuntil(::tpy::BytesView separator);
     static constexpr std::string_view __tpy_class_name__ = "asyncio.StreamReader";
 };
 
@@ -1558,7 +1558,7 @@ struct StreamWriter {
     StreamWriter& operator=(StreamWriter&&) = default;
 
     // def write(self, data: bytes) -> None:
-    void write(std::span<const uint8_t> data);
+    void write(::tpy::BytesView data);
 
     __coro_StreamWriter_drain drain();
 
@@ -2174,7 +2174,7 @@ struct __coro_StreamReader_readuntil {
         S_DONE = 3,
     };
 
-    __coro_StreamReader_readuntil(StreamReader& __self, std::span<const uint8_t> separator_)
+    __coro_StreamReader_readuntil(StreamReader& __self, ::tpy::BytesView separator_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), separator(::tpy::Bytes(separator_)) {}
 
     ::tpystd::tpy::Poll<::tpy::Bytes> __poll__(::tpystd::coro::Waker waker);
@@ -2185,7 +2185,7 @@ struct __coro_StreamReader_readuntil {
     }
 };
 
-inline __coro_StreamReader_readuntil StreamReader::readuntil(std::span<const uint8_t> separator) {
+inline __coro_StreamReader_readuntil StreamReader::readuntil(::tpy::BytesView separator) {
     return __coro_StreamReader_readuntil(*this, separator);
 }
 
@@ -2649,7 +2649,7 @@ inline void _SockRecv::cancel() {
 }
 
 // def __init__(self, sock: Ptr[socket], data: bytes) -> None:
-inline _SockSendAll::_SockSendAll(::tpystd::socket::socket* sock, std::span<const uint8_t> data) : _sock(sock), _data(::tpy::Bytes(data)), _sent(0), _cancel_pending(false) {}
+inline _SockSendAll::_SockSendAll(::tpystd::socket::socket* sock, ::tpy::BytesView data) : _sock(sock), _data(::tpy::Bytes(data)), _sent(0), _cancel_pending(false) {}
 
 // def cancel(self) -> None:
 inline void _SockSendAll::cancel() {
@@ -2894,7 +2894,7 @@ inline _SockRecv EventLoop::sock_recv(::tpystd::socket::socket& sock, int32_t n)
 }
 
 // def sock_sendall(self, sock: socket, data: bytes) -> Own[_SockSendAll]:
-inline _SockSendAll EventLoop::sock_sendall(::tpystd::socket::socket& sock, std::span<const uint8_t> data) const {
+inline _SockSendAll EventLoop::sock_sendall(::tpystd::socket::socket& sock, ::tpy::BytesView data) const {
     // return _SockSendAll(sock, data)
     return _SockSendAll(&sock, data);
 }
@@ -2914,7 +2914,7 @@ inline _SockConnect EventLoop::sock_connect(::tpystd::socket::socket& sock, cons
 }
 
 // def __init__(self, partial: bytes, expected: Int32 | None) -> None:
-inline IncompleteReadError::IncompleteReadError(std::span<const uint8_t> partial, std::optional<int32_t> expected) : ::tpy::EOFError("incomplete read"), partial(::tpy::Bytes(partial)), expected(expected) {}
+inline IncompleteReadError::IncompleteReadError(::tpy::BytesView partial, std::optional<int32_t> expected) : ::tpy::EOFError("incomplete read"), partial(::tpy::Bytes(partial)), expected(expected) {}
 
 // def __init__(self, sock: Own[Rc[socket]]) -> None:
 inline StreamReader::StreamReader(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(::tpy::Bytes()), _eof(false) {}
@@ -2941,7 +2941,7 @@ inline ::tpy::Bytes StreamReader::_take(int32_t n) {
 inline StreamWriter::StreamWriter(::tpystd::tplib::rc::Rc<::tpystd::socket::socket>&& sock) : _sock(std::move(sock)), _buf(::tpy::Bytes()), _closed(false) {}
 
 // def write(self, data: bytes) -> None:
-inline void StreamWriter::write(std::span<const uint8_t> data) {
+inline void StreamWriter::write(::tpy::BytesView data) {
     // self._buf = self._buf + data
     this->_buf = (::tpy::bytes_concat(this->_buf, data));
 }

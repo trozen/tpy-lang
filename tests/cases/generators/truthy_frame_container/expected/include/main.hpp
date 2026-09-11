@@ -66,7 +66,7 @@ struct __gen_any_branch;
 struct __gen_and_branch;
 
 __gen_str_branch str_branch(std::string_view t);
-__gen_bytes_branch bytes_branch(std::span<const uint8_t> b);
+__gen_bytes_branch bytes_branch(::tpy::BytesView b);
 __gen_record_len_branch record_len_branch(Bag& g);
 __gen_record_bool_branch record_bool_branch(Flag& f);
 __gen_enum_branch enum_branch(Color c);
@@ -174,7 +174,7 @@ struct __gen_bytes_branch : public ::tpy::next_iter_mixin<__gen_bytes_branch, in
         S_DONE = 4,
     };
 
-    __gen_bytes_branch(std::span<const uint8_t> b_)
+    __gen_bytes_branch(::tpy::BytesView b_)
         : __state(S_INITIAL), b(::tpy::Bytes(b_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();

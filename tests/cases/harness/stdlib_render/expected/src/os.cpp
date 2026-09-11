@@ -407,7 +407,7 @@ void close(int64_t fd) {
 }
 
 // def write(fd: Int64, data: bytes) -> Int64:
-int64_t write(int64_t fd, std::span<const uint8_t> data) {
+int64_t write(int64_t fd, ::tpy::BytesView data) {
     // return _write_fd(fd, data)
     return ::tpy::stdlib::os::write_fd(fd, data);
 }

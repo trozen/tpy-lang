@@ -4,7 +4,7 @@
 namespace tpyapp::bytes_vals {
 
 
-::tpy::Bytes echo(std::span<const uint8_t> data) {
+::tpy::Bytes echo(::tpy::BytesView data) {
     return ::tpy::Bytes(data);
 }
 
@@ -12,11 +12,11 @@ namespace tpyapp::bytes_vals {
     return ::tpy::bytes_literal_owned("owned", 5);
 }
 
-::tpy::Bytes cat(std::span<const uint8_t> a, std::span<const uint8_t> b) {
+::tpy::Bytes cat(::tpy::BytesView a, ::tpy::BytesView b) {
     return (::tpy::bytes_concat(a, b));
 }
 
-::tpy::Bytes shout(std::span<const uint8_t> data) {
+::tpy::Bytes shout(::tpy::BytesView data) {
     return ::tpy::bytes_upper(data);
 }
 
