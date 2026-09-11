@@ -6,6 +6,7 @@ test keeps it to a handful of real C++ builds (ccache-warm after the first).
 """
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -30,9 +31,13 @@ main()
 
 
 def run_tpyc(cwd: Path, *argv: str) -> subprocess.CompletedProcess:
+    # A per-program PCH is baked into every TU's ccache key, so the stdlib
+    # objects would miss for each program dir and each run; without it, and
+    # with the temp dir's paths relativized, they hit across both.
     return subprocess.run(
-        [sys.executable, "-m", "tpyc", *argv],
+        [sys.executable, "-m", "tpyc", "--no-pch", *argv],
         cwd=cwd, capture_output=True, text=True, timeout=600,
+        env={**os.environ, "CCACHE_BASEDIR": str(cwd)},
     )
 
 
@@ -115,7 +120,7 @@ def test_build_cache_lifecycle(tmp_path: Path, request: pytest.FixtureRequest) -
     # (no execv), so the subprocess can assert on its own sys.modules.
     guard = (
         "import sys\n"
-        "sys.argv = ['tpyc', 'prog.py', '-b']\n"
+        "sys.argv = ['tpyc', '--no-pch', 'prog.py', '-b']\n"
         "from tpyc.cli import main_tpyc\n"
         "rc = main_tpyc()\n"
         "assert rc == 0, rc\n"

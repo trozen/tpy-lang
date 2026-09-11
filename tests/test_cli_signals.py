@@ -84,10 +84,13 @@ def _run_cli(
         argv.append("--")
     argv.extend([mode, "two words --unchanged"])
     # Build progress can fill a pipe while we wait for the child's handshake.
+    # Each temp dir is a fresh build tree; relativizing its paths lets
+    # ccache serve the same TUs to every parametrization and every run.
+    env = {**os.environ, "CCACHE_BASEDIR": str(tmp_path)}
     with tempfile.TemporaryFile(mode="w+") as stderr:
         proc = subprocess.Popen(
             argv, cwd=tmp_path, stdout=subprocess.PIPE, stderr=stderr,
-            text=True, start_new_session=True,
+            text=True, start_new_session=True, env=env,
         )
         prefix = ""
         try:
@@ -129,7 +132,9 @@ def test_cli_signal_lifecycle(
 
     (tmp_path / "prog.py").write_text(PROGRAM)
     (tmp_path / "launcher.py").write_text(LAUNCHER)
-    options = ["--cxx", request.config.getoption("--cxx"), "-j", "1"]
+    # A per-directory PCH is baked into every TU's ccache key, which made
+    # each temp dir a full cold build; without it the objects are shared.
+    options = ["--cxx", request.config.getoption("--cxx"), "--no-pch"]
     if request.config.getoption("--no-ccache"):
         options.append("--no-ccache")
 
