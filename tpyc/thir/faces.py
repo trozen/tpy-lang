@@ -2959,13 +2959,18 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.branch_block_local",       # branch-nested decl of a non-frame local
     "res.leaf_try_except",          # except-only leaf try (sync tiers mid-state)
     "res.leaf_match_sync",          # non-suspending leaf match (sync tiers)
-    "res.yield_container_borrow",   # container yield of a frame_slot name (*buf)
+    "res.yield_container_borrow",   # container yield of a frame_slot /
+                                    # pointer-form / alias name (*buf)
     "res.yield_container_param",    # container yield of a PARAM name, bare
     "res.decl_no_init",             # annotation-only frame-field decl, no code
     "res.yield_container_ternary",  # ternary of frame-slot containers hands
                                     # out the branch-picked deref borrow
+    "res.yield_container_field",    # `yield self.a` at a container slot reads
+                                    # the storage member bare
     "res.yield_record_field",       # `yield self.a` at a record slot reads
                                     # the storage member bare
+    "res.yield_record_ternary",     # ternary of frame-slot records hands out
+                                    # the branch-picked deref borrow
     "res.yield_own_ctor",           # ctor call at an OWN record yield slot:
                                     # the storage render (`return Node(i);`)
     "res.btuple_yield_generic",     # generic tuple literal yield -- spelled
@@ -3259,6 +3264,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # BORROWING call's `T*` lands bare
     "res.yield_container_walrus",   # container yield slot walrus delegates
                                     # to the frame-walrus dispatch
+    # ... and its record-slot twin. No corpus witness: the walrus dispatch
+    # has no leg for a record-pointer alias yet (`expr.walrus`), so the
+    # whole-corpus zero-witness census lists it until one lands.
+    "res.yield_record_walrus",
     "yield.own_tuple_literal",      # Own-record-element tuple literal at
                                     # the sgen/resumable tuple yield slot:
                                     # the spelled storage brace-init

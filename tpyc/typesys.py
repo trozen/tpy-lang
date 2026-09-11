@@ -1920,21 +1920,39 @@ def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
     handed out by reference, zero-copy, instead of a copy (`Iterator[T]` for a
     non-value `T`).
 
+    A `readonly` element is INCLUDED, spelling `val_or_ref<const T>` -- the
+    const rides inside the borrow slot exactly as it does at the sibling
+    `error_return_uses_borrow_slot`'s `std::expected` payload
+    (`codegen_cpp/functions.py`). Excluding it made `Iterator[readonly[T]]`
+    a VALUE slot, which copies the element out of the source on every pull
+    (a whole `std::vector` for a container element) where the mutable twin
+    hands out a pointer -- a silent copy, and a divergence from CPython,
+    which aliases.
+
     Excluded (each keeps its existing slot): value-type elements (copied);
-    `Own` (owned value slot, moved out); `readonly` (a const borrow, not the
-    mutable `val_or_ref<T>`); tuples (own borrow form via `to_cpp_return`);
-    `Optional` / `Union` (pointer / storage-form machinery -- `optional_to_ptr`,
-    pointer variants); and `TypeParamRef` (already substituted with
-    `val_or_ref<ConcreteT>` by the caller -- wrapping again would double-wrap).
+    `Own` (owned value slot, moved out); tuples (own borrow form via
+    `to_cpp_return`); `Optional` / `Union` (pointer / storage-form machinery
+    -- `optional_to_ptr`, pointer variants); and `TypeParamRef` (already
+    substituted with `val_or_ref<ConcreteT>` by the caller -- wrapping again
+    would double-wrap).
     """
     if elem_type.is_value_type():
         return False
     if isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), OwnType):
         return False
-    if isinstance(unwrap_ref_type(elem_type), ReadonlyType):
-        return False
     bare = unwrap_ref_type(unwrap_readonly(elem_type))
     return not isinstance(bare, (TupleType, OptionalType, UnionType, TypeParamRef))
+
+
+def yield_borrow_slot_cpp(elem_type: 'TpyType', cpp_elem: str) -> str:
+    """The `val_or_ref<...>` spelling of a slot `yield_uses_borrow_slot`
+    admits. ONE site, so the const half of the answer cannot drift from the
+    predicate that decides the slot is a borrow at all: a `readonly` element
+    stores a `const T*` -- the spelling `ReadonlyType.to_cpp_stored` already
+    uses for the same "a slot that cannot hold a reference" question."""
+    if isinstance(unwrap_ref_type(elem_type), ReadonlyType):
+        return f"::tpy::val_or_ref<const {cpp_elem}>"
+    return f"::tpy::val_or_ref<{cpp_elem}>"
 
 
 def error_return_uses_borrow_slot(return_type: 'TpyType') -> bool:

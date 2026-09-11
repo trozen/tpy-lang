@@ -12,7 +12,7 @@ from ..parse.nodes import (
     TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
     TpyBreak, TpyContinue,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from ..compilation_context import get_current_compiler
 from ..symbol_binding import SymbolKind, lookup_imported
@@ -835,12 +835,14 @@ class GeneratorCodegen:
         unwrapped = unwrap_ref_type(unwrap_readonly(elem_type))
         if isinstance(unwrapped, TupleType):
             return elem_type.to_cpp_return()
-        # A bare reference element is handed out by reference via val_or_ref<T>.
+        # A bare reference element is handed out by reference via val_or_ref<T>
+        # (`val_or_ref<const T>` for a readonly one -- the const rides inside
+        # the slot, so the pull still borrows instead of copying).
         # yield_uses_borrow_slot excludes the forms with their own representation
-        # (Optional/Union pointer-or-storage, readonly const-borrow, Own move,
-        # TypeParamRef already val_or_ref-substituted by the caller).
+        # (Optional/Union pointer-or-storage, Own move, TypeParamRef already
+        # val_or_ref-substituted by the caller).
         if yield_uses_borrow_slot(elem_type):
-            return f"::tpy::val_or_ref<{cpp_elem}>"
+            return yield_borrow_slot_cpp(elem_type, cpp_elem)
         return cpp_elem
 
     @staticmethod
@@ -919,7 +921,20 @@ class GeneratorCodegen:
                 fields.append((f"__for_src_{uid}", src_cpp))
                 result_type = f"::tpy::iter_next_t<{src_cpp}>"
             else:
-                result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
+                # No source struct to read the slot off, so a CONCRETE
+                # reference element takes the producer's own slot spelling --
+                # the bare elem-type formula renders it `T&`, which
+                # std::expected cannot hold. The peel is off `Ref[T]`, which is
+                # how a for-head element type arrives. Every other element
+                # keeps the formula: a generic `T` already spells the
+                # instantiation-resolved `val_or_ref_t<T>` through it.
+                slot_elem = unwrap_ref_type(elem_type) if elem_type else None
+                slot_cpp = (
+                    yield_borrow_slot_cpp(slot_elem,
+                                          self.types.type_to_cpp(slot_elem))
+                    if slot_elem is not None
+                    and yield_uses_borrow_slot(slot_elem) else elem_cpp)
+                result_type = f"std::expected<{slot_cpp}, ::tpy::StopIteration>"
             fields.append((f"__for_r_{uid}", result_type))
             # Non-value elements alias the producer's live yield slot (T*),
             # mirroring begin_end's pointer-form loop var -- a frame_slot

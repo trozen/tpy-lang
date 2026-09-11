@@ -458,7 +458,7 @@ __gen_readonly_param readonly_param(const std::vector<Point>& ps) {
 }
 
 // def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
-std::expected<Point, ::tpy::StopIteration> __gen_points::__next__() {
+std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration> __gen_points::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         __for_it_0.emplace((ps).begin());
@@ -755,8 +755,10 @@ void main() {
         ::tpy::__getitem__(alb.items, 1).x = 60;
         }
     }
-    // rp: list[Point] = [Point(7), Point(8)]
-    std::vector<Point> rp = {Point(7), Point(8)};
+    // rp: list[Point] = [Point(7)]
+    std::vector<Point> rp = {Point(7)};
+    // pulls = 0
+    int32_t pulls = 0;
     // for v in readonly_next(points(rp)):
     {
         auto __tmp_14 = points(rp);
@@ -768,6 +770,19 @@ void main() {
             int32_t v = ::tpy::unwrap_ref(*__r_27);
         // print("readonly-next:", v)
         std::cout << "readonly-next:" << " " << v << "\n";
+        // pulls += 1
+        pulls = ::tpy::add_check<int32_t>(pulls, 1);
+        // if pulls == 1:
+        if ((pulls == 1)) {
+            // # Mutate the SOURCE while the callee's element borrow is live: the
+            // # next read through `p` sees 70, where a copying yield slot would
+            // # print 7 again.
+            // rp[0].x = 70
+            ::tpy::__getitem__(rp, 0).x = 70;
+        }
+        // # Mutate the SOURCE while the callee's element borrow is live: the
+        // # next read through `p` sees 70, where a copying yield slot would
+        // # print 7 again.
         }
     }
     // ga: list[list[Int32]] = [[1]]

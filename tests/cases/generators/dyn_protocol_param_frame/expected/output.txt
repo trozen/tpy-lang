@@ -1,0 +1,29 @@
+free 7
+free 8
+free after 8
+method 21
+method 22
+method after 21
+readonly 5
+readonly 10
+generic 30
+generic 31
+generic after 31
+inherit 40
+inherit 41
+inherit after 41
+inherit struct 50
+inherit struct 51
+inherit struct after 51
+own 60
+own 61
+rvalue 99
+rvalue 100
+forward 90
+forward 90
+forward 91
+forward 91
+forward after 91
+global 80
+global 81
+global after 81

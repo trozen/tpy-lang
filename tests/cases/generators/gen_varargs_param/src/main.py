@@ -184,12 +184,18 @@ def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 
 
 # `next` strategy (an `Iterator[T]` protocol source) with a readonly element:
-# the loop var is a `const Point*` into the producer's yield slot. Read-only by
-# construction -- the protocol's `__next__` hands out a fresh result slot, so
-# there is no aliasing of the ORIGINAL list to observe here.
+# the loop var is a `const Point*` reaching through the producer's yield slot
+# to the ORIGINAL list. Read twice around a suspension so the caller can mutate
+# the source in between: a copying slot would repeat the first read.
 def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[Int32]:  # tpyc: ok
     for p in it:
-        yield p.x
+        # `yield p.x` copies an Int32, but the ephemeral-borrow escape check
+        # roots on `p` and refuses it -- BUGS.md#ephemeral-value-read-escape.
+        before = p.x
+        yield before
+        # Same borrow, after the caller's mutation of the source.
+        after = p.x
+        yield after
     yield -1
 
 
@@ -300,9 +306,16 @@ def main() -> None:
         # Mutate the source between pulls: a copying loop var would keep 2.
         alb.items[1].x = 60
 
-    rp: list[Point] = [Point(7), Point(8)]
+    rp: list[Point] = [Point(7)]
+    pulls = 0
     for v in readonly_next(points(rp)):
         print("readonly-next:", v)
+        pulls += 1
+        if pulls == 1:
+            # Mutate the SOURCE while the callee's element borrow is live: the
+            # next read through `p` sees 70, where a copying yield slot would
+            # print 7 again.
+            rp[0].x = 70
 
     ga: list[list[Int32]] = [[1]]
     gb: list[list[Int32]] = [[2]]

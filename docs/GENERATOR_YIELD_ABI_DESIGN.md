@@ -2,7 +2,8 @@
 
 Status: **Implemented** (def-generators + generator expressions; full suite green). Branch: `fix-generator-ref-yield-copy`.
 Single shared gate `typesys.yield_uses_borrow_slot` decides the `val_or_ref<T>` borrow slot (excludes
-`Optional`/`Union`/readonly/tuple/`TypeParamRef`/value, which keep their own representation). See the
+`Optional`/`Union`/tuple/`Own`/`TypeParamRef`/value, which keep their own representation); a `readonly[T]`
+element is INCLUDED and borrows too, spelled `val_or_ref<const T>` by `typesys.yield_borrow_slot_cpp`. See the
 "IMPLEMENTATION FINDING" notes inline for where reality narrowed the original plan.
 Fixes BUGS.md "Generator yields of a bare (non-tuple) non-value type are copied" (HIGH) and the
 local-yield / consumer-retention cross-suspension dangle hazards. The caller-mutates/frees-the-borrowed-
@@ -196,7 +197,8 @@ storage does not.
 populated at the loop / `next()` binding when the source classifies as frame-slot `BORROW_REF`. Such
 vars are kept **out of** `safe_to_return_vars` (so the existing return-dangle check rejects returning
 them) and added to the new set so the other escape sites consult it. Tuple-unpack targets bound to
-borrow elements are added per-target; value/`readonly` elements are not. Deliberately a named-var set
+borrow elements are added per-target; value elements are not (a `readonly` element IS a borrow, so it
+is added -- the set follows `yield_uses_borrow_slot`). Deliberately a named-var set
 (with an implied step-bounded region), not a string-keyed `BorrowTracker` heuristic, so it maps to a
 future MIR `LoanInfo` with a back-edge-bounded region.
 
@@ -341,7 +343,8 @@ to the generic path too -- a generic generator yielding a fresh reference (`yiel
 Shipped under the same `yield_uses_borrow_slot` gate (codegen `_genexpr_slot`, sema
 `_analyze_generator_expression`): a durable-borrow genexpr borrows (mutable loop var, `val_or_ref<T>`
 slot), a fresh-element genexpr is rejected pointing at `[...]`, and the consumer ephemeral check extends
-to `GenExprType`. `Optional`/`Union`/readonly/tuple/value elements keep the value (copy) slot. Tests:
+to `GenExprType`. `Optional`/`Union`/tuple/`Own`/value elements keep the value (copy) slot; a `readonly`
+element borrows through the same `yield_borrow_slot_cpp` spelling a def-generator uses. Tests:
 `tests/cases/iterators/genexpr_ref_mutate`, `error_genexpr_fresh_as_ref`.
 
 `(x for x in data)` over a concrete reference type **also copied** before this (confirmed: mutation did not

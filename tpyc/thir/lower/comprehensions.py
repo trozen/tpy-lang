@@ -33,6 +33,7 @@ from ...typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
+    yield_borrow_slot_cpp,
     yield_uses_borrow_slot,
 )
 from ...type_def_registry import (
@@ -1504,8 +1505,13 @@ def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
         # A record element yields through the reference-preserving
         # `::tpy::val_or_ref<T>` slot (`make_generator<val_or_ref<Node>>`,
         # `std::optional<val_or_ref<Node>>(n)`); the loop-var name feeds
-        # the wrap bare.
-        slot_cpp = f"::tpy::val_or_ref<{lc.render_type(elem_type)}>"
+        # the wrap bare. The helper's const branch cannot fire from HERE
+        # today: a genexpr element type never carries `readonly`, because
+        # sema strips the source container's outer readonly before the
+        # element is computed (BUGS.md#genexpr-readonly-source-slot). The
+        # spelling still comes from the shared helper so the two yield
+        # sites cannot disagree once that entry closes.
+        slot_cpp = yield_borrow_slot_cpp(elem_type, lc.render_type(elem_type))
     else:
         slot_cpp = lc.render_type(elem_type)
     try:

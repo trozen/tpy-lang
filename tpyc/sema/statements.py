@@ -3723,10 +3723,11 @@ class StatementAnalyzer:
         elements.
         """
         inner = unwrap_readonly(unwrap_ref_type(iterable_type))
-        # Ephemeral when the source hands out the plain val_or_ref borrow slot
-        # (a bare reference element) OR a pointer-element borrow tuple. Optional
-        # / Union / readonly / value elements keep their own representation and
-        # are not ephemeral.
+        # Ephemeral when the source hands out an element by BORROW: the plain
+        # val_or_ref slot (`yield_uses_borrow_slot` -- a `readonly` element is
+        # one of those, spelled `val_or_ref<const T>`) OR a pointer-element
+        # borrow tuple. Elements the slot copies out keep their own
+        # representation and are not ephemeral.
         if isinstance(inner, GenExprType):
             return self._elem_is_ephemeral_borrow(inner.element_type)
         if not (is_protocol_type(inner) and isinstance(inner, NominalType)
@@ -3856,8 +3857,9 @@ class StatementAnalyzer:
         # since the generator frame survives suspension. The view-only
         # check_view_return_dangle misses bare non-value reference yields, so route
         # those through the full dangling check (Iterator[Own[T]]-flavored
-        # diagnostic). Forms with their own representation (Optional/Union/readonly/
-        # tuple/generic) keep the view check -- they don't use the borrow slot.
+        # diagnostic). Forms with their own representation (Optional/Union/tuple/
+        # Own/generic -- see `yield_uses_borrow_slot`) keep the view check; they
+        # don't use the borrow slot.
         # A tuple yield uses borrow form per-element (`std::tuple<int, Box*>`),
         # so a fresh non-value member dangles exactly like a bare borrow yield.
         # yield_uses_borrow_slot excludes tuples (they own their borrow form via

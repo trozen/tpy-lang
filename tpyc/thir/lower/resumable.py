@@ -159,6 +159,7 @@ from .predicates import (
     _own_declared_call_ret,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
+    _record_class_binding,
     _res_container_return,
     _resolved_bytes_value,
     _resolved_str_value,
@@ -255,7 +256,7 @@ def _res_capture_ok(t: 'TpyType | None', analyzer) -> bool:
                       TypeParamRef)
 
 
-def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
+def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
     """Frame-PARAM families (R5c-param). Value scalars plus the reference
     axis: a record or container param captures as a `Record&` /
     `std::vector<T>&` reference frame field and reads bare -- exactly like
@@ -277,7 +278,13 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     `std::get<N>(t)` (pointer-repr elements arrow, value elements bare),
     matching the sync tuple-subscript rows. A bare `T` param rides via
     `_res_capture_ok`. Union (non-pointer-repr) and static-protocol params
-    stay their own rungs."""
+    stay their own rungs.
+
+    `gen_frame` says the frame is a GENERATOR's rather than an async body's.
+    Only the bare `@dynamic` protocol arm reads it: every other family
+    captures the argument itself, while that one captures a borrow of a
+    codegen-synthesized adapter temp whose scope the async positions outlive
+    (BUGS.md#res-param-dyn-protocol-frame)."""
     if _res_capture_ok(t, analyzer):
         return True
     if (_resolved_str_value(t, analyzer) is not None
@@ -373,11 +380,33 @@ def _res_param_ok(t: 'TpyType | None', analyzer) -> bool:
     # A static-protocol param monomorphizes the frame over the conforming
     # type (`param_val_or_ref_t<T_p>` ctor param -> `val_or_ref_t<T_p>`
     # field, all skeleton), and every leaf read is bare -- the bare-`T`
-    # capture rationale. CAPTURE position only: protocol locals stay gated;
-    # @dynamic protocols (Adapter machinery) stay their own rung.
-    if (unwrapped is not None and is_protocol_type(unwrapped)
-            and not is_dyn_protocol(unwrapped)):
-        return True
+    # capture rationale. CAPTURE position only: protocol locals stay gated.
+    if unwrapped is not None and is_protocol_type(unwrapped):
+        if not is_dyn_protocol(unwrapped):
+            return True
+        # A bare / `readonly` @dynamic protocol param captures as the
+        # skeleton's REF field (`Src&` / `const Src&`, the record-borrow
+        # shape) and every leaf read is the bare vtable call the sync param
+        # already spells. GENERATOR frames only: the borrow may alias a
+        # call-site `RefAdapter` temp rather than the argument, and no handle
+        # that borrows one can outlive it today. The adapter is emitted as a
+        # NAMED local of the block that holds the handle, immediately before
+        # it (`RefAdapter<Src, Impl> __tmp_1{src}; auto g = free_gen(__tmp_1);`),
+        # so it is destroyed after every handle in that block -- including a
+        # copy into a sibling local, which shares the block (that copy copies
+        # the frame, BUGS.md#generator-object-binds-copy-the-frame, and is
+        # safe for the same scope reason). Returning the handle is refused
+        # outright: `Iterator` is not a legal return type. The two ways it
+        # could leave the block -- a container literal holding it
+        # (`expr.container_literal`) and a re-seat into an outer binding, the
+        # loop-body-creates / outer-pulls shape
+        # (`stmt.var_decl:reseat.opt_storage_source`) -- are CODEGEN GAPS, not
+        # escape checks, so a lowering arm for either has to re-examine this
+        # admission. An async frame already leaves (a `create_task`ed frame
+        # dangles even on a module global, and an inline `await` drops the
+        # adapter wrap outright), so it keeps its reject --
+        # BUGS.md#res-param-dyn-protocol-frame.
+        return gen_frame
     # An OWN-wrapped static protocol (`s: Own[Sink]`) rides that same
     # monomorphized capture: the field is the deduced `T_s s;` and the ctor
     # member-inits `s(std::forward<T_s>(s_))`, so the ownership follows the
@@ -1068,7 +1097,11 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
             # (BUGS.md#own-static-protocol-frame-capture-borrows). Carved out
             # here rather than left to the families below, which now admit it.
             return "res.await_param_type:own_protocol.static"
-        if not (own_dyn_slot or own_val_slot or _res_param_ok(pt, analyzer)):
+        # `gen_frame=False`: an awaited callee is never a generator, and the
+        # sub-coro emplace leaf is exactly the path that drops a @dynamic
+        # param's adapter wrap, so that arm must stay shut here.
+        if not (own_dyn_slot or own_val_slot
+                or _res_param_ok(pt, analyzer, gen_frame=False)):
             # Slots beyond the param families (optional-ptr / protocol
             # adapter / union lift) trigger the emplace coercion ladder and,
             # for static-protocol params, the two-phase decltype capture
@@ -1185,7 +1218,15 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # the per-slot param / return / yield families below.
     for _pname, ptype in func.params:
         pt = ptype if isinstance(ptype, TpyType) else None
-        if not _res_param_ok(pt, analyzer):
+        if not _res_param_ok(pt, analyzer, gen_frame=is_generator):
+            pt_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
+                    if pt is not None else None)
+            if pt_u is not None and is_dyn_protocol(pt_u):
+                # Admitted on a generator frame, so the residual is the async
+                # half alone (the adapter temp's lifetime, not the capture
+                # shape) and gets its own landmark rather than sharing the
+                # family's -- BUGS.md#res-param-dyn-protocol-frame.
+                return _reject("res.param_type:protocol.dyn.async")
             # The family names WHICH param slot blocked; the bare landmark
             # collapses unrelated capture shapes into one tally line.
             return _reject(f"res.param_type:{_type_family_tag(pt, analyzer)}")
@@ -2326,82 +2367,99 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     raise ThirUnsupported("res.btuple_yield_source")
                 _witness("res.btuple_yield")
                 return
-            if _f1_container_ref(yt_bare):
-                # Container yield slot (val_or_ref<C> in the skeleton's
-                # signature): a yielded frame_slot LOCAL hands out the
-                # deref borrow -- `return (*buf);` -- the existing
-                # frame-slot name read. A TERNARY of frame-slot locals
-                # hands out the branch-picked borrow (`((flag) ? ((*a)) :
-                # ((*b)))`). Literals/calls at this slot need the
-                # target-typed render -- named rung.
+            if _f1_ref(yt_bare, analyzer):
+                # REFERENCE yield slot (`val_or_ref<T>` in the skeleton's
+                # signature) -- records and containers alike, one ladder over
+                # the whole axis. Both halves emit the same
+                # `return <borrow-lvalue>;`, so a source shape either has a
+                # borrow lvalue at this slot or it does not; splitting the
+                # admission per half is what let the two drift apart into
+                # different accepted shapes for an identical emit
+                # (docs/PITFALLS.md#same-construct-every-position).
+                #
+                # Two legs really are half-specific, and only those branch:
+                # an `Own` record ctor is a record-only slot shape, and a
+                # RECORD pointer NAME reads bare (its field/method consumers
+                # spell `->` themselves) so the yield has to add the deref a
+                # container pointer name already carries.
+                #
+                # Sources with no borrow lvalue -- literals, calls,
+                # subscripts, non-`self` fields -- need the target-typed
+                # render and stay a named rung.
+                rec_slot = _record_class_binding(yt_bare)
+                # Every face below is composed by f-string over `half`, so the
+                # literals are greppable only here and in the registry. The ten
+                # they spell, in ladder order:
+                #   res.yield_record_ternary    res.yield_container_ternary
+                #   res.yield_record_walrus     res.yield_container_walrus
+                #   res.yield_record_field      res.yield_container_field
+                #   res.yield_record_param      res.yield_container_param
+                #   res.yield_record_borrow     res.yield_container_borrow
+                half = "record" if _f1_record(yt_bare, analyzer) else \
+                    "container"
                 yv_src = ys.value
+
+                def _yield_borrow_name(e: TpyExpr) -> THIRExpr:
+                    """A NAME source's borrow lvalue at this slot."""
+                    v = _lower_expr(e, lc, declared)
+                    if (rec_slot and isinstance(v, THIRName)
+                            and not v.deref):
+                        v = replace(v, deref=True)
+                    return v
+
                 if (isinstance(yv_src, TpyIfExpr)
                         and isinstance(yv_src.then_expr, TpyName)
                         and yv_src.then_expr.name in lc.frame_slots
                         and isinstance(yv_src.else_expr, TpyName)
                         and yv_src.else_expr.name in lc.frame_slots):
+                    # A TERNARY of frame-slot names hands out the
+                    # branch-picked borrow (`((flag) ? ((*a)) : ((*b)))`) --
+                    # one THIRIfExpr, both operands lowered as branch
+                    # expressions so neither hoists a temp.
                     yield_values[ys] = THIRIfExpr(
                         result_type=yt_bare,
                         cond=_lower_truthy(yv_src.condition, lc, declared),
-                        then=_lower_expr(yv_src.then_expr, lc, declared),
-                        orelse=_lower_expr(yv_src.else_expr, lc, declared),
+                        then=_yield_borrow_name(yv_src.then_expr),
+                        orelse=_yield_borrow_name(yv_src.else_expr),
                         form=Form.BORROW,
                         loc=getattr(yv_src, "loc", None))
-                    _witness("res.yield_container_ternary")
+                    _witness(f"res.yield_{half}_ternary")
                     return
                 if isinstance(yv_src, TpyNamedExpr):
-                    # A walrus at the container yield slot delegates to the
-                    # frame-walrus dispatch (`return (x = &((*buf)), *x);`)
-                    # -- the comma tail hands out the alias's deref lvalue,
-                    # and un-landed walrus legs reject inside the dispatch.
+                    # A walrus delegates to the frame-walrus dispatch
+                    # (`return (x = &((*buf)), *x);`) -- the comma tail hands
+                    # out the alias's deref lvalue, and un-landed walrus legs
+                    # reject inside the dispatch.
                     yield_values[ys] = _lower_expr(yv_src, lc, declared)
-                    _witness("res.yield_container_walrus")
+                    _witness(f"res.yield_{half}_walrus")
                     return
-                if (isinstance(yv_src, TpyName)
-                        and _bare_yield_param_ok(yv_src.name, yt_bare, lc,
-                                                 declared)):
-                    yield_values[ys] = _lower_expr(yv_src, lc, declared)
-                    _witness("res.yield_container_param")
-                    return
-                if not (isinstance(yv_src, TpyName)
-                        and yv_src.name in lc.frame_slots):
-                    raise ThirUnsupported("res.yield_type")
-                yield_values[ys] = _lower_expr(yv_src, lc, declared)
-                _witness("res.yield_container_borrow")
-                return
-            if _f1_record(yt_bare, analyzer):
-                # Record yield slot (borrow val_or_ref<R>): a yielded
-                # pointer-form loop var or frame_slot NAME hands out the
-                # deref borrow (`return (*b);`). Optional-ptr params (may
-                # be narrowed to an alias), literals, calls and fields need
-                # their own renders -- named rung. The frame_slots half is
-                # defensive: sema rejects yielding an OWNING record local
-                # by reference ("declare Iterator[Own[R]]"), so pointer-form
-                # loop vars are the known-live source.
-                yv_src = ys.value
                 if (isinstance(yv_src, TpyFieldAccess)
                         and isinstance(yv_src.obj, TpyName)
                         and yv_src.obj.name == "self"
-                        and _f1_record(unwrap_readonly(unwrap_ref_type(
+                        and _f1_ref(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(analyzer.get_expr_type(yv_src)))),
                             analyzer)):
-                    # A record FIELD off self at the record yield slot reads
-                    # bare (`return __self.a;`) -- the storage member binds
-                    # the val_or_ref slot directly, no deref (BORROW_BIND,
-                    # like the for-head member bind).
+                    # A reference FIELD off self reads bare (`return
+                    # __self.a;`) -- the storage member binds the val_or_ref
+                    # slot directly, no deref (BORROW_BIND, like the for-head
+                    # member bind). `self` only: any other receiver has no
+                    # frame-lifetime guarantee and stays a named rung
+                    # (generators/error_yield_field_at_container_slot).
                     yield_values[ys] = _lower_expr(
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-                    _witness("res.yield_record_field")
+                    _witness(f"res.yield_{half}_field")
                     return
                 if (isinstance(yv_src, TpyCall)
                         and isinstance(unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(yt))), OwnType)
+                        and _f1_record(yt_bare, analyzer)
                         and _ctor_shape_ok(yv_src, analyzer)):
                     # A CTOR call at an OWN record yield slot (`yield
                     # Node(i)` at `Iterator[Own[Node]]`): the storage ctor
-                    # render lands bare (`return Node(i);`). OWN slots only
-                    # -- sema forbids a borrow-record ctor yield.
+                    # render lands bare (`return Node(i);`). OWN record slots
+                    # only -- sema forbids a borrow-record ctor yield, and a
+                    # container ctor at an Own slot has no storage-ctor rung.
                     yield_values[ys] = _lower_expr(
                         yv_src, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.STORAGE))
@@ -2411,17 +2469,21 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         and _bare_yield_param_ok(yv_src.name, yt_bare, lc,
                                                  declared)):
                     yield_values[ys] = _lower_expr(yv_src, lc, declared)
-                    _witness("res.yield_record_param")
+                    _witness(f"res.yield_{half}_param")
                     return
                 if not (isinstance(yv_src, TpyName)
                         and (yv_src.name in lc.frame_slots
-                             or yv_src.name in ptr_frame_locals)):
+                             or yv_src.name in ptr_frame_locals
+                             or yv_src.name in alias_ptr_locals)):
                     raise ThirUnsupported("res.yield_type")
-                yv_lowered = _lower_expr(yv_src, lc, declared)
-                if isinstance(yv_lowered, THIRName) and not yv_lowered.deref:
-                    yv_lowered = replace(yv_lowered, deref=True)
-                yield_values[ys] = yv_lowered
-                _witness("res.yield_record_borrow")
+                # A frame_slot / pointer-form loop var / alias local NAME:
+                # every one of the three is frame-owned storage or a pointer
+                # into storage the frame outlives, so the borrow it hands out
+                # stays live across the suspension. Sema already rejects
+                # yielding an OWNING record local by reference ("declare
+                # Iterator[Own[R]]").
+                yield_values[ys] = _yield_borrow_name(yv_src)
+                _witness(f"res.yield_{half}_borrow")
                 return
             yv_valopt = _value_opt_yield_slot(yt)
             if yv_valopt is not None and isinstance(ys.value, TpyNoneLiteral):

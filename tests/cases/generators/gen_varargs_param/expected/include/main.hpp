@@ -596,7 +596,7 @@ __gen_bump_generic<T> bump_generic(::tpy::varargs<T> xs) {
 }
 
 // Generator: points
-struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, Point> {
+struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, ::tpy::val_or_ref<const Point>> {
     int32_t __state;
     const std::vector<Point>& ps;
     const Point* p = nullptr;
@@ -617,7 +617,7 @@ struct __gen_points : public ::tpy::next_iter_mixin<__gen_points, Point> {
     __gen_points(const std::vector<Point>& ps)
         : __state(S_INITIAL), ps(ps) {}
 
-    std::expected<Point, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration> __next__();
     __gen_points& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_points&) {
@@ -631,14 +631,17 @@ struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T
     int32_t __state;
     T_it it;
     const Point* p = nullptr;
-    ::tpy::frame_slot<std::expected<Point, ::tpy::StopIteration>> __for_r_0;
+    int32_t before;
+    int32_t after;
+    ::tpy::frame_slot<std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
-        S_JOIN_0 = 3,
-        S_DONE = 4,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_DONE = 5,
     };
 
     __gen_readonly_next(T_it&& it_)
@@ -660,10 +663,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__
         continue;
     }
     case S_RESUME_0: {
+        // # Same borrow, after the caller's mutation of the source.
+        // after = p.x
+        after = p->x;
+        // yield after
+        __state = S_RESUME_1;
+        return after;
+    }
+    case S_RESUME_1: {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_2: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -671,13 +682,17 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__
         __for_r_0.emplace(it.__next__());
         if (!(*__for_r_0).has_value()) {
             // yield -1
-            __state = S_RESUME_1;
+            __state = S_RESUME_2;
             return -1;
         }
         p = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        // yield p.x
+        // # `yield p.x` copies an Int32, but the ephemeral-borrow escape check
+        // # roots on `p` and refuses it -- BUGS.md#ephemeral-value-read-escape.
+        // before = p.x
+        before = p->x;
+        // yield before
         __state = S_RESUME_0;
-        return p->x;
+        return before;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

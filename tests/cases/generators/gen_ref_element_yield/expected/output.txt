@@ -1,0 +1,23 @@
+freelist 3 3
+freerec 21 22
+method 3 3
+pack 3 3
+selffield 3
+framelocal-inner 3 3
+framelocal done
+alias 21 2
+ternary-inner 21 2
+ternary done
+dict 2 2
+set 2 2
+with 3 3
+finally-try
+finally 3 3
+readonly 2
+readonly 3
+iterparam 101
+iterparam 201
+iterparam 102
+iterparam 202
+iterparam -1
+iterparam-src 201 202

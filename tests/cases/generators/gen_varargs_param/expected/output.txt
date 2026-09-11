@@ -44,9 +44,9 @@ self-field: 101
 self-field: 60
 self-field: 160
 readonly-next: 7
-readonly-next: 8
-readonly-next: 7
-readonly-next: 8
+readonly-next: 70
+readonly-next: 70
+readonly-next: 70
 readonly-next: -1
 multi-root: 1 1
 multi-root: 2 2
