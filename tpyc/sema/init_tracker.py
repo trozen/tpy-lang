@@ -9,9 +9,9 @@ would be undefined behavior in generated C++.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
-from .context import ITER_BORROWER
 from .flow_facts import (
     FlowFacts, merge_borrow_triples, merge_binding_provenance,
+    merge_slot_resident,
 )
 from ..prescan import FactKills, alias_group, deref_view_key
 
@@ -227,21 +227,21 @@ class InitTracker:
         A loan bound in the body is still held after the last iteration -- the
         holder reads it there -- so dropping it with ``restore(before)`` hides
         every hazard a post-loop statement poses to it. Same lattice as a
-        both-arms-live join: the union, each field at its more dangerous value.
+        both-arms-live join: the union, each field at its more dangerous value,
+        residency included -- a name the body rebound through its slot still
+        sits there at the closing brace.
 
-        Only the synthetic iterator holder is dropped. It never expires (the
-        loop does not remove it), so carrying it out would warn on every
-        post-loop container mutation. Every other loan names real locals,
-        which are function-scoped here -- a holder the body bound is readable
-        after the loop -- and liveness kills the ones nothing reads there.
+        Every triple reaching here names a real local: the for-loop lowering
+        releases its synthetic iterator holder where the `for` statement ends,
+        before the caller freezes the body-end state. A loan whose holder is
+        function-scoped but whose STORAGE the body declared is carried out
+        unchanged and is NOT diagnosed -- codegen gives that storage a
+        per-iteration block scope, so the holder dangles at the closing brace
+        (BUGS.md#loop-body-storage-outlived-by-loan).
         """
-        surviving = frozenset(
-            triple for triple in body_end_borrows
-            if triple[1] != ITER_BORROWER
-        )
-        merged = merge_borrow_triples(before.borrows, surviving, False, False)
-        bt = self.ctx.func.borrow_tracker
-        # Residency unions like it does at a branch join: a name the body
-        # rebound through its slot still sits there at the closing brace.
-        bt.restore_from_frozen(
-            merged, before.slot_resident | body_end_slot_resident)
+        merged = merge_borrow_triples(before.borrows, body_end_borrows,
+                                      False, False)
+        self.ctx.func.borrow_tracker.restore_from_frozen(
+            merged,
+            merge_slot_resident(before.slot_resident,
+                                body_end_slot_resident, False, False))

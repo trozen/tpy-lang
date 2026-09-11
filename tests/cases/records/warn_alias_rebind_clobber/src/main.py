@@ -132,9 +132,9 @@ def after_loop_section() -> None:
     print("after_loop:", saved.x, p.x)
 
 
-# the HOLDER is first bound inside the body: TPy locals are function-scoped,
-# so its loan is still live at the post-loop rebind (a record holder would be
-# rejected as maybe-unassigned here, a Ptr one reads fine).
+# the HOLDER is first bound inside the body: TPy locals are function-scoped, so
+# its loan is still live at the post-loop rebind (a record-typed holder hits
+# the codegen reject stmt.for_each:foreach.hoist_type; a Ptr one compiles).
 def body_local_holder_section() -> None:
     p = Point(24)
     p = Point(25)

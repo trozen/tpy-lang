@@ -10,3 +10,4 @@ main.py:48: warning: Mutation of 'items' while iterating over it ('del' invalida
 main.py:55: warning: Mutation of 'inner' while iterating over it ('append' invalidates the iterator)
 main.py:56: warning: Mutation of 'outer' while iterating over it ('append' invalidates the iterator)
 main.py:62: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
+main.py:93: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)

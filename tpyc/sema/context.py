@@ -245,8 +245,9 @@ class LoanInfo:
 
 
 # Borrower name of the implicit iterator borrow a for-loop registers. Not a
-# real local: it never expires (loops do not remove it), so the queries that
-# must not see a synthetic holder name it here rather than by shape.
+# real local -- it expires with the statement, not by a rebind of some name --
+# so the queries that must not see a synthetic holder name it here rather than
+# by shape.
 ITER_BORROWER = "__for_iter"
 
 

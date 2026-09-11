@@ -230,9 +230,9 @@ void after_loop_section() {
     std::cout << "after_loop:" << " " << saved->x << " " << p->x << "\n";
 }
 
-// # the HOLDER is first bound inside the body: TPy locals are function-scoped,
-// # so its loan is still live at the post-loop rebind (a record holder would be
-// # rejected as maybe-unassigned here, a Ptr one reads fine).
+// # the HOLDER is first bound inside the body: TPy locals are function-scoped, so
+// # its loan is still live at the post-loop rebind (a record-typed holder hits
+// # the codegen reject stmt.for_each:foreach.hoist_type; a Ptr one compiles).
 // def body_local_holder_section() -> None:
 void body_local_holder_section() {
     std::optional<Point> __slot_2;

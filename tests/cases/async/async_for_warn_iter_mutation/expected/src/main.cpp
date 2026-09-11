@@ -65,10 +65,184 @@ __coro_runner runner() {
     return __coro_runner();
 }
 
+// async def post_loop() -> None:
+::tpystd::tpy::Poll<::std::monostate> __coro_post_loop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // src = Source(2)
+        src.emplace(Source(::tpy::BigInt(2)));
+        __for_itr_0.emplace(((*src)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            // async for x in src:
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_2;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        // pass
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_2: {
+        // src.push(9)  # tpyc: ok
+        (*src).push(9);
+        // print("post_loop:", src.seen)
+        std::cout << "post_loop:" << " " << ::tpy::ListPrinter((*src).seen) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def post_loop() -> None:
+__coro_post_loop post_loop() {
+    return __coro_post_loop();
+}
+
+// async def nested() -> None:
+::tpystd::tpy::Poll<::std::monostate> __coro_nested::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // outer = Source(2)
+        outer.emplace(Source(::tpy::BigInt(2)));
+        // inner = Source(1)
+        inner.emplace(Source(::tpy::BigInt(1)));
+        __for_itr_0.emplace(((*outer)).__aiter__());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            x = std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_2;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_0.reset();
+            __state = S_JOIN_3;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_RESUME_1: {
+        try {
+            auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+            if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            y = std::move(__r1).value();
+            __sub_1.reset();
+            __state = S_JOIN_4;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __sub_1.reset();
+            __state = S_JOIN_5;
+            continue;
+        } catch (...) {
+            __sub_1.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        try {
+            // async for x in outer:
+            __sub_0.emplace(*__for_itr_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_3;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        try {
+            // async for y in inner:
+            __sub_1.emplace(*__for_itr_1);
+            __state = S_RESUME_1;
+            continue;
+        } catch (const ::tpy::StopAsyncIteration&) {
+            __state = S_JOIN_5;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_2: {
+        __for_itr_1.emplace(((*inner)).__aiter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_3: {
+        // print("nested:", outer.seen, inner.seen)
+        std::cout << "nested:" << " " << ::tpy::ListPrinter((*outer).seen) << " " << ::tpy::ListPrinter((*inner).seen) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_4: {
+        // inner.push(y)  # tpyc: warning(/Mutation of 'inner'/)
+        (*inner).push(y);
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_5: {
+        // outer.push(x)  # tpyc: warning(/Mutation of 'outer'/)
+        (*outer).push(x);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def nested() -> None:
+__coro_nested nested() {
+    return __coro_nested();
+}
+
 // def main() -> None:
 void main() {
     // asyncio.run(runner())
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(runner()));
+    // asyncio.run(post_loop())
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(post_loop()));
+    // asyncio.run(nested())
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(nested()));
 }
 
 // async def __anext__(self) -> int:

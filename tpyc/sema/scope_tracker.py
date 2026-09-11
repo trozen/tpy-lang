@@ -14,6 +14,7 @@ from ..parse import TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyExpr, T
 from ..namespace import Namespace
 from ..diagnostics import Scope
 from .alias_rebind import collect_loop_body_loans
+from .context import ITER_BORROWER
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -36,6 +37,17 @@ class ScopeTracker:
         ``body`` seeds the loop's loan pre-scan: sema walks a loop body once,
         so a rebind inside it needs the syntax to tell it which loans the
         next iteration will re-take (see `alias_rebind`).
+
+        The implicit iterator loan a `for` registers expires here: the
+        iterator is a temporary of the statement, so the statement's own
+        scope releases it -- carried past the exit it would never expire and
+        would warn on every post-loop mutation of the iterable. Keyed by
+        holder rather than by the storage the lowering registered, because a
+        rebind in the body retargets the loan to another storage key but
+        never renames the holder. A shape that registers none (`while`, the
+        enum-iterable `for`) drops nothing of its own; an ENCLOSING loop's
+        loan is dropped along with it and comes back from the `before`
+        snapshot every caller's exit-facts merge restores.
         """
         inner_scope = Scope(self.ctx.func.current_scope)
         old_scope = self.ctx.func.current_scope
@@ -49,6 +61,7 @@ class ScopeTracker:
             self.ctx.func.loop_body_loans.pop()
             self.ctx.func.loop_depth -= 1
             self.ctx.func.current_scope = old_scope
+            self.ctx.func.borrow_tracker.remove_borrower(ITER_BORROWER)
 
     @contextmanager
     def deferred_body(self) -> Iterator[None]:
