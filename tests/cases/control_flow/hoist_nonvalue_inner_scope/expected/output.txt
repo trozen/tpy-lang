@@ -1,0 +1,44 @@
+for_record 2 2
+for_record 13 13
+for_record 4 4
+for_list [0, 7]
+for_list [1, 1, 7]
+for_list [2, 7]
+for_own_call [1, 2, 3, 99]
+for_own_call [1, 2, 3, 99]
+for_own_call [0, 99]
+for_own_call [1, 99]
+while_one_arm 3
+while_one_arm 5
+nested_if 3
+nested_if none
+sibling_decl 1
+sibling_decl 12
+sibling_decl 6
+post_loop_redecl 0
+post_loop_redecl 11
+post_loop_redecl 100
+dyn_protocol 1
+dyn_protocol 2
+dyn_protocol 9
+optional_both_arms 1
+optional_both_arms none
+optional_both_arms 3
+optional_slot_loop 5
+optional_slot_loop none
+optional_slot_loop 7
+optional_rvalue_init 1
+optional_rvalue_init 2
+optional_list_init [0, 5]
+optional_list_init [1, 5]
+optional_redecl_post_loop 0
+optional_redecl_post_loop 11
+ctor_method 23
+with_body 2
+with_body exit 1
+try_body 2
+try_body 3
+match_arm 11
+match_arm other
+closure 8
+error_return_body 8

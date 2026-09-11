@@ -3116,21 +3116,14 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
         # binding, the flavor gates, and the render all see the final
         # container (the reseat shape checks compare against `declared`).
         var_type = resolve_pending_container(var_type, analyzer) or var_type
-        is_nonvalue_flavor = (
-            (isinstance(var_type, NominalType) and is_dyn_protocol(var_type))
-            or is_plain_nonvalue(var_type)
-            or (isinstance(var_type, OptionalType)
-                and var_type.uses_pointer_repr()))
-        if is_nonvalue_flavor and in_branch:
-            # An INNER-scope if (any in_branch body: branch, loop, with,
-            # try) registers its hoist names into that scope's `declared`
-            # COPY, but Python names are function-scoped -- a sibling or
-            # post-scope statement on the same name would classify off a
-            # stale entry. Non-value hoists in an inner scope reject until
-            # hoist registration is function-scoped; only function-top-level
-            # ifs route.
-            note_detail("if.hoist_inner_scope")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
+        # An INNER-scope if (a loop / branch / with / try body) hoists at
+        # its own head like the with and try families: the predecl's C++
+        # scope IS the enclosing block, the name enters the caller's
+        # branch-local `declared`, and every lc registration below is
+        # branch-scoped, so the three pop together. A read after the block
+        # is sema's for/with/try hoist instead (the name is in `declared`
+        # before this if is reached). Rebind slots still drain to function
+        # top through the deferred hoist lines.
         _obt_h = _optional_borrow_tuple(var_type, analyzer)
         if _obt_h is not None:
             # Nullable borrow-form tuple hoist (`std::optional<std::tuple<
@@ -7997,10 +7990,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
         # only once its render is verified position-identical (the lc
         # registrations pop via branch_scope either way; an escaping name is
         # sema-hoisted and the unhandled_hoists backstop rejects the body if
-        # no hoist machinery drained it). Arms that PLACE hoist/slot lines
-        # (dyn adapter slots, OPT_PTR_SLOT predecls) and the not-yet-witnessed
-        # plain arms stay function-top; their in-branch shapes keep falling
-        # through to the value-slot machinery's reject.
+        # no hoist machinery drained it). The dyn adapter-slot arm and the
+        # not-yet-witnessed plain arms stay function-top; their in-branch
+        # shapes keep falling through to the value-slot machinery's reject.
         if not is_reassign:
             fn_top = not scope.in_branch
             if fn_top:
@@ -8143,19 +8135,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope) -> THIRStmt:
                             cpp_type=lc.render_type(
                                 unwrap_readonly(vtype.inner)),
                             loc=loc)
-                    # A branch-FIRST decl has nowhere to place a hoist line, so
-                    # only the flavor that needs none may lower in position: a
-                    # null pointer-local (`T* form = nullptr;`), whose reseats
-                    # are all lvalue lifts. An RVALUE reseat wants the rebind
-                    # slot this decl would have to pre-declare, and the F1
-                    # rvalue init wants its own `__slot_N` storage.
-                    if not fn_top and not (
-                            (stmt.init is None
-                             or isinstance(stmt.init, TpyNoneLiteral))
-                            and stmt.name not in lc.prescan.rvalue_reassigned):
-                        note_detail("decl.branch_slot_type")
-                        raise ThirUnsupported(stmt_reject_reason(stmt))
                     # Slot-hoist Optional pointer-local (None / rvalue init).
+                    # Branch-first too: the F1 rvalue `__slot_N` is declared
+                    # in position (block-scoped with the pointer) and the
+                    # rebind slot drains to function top like an if-head's.
                     # An owned, mutable `T*` like REBIND_SLOT (const shapes
                     # reject inside); reseats need the rebind-slot arm, so the
                     # name joins both pointer sets when a slot is pre-declared.
