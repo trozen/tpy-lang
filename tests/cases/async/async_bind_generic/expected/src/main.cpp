@@ -21,8 +21,9 @@ namespace tpyapp::main {
         c.reset();
         // print(await c)
         std::cout << __await_lift_0 << "\n";
+        __coro_arg_0 = "ok";
         // s = ident("ok")
-        s.emplace(ident<std::string>("ok"));
+        s.emplace(ident<std::string>(__coro_arg_0));
         // print(await s)
         __state = S_RESUME_1;
         continue;

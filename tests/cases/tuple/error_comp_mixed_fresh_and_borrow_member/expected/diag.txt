@@ -1,1 +1,2 @@
+main.py:21: warning: copies Payload into owned storage (tuple element 1); use copy() to make this explicit
 main.py:21: error: in function 'build': this construct is not yet supported by C++ code generation (expr.list_comp)

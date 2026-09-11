@@ -74,6 +74,8 @@ struct __coro_main {
     bool __cancel_pending;
     ::tpy::BigInt __await_lift_0;
     ::tpy::BigInt __await_lift_1;
+    ::tpy::Bytes __coro_arg_0;
+    ::tpy::Bytes __coro_arg_1;
     std::optional<__coro_consume> __sub_0;
     std::optional<__coro_head> __sub_1;
 

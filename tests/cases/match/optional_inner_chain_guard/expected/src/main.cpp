@@ -238,7 +238,8 @@ void main() {
     std::cout << binding_guard("a", true) << " " << binding_guard("a", false) << "\n";
     // for v in gen("a", True):
     {
-        auto __src_0 = gen("a", true);
+        std::string __tmp_1 = "a";
+        auto __src_0 = gen(__tmp_1, true);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -250,7 +251,8 @@ void main() {
     }
     // for v in gen("a", False):
     {
-        auto __src_2 = gen("a", false);
+        std::string __tmp_2 = "a";
+        auto __src_2 = gen(__tmp_2, false);
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

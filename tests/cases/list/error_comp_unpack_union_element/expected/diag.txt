@@ -1,1 +1,2 @@
+main.py:21: warning: copies Alpha | Beta into owned storage; use copy() to make this explicit
 main.py:21: error: in function 'count': this construct is not yet supported by C++ code generation (expr.list_comp)

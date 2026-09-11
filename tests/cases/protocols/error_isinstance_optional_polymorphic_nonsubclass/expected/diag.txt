@@ -1,1 +1,2 @@
+main.py:20: warning: returns a copy of str field 'self.message'; use -> StrView for zero-copy access or -> String to silence this warning
 main.py:32: error: isinstance() check type(s) 'OtherDyn' are not subclasses of 'BaseExc'

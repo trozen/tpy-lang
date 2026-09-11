@@ -44,7 +44,8 @@ void main() {
     // # owns its copy of `name`, so iteration still reads "world".
     // for msg in greetings(make_name()):  # tpyc: ok
     {
-        auto __src_0 = greetings(make_name());
+        std::string __tmp_1 = make_name();
+        auto __src_0 = greetings(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

@@ -234,9 +234,10 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __sub_5.reset();
         // print(await via_ref(held))
         std::cout << __await_lift_5 << "\n";
-        __coro_arg_4.emplace(Dog("max"));
+        __coro_arg_4 = "tag";
+        __coro_arg_5.emplace(Dog("max"));
         // print(await via_mixed("tag", Dog("max")))
-        __sub_6.emplace("tag", ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_4))});
+        __sub_6.emplace(__coro_arg_4, ::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_5))});
         __state = S_RESUME_6;
         continue;
     }
@@ -269,9 +270,9 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
         i = ((*__for_i_0))++;
-        __coro_arg_5.emplace(Dog("loop"));
+        __coro_arg_6.emplace(Dog("loop"));
         // print(await via_ref(Dog("loop")))
-        __sub_7.emplace((*__coro_arg_5));
+        __sub_7.emplace((*__coro_arg_6));
         __state = S_RESUME_7;
         continue;
     }

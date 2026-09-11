@@ -42,10 +42,12 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "t1";
         // t1: Task[Int32] = asyncio.create_task(doubler(Int32(5), "t1"))
-        t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(5, "t1"))));
+        t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(5, __coro_arg_0))));
+        __coro_arg_1 = "t2";
         // t2: Task[Int32] = asyncio.create_task(doubler(Int32(7), "t2"))
-        t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(7, "t2"))));
+        t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(7, __coro_arg_1))));
         // a = await t1
         __sub_0 = &((*t1));
         __state = S_RESUME_0;

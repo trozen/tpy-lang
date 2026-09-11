@@ -1,1 +1,2 @@
+main.py:29: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 main.py:29: error: in function 'echo': this construct is not yet supported by C++ code generation (expr.method_call:method.arg_shape)

@@ -15,8 +15,9 @@ namespace tpyapp::main {
             ::tpy::BigInt __tpy_async_ret = 1;
             return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
+        __coro_arg_0 = ((n) - (::tpy::BigInt(1)));
         // t = asyncio.create_task(fact(n - 1))
-        t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fact(((n) - (::tpy::BigInt(1)))))));
+        t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fact(__coro_arg_0))));
         // r = await t
         __sub_0 = &((*t));
         __state = S_RESUME_0;

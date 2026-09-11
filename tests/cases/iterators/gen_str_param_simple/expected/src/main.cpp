@@ -14,7 +14,8 @@ std::string make() {
 void main() {
     // for v in echo_n(make(), 3):  # tpyc: ok
     {
-        auto __src_0 = echo_n(make(), ::tpy::BigInt(3));
+        std::string __tmp_1 = make();
+        auto __src_0 = echo_n(__tmp_1, ::tpy::BigInt(3));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

@@ -1,1 +1,2 @@
+main.py:8: warning: Own[list[Int32]] param 'xs' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:8: error: in function 'drain': this construct is not yet supported by C++ code generation (sgen.iterable_own_binding)

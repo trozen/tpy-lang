@@ -1,1 +1,2 @@
+main.py:13: warning: copies dict[str, str] into field; use copy() to make this explicit
 main.py:23: error: Type DynBag does not conform to protocol Greeter in argument 'g'

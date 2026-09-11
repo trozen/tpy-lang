@@ -359,7 +359,8 @@ void main() {
     comprehension(__tmp_1);
     // for g in gen_body("a"):
     {
-        auto __src_0 = gen_body("a");
+        std::string __tmp_2 = "a";
+        auto __src_0 = gen_body(__tmp_2);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -370,7 +371,8 @@ void main() {
         }
     }
     // print("async_body", asyncio.run(async_body("a")))
-    std::cout << "async_body" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(async_body("a")))) << "\n";
+    std::string __tmp_3 = "a";
+    std::cout << "async_body" << " " << ::tpy::print_bool(::tpystd::asyncio::run<bool>(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>(async_body(__tmp_3)))) << "\n";
     // closure("a")
     closure("a");
     // match_arm("a")

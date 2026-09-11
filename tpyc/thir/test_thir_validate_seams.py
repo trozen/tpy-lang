@@ -17,8 +17,9 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
 from ..typesys import INT32, VoidType
 from .nodes import (
-    Form, THIRArgTemp, THIRCall, THIRCoerce, THIRExprStmt, THIRFieldAccess,
-    THIRFormConvert, THIRFunction, THIRFunctionLayout, THIRLiteral,
+    Form, THIRArgTemp, THIRBinOp, THIRCall, THIRCoerce, THIRExprStmt,
+    THIRFieldAccess, THIRFormConvert, THIRFunction, THIRFunctionLayout,
+    THIRLiteral,
     THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
     THIRSimpleGenBody, THIRUnionArgLift,
 )
@@ -270,6 +271,53 @@ class TestArgListFlushRight:
             leaves={}, conds={}, return_values={},
             await_args={1: (self._lift(),)})
         validate_resumable_body("f", body)
+
+
+class TestTransparentWrapperTemps:
+    """`_TRANSPARENT_WRAPPERS`: a temp reached through a wrapper that only
+    re-renders it in place keeps the flush right of the position the wrapper
+    sits in -- the frame-view backing arg (`::tpy::as_mut_span(__tmp_N)`) is
+    the shape that needs it. The right comes from the POSITION, not from the
+    wrapper, and an opaque parent grants nothing."""
+
+    @staticmethod
+    def _temp():
+        return THIRArgTemp(result_type=INT32,
+                           init=THIRLiteral(result_type=INT32, value=1),
+                           cpp_type="int32_t", movable=True)
+
+    def _coerced_temp(self):
+        return THIRCoerce(result_type=INT32, expr=self._temp(),
+                          coercion_name="int_literal")
+
+    def test_temp_under_a_coerce_in_an_arg_list_passes(self):
+        body = THIRResumableBody(
+            leaves={}, conds={}, return_values={},
+            await_args={1: (self._coerced_temp(),)})
+        validate_resumable_body("f", body)
+
+    def test_temp_under_an_opaque_parent_in_an_arg_list_raises(self):
+        # A binop is not a pure re-render of its operand: the operand's decl
+        # would have to hoist out of an expression the emit composes itself.
+        opaque = THIRBinOp(result_type=INT32, left=self._temp(), op="<=",
+                           right=THIRLiteral(result_type=INT32, value=1),
+                           resolved=None)
+        body = THIRResumableBody(
+            leaves={}, conds={}, return_values={},
+            await_args={1: (opaque,)})
+        with pytest.raises(THIRValidationError,
+                           match="THIRArgTemp outside a call arg"):
+            validate_resumable_body("f", body)
+
+    def test_coerced_temp_outside_a_flush_position_raises(self):
+        # A resumable CONDITION has no flush point, and transparency does not
+        # manufacture one.
+        body = THIRResumableBody(
+            leaves={}, conds={1: self._coerced_temp()}, await_args={},
+            return_values={})
+        with pytest.raises(THIRValidationError,
+                           match="THIRArgTemp outside a call arg"):
+            validate_resumable_body("f", body)
 
 
 class TestValidator:

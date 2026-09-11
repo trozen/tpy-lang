@@ -47,6 +47,7 @@ struct __coro_go {
     bool __cancel_pending;
     int32_t x;
     std::string __await_lift_0;
+    std::string __coro_arg_0;
     std::optional<__coro_msg> __sub_0;
 
     enum : int32_t {

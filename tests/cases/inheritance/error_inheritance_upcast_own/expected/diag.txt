@@ -1,1 +1,2 @@
+main.py:16: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:20: error: Type mismatch in argument 'x': expected Animal, got Dog

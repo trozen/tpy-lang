@@ -57,6 +57,8 @@ struct __coro_main_coro {
     int32_t total;
     ::tpy::BigInt v;
     ::tpy::BigInt __await_lift_0;
+    ::tpy::Bytes __coro_arg_0;
+    std::string __coro_arg_1;
     std::optional<__coro_count_chars> __sub_0;
 
     enum : int32_t {

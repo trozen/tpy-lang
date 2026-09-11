@@ -303,6 +303,8 @@ struct __coro_amain {
     bool __await_lift_7;
     bool __await_lift_8;
     bool __await_lift_9;
+    int32_t __coro_arg_0;
+    int32_t __coro_arg_1;
     std::optional<__coro_probe_async<int32_t>> __sub_0;
     std::optional<__coro_probe_async<int32_t>> __sub_1;
     std::optional<__coro_probe_async_twin> __sub_2;

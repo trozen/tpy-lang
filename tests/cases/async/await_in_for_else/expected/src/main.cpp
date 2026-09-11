@@ -52,8 +52,9 @@ __coro_tick tick(std::string_view label) {
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
+            __coro_arg_1 = "else";
             // await tick("else")
-            __sub_1.emplace("else");
+            __sub_1.emplace(__coro_arg_1);
             __state = S_RESUME_1;
             continue;
         }
@@ -62,8 +63,9 @@ __coro_tick tick(std::string_view label) {
             __state = S_JOIN_1;
             continue;
         } else {
+            __coro_arg_0 = "body";
             // await tick("body")
-            __sub_0.emplace("body");
+            __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
         }

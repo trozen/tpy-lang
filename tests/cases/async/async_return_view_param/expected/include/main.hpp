@@ -130,6 +130,10 @@ struct __coro_main_coro {
     std::string __await_lift_2;
     std::string __await_lift_3;
     std::string __await_lift_4;
+    std::string __coro_arg_0;
+    std::string __coro_arg_1;
+    std::string __coro_arg_2;
+    std::string __coro_arg_3;
     std::optional<__coro_direct> __sub_0;
     std::optional<__coro_in_finally> __sub_1;
     std::optional<__coro_pending_slot> __sub_2;

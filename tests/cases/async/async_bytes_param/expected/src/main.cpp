@@ -68,8 +68,9 @@ __coro_head head(::tpy::BytesView data) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = ::tpy::bytes_literal_owned("hello", 5);
         // print(await consume(b"hello"))
-        __sub_0.emplace(::tpy::bytes_literal("hello", 5));
+        __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
@@ -80,8 +81,9 @@ __coro_head head(::tpy::BytesView data) {
         __sub_0.reset();
         // print(await consume(b"hello"))
         std::cout << __await_lift_0 << "\n";
+        __coro_arg_1 = ::tpy::bytes_literal_owned("ABC", 3);
         // print(await head(b"ABC"))
-        __sub_1.emplace(::tpy::bytes_literal("ABC", 3));
+        __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
     }

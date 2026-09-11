@@ -54,6 +54,8 @@ struct __coro_main_coro {
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t2;
     int32_t a;
     int32_t b;
+    std::string __coro_arg_0;
+    std::string __coro_arg_1;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_1 = nullptr;
 

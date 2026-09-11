@@ -1,1 +1,2 @@
+main.py:24: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
 main.py:31: error: Method '__iadd__' requires type parameter 'T' to satisfy 'Equatable', but 'NotEquatable' does not conform

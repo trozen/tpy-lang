@@ -20,8 +20,9 @@ namespace tpyapp::main {
         __sub_0.reset();
         // print(result)
         std::cout << result << "\n";
+        __coro_arg_0 = "hi";
         // s = await identity("hi")  # tpyc: type(str)
-        __sub_1.emplace("hi");
+        __sub_1.emplace(__coro_arg_0);
         __state = S_RESUME_1;
         continue;
     }

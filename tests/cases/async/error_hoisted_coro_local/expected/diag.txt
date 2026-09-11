@@ -1,1 +1,2 @@
+main.py:16: warning: rebinding 'c' drops the previous coroutine without running it
 main.py:16: error: in function 'main': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.rebind_source)

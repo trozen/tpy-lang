@@ -31,8 +31,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "a";
         // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
-        __sub_0.emplace("a", ::tpy::BigInt(1));
+        __sub_0.emplace(__coro_arg_0, ::tpy::BigInt(1));
         __state = S_RESUME_0;
         continue;
     }
@@ -41,8 +42,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_1 = std::move(__r0).value();
         __sub_0.reset();
+        __coro_arg_1 = "b";
         // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
-        __sub_1.emplace("b", ::tpy::BigInt(5));
+        __sub_1.emplace(__coro_arg_1, ::tpy::BigInt(5));
         __state = S_RESUME_1;
         continue;
     }
@@ -56,8 +58,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         __sc_0 = (__sc_1 < __sc_2);
         if (__sc_0) {
+            __coro_arg_2 = "c";
             // r = await val("a", 1) < await val("b", 5) < await val("c", 3)
-            __sub_2.emplace("c", ::tpy::BigInt(3));
+            __sub_2.emplace(__coro_arg_2, ::tpy::BigInt(3));
             __state = S_RESUME_2;
             continue;
         } else {
@@ -82,8 +85,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_5 = std::move(__r3).value();
         __sub_3.reset();
+        __coro_arg_4 = "b2";
         // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
-        __sub_4.emplace("b2", ::tpy::BigInt(5));
+        __sub_4.emplace(__coro_arg_4, ::tpy::BigInt(5));
         __state = S_RESUME_4;
         continue;
     }
@@ -96,8 +100,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         __sc_4 = (__sc_5 < __sc_6);
         if (__sc_4) {
+            __coro_arg_5 = "c2-skipped";
             // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
-            __sub_5.emplace("c2-skipped", ::tpy::BigInt(3));
+            __sub_5.emplace(__coro_arg_5, ::tpy::BigInt(3));
             __state = S_RESUME_5;
             continue;
         } else {
@@ -123,8 +128,9 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         r = __sc_0;
         // print("r", r)
         std::cout << "r" << " " << ::tpy::print_bool(r) << "\n";
+        __coro_arg_3 = "a2";
         // r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
-        __sub_3.emplace("a2", ::tpy::BigInt(9));
+        __sub_3.emplace(__coro_arg_3, ::tpy::BigInt(9));
         __state = S_RESUME_3;
         continue;
     }

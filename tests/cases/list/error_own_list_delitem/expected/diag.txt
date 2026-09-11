@@ -1,1 +1,2 @@
+main.py:13: warning: Own[list[Row]] param 'rows' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:14: error: in function 'drop_first': this construct is not yet supported by C++ code generation (stmt.del_item:recv_or_index)

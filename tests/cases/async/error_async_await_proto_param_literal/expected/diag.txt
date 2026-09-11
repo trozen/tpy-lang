@@ -1,1 +1,0 @@
-main.py:18: error: awaiting a coroutine with a protocol-typed parameter does not yet support a collection literal argument; pass a named iterable instead

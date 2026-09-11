@@ -122,7 +122,9 @@ from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
                                   reads_storage_form_optional)
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
-from ...value_category import call_returns_cpp_ref, is_rvalue_source
+from ...value_category import (
+    borrowing_frame_callee, call_returns_cpp_ref, is_rvalue_source,
+)
 from ...codegen_cpp.context import (
     escape_cpp_name,
     imported_free_callee_cpp,
@@ -7639,52 +7641,6 @@ def _bytes_view_form_source(a: TpyExpr, locals_: dict[str, TpyType],
             and _own_viewfam_param(locals_.get(src.name)) is None)
 
 
-def _borrowing_frame_callee(fi) -> bool:
-    """Does this callee's FRAME borrow an argument slot past the statement,
-    so a prvalue bound only for the full expression dangles on resume?
-
-    The simple-generator peephole does: its lambda captures a generic `T`
-    parameter by reference, a capture form decided on the OPEN `T`
-    (`BUGS.md#simple-generator-captures-open-t-param-by-reference`). A
-    RESUMABLE generator frame and a coroutine frame do not -- both copy the
-    argument into a `val_or_ref_t<T>` member in the frame constructor,
-    inside the full expression (verified for the coroutine by ASAN with the
-    temp elided).
-
-    Which of the two a generator lowers to is `is_simple_generator`, a
-    predicate over the callee's `TpyFunction` that this seam cannot reach:
-    a call site holds a `FunctionInfo`, and the peephole verdict is
-    finalized during codegen (`_prescan_for_src_embedding` may force a
-    simple generator resumable). So every generator factory is treated as
-    borrowing, which costs a resumable one a temp it does not need --
-    TODO.md carries that residue and the two ways to remove it.
-
-    The fact is the CALLEE's, so it must not depend on how the call was
-    resolved. `is_generator` answers for a plain or generic callee; an
-    @overload-ed one carries False on every per-signature fi while the IMPL is
-    the generator, and there the DECLARED `typing.Iterator` return answers --
-    sema forbids that return on a non-generator plain-TPy function, so nothing
-    else can wear it. `@native` / `@cpp_template` callees are excluded: their
-    `Iterator[T]` returns are C++ combinator objects (map / zip / filter /
-    iter), not frames. Same rule and the same exclusions as
-    `_genfac_like_call`, one level down (an fi, not a call), so the two cannot
-    drift."""
-    if fi is None:
-        return False
-    if getattr(fi, "is_generator", False):
-        return True
-    if (getattr(fi, "native_function", False)
-            or getattr(fi, "cpp_template", None)
-            or getattr(fi, "is_stub", False)):
-        return False
-    rt = getattr(fi, "return_type", None)
-    if not isinstance(rt, TpyType):
-        return False
-    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-    return (isinstance(rt, NominalType) and rt.is_protocol
-            and rt.qualified_name() == "typing.Iterator")
-
-
 class _GenericArgSlot(NamedTuple):
     """What a bare-`T` argument slot owes, answered once from the (source,
     resolved slot, callee) triple.
@@ -7716,7 +7672,7 @@ def _generic_arg_slot(a: TpyExpr, raw_ptype: 'TpyType | None',
     pay the reference-typed one's temp.
 
     ONE thing still owes a temp at a value-typed instantiation: a callee whose
-    frame BORROWS the slot (`_borrowing_frame_callee`), where the temp is what
+    frame BORROWS the slot (`borrowing_frame_callee`), where the temp is what
     keeps the borrowed object alive -- the same rule
     `_container_call_temp_arg` applies at concrete readonly-ref slots. A
     view-form source owes nothing at ANY `T` slot: each of the four str/bytes
@@ -11584,7 +11540,7 @@ def _r_record_rvalue_temp_factory(req: _ArgReq) -> bool:
 def _r_tparam_slot_temp(req: _ArgReq) -> bool:
     return _tparam_slot_temp_arg(
         req.a, req.ptype, req.index, req.overload, req.analyzer,
-        borrowing_frame=_borrowing_frame_callee(req.overload)) is not None
+        borrowing_frame=borrowing_frame_callee(req.overload)) is not None
 
 
 def _r_struct_proto_union(req: _ArgReq) -> bool:
@@ -11865,7 +11821,7 @@ def _pre_generic_slot_family(req: _ArgReq) -> 'bool | None':
         return note_detail("call.generic_arg_slot")
     gslot = _generic_arg_slot(
         a, ptype, resolved, locals_, req.param_names, analyzer,
-        borrowing_frame=_borrowing_frame_callee(req.overload))
+        borrowing_frame=borrowing_frame_callee(req.overload))
     if isinstance(ptype, TypeParamRef):
         # A row hoisting a temp is flush-gated; one whose INSTANTIATED slot
         # binds the rvalue outright renders inline, so it needs no flush
@@ -13992,7 +13948,7 @@ def _iter_proto_call_ret(it: 'TpyCall | TpyMethodCall', analyzer) -> bool:
     return _user_iterator_iterable(u, analyzer)
 
 
-def _gen_recv_ctor_temp(obj: TpyExpr, analyzer) -> bool:
+def gen_recv_ctor_temp(obj: TpyExpr, analyzer) -> bool:
     """A generator-method receiver lifted into a named local
     (`for v in Counter(3).each():` -> `Counter __tmp_N = Counter(..);` +
     `__tmp_N.each()`): the resumable frame / peephole captures the receiver
@@ -14023,7 +13979,7 @@ def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
     gates are bypassed (via `iterable_override`); the receiver and args
     still lower through the standard member tail. Receivers: a bare
     in-scope name (`self` included) or the ctor-rvalue lift slice
-    (`_gen_recv_ctor_temp`). A generic method routes when its inferred
+    (`gen_recv_ctor_temp`). A generic method routes when its inferred
     targs spell through the member tail's method_targs suffix
     (`f.items<int32_t>(42)`); omitted trailing defaults ride the emitted
     C++ signature (`_call_arity_ok`). Native / template callees and
@@ -14049,7 +14005,7 @@ def _member_gen_call_iterable_ok(e: TpyMethodCall, locals_: dict[str, TpyType],
                                and not e.is_static_call):
         return False
     if not (isinstance(e.obj, TpyName) and e.obj.name in locals_):
-        if not _gen_recv_ctor_temp(e.obj, analyzer):
+        if not gen_recv_ctor_temp(e.obj, analyzer):
             return False
     return _call_arity_ok(e, fi)
 

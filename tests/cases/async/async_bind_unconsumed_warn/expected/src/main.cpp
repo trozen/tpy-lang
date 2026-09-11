@@ -29,12 +29,15 @@ __coro_note note(std::string_view tag) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "dropped";
         // c = note("dropped")  # tpyc: warning(/never consumed/)
-        c.emplace(note("dropped"));
+        c.emplace(note(__coro_arg_0));
+        __coro_arg_1 = "first";
         // d = note("first")
-        d.emplace(note("first"));
+        d.emplace(note(__coro_arg_1));
+        __coro_arg_2 = "second";
         // d = note("second")  # tpyc: warning(/drops the previous coroutine/)
-        d.emplace(note("second"));
+        d.emplace(note(__coro_arg_2));
         // await d
         __state = S_RESUME_0;
         continue;

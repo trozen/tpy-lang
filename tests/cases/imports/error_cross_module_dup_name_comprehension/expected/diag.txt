@@ -1,1 +1,2 @@
+main.py:9: warning: copies Tag into owned storage; use copy() to make this explicit
 main.py:9: error: List comprehension element has type blue.Tag, incompatible with annotated element type red.Tag

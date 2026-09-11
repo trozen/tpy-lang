@@ -32,7 +32,8 @@ void main() {
     int32_t n = 0;
     // for _ in p.finditer("aé"):
     {
-        auto __src_0 = p.finditer("a\xc3\xa9");
+        std::string __tmp_1 = "a\xc3\xa9";
+        auto __src_0 = p.finditer(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

@@ -335,8 +335,19 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
                   eager_only=eager_only)
 
 
+# The wrappers this walk treats as pass-through for flushability -- the ONE
+# place that says "transparent": a coerce is a pure inline wrap around its
+# source (`::tpy::as_mut_span({0})`) and an error-return unwrap only composes
+# the `({ ... })` render around its call. Neither moves where an inner temp's
+# decl lands, so a temp reached through one keeps the flush right (and the
+# conditional-operand rule) of the position the wrapper sits in. Both reach
+# their child through the generic tail, which reads this tuple.
+_TRANSPARENT_WRAPPERS = (THIRCoerce, THIRErrorReturnUnwrap)
+
+
 def _walk(owner: str, node: THIRNode, return_type=None, *,
-          argtemp_ok: bool = False, eager_only: bool = False) -> None:
+          argtemp_ok: bool = False, eager_only: bool = False,
+          via_transparent: bool = False) -> None:
     """`argtemp_ok` marks the value expression of a flushable statement
     (expr stmt / var-decl init / assign value / return value / print arg)
     -- the only
@@ -357,7 +368,17 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     _check_node(owner, node)
     _check_stmt(owner, node, return_type)
     if isinstance(node, THIRArgTemp):
-        _fail(owner, node, "THIRArgTemp outside a call arg position")
+        # Reached through a transparent wrapper the temp keeps the arg-list
+        # rules, since the wrapper only re-renders it in place; anywhere else
+        # a temp outside a call-arg position has no flush point at all.
+        if not (via_transparent and argtemp_ok):
+            _fail(owner, node, "THIRArgTemp outside a call arg position")
+        if eager_only and node.movable is None:
+            _fail(owner, node, "unaudited THIRArgTemp under "
+                               "a conditional operand")
+        _walk(owner, node.init, return_type, argtemp_ok=argtemp_ok,
+              eager_only=eager_only)
+        return
     if isinstance(node, THIRUnionArgLift) and node.temp_cpp is not None:
         # The temp-bearing lift hoists a decl like THIRArgTemp does, so it
         # is legal only where a temp has a flush point (checked in the
@@ -389,15 +410,6 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                       argtemp_ok=argtemp_ok, eager_only=eager_only)
         _walk_arg_list(owner, node.args, return_type, argtemp_ok=argtemp_ok,
                        eager_only=eager_only)
-        return
-    if isinstance(node, THIRErrorReturnUnwrap):
-        # The expression unwrap is TRANSPARENT for flushability: its call's
-        # arg temps flush at the enclosing statement exactly as they would
-        # unwrapped (the wrapper only composes the `({ ... })` render). It is
-        # transparent for the conditional-operand rule too: an unwrap inside a
-        # lazy operand keeps its call's args in that operand.
-        _walk(owner, node.call, return_type, argtemp_ok=argtemp_ok,
-              eager_only=eager_only)
         return
     if isinstance(node, (THIRErrorReturnBind, THIRErrorReturnDiscard)):
         # Statement-level unwrap blocks: the call renders and its temps
@@ -549,7 +561,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     for child in _iter_children(node):
         _walk(owner, child, return_type,
               argtemp_ok=argtemp_ok and isinstance(node, THIRExpr),
-              eager_only=eager_only and isinstance(node, THIRExpr))
+              eager_only=eager_only and isinstance(node, THIRExpr),
+              via_transparent=isinstance(node, _TRANSPARENT_WRAPPERS))
 
 
 def validate_function(fn: THIRFunction) -> None:

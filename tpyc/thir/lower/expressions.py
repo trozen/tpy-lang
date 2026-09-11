@@ -5,6 +5,7 @@ only from the node arm being lowered.
 """
 
 from __future__ import annotations
+from collections.abc import Callable
 from dataclasses import field, fields as dataclass_fields, replace
 from ... import qnames
 from ...parse.nodes import (
@@ -142,7 +143,10 @@ from ...typesys import (
 from ...symbol_binding import SymbolKind, lookup_imported
 from ...coercions import wrap_into_any, CoercionContext
 from ...compilation_context import get_current_compiler
-from ...value_category import call_returns_cpp_ref, is_rvalue_source
+from ...value_category import (
+    borrowing_frame_callee, call_returns_cpp_ref, is_rvalue_source,
+    materializing_temp_source,
+)
 from ..reject import (ThirUnsupported, call_reject_reason, expr_kind_tag,
                         note_detail)
 from ..faces import witness as _witness
@@ -298,7 +302,7 @@ from .predicates import (
     _f1_record,
     _f1_ref,
     _f1_tuple,
-    _factory_borrow_temp_arg,
+    frame_temp_arg_slot,
     _field_read_ref_ctor_arg,
     _field_over_global_record_ok,
     _field_over_subscript_ok,
@@ -656,7 +660,6 @@ from .checks import (
     _subscript_over_narrowed_opt_subscript_ok,
     _field_over_field_ok,
     _free_callee_kind,
-    _borrowing_frame_callee,
     _fstring_arg_wrap,
     _fstring_container_call_arg,
     _generic_arg_slot,
@@ -669,7 +672,7 @@ from .checks import (
     _marker_call_supported,
     _marker_reject,
     _module_qual_ctor_shape,
-    _gen_recv_ctor_temp,
+    gen_recv_ctor_temp,
     _member_gen_call_iterable_ok,
     _method_call_arg_ok,
     _opt_strview_to_str_own_elem_arg,
@@ -9907,7 +9910,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     a, ptype, index, raw_method_fi, lc.analyzer,
                     locals_=declared,
                     param_names=lc.prescan.param_names,
-                    borrowing_frame=_borrowing_frame_callee(fi))
+                    borrowing_frame=borrowing_frame_callee(fi))
                 if tt is not None:
                     _witness("argtemp.generic_ref_slot")
                     t_init = _lower_expr(a, lc, declared,
@@ -9948,13 +9951,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             nf = _tparam_slot_temp_arg(
                 a, ptype, index, raw_method_fi, lc.analyzer,
                 locals_=declared, param_names=lc.prescan.param_names,
-                borrowing_frame=_borrowing_frame_callee(fi))
+                borrowing_frame=borrowing_frame_callee(fi))
             if nf is not None:
                 # The temp this seam still owes is needed RENDER, not an
                 # optimization, and with no flush position it cannot be
                 # hoisted -- so reject honestly (the `call.own_str_no_flush`
                 # precedent) rather than fall through to a pass-through arm.
-                if _borrowing_frame_callee(fi):
+                if borrowing_frame_callee(fi):
                     # A borrowing frame would capture a prvalue that dies at
                     # the end of the statement.
                     note_detail("method.generic_frame_slot_no_flush")
@@ -9969,15 +9972,26 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # Sync methods keep their inline renders. Any other temporary
             # shape RAISES rather than fall through to an inline render
             # where a hoist is required.
-            if (not proto_recv and not stub_recv and fi is not None
-                    and (fi.is_generator or fi.is_async)
-                    and isinstance(ptype, TpyType)):
+            frame_factory = (not proto_recv and not stub_recv and fi is not None
+                             and (fi.is_generator or fi.is_async)
+                             and isinstance(ptype, TpyType))
+            if frame_factory:
                 fpr = unwrap_ref_type(unwrap_send_sync(ptype))
                 fslot = unwrap_readonly(fpr)
+                # No view guard here: every type `is_borrowing_view_type`
+                # answers for is a VALUE type, so a view slot passes by value
+                # and neither ref-param test below can hold on one. Only the
+                # three FLAG-bearing dict views have that checked at
+                # registration (`type_def_registry.register`); `Span`,
+                # `varargs`, `SpanIter`, `StrView` and `BytesView` are
+                # recognized by category/qname and hold the property by
+                # construction, unguarded (TODO.md, widen the invariant). A
+                # view that stopped being a value type would need this arm
+                # re-checked against the borrowing-view row further down.
                 if ((fpr.is_ref_param() or is_readonly_ref_param(fpr))
                         and isinstance(fslot, NominalType)
                         and not fslot.is_protocol
-                        and _factory_borrow_temp_arg(a, lc.analyzer)):
+                        and materializing_temp_source(a, lc.analyzer)):
                     if not temp_args:
                         raise ThirUnsupported(
                             "factory-method borrow temp outside a flush "
@@ -10005,7 +10019,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                              use=_RECORD_TEMP_FLUSH_USE),
                             movable=unwrap_ref_type(fslot).is_movable(),
                             form=Form.BORROW, loc=getattr(a, "loc", None))
-                    raise ThirUnsupported("method.gen_factory_arg_shape")
+                    # Any other temporary at a ref slot falls through to the
+                    # uniform frame-temp row below, which hoists it.
             # The Own-slot copy half needs the flush threaded into
             # `_lower_call_arg`'s copy+move arm -- scoped to the own-lvalue
             # slot on a USER-record method (a stub receiver's cpp_template
@@ -10070,14 +10085,25 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 temp_args and not proto_recv and not stub_recv
                 and _optional_ptr_arg_face(a, ptype, declared,
                                            lc.analyzer) == 'scalar_temp')
-            return _lower_call_arg(a, ptype, lc, declared,
-                                   temp_args=(own_flush or proto_slot_flush
-                                              or optptr_scalar_flush),
-                                   nested_temps=temp_args,
-                                   method_arg=not proto_recv,
-                                   method_arg_stub=stub_recv and not proto_recv,
-                                   protocol_slots=proto_slot_flush,
-                                   readonly_target=ro_slot)
+            # Every other TEMPORARY argument of the same factory: the frame
+            # keeps it past the statement whatever its slot does with it, so
+            # it hoists to a named local too.
+            return _frame_temp_arg(
+                a, ptype, lc, lc.analyzer, active=frame_factory,
+                temp_args=temp_args,
+                no_flush_reason=("factory-method temp arg outside a "
+                                 "flush position"),
+                lower=lambda: _lower_call_arg(
+                    a, ptype, lc, declared,
+                    temp_args=(own_flush or proto_slot_flush
+                               or optptr_scalar_flush),
+                    nested_temps=temp_args,
+                    method_arg=not proto_recv,
+                    method_arg_stub=stub_recv and not proto_recv,
+                    protocol_slots=proto_slot_flush,
+                    readonly_target=ro_slot),
+                lower_owned=lambda owned: _lower_call_arg(
+                    _peel_coerce(a), owned, lc, declared, temp_args=True))
 
         if isinstance(e.obj, TpyName) and e.obj.name == lc.self_receiver:
             _witness("call.self_method")
@@ -10112,7 +10138,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         _mnu = (_assign_narrowed_union_recv(e.obj, declared, lc)
                 if isinstance(e.obj, TpyName) else None)
         if (fi is not None and fi.is_generator
-                and _gen_recv_ctor_temp(e.obj, lc.analyzer)):
+                and gen_recv_ctor_temp(e.obj, lc.analyzer)):
             # The generator-factory receiver lift: the frame/peephole
             # captures the receiver by reference, so the ctor rvalue hoists
             # into a named local (`Counter __tmp_N = Counter(..);`) flushed
@@ -12459,7 +12485,7 @@ def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
     dcbp = root.const_borrow_params
     # A callee whose FRAME borrows the slot past the statement keeps the
     # named temp whatever the instantiation resolves to.
-    borrowing_frame = _borrowing_frame_callee(root)
+    borrowing_frame = borrowing_frame_callee(root)
     args = []
     for i, (a, p) in enumerate(zip(e.args, root.params)):
         ptype = unwrap_ref_type(p.type)
@@ -12699,7 +12725,7 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
     # fi carries is_generator=False).
     _callee_fi = e.resolved_function_info
     frame_capturing = (_callee_fi is not None
-                       and (_borrowing_frame_callee(_callee_fi)
+                       and (borrowing_frame_callee(_callee_fi)
                             or _callee_fi.is_async))
     if isinstance(a, TpyVarargPack):
         # Kind-blind: the pack renders (`std::array` temp +
@@ -13212,12 +13238,130 @@ def _lower_free_call_arg(e: TpyCall, a: TpyExpr,
         return THIRArgTemp(result_type=dslot, cpp_type=dslot.to_cpp(), movable=unwrap_ref_type(dslot).is_movable(),
                            init=coerced, form=Form.BORROW,
                            loc=getattr(a, "loc", None))
-    return _lower_call_arg(
-        a, ptype, lc, declared, temp_args=temp_args,
-        protocol_slots=kind is not None and kind[0] not in ("native", "native_c", "template"),
-        readonly_target=readonly_target, frame_capturing=frame_capturing,
-        inline_template=kind is not None
-        and kind[0] in ("native", "native_c", "template"))
+    # The frame-capturing TEMPORARY argument: the free-call twin of the
+    # factory-METHOD row.
+    return _frame_temp_arg(
+        a, ptype, lc, analyzer, active=frame_capturing, temp_args=temp_args,
+        no_flush_reason="frame temp arg outside a flush position",
+        lower=lambda: _lower_call_arg(
+            a, ptype, lc, declared, temp_args=temp_args,
+            protocol_slots=kind is not None and kind[0] not in ("native", "native_c", "template"),
+            readonly_target=readonly_target, frame_capturing=frame_capturing,
+            inline_template=kind is not None
+            and kind[0] in ("native", "native_c", "template")),
+        lower_owned=lambda owned: _lower_call_arg(
+            _peel_coerce(a), owned, lc, declared, temp_args=True))
+
+
+def _frame_temp_arg(a: TpyExpr, ptype: 'TpyType | None',
+                    lc: '_LowerCtx', analyzer, *, active: bool,
+                    temp_args: bool, no_flush_reason: str,
+                    lower: 'Callable[[], THIRExpr]',
+                    lower_owned: 'Callable[[TpyType], THIRExpr]') -> THIRExpr:
+    """The frame-capturing TEMPORARY-argument row, one body for both call seams
+    (the generator/coro factory METHOD and the free call).
+
+    A frame never receives a temporary: whatever it does with an argument, it
+    does after the full expression that built the argument has ended, so the
+    argument must already be a named local. The argument keeps its normal
+    lowering -- whatever `lower()` builds -- and the temporary it materializes
+    becomes a hoisted `__tmp_N`, so a borrowing sink views the local, an owning
+    sink moves off it and a value sink copies it.
+
+    `no_flush_reason` is the seam's own reject text: the row NEEDS a hoist
+    position, and with none the honest answer is a reject rather than the
+    inline prvalue whose dangle this row exists to remove."""
+    slot = frame_temp_arg_slot(a, ptype, analyzer) if active else None
+    if slot is None:
+        return lower()
+    # Inside a resumable body this row's flush point is the state's `case`
+    # block, which a frame handle outlives -- so the hoist there is the
+    # gen_async one (`_hoist_frame_factory_args`), which seats the argument on
+    # a field of the ENCLOSING frame and has replaced it with a name before
+    # this row sees it. What still reaches here in a resumable body is a
+    # position that pass does not admit (a ternary arm, a comprehension body):
+    # there the handle cannot outlive the full expression either, so the
+    # case-block local is enough -- except for a `str`/`bytes` LITERAL, which
+    # already renders over STATIC storage and would only trade a lifetime that
+    # cannot end for one that ends early.
+    if (isinstance(_peel_coerce(a), (TpyStrLiteral, TpyBytesLiteral))
+            and (lc.func.is_generator or lc.func.is_async)):
+        return lower()
+    if not temp_args:
+        raise ThirUnsupported(no_flush_reason)
+    return _frame_temp_argtemp(lower(), lower_owned, slot, lc,
+                               getattr(a, "loc", None))
+
+
+def _already_hoisted(e: THIRExpr) -> bool:
+    """Whether this lowered argument already names a hoisted local -- an earlier
+    row (the Own copy+move cascade, the protocol adapter, the pointer-variant
+    union lift, the `*args` pack, the factory ref-slot rows) got there first
+    and the frame rule is already satisfied. Re-seating one of those on a
+    second temp would nest an arg-temp inside a lift, which the validator
+    rejects; the rows are enumerated because each spells its own hoist rather
+    than sharing a node."""
+    while isinstance(e, THIRCoerce):
+        e = e.expr
+    if isinstance(e, THIRUnionArgLift):
+        return e.temp_cpp is not None or _already_hoisted_opt(e.value)
+    if isinstance(e, THIROptionalPtrArg):
+        return _already_hoisted_opt(e.value)
+    return isinstance(e, (THIRArgTemp, THIRVarargPack))
+
+
+def _already_hoisted_opt(e: 'THIRExpr | None') -> bool:
+    return e is not None and _already_hoisted(e)
+
+
+def _frame_temp_argtemp(lowered: THIRExpr,
+                        lower_owned: 'Callable[[TpyType], THIRExpr]',
+                        slot: 'TpyType', lc: '_LowerCtx', loc) -> THIRExpr:
+    """Seat a frame-capturing temporary argument on a hoisted `__tmp_N`.
+
+    A coerce-shaped argument keeps its coerce and only its SOURCE moves onto
+    the local (`std::array<int32_t, 3> __tmp_1 = {1, 2, 3};
+    gen(::tpy::as_mut_span(__tmp_1))`) -- that IS "the same per-param coercion,
+    applied to the local". An argument with no coerce becomes the local itself,
+    and its init is re-lowered at the OWNED slot type: the argument position's
+    own render can be a view over static storage (`::tpy::bytes_literal(..)`)
+    where the local must own (`::tpy::Bytes __tmp_1 =
+    ::tpy::bytes_literal_owned(..)`)."""
+    if isinstance(slot, PendingListType):
+        raise ThirUnsupported(
+            "generator/coroutine argument's backing type is unresolved")
+    if _already_hoisted(lowered):
+        return lowered
+    _witness("argtemp.frame_temp")
+    if isinstance(lowered, THIRCoerce):
+        temp = THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
+                           init=lowered.expr, form=Form.BORROW,
+                           movable=unwrap_ref_type(slot).is_movable(), loc=loc)
+        # A form-PASSTHROUGH coerce (one whose form IS its inner's, the
+        # bytes-view family) must keep passing the new inner's form through:
+        # the hoisted local is a borrow source where the prvalue it replaces
+        # was self-contained storage. A form-PRODUCING coerce (`as_mut_span`'s
+        # VALUE span, the str-view BORROW) keeps the form it produces, which
+        # the source cannot change.
+        form = temp.form if lowered.form is lowered.expr.form else lowered.form
+        return replace(lowered, expr=temp, form=form)
+    init = lower_owned(slot)
+    if _already_hoisted(init):
+        # The re-lowering is a PLAIN argument position, where a row that
+        # spells its own hoist at this slot can fire even though the seam's
+        # own lowering did not (a comprehension at a factory METHOD's
+        # container slot renders inline there, and hoists here). That hoist
+        # IS this row's, at this row's slot -- take it rather than nest a
+        # second temp inside it, which the validator rejects.
+        return init
+    # `lower_owned` lowers at the slot TYPE but still at a call-ARGUMENT
+    # position, where a bytes literal renders the static-storage span. The
+    # hoisted decl is an owned init, so the literal takes its owning render.
+    if isinstance(init, THIRBytesLiteral) and init.form is not Form.STORAGE:
+        init = replace(init, form=Form.STORAGE)
+    return THIRArgTemp(result_type=slot, cpp_type=lc.render_type(slot),
+                       init=init, form=lowered.form,
+                       movable=unwrap_ref_type(slot).is_movable(), loc=loc)
 
 
 def _lower_vararg_pack(pack: TpyVarargPack, ptype: 'TpyType | None',
@@ -14989,10 +15133,12 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # _own_record_rvalue_arg -- `Arc.new(Mutex.new(0))`): the inline
         # rvalue binds the T&& slot; lower under BORROW_BIND like the
         # owned-record decl's method row, whose record-result gate this
-        # position shares.
+        # position shares. This row is itself temp-free, so `nested_temps`
+        # rides the statement flush into the rvalue's OWN args (a generator /
+        # coro factory nested there hoists its temporary at the statement).
         return _lower_expr(a, lc, declared,
                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                        allow_temps=temp_args))
+                                        allow_temps=temp_args or nested_temps))
     if (ow_slot is not None
             and _storage_call_ret(
                 unwrap_readonly(unwrap_send_sync(ow_slot)),

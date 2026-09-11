@@ -1,1 +1,2 @@
+main.py:14: warning: 'p' will not keep the object it was given -- 'local' is rebound on each iteration and both names share its storage; use copy(local) for an independent value
 main.py:15: error: Cannot return local or temporary as reference. Object type 'Point' is returned by reference. Use Own[Point] to return by value.

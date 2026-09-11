@@ -1,1 +1,2 @@
+main.py:12: warning: copies Inner into field; use copy() to make this explicit
 main.py:17: error: Type mismatch in variable 'x': expected int, got int | None

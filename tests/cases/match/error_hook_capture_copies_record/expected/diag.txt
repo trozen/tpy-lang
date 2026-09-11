@@ -1,1 +1,3 @@
+main.py:20: warning: copies Cat into field; use copy() to make this explicit
+main.py:24: warning: non-exhaustive match on 'Holder'; no unconditional catch-all arm (add 'case _: pass' to suppress)
 main.py:23: error: in function 'gen': this construct is not yet supported by C++ code generation (res.match_binding)

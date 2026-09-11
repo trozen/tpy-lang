@@ -54,6 +54,12 @@ struct __coro_main {
     bool __sc_4;
     ::tpy::BigInt __sc_7;
     bool r2;
+    std::string __coro_arg_0;
+    std::string __coro_arg_1;
+    std::string __coro_arg_2;
+    std::string __coro_arg_3;
+    std::string __coro_arg_4;
+    std::string __coro_arg_5;
     std::optional<__coro_val> __sub_0;
     std::optional<__coro_val> __sub_1;
     std::optional<__coro_val> __sub_2;

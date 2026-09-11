@@ -1,0 +1,1 @@
+main.py:37: error: receiver of the async method 'add' must be a stable lvalue (a local, parameter, or field chain rooted at one) or a temporary this frame can seat -- the coroutine captures it by reference for the handle's whole life, and this one reads out of a temporary that dies at the end of the statement. Bind the owner to a local first: `r = <expr>; ... r.field.add(...)`

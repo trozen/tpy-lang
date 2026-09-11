@@ -73,6 +73,7 @@ struct __coro_main_coro {
     std::optional<__coro_ident<std::string>> s;
     int32_t __await_lift_0;
     std::string __await_lift_1;
+    std::string __coro_arg_0;
 
     enum : int32_t {
         S_INITIAL = 0,

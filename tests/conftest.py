@@ -51,7 +51,8 @@ from tpyc.codegen_cpp.context import ThirRejectError
 # the module list here would drift the moment the boundary moves.
 from tpyc.compilation_context import activate_compiler
 from tpyc.parse import Parser, ParseError
-from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
+from tpyc.sema import (SemanticAnalyzer, SemanticError, Diagnostic,
+                       DiagnosticLevel, format_diagnostics)
 from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
     get_or_build_pch, list_compilers, CompilerNotFoundError,
@@ -943,6 +944,39 @@ def _codegen_error_from(mod):
     return stamp_codegen_error_file(mod.path.name, mod.is_entry_point)
 
 
+def _accumulated_warnings(compiler) -> list[str]:
+    """The warnings sema recorded before a failing compile raised, in the
+    order the success path formats them.
+
+    A failure path that returned only the exception would hide them, and a
+    case that STARTS failing then reads as a case that lost its warnings --
+    which is exactly how a THIR reject was once misread as a vanished copy
+    warning. `tpyc --dump-code` prints these ahead of a codegen reject, so a
+    reject case's diag.txt matches the CLI again; on the paths where the CLI
+    itself drops them (BUGS.md, the fatal-error abort) the snapshot is the
+    stricter record. Errors are left out: the raised exception is the case's
+    error line, and a recorded copy of it would double up."""
+    if compiler is None:
+        return []
+    # The modules a compile that DIED mid-flight got through, reconstructed
+    # from the compiler's own order; the success path passes the modules it
+    # returned instead.
+    modules = []
+    for name in getattr(compiler, "compile_order", None) or ():
+        module = getattr(compiler, "modules", {}).get(name)
+        if module is not None:
+            modules.append(module)
+    return [line for diag, line in format_diagnostics(compiler, modules)
+            if diag.level != DiagnosticLevel.ERROR]
+
+
+def _failed(compiler, error_line: str) -> CompileResult:
+    """A failed compile's diagnostics: the warnings sema got to first, then
+    the error that stopped it."""
+    lines = _accumulated_warnings(compiler) + [error_line]
+    return CompileResult(success=False, diagnostics="\n".join(lines) + "\n")
+
+
 def compile_with_diagnostics(
         src_file: Path, output_dir: Path, default_int: str | None = None,
         snapshot_lib_modules: frozenset[str] = frozenset()) -> CompileResult:
@@ -970,6 +1004,7 @@ def compile_with_diagnostics(
     # `tpyc foo.pas` vs. `pytest`.
     lib_dirs = list(extra_lib_dirs) + list(DEFAULT_LIB_DIRS)
 
+    compiler = None
     try:
         # Use Compiler for multi-module support
         compiler = Compiler(src_file, default_int=default_int, lib_dirs=lib_dirs,
@@ -977,15 +1012,15 @@ def compile_with_diagnostics(
         compiled_modules = compiler.compile()
 
         # Collect diagnostics from compiler and all analyzers
-        all_diags = []
-        has_errors = False
-        for d in compiler.diagnostics:
-            all_diags.append(d.format("tpyc"))
-        for mod in compiled_modules:
-            for d in mod.analyzer.diagnostics:
-                all_diags.append(d.format(mod.path.name))
-                if d.level == DiagnosticLevel.ERROR:
-                    has_errors = True
+        reported = format_diagnostics(compiler, compiled_modules)
+        all_diags = [line for _, line in reported]
+        # The verdict comes off the SAME set that is reported, driver
+        # diagnostics included: a frontend-plugin parse error is an ERROR on
+        # `compiler.diagnostics` and does not raise (`compiler.compile()`
+        # records it and returns), so counting only the module analyzers read
+        # a plugin syntax error as a successful compile and walked on into
+        # codegen.
+        has_errors = any(d.level == DiagnosticLevel.ERROR for d, _ in reported)
         diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
 
         if has_errors:
@@ -1101,16 +1136,13 @@ def compile_with_diagnostics(
                              third_party_c_sources=list(tp_plan.c_sources))
 
     except CompileError as e:
-        return CompileResult(success=False, diagnostics=e.format() + "\n")
+        return _failed(compiler, e.format())
     except SemanticError as e:
-        diag = e.format(src_file.name)
-        return CompileResult(success=False, diagnostics=diag + "\n")
+        return _failed(compiler, e.format(src_file.name))
     except ParseError as e:
-        diag = e.format(src_file.name)
-        return CompileResult(success=False, diagnostics=diag + "\n")
+        return _failed(compiler, e.format(src_file.name))
     except CodeGenError as e:
-        diag = e.format(src_file.name)
-        return CompileResult(success=False, diagnostics=diag + "\n")
+        return _failed(compiler, e.format(src_file.name))
 
 
 @dataclass

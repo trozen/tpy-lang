@@ -1,1 +1,2 @@
+main.py:11: warning: copies BaseException into field; use copy() to make this explicit
 main.py:11: error: cannot store 'BaseException' borrow as owned 'BaseException' in assignment -- the dynamic type may be a subclass and would be lost (slicing). Use `Box[Throwable]` (or `Box[BaseException]`) for owned polymorphic storage: `slot = Box(exc.clone())`.

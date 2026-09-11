@@ -8,8 +8,9 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_client_role::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "127.0.0.1";
         // reader, writer = await asyncio.open_connection("127.0.0.1", port)
-        __sub_0.emplace("127.0.0.1", port);
+        __sub_0.emplace(__coro_arg_0, port);
         __state = S_RESUME_0;
         continue;
     }

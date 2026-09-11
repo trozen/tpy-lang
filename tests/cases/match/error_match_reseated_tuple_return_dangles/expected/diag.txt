@@ -1,1 +1,3 @@
+main.py:22: warning: copies Counter into field (tuple element 0); use copy() to make this explicit
+main.py:22: warning: copies Counter into field (tuple element 1); use copy() to make this explicit
 main.py:40: error: Cannot return this tuple: its non-value elements are returned by reference into storage owned by the function, which dies when it returns. Return a tuple rooted in parameter data, or use Own[Counter] for such elements to return by value.

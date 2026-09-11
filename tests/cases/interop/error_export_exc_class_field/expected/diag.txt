@@ -1,1 +1,2 @@
+main.py:20: warning: copies Point into field; use copy() to make this explicit
 main.py:16: error: user exception 'ParseError': data field 'where' of type Point cannot cross the CPython boundary as an instance attribute (only scalar, str, bytes, and exposed-enum exception fields are supported yet)

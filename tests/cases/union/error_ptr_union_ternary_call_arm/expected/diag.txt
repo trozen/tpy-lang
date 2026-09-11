@@ -1,1 +1,2 @@
+main.py:26: warning: ternary copies a reference type where CPython would alias the variable arm; use copy() to acknowledge the copy
 main.py:26: error: in function 'bump': this construct is not yet supported by C++ code generation (expr.ifexpr)

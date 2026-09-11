@@ -32,8 +32,9 @@ __coro_msg msg(std::string_view tag) {
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((!((x > 0)))) {
+            __coro_arg_0 = "positive";
             // assert x > 0, await msg("positive")
-            __sub_0.emplace("positive");
+            __sub_0.emplace(__coro_arg_0);
             __state = S_RESUME_0;
             continue;
         } else {

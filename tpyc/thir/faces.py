@@ -170,6 +170,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.gen_factory",          # temporary at a generator/coro factory
                                     # METHOD's ref / readonly-ref slot ->
                                     # named scope-local the frame borrows
+    "argtemp.frame_temp",           # the uniform rule beside it: ANY temporary
+                                    # argument of a generator/coro factory,
+                                    # hoisted so the frame never receives one
     "expr.walrus_scalar",           # value-scalar walrus `(n = v)` + named
                                     # pre-decl on the sink's named row
     "expr.walrus_opt_ptr",          # ptr-Optional walrus target: `T* n =

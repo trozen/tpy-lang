@@ -75,8 +75,9 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = ::tpy::bytes_literal_owned("abc", 3);
         // print(await first_bytes(b"abc"))   # literal temporary, read across suspension
-        __sub_0.emplace(::tpy::bytes_literal_owned("abc", 3));
+        __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
@@ -99,8 +100,9 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         __sub_1.reset();
         // print(await first_bytes(None))
         std::cout << __await_lift_1 << "\n";
+        __coro_arg_1 = "hello";
         // print(await str_len("hello"))
-        __sub_2.emplace("hello");
+        __sub_2.emplace(__coro_arg_1);
         __state = S_RESUME_2;
         continue;
     }

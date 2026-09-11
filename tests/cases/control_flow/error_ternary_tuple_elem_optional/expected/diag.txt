@@ -1,1 +1,2 @@
+main.py:15: warning: ternary copies a reference type where CPython would alias the variable arm; use copy() to acknowledge the copy
 main.py:15: error: in function 'pick': this construct is not yet supported by C++ code generation (expr.ifexpr)

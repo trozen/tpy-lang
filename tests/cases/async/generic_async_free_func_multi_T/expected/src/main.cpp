@@ -8,8 +8,9 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "x";
         // p = await make_pair(Int32(7), "x")  # tpyc: type(/tuple\[Int32, str\]/)
-        __sub_0.emplace(7, "x");
+        __sub_0.emplace(7, __coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }

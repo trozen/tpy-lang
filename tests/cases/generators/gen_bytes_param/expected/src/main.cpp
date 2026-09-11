@@ -10,7 +10,8 @@ void main() {
     int32_t total = 0;
     // for v in byte_vals(b"ABC"):
     {
-        auto __src_0 = byte_vals(::tpy::bytes_literal("ABC", 3));
+        ::tpy::Bytes __tmp_1 = ::tpy::bytes_literal_owned("ABC", 3);
+        auto __src_0 = byte_vals(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

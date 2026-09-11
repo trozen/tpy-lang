@@ -102,9 +102,10 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
     case S_INITIAL: {
         // total = 0
         total = 0;
+        __coro_arg_0 = (::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)));
         // for v in each_byte(b"ab" + b"c"):
         {
-            auto __src_0 = each_byte((::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1))));
+            auto __src_0 = each_byte(__coro_arg_0);
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
@@ -116,8 +117,9 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
         }
         // print(total)
         std::cout << total << "\n";
+        __coro_arg_1 = "hello";
         // print(await count_chars("hello"))
-        __sub_0.emplace("hello");
+        __sub_0.emplace(__coro_arg_1);
         __state = S_RESUME_0;
         continue;
     }

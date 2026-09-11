@@ -65,8 +65,9 @@ __coro_sub sub(std::string_view label) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
+        __coro_arg_1 = "outer";
         // await sub("outer")
-        __sub_1.emplace("outer");
+        __sub_1.emplace(__coro_arg_1);
         __state = S_RESUME_1;
         continue;
     }
@@ -96,10 +97,17 @@ __coro_sub sub(std::string_view label) {
         }
     }
     case S_JOIN_4: {
-        // await sub("inner")
-        __sub_0.emplace("inner");
-        __state = S_RESUME_0;
-        continue;
+        try {
+            __coro_arg_0 = "inner";
+            // await sub("inner")
+            __sub_0.emplace(__coro_arg_0);
+            __state = S_RESUME_0;
+            continue;
+        } catch (...) {
+            this->__finally_exc_0 = std::current_exception();
+            __state = S_JOIN_1;
+            continue;
+        }
     }
     case S_JOIN_5: {
         try {

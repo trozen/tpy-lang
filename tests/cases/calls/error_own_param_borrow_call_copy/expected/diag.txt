@@ -1,1 +1,4 @@
+main.py:45: warning: copies Payload into owned storage; use copy() to make this explicit
+main.py:50: warning: copies Payload into owned storage; use copy() to make this explicit
+main.py:54: warning: copies Payload into owned storage; use copy() to make this explicit
 main.py:45: error: in function 'via_free': this construct is not yet supported by C++ code generation (expr.method_call:method.ret_type)

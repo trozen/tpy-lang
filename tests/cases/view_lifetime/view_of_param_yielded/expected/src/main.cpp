@@ -36,7 +36,8 @@ __gen_tails tails(std::string_view s) {
 void main() {
     // for t in tails("hello"):
     {
-        auto __src_0 = tails("hello");
+        std::string __tmp_1 = "hello";
+        auto __src_0 = tails(__tmp_1);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

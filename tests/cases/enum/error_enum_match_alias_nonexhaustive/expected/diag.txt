@@ -1,1 +1,2 @@
+main.py:7: warning: non-exhaustive match on 'Color'; missing: Color.BLUE (add 'case _: pass' to suppress)
 main.py:6: error: 'label' can reach the end of the function without returning a value; declared return type is 'str' (return or raise on every path)

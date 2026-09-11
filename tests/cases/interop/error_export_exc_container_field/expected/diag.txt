@@ -1,1 +1,2 @@
+main.py:13: warning: copies list[Int64] into field; use copy() to make this explicit
 main.py:9: error: user exception 'ParseError': data field 'items' of type list[Int64] cannot cross the CPython boundary as an instance attribute (only scalar, str, bytes, and exposed-enum exception fields are supported yet)

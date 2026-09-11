@@ -105,7 +105,7 @@ from ...typesys import (
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...type_def_registry import is_list, is_varargs
+from ...type_def_registry import is_borrowing_view_type, is_list
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_generators import owned_view_frame_params
@@ -290,13 +290,21 @@ def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
     if (_resolved_str_value(t, analyzer) is not None
             or _resolved_bytes_value(t, analyzer) is not None):
         return True
-    # A `*args` pack is a VALUE-kind capture: `varargs<E>` is a value type in
-    # both type systems, so the frame field is the same view the sync param
-    # spells (ctor-moved), and every leaf read -- len, subscript, iterate,
-    # whole-pack forward -- takes the sync varargs rows unchanged. The borrow
-    # standing equals Span/StrView: the view aliases the caller's arg-pack
-    # array, which codegen emits as a statement-scoped local.
-    if isinstance(t, TpyType) and is_varargs(
+    # A borrowing view is a VALUE-kind capture: the frame field is the same
+    # view the sync param spells (ctor-moved), and every leaf read -- len,
+    # subscript, iterate, whole-view forward -- takes the sync rows
+    # unchanged. One arm for the whole family because their borrow standing
+    # is one fact: the view aliases the caller's storage and the frame
+    # neither owns nor copies it, so an argument that outlives the frame
+    # keeps the same aliasing the sync call has.
+    #
+    # What this arm ADDS over the preceding ones: the `Span` flavours
+    # (`Span[T]`, `Span[readonly[T]]`, `readonly[Span[T]]`) and the `*args`
+    # pack, plus `SpanIter[T]` and the dict views -- which pass here but are
+    # refused at the CALL SITE by the argument shape either way. A declared
+    # `StrView` / `BytesView` param never reaches here: `_resolved_str_value`
+    # / `_resolved_bytes_value` above already answer for it.
+    if isinstance(t, TpyType) and is_borrowing_view_type(
             unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))):
         return True
     if _optional_ptr_borrow(t, analyzer) is not None:

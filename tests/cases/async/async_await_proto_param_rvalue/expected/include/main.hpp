@@ -97,7 +97,8 @@ __coro_consume<T_it> consume(T_it&& it) {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((make_it()))>>> __sub_0;
+    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
+    std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype(((*__coro_arg_0)))>>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,

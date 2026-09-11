@@ -78,7 +78,8 @@ if TYPE_CHECKING:
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, _borrow_storage_roots, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
-    async_return_form, AsyncReturnForm,
+    async_return_form, AsyncReturnForm, borrowing_frame_callee,
+    frame_temp_arg_source,
 )
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
 from .local_deduction import (
@@ -138,6 +139,19 @@ def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
         return (_is_dangling_temporary_arg(expr.then_expr)
                 or _is_dangling_temporary_arg(expr.else_expr))
     return False
+
+
+def _frame_temp_arg_hoisted(fi, idx: int, arg: TpyExpr, ctx) -> bool:
+    """Whether the compiler hoists this argument into a named local, so what
+    the callee's frame keeps outlives the statement and the dangle warnings
+    below must stay silent.
+
+    Asks the lowering row's own shape predicate rather than a second copy of
+    it: a warning that disagreed with the hoist would either fire on code the
+    compiler already made safe, or go quiet on a shape it never hoisted."""
+    if not borrowing_frame_callee(fi) or idx < 0 or idx >= len(fi.params):
+        return False
+    return frame_temp_arg_source(arg, fi.params[idx].type, ctx) is not None
 
 
 def _view_source_is_temporary(expr: TpyExpr) -> bool:
@@ -269,7 +283,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
             roots = _borrow_storage_roots(args[idx])
             for root in roots:
                 bt.add_borrow(root, borrower, BorrowKind.ELEMENT)
-            if not roots and _is_dangling_temporary_arg(args[idx]):
+            if (not roots and _is_dangling_temporary_arg(args[idx])
+                    and not _frame_temp_arg_hoisted(
+                        fi, idx, args[idx], ctx)):
                 ctx.warning(
                     f"Result borrows from temporary argument '{fi.params[idx].name}'; "
                     f"the temporary is destroyed at end-of-statement",
@@ -1710,10 +1726,12 @@ class StatementAnalyzer:
                                     # Call results returning non-value types are
                                     # materialized into named variables by codegen
                                     # (for by-reference passing), so they survive
-                                    # the for-loop. Only warn for value-type temporaries
-                                    # (e.g. str -> string_view conversion) where the
-                                    # underlying storage is truly destroyed.
-                                    is_materialized = False
+                                    # the for-loop. A borrowing-VIEW slot of a
+                                    # frame-capturing callee is materialized too,
+                                    # by the view-backing hoist. Only warn for
+                                    # what neither pins.
+                                    is_materialized = _frame_temp_arg_hoisted(
+                                        fi_iter, idx, arg, self.ctx)
                                     if isinstance(arg, (TpyCall, TpyMethodCall)):
                                         arg_fi = arg.resolved_function_info
                                         if arg_fi is not None and not arg_fi.return_type.is_value_type():

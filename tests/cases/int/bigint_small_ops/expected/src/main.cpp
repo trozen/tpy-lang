@@ -333,7 +333,8 @@ void main() {
     // # Generator and async bodies execute both sides of their resume boundary.
     // for value in generated(-17, 3):
     {
-        auto __src_3 = generated(::tpy::BigInt(-17), ::tpy::BigInt(3));
+        ::tpy::BigInt __tmp_3 = ::tpy::BigInt(-17);
+        auto __src_3 = generated(__tmp_3, ::tpy::BigInt(3));
         auto&& __itr_3 = ::tpy::__iter__(__src_3);
         for (;;) {
             auto __r_4 = __itr_3.__next__();
@@ -344,7 +345,8 @@ void main() {
         }
     }
     // print("async", asyncio.run(async_ops(-17, 3)))
-    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(async_ops(::tpy::BigInt(-17), ::tpy::BigInt(3)))) << "\n";
+    ::tpy::BigInt __tmp_4 = ::tpy::BigInt(-17);
+    std::cout << "async" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(async_ops(__tmp_4, ::tpy::BigInt(3)))) << "\n";
     // # Comprehension: comparison filtering and element arithmetic on BigInt list slots.
     // values = [low, -one, one, high]
     std::array<::tpy::BigInt, 4> values = {low, -(one), one, high};

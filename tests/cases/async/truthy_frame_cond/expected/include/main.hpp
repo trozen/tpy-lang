@@ -139,9 +139,11 @@ struct __coro_main_async {
     int32_t __await_lift_9;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_0;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_1;
-    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_2;
-    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_3;
+    std::string __coro_arg_2;
+    std::string __coro_arg_3;
     ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_4;
+    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_5;
+    ::tpy::frame_slot<std::vector<int32_t>> __coro_arg_6;
     std::optional<__coro_opt_branch> __sub_0;
     std::optional<__coro_opt_branch> __sub_1;
     std::optional<__coro_opt_branch> __sub_2;

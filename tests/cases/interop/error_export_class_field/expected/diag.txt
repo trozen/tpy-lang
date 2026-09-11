@@ -1,1 +1,3 @@
+main.py:19: warning: copies Inner into field; use copy() to make this explicit
+main.py:22: warning: copies Inner into field; use copy() to make this explicit
 main.py:19: error: @export class 'Outer': field 'inner' of exposed-class type 'Inner' cannot be exposed as a getset field: only a field never reassigned outside __init__ (and not @nocopy) crosses as a read-only aliasing view -- a reassignable field's view would read the storage slot through the reassignment where CPython keeps the old object. Drop the post-__init__ reassignment, or make the field internal by prefixing its name with '_' (kept as payload state, never a Python attribute) and expose a method that mutates it through 'self' or returns an explicit copy()

@@ -1,1 +1,3 @@
+main.py:12: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:21: warning: may copy U into field if not a value type; use copy() to make this explicit
 main.py:31: error: inherited async method on generic base 'A' is not yet supported here: its type parameters are not bound to concrete types (this happens with a generic subclass of a generic base, or a multi-level generic inheritance chain); flatten the hierarchy or make the base concrete

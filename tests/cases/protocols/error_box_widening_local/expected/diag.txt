@@ -1,1 +1,2 @@
+main.py:29: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
 main.py:30: error: cannot store 'Base' borrow as owned 'Base' in argument 'value' -- the dynamic type may be a subclass and would be lost (slicing). Use `Box[Base]` for owned polymorphic storage: construct into the `Box` directly, or `Box(value.clone())`.

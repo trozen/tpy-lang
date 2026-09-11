@@ -1,1 +1,3 @@
+main.py:15: warning: __next__() has no 'raise StopIteration' -- iterator will loop forever if caller exhausts it
+main.py:26: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
 main.py:25: error: in function 'total': this construct is not yet supported by C++ code generation (stmt.for_each:iter.user_iterator.name)

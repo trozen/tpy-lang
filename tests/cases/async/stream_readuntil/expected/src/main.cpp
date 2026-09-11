@@ -8,8 +8,9 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_client_role::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
+        __coro_arg_0 = "127.0.0.1";
         // reader, writer = await asyncio.open_connection("127.0.0.1", port)
-        __sub_0.emplace("127.0.0.1", port);
+        __sub_0.emplace(__coro_arg_0, port);
         __state = S_RESUME_0;
         continue;
     }
@@ -53,8 +54,9 @@ namespace tpyapp::main {
         __sub_2.reset();
         // print("first=" + first.decode())
         std::cout << (::tpy::str_concat("first=", ::tpy::bytes_decode(first))) << "\n";
+        __coro_arg_3 = ::tpy::bytes_literal_owned("|", 1);
         // second = await reader.readuntil(b"|")
-        __sub_3.emplace((*reader), ::tpy::bytes_literal("|", 1));
+        __sub_3.emplace((*reader), __coro_arg_3);
         __state = S_RESUME_3;
         continue;
     }
@@ -98,8 +100,9 @@ namespace tpyapp::main {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
+        __coro_arg_2 = ::tpy::bytes_literal_owned("|", 1);
         // first = await reader.readuntil(b"|")
-        __sub_2.emplace((*reader), ::tpy::bytes_literal("|", 1));
+        __sub_2.emplace((*reader), __coro_arg_2);
         __state = S_RESUME_2;
         continue;
     }
@@ -113,8 +116,9 @@ namespace tpyapp::main {
     }
     case S_JOIN_2: {
         try {
+            __coro_arg_1 = ::tpy::Bytes{};
             // await reader.readuntil(b"")
-            __sub_1.emplace((*reader), ::tpy::BytesView{});
+            __sub_1.emplace((*reader), __coro_arg_1);
             __state = S_RESUME_1;
             continue;
         } catch (const ::tpy::ValueError&) {
@@ -128,8 +132,9 @@ namespace tpyapp::main {
     }
     case S_JOIN_3: {
         try {
+            __coro_arg_4 = ::tpy::bytes_literal_owned("|", 1);
             // await reader.readuntil(b"|")
-            __sub_4.emplace((*reader), ::tpy::bytes_literal("|", 1));
+            __sub_4.emplace((*reader), __coro_arg_4);
             __state = S_RESUME_4;
             continue;
         } catch (const ::tpystd::asyncio::IncompleteReadError& e) {
