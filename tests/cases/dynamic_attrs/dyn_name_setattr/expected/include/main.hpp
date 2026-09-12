@@ -16,8 +16,6 @@ void set_it(Headers& h, std::string_view name, std::string_view value);
 // def main() -> None:
 void main();
 
-// # D16 phase 9: setattr(obj, name_var, v) with a runtime name -- routes to
-// # __setattr__ unconditionally.
 // class Headers:
 struct Headers {
     // _last_name: str

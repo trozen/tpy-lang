@@ -20,9 +20,6 @@ std::string only_wildcard_covers(::tpy::Union<std::monostate, const Dog*, const 
 // def main() -> None:
 void main();
 
-// # A wildcard or capture alternative makes an or-group over a union subject
-// # irrefutable, so the alternatives beside it carry no variant label and must
-// # not be rejected for naming no union member.
 // class Dog:
 struct Dog {
     // hunger: int

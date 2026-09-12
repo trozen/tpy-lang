@@ -9,18 +9,18 @@ namespace tpyapp::main {
 //     for x in items:
 //         if i >= n:
 //             break
-//         yield x
+//         yield x                                             # -> S_RESUME_0
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_take::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -58,16 +58,16 @@ __gen_take take(std::vector<int32_t>& items, int32_t n) {
 //     for x in items:
 //         if x % 2 != 0:
 //             continue
-//         yield x
+//         yield x                                    # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -102,10 +102,10 @@ __gen_evens evens(std::vector<int32_t>& items) {
 //     for i in range(0, 10, 2):
 //         if i >= 4:
 //             break
-//         yield i
+//         yield i                                                              # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_stride::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(static_cast<int32_t>(0));
         __for_stop_0.emplace(static_cast<int32_t>(10));
         __for_step_0.emplace(static_cast<int32_t>(2));
@@ -113,7 +113,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_stride::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_JOIN_0;
         continue;
     }
@@ -149,18 +149,18 @@ __gen_stride stride() {
 
 // def upto_range(n: int32) -> Iterator[int32]:
 //     for i in range(n):
-//         yield i
+//         yield i                               # -> S_RESUME_0
 //         if i >= 2:
 //             break
 std::expected<int32_t, ::tpy::StopIteration> __gen_upto_range::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         if ((i >= 2)) {
             __state = S_JOIN_1;
             continue;
@@ -196,18 +196,18 @@ __gen_upto_range upto_range(int32_t n) {
 // def upto_while() -> Iterator[int32]:
 //     n: int32 = 0
 //     while True:
-//         yield n
+//         yield n                       # -> S_RESUME_0
 //         n += 1
 //         if n >= 3:
 //             break
 std::expected<int32_t, ::tpy::StopIteration> __gen_upto_while::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         n = ::tpy::add_check<int32_t>(n, 1);
         if ((n >= 3)) {
             __state = S_JOIN_1;
@@ -243,18 +243,18 @@ __gen_upto_while upto_while() {
 
 // def iter_post_break(items: list[int32]) -> Iterator[int32]:
 //     for x in items:
-//         yield x
+//         yield x                                              # -> S_RESUME_0
 //         if x >= 20:
 //             break
 std::expected<int32_t, ::tpy::StopIteration> __gen_iter_post_break::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         if ((x >= 20)) {
             __state = S_JOIN_1;
             continue;
@@ -291,19 +291,19 @@ __gen_iter_post_break iter_post_break(std::vector<int32_t>& items) {
 //     # Post-yield continue with observable post-continue code: the resumable
 //     # path runs it after the consumer resumes (CPython order).
 //     for x in items:
-//         yield x
+//         yield x                                                              # -> S_RESUME_0
 //         if x < 0:
 //             continue
 //         print(x + 100)
 std::expected<int32_t, ::tpy::StopIteration> __gen_post_continue::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         if ((x < 0)) {
             __state = S_JOIN_0;
             continue;
@@ -441,6 +441,9 @@ void main() {
     }
 }
 
+// # Generator method break/continue through the method resumable emit path.
+// # Iterates a parameter, not a self field -- iterating a self field in a
+// # resumable method hits a separate const-iterator gap.
 // def first_positives(self, items: list[int32]) -> Iterator[int32]:
 //     c: int32 = 0
 //     for x in items:
@@ -448,18 +451,18 @@ void main() {
 //             continue
 //         if c >= self.limit:
 //             break
-//         yield x
+//         yield x                                                    # -> S_RESUME_0
 //         c += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Limiter_first_positives::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c = 0;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;

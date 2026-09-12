@@ -20,7 +20,6 @@ std::string get_field__lit_name(std::string_view name);
 // def main() -> None:
 void main();
 
-// # --- Method flattening ---
 // class Record:
 struct Record {
     // data_age: int32

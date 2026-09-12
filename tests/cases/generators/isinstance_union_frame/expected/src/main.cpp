@@ -17,24 +17,24 @@ namespace tpyapp::main {
 //             total = 0
 //             for n in t.items:
 //                 total += n
-//             yield total
+//             yield total                                                        # -> S_RESUME_0
 //         else:
-//             yield len(t.label)
+//             yield len(t.label)                                                 # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         work.emplace(std::vector<::tpy::Union<Emit, Push>>{});
         (*work).push_back(Emit("ab"));
         (*work).push_back(Push({1, 2, 3}));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield total
         auto& __t = std::get<Push>((*t));
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield len(t.label)
         auto& __t = std::get<Emit>((*t));
         __state = S_JOIN_1;
         continue;
@@ -83,16 +83,16 @@ __gen_run run() {
 // def first_value(t: Push | Emit) -> Iterator[int]:
 //     # assert-narrowing (the persistent extraction path) of a frame-resident union.
 //     assert isinstance(t, Push)  # tpyc: ok
-//     yield t.items[0]
+//     yield t.items[0]                                                                # -> S_RESUME_0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_first_value::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (!(std::holds_alternative<const Push*>(t))) ::tpy::raise_assertion_error();
         auto& __t = *std::get<const Push*>(t);
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__t.items, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t.items[0]
         auto& __t = *std::get<const Push*>(t);
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

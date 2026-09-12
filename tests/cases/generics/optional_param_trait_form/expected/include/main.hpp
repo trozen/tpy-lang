@@ -40,8 +40,10 @@ Cell& first_or_twin(Cell* val, Cell& fallback);
 int32_t mk();
 // def gen_body(n: int32) -> Iterator[bool]:
 __gen_gen_body gen_body(int32_t n);
+// @error_return(Stop)
 // def er_gen(n: int32) -> bool:
 std::expected<bool, Stop> er_gen(int32_t n);
+// @error_return(Stop)
 // def er_twin(n: int32) -> bool:
 std::expected<bool, Stop> er_twin(int32_t n);
 // async def probe_async[T](val: T | None) -> bool:
@@ -91,11 +93,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 // @nocopy
 // class Pinned:
 struct Pinned {
-    // # The async reference-T section's payload. A coroutine that captured it by
-    // # VALUE would need the copy constructor `@nocopy` deletes, so the frame
-    // # holding a borrow is a build-time fact, not an inference from output --
-    // # which matters because a generic body cannot read an open `T` back out
-    // # (every spelling of that rejects today, so `is None` is all it can print).
     // n: int32
     int32_t n;
 
@@ -236,7 +233,7 @@ template <typename T>
 ::tpystd::tpy::Poll<bool> __coro_probe_async<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         bool __tpy_async_ret = (::tpy::opt_has_value(val));
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));

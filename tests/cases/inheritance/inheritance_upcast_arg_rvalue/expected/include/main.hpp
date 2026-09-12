@@ -17,10 +17,6 @@ void greet(const Animal& a);
 // def main() -> None:
 void main();
 
-// # Regression: when a Child rvalue is passed to a function taking a Parent
-// # reference, codegen must declare the hidden temp as the Child type so the
-// # object isn't sliced. Verified via the generated C++ snapshot (the temp should
-// # read "Dog __tmp_N = Dog(...)" rather than "Animal __tmp_N = ...").
 // class Animal:
 struct Animal {
     // name: str

@@ -17,7 +17,6 @@ void process(::tpy::Union<const A*, const B*> v);
 // def main() -> None:
 void main();
 
-// # Test passing concrete types to functions expecting union parameters
 // class A:
 struct A {
     // x: int

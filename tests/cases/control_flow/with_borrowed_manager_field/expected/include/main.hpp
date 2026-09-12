@@ -15,9 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: a field-access manager (`with self.mgr:`) and the `as`-binding
-// # must borrow the original; __exit__ must fire on the shared object on the
-// # exception path too. Mutate-and-observe through both the field and `as`.
 // class Mgr:
 struct Mgr {
     // n: int

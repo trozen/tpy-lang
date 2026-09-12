@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // async def drive() -> None:
 //     h = Holder(7)
-//     print(await h.direct())
-//     print(await h.reguard())
+//     print(await h.direct())   # -> S_RESUME_0
+//     print(await h.reguard())  # -> S_RESUME_1
 //     n = Holder(None)
-//     print(await n.direct())
-//     print(await n.reguard())
+//     print(await n.direct())   # -> S_RESUME_2
+//     print(await n.reguard())  # -> S_RESUME_3
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h.emplace(Holder(7));
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await h.direct())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -29,7 +29,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await h.reguard())
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -40,7 +40,7 @@ namespace tpyapp::main {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await n.direct())
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -50,7 +50,7 @@ namespace tpyapp::main {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print(await n.reguard())
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
@@ -77,7 +77,7 @@ __coro_drive drive() {
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_direct::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.f.has_value())) {
             __state = S_DONE;
             int32_t __tpy_async_ret = (*__self.f);
@@ -94,18 +94,18 @@ __coro_drive drive() {
 
 
 // async def reguard(self) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)         # -> S_RESUME_0
 //     if self.f is not None:
 //         return self.f
 //     return -2
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_reguard::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

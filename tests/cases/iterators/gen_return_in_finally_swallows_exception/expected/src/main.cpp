@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // def gen() -> Iterator[str]:
 //     try:
-//         yield "before"
+//         yield "before"            # -> S_RESUME_0
 //         raise ValueError("oops")
 //     finally:
-//         yield "in finally"
+//         yield "in finally"        # -> S_RESUME_1
 //         return
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "before"
         try {
             throw ::tpy::ValueError("oops");
         } catch (...) {
@@ -26,7 +26,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "in finally"
         this->__finally_pending_0 = true;
         __state = S_JOIN_1;
         continue;

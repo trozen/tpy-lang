@@ -17,11 +17,6 @@ void bump(Box* p, Holder& h, bool c);
 // def main() -> None:
 void main();
 
-// # A ternary joining a borrow-form arm (pointer-repr Optional param) and a
-// # storage-form arm (Optional field -> std::optional<T>) normalizes each arm to
-// # T* (optional_to_ptr on the field arm), so the C++ ?: operands match. The
-// # binding ALIASES the chosen arm; mutation through it is visible on the source,
-// # matching CPython. Pre-fix this emitted mixed ?: operands (Box* vs optional).
 // class Box:
 struct Box {
     // val: int

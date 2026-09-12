@@ -9,11 +9,11 @@ namespace tpyapp::main {
 //         r = 100
 //     else:
 //         r = n + 1
-//     yield r
-//     yield r + 1
+//     yield r                           # -> S_RESUME_0
+//     yield r + 1                       # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_if::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n == 0)) {
             r = 100;
         } else {
@@ -22,11 +22,11 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_if::__next__() {
         __state = S_RESUME_0;
         return r;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield r
         __state = S_RESUME_1;
         return ((r) + (::tpy::BigInt(1)));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield r + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -47,11 +47,11 @@ __gen_gen_if gen_if(::tpy::BigInt n) {
 //             r = 100
 //         case v:
 //             r = v + 1
-//     yield r
-//     yield r + 1
+//     yield r                              # -> S_RESUME_0
+//     yield r + 1                          # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_match::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = n;
         if (__match_subject_1 == 0) {
             r = 100;
@@ -62,11 +62,11 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_match::__next__() {
         __state = S_RESUME_0;
         return r;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield r
         __state = S_RESUME_1;
         return ((r) + (::tpy::BigInt(1)));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield r + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

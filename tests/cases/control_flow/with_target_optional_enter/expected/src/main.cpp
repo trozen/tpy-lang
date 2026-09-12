@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     h = Holder(7)
 //     with h as m:
 //         pass
-//     yield 1
+//     yield 1                    # -> S_RESUME_0
 //     if m is not None:
 //         m.n += 1
-//         yield m.n
-//     yield h.box.n
+//         yield m.n              # -> S_RESUME_1
+//     yield h.box.n              # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h.emplace(Holder(7));
         auto& __ctx_1 = (*h);
         m = __ctx_1.__enter__();
@@ -33,7 +33,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         if ((m != nullptr)) {
             m->n = ::tpy::add_check<int32_t>(m->n, 1);
             __state = S_RESUME_1;
@@ -43,11 +43,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield m.n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield h.box.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

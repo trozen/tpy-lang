@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # Tests __del__ destructor: cleanup is called deterministically at end of scope (C++ RAII),
-// # both for local variables and globals
 // class Resource:
 struct Resource {
     // name: str

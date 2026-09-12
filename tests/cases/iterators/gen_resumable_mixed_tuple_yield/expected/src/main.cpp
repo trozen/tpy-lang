@@ -9,23 +9,23 @@ namespace tpyapp::main {
 //     i: int32 = 0
 //     while i < n:
 //         if i == 0:
-//             yield (i, items[i])
+//             yield (i, items[i])                          # -> S_RESUME_0
 //         else:
-//             yield (i * 10, items[i])
+//             yield (i * 10, items[i])                     # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = ::tpy::__len__(items);
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield (i, items[i])
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield (i * 10, items[i])
         __state = S_JOIN_1;
         continue;
     }

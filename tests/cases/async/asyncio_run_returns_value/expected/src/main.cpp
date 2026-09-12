@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def compute() -> int:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)  # -> S_RESUME_0
 //     return 42
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();

@@ -13,8 +13,10 @@ struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(E)
 // def make(n: int32) -> Own[Payload]:
 std::expected<Payload, E> make(int32_t n);
+// @error_return(E)
 // def chain(n: int32) -> Own[Payload]:
 std::expected<Payload, E> chain(int32_t n);
 // def main() -> None:

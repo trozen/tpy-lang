@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     d = {1: 10, 2: 20}
 //     s = {7, 8}
 //     empty: list[int32] = []
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)   # -> S_RESUME_0
 //     for n in nums:
 //         print(n)
 //     print(len(d))
@@ -17,7 +17,7 @@ namespace tpyapp::main {
 //     print(len(empty))
 ::tpystd::tpy::Poll<::std::monostate> __coro_w::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         nums.emplace(std::array<int32_t, 3>{1, 2, 3});
         d.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
         s.emplace(::tpy::ordered_set<int32_t>({7, 8}));
@@ -26,7 +26,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

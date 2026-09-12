@@ -10,7 +10,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "eval" << " " << tag << "\n";
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 1;
@@ -33,7 +33,7 @@ __coro_one one(std::string_view tag) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_two::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "eval" << " " << tag << "\n";
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 2;
@@ -56,7 +56,7 @@ __coro_two two(std::string_view tag) {
 ::tpystd::tpy::Poll<bool> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "eval" << " " << tag << "\n";
         __state = S_DONE;
         bool __tpy_async_ret = b;
@@ -75,21 +75,21 @@ __coro_pick pick(std::string_view tag, bool b) {
 
 // async def main() -> None:
 //     cond = True
-//     x = await one("then-run") if cond else await two("else-skipped")
+//     x = await one("then-run") if cond else await two("else-skipped")                          # -> S_RESUME_0, S_RESUME_1
 //     print("x", x)
 //     cond2 = False
-//     y = await one("then-skipped") if cond2 else await two("else-run")
+//     y = await one("then-skipped") if cond2 else await two("else-run")                         # -> S_RESUME_2, S_RESUME_3
 //     print("y", y)
 //     # await in the condition AND both branches: condition runs once, only
 //     # the taken branch is awaited.
-//     z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
+//     z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")  # -> S_RESUME_4, S_RESUME_5, S_RESUME_6
 //     print("z", z)
 //     # await only in the condition, plain branches.
-//     w = 10 if await pick("w-cond", True) else 20
+//     w = 10 if await pick("w-cond", True) else 20                                              # -> S_RESUME_7
 //     print("w", w)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         cond = true;
         if (cond) {
             __coro_arg_0 = "then-run";
@@ -103,7 +103,7 @@ __coro_pick pick(std::string_view tag, bool b) {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: x = await one("then-run") if cond else await two("else-skipped")
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_ternary_0 = std::move(__r0).value();
@@ -111,7 +111,7 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: x = await one("then-run") if cond else await two("else-skipped")
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_ternary_0 = std::move(__r1).value();
@@ -119,7 +119,7 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: y = await one("then-skipped") if cond2 else await two("else-run")
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_ternary_1 = std::move(__r2).value();
@@ -127,7 +127,7 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: y = await one("then-skipped") if cond2 else await two("else-run")
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_ternary_1 = std::move(__r3).value();
@@ -135,7 +135,7 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r4).value();
@@ -152,7 +152,7 @@ __coro_pick pick(std::string_view tag, bool b) {
             continue;
         }
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_ternary_2 = std::move(__r5).value();
@@ -160,7 +160,7 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_6: {
+    case S_RESUME_6: {  // after: z = await one("z-then-skip") if await pick("z-cond", False) else await two("z-else-run")
         auto __r6 = ::tpy::poll_with_cancel(__sub_6, __cancel_pending, waker);
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_ternary_2 = std::move(__r6).value();
@@ -168,7 +168,7 @@ __coro_pick pick(std::string_view tag, bool b) {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_7: {
+    case S_RESUME_7: {  // after: w = 10 if await pick("w-cond", True) else 20
         auto __r7 = ::tpy::poll_with_cancel(__sub_7, __cancel_pending, waker);
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r7).value();

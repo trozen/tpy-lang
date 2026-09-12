@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def gen(b: Box) -> Iterator[int]:
 //     match b:
 //         case Box(maybe=v):
-//             yield 1
+//             yield 1                # -> S_RESUME_0
 //             if v is not None:
 //                 print(v.n)
-//             yield 2
+//             yield 2                # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = b;
         {
             v = ::tpy::optional_to_ptr(__match_subject_1.maybe);
@@ -23,14 +23,14 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         if ((v != nullptr)) {
             std::cout << v->n << "\n";
         }
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_JOIN_0;
         continue;
     }

@@ -13,8 +13,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def mutate_list(items: list[Point]) -> None:
 void mutate_list(std::vector<Point>& items);
+// @readonly
 // def read_list(items: list[Point]) -> int32:
 int32_t read_list(const std::vector<Point>& items);
+// @pure
 // def count_list(items: list[Point]) -> int32:
 int32_t count_list(const std::vector<Point>& items);
 // def safe_read(items: readonly[list[Point]]) -> int32:

@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
-//     p = await make_pair(int32(7), "x")  # tpyc: type(/tuple\[int32, str\]/)
+//     p = await make_pair(int32(7), "x")  # tpyc: type(/tuple\[int32, str\]/)  # -> S_RESUME_0
 //     print(p[0])
 //     print(p[1])
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "x";
         __sub_0.emplace(7, __coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: p = await make_pair(int32(7), "x")  # tpyc: type(/tuple\[int32, str\]/)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p = std::move(__r0).value();

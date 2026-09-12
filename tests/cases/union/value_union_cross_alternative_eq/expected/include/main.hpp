@@ -43,6 +43,7 @@ bool in_with(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, 
 bool in_closure(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
 // def in_try(a: int32 | float64, b: int32 | float64) -> bool:  # try/finally
 bool in_try(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
+// @error_return(Boom)
 // def in_error_return(a: int32 | float64, b: int32 | float64) -> bool:  # @error_return
 std::expected<bool, Boom> in_error_return(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, int32_t>& b);
 // def in_match(a: int32 | float64, b: int32 | float64) -> bool:  # match arm
@@ -196,10 +197,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// # A union of two RECORDS that DO define `__eq__`, through the wrapper and
-// # through a dict value. A record WITHOUT `__eq__` cannot be a section here:
-// # it stays a toolchain error with no TPy location
-// # (BUGS.md#container-compare-record-without-eq).
 // class Circle:
 struct Circle {
     // r: int32
@@ -246,13 +243,6 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
     return os;
 }
 
-// # An unorderable SAME-alternative pair raises at RUNTIME, not at compile
-// # time: CPython raises for `Fixed() < Fixed()` on a type with no ordering,
-// # so the raise is the parity answer (unlike equality, where Python falls
-// # back to identity and the runtime has no answer to give). The monomorphic
-// # twin is stricter -- a bare `Fixed < Fixed` is a located sema error, "no
-// # '__lt__' method defined" -- so the union path is looser here; recorded on
-// # BUGS.md#value-union-no-equatable-conformance.
 // @dataclass(frozen=True)
 // class Fixed(ValueType):
 struct Fixed {
@@ -337,11 +327,6 @@ template<> struct tpy::is_value_type<::tpyapp::main::Zone> : std::true_type {};
 namespace tpyapp::main {
 
 
-// # `__ne__` INVERTED on purpose: CPython calls a declared `__ne__` rather than
-// # deriving one from `__eq__`, so both rows below disagree with the negation
-// # of `__eq__`. This is the only position where a union's own `operator!=` is
-// # reachable -- a container `!=` answers from the elements' `==` in both
-// # languages (see `union/reference_union_storage_eq`).
 // class Tagged(ValueType):
 struct Tagged {
     // n: int32

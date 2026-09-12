@@ -10,7 +10,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_val::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "eval" << " " << tag << "\n";
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
@@ -30,20 +30,20 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
 // async def main() -> None:
 //     # 1 < 5 < 3: (1<5) True so c IS evaluated; (5<3) False -> overall False.
 //     # Each of a/b/c awaited once.
-//     r = await val("a", 1) < await val("b", 5) < await val("c", 3)
+//     r = await val("a", 1) < await val("b", 5) < await val("c", 3)              # -> S_RESUME_0, S_RESUME_1, S_RESUME_2
 //     print("r", r)
 //     # 9 < 5 < ...: (9<5) False -> short-circuit, third operand NOT awaited.
-//     r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
+//     r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)  # -> S_RESUME_3, S_RESUME_4, S_RESUME_5
 //     print("r2", r2)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "a";
         __sub_0.emplace(__coro_arg_0, ::tpy::BigInt(1));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_1 = std::move(__r0).value();
@@ -53,7 +53,7 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_2 = std::move(__r1).value();
@@ -69,7 +69,7 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: r = await val("a", 1) < await val("b", 5) < await val("c", 3)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_3 = std::move(__r2).value();
@@ -78,7 +78,7 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_5 = std::move(__r3).value();
@@ -88,7 +88,7 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         __state = S_RESUME_4;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_6 = std::move(__r4).value();
@@ -104,7 +104,7 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
             continue;
         }
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: r2 = await val("a2", 9) < await val("b2", 5) < await val("c2-skipped", 3)
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_7 = std::move(__r5).value();

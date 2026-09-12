@@ -4,26 +4,27 @@
 namespace tpyapp::main {
 
 
+// # free function / scalar element: the pack is a value-element varargs.
 // def scalars(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 //     n = 0
 //     for x in xs:
 //         n += x
-//         yield n
-//     yield -1
+//         yield n                                          # -> S_RESUME_0
+//     yield -1                                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_scalars::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -48,26 +49,27 @@ __gen_scalars scalars(::tpy::varargs<const int32_t> xs) {
     return __gen_scalars(xs);
 }
 
+// # free function / str element: the pack views the caller's string_view array.
 // def strings(*ss: str) -> Iterator[int32]:  # tpyc: ok
 //     n = 0
 //     for s in ss:
 //         n += len(s)
-//         yield n
-//     yield -1
+//         yield n                                        # -> S_RESUME_0
+//     yield -1                                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_strings::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __for_it_0.emplace((ss).begin());
         __for_end_0.emplace((ss).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -92,24 +94,26 @@ __gen_strings strings(::tpy::varargs<const std::string> ss) {
     return __gen_strings(ss);
 }
 
+// # free function / record element, MUTATED through a suspending loop: the loop
+// # var must alias the caller's record, so the mutation is visible afterwards.
 // def bump(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 //     for p in ps:
 //         p.x += 1
-//         yield p.x
-//     yield -1
+//         yield p.x                                     # -> S_RESUME_0
+//     yield -1                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((ps).begin());
         __for_end_0.emplace((ps).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p.x
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -134,23 +138,26 @@ __gen_bump bump(::tpy::varargs<Point> ps) {
     return __gen_bump(ps);
 }
 
+// # free function / record element, read-only: sema flips the pack to
+// # `varargs[readonly[Point]]`, so the loop var is a `const Point*` borrow --
+// # a source mutated between two pulls must be seen on the next pull.
 // def read_pack(*ps: Point) -> Iterator[int32]:  # tpyc: ok
 //     for p in ps:
-//         yield p.x
-//     yield -1
+//         yield p.x                                          # -> S_RESUME_0
+//     yield -1                                               # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_pack::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((ps).begin());
         __for_end_0.emplace((ps).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p.x
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -191,20 +198,21 @@ int32_t total_of(::tpy::varargs<const int32_t> xs) {
     return n;
 }
 
+// # whole-pack forward out of the frame.
 // def forward(*xs: int32) -> Iterator[int32]:  # tpyc: ok
-//     yield total_of(*xs)
-//     yield -1
+//     yield total_of(*xs)                                  # -> S_RESUME_0
+//     yield -1                                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_forward::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return total_of(::tpy::varargs<const int32_t>(xs));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield total_of(*xs)
         __state = S_RESUME_1;
         return -1;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -219,25 +227,26 @@ __gen_forward forward(::tpy::varargs<const int32_t> xs) {
     return __gen_forward(xs);
 }
 
+// # subscript + len on the frame's pack (the reads `heapq.merge` makes).
 // def indexed(*xs: int32) -> Iterator[int32]:  # tpyc: ok
 //     i = 0
 //     while i < len(xs):
-//         yield xs[i]
+//         yield xs[i]                                      # -> S_RESUME_0
 //         i += 1
-//     yield -1
+//     yield -1                                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_indexed::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield xs[i]
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -261,21 +270,22 @@ __gen_indexed indexed(::tpy::varargs<const int32_t> xs) {
     return __gen_indexed(xs);
 }
 
+// # a suspending pack loop inside try/finally.
 // def in_finally(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 //     try:
 //         for s in xs:
-//             yield len(s)
+//             yield len(s)                                          # -> S_RESUME_0
 //     finally:
 //         print("tryfinally: cleanup")
-//     yield -1
+//     yield -1                                                      # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(s)
         try {
             __state = S_JOIN_0;
             continue;
@@ -284,7 +294,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_finally::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -340,21 +350,22 @@ __gen_in_finally in_finally(::tpy::varargs<const std::vector<int32_t>> xs) {
     return __gen_in_finally(xs);
 }
 
+// # a suspending pack loop inside a `with` body.
 // def in_with(*xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 //     with Trace():
 //         for s in xs:
-//             yield len(s)
-//     yield -1
+//             yield len(s)                                       # -> S_RESUME_0
+//     yield -1                                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Trace());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(s)
         try {
             __state = S_JOIN_0;
             continue;
@@ -367,7 +378,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_in_with::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -428,23 +439,25 @@ __gen_in_with in_with(::tpy::varargs<const std::vector<int32_t>> xs) {
     return __gen_in_with(xs);
 }
 
+// # Sibling shape with no varargs: a `readonly` CONTAINER param puts the const on
+// # the source, not the element, and the frame loop var must take it from there.
 // def readonly_param(ps: readonly[list[Point]]) -> Iterator[int32]:  # tpyc: ok
 //     for p in ps:
-//         yield p.x
-//     yield -1
+//         yield p.x                                                              # -> S_RESUME_0
+//     yield -1                                                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_param::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((ps).begin());
         __for_end_0.emplace((ps).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p.x
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -468,24 +481,26 @@ __gen_readonly_param readonly_param(const std::vector<Point>& ps) {
     return __gen_readonly_param(ps);
 }
 
+// # Producer for the `next`-strategy section: a `readonly` element yielded from a
+// # frame (two yields keep it off the simple-generator peephole).
 // def points(ps: readonly[list[Point]]) -> Iterator[readonly[Point]]:  # tpyc: ok
 //     for p in ps:
-//         yield p
+//         yield p                                                                  # -> S_RESUME_0
 //     for p in ps:
-//         yield p
+//         yield p                                                                  # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<const Point>, ::tpy::StopIteration> __gen_points::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((ps).begin());
         __for_end_0.emplace((ps).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p
         __state = S_JOIN_1;
         continue;
     }
@@ -856,21 +871,21 @@ void main() {
 
 // def sizes(self, *xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
 //     for s in xs:
-//         yield self.base + len(s)
-//     yield -1
+//         yield self.base + len(s)                                   # -> S_RESUME_0
+//     yield -1                                                       # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.base + len(s)
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -891,21 +906,21 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
 
 // def each(self) -> Iterator[int32]:  # tpyc: ok
 //     for p in self.items:
-//         yield p.x
-//         yield p.x + 100
+//         yield p.x                               # -> S_RESUME_0
+//         yield p.x + 100                         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Album_each::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p.x
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(p->x, 100));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p.x + 100
         __state = S_JOIN_0;
         continue;
     }

@@ -150,12 +150,15 @@ EventLoop get_running_loop() {
     return EventLoop();
 }
 
+// # Mirrors `asyncio.open_connection` (the host:port client form). The
+// # connection's socket is shared by the reader and writer via an `Rc[socket]`
+// # cell so either can drive it and it outlives both across awaits.
 // async def open_connection(
 //         host: str, port: int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
 //     loop = get_running_loop()
 //     sock = socket(AF_INET, SOCK_STREAM)
 //     sock.setblocking(False)
-//     await loop.sock_connect(sock, (host, port))
+//     await loop.sock_connect(sock, (host, port))                                  # -> S_RESUME_0
 //     cell = Rc.new(sock)
 //     # Build the tuple from fresh rvalues, not named locals: an async return
 //     # of a tuple of named @nocopy locals copies the elements instead of
@@ -163,7 +166,7 @@ EventLoop get_running_loop() {
 //     return (StreamReader(cell.clone()), StreamWriter(cell.clone()))
 ::tpystd::tpy::Poll<std::tuple<StreamReader, StreamWriter>> __coro_open_connection::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(get_running_loop());
         sock.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*sock).setblocking(false);
@@ -171,7 +174,7 @@ EventLoop get_running_loop() {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await loop.sock_connect(sock, (host, port))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::tuple<StreamReader, StreamWriter>>::pending();
         (void)std::move(__r0).value();
@@ -193,23 +196,28 @@ __coro_open_connection open_connection(std::string_view host, int32_t port) {
     return __coro_open_connection(host, port);
 }
 
+// # Background accept loop spawned by `start_server`. Owns its own `Rc[socket]`
+// # clone so it outlives the `Server` handle across awaits. The loop is stopped
+// # by cancellation (`Server.close` cancels this task) rather than by catching a
+// # listener-closed error: a `try`-scoped binding of `conn` is not yet recognized
+// # as movable, so the bare `await` keeps `conn`'s last-use move into `Rc.new`.
 // async def _accept_loop(
 //         listener: Own[Rc[socket]],
 //         cb: Callable[[Own[StreamReader], Own[StreamWriter]],
 //                      Own[Cancellable[None]]]) -> None:
 //     loop = get_running_loop()
 //     while True:
-//         conn, addr = await loop.sock_accept(listener.get())
+//         conn, addr = await loop.sock_accept(listener.get())                      # -> S_RESUME_0
 //         cell = Rc.new(conn)
 //         create_task(cb(StreamReader(cell.clone()), StreamWriter(cell.clone())))
 ::tpystd::tpy::Poll<::std::monostate> __coro__accept_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(get_running_loop());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: conn, addr = await loop.sock_accept(listener.get())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
@@ -246,6 +254,12 @@ __coro__accept_loop _accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socke
     return __coro__accept_loop(std::move(listener), cb);
 }
 
+// # Mirrors `asyncio.start_server` (the host:port form). `cb` must be a coroutine
+// # factory (an `async def handler(reader, writer)`), wrapped in a task per accept
+// # -- mirroring CPython auto-wrapping a coroutine callback. CPython also accepts a
+// # plain sync callback returning None; that overload is unbuilt here (a sync cb is
+// # statically rejected by the type). The handler must take `Own[...]` (it owns its
+// # streams across awaits). IPv4 only (AF_INET).
 // async def start_server(
 //         cb: Callable[[Own[StreamReader], Own[StreamWriter]],
 //                      Own[Cancellable[None]]],
@@ -261,7 +275,7 @@ __coro__accept_loop _accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socke
 ::tpystd::tpy::Poll<Server> __coro_start_server::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         listener.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*listener).setsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr, 1);
         (*listener).bind(std::tuple<std::string, int32_t>{std::string(host), port});
@@ -290,16 +304,16 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 // async def wait(self) -> bool:
 //     """Block until set; returns True (CPython parity). `await event`
 //     is the TPy shorthand."""
-//     await self
+//     await self                                                        # -> S_RESUME_0
 //     return True
 ::tpystd::tpy::Poll<bool> __coro_Event_wait::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0 = &(__self);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
@@ -315,16 +329,16 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def acquire(self) -> bool:
-//     await _LockAcquire(self)
+//     await _LockAcquire(self)      # -> S_RESUME_0
 //     return True
 ::tpystd::tpy::Poll<bool> __coro_Lock_acquire::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_LockAcquire(&__self)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await _LockAcquire(self)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
@@ -340,15 +354,15 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def __aenter__(self) -> None:
-//     await self.acquire()
+//     await self.acquire()             # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_Lock___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(__self);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self.acquire()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -368,7 +382,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_Lock___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.release();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -380,16 +394,16 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def acquire(self) -> bool:
-//     await _SemAcquire(self)
+//     await _SemAcquire(self)       # -> S_RESUME_0
 //     return True
 ::tpystd::tpy::Poll<bool> __coro_Semaphore_acquire::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_SemAcquire(&__self)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await _SemAcquire(self)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
@@ -405,15 +419,15 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def __aenter__(self) -> None:
-//     await self.acquire()
+//     await self.acquire()             # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_Semaphore___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(__self);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self.acquire()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -433,7 +447,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_Semaphore___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.release();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -444,9 +458,10 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 }
 
 
+// # Returns the chunk length so callers can distinguish EOF (0) from data.
 // async def _fill(self) -> int32:
 //     loop = get_running_loop()
-//     chunk = await loop.sock_recv(self._sock.get(), 65536)
+//     chunk = await loop.sock_recv(self._sock.get(), 65536)  # -> S_RESUME_0
 //     if len(chunk) == 0:
 //         self._eof = True
 //     else:
@@ -454,13 +469,13 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 //     return len(chunk)
 ::tpystd::tpy::Poll<int32_t> __coro_StreamReader__fill::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_recv(__self._sock.get(), 65536)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: chunk = await loop.sock_recv(self._sock.get(), 65536)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         chunk = std::move(__r0).value();
@@ -486,15 +501,15 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 //     Returns early like CPython -- does NOT wait for the full `n`."""
 //     if n < 0:
 //         while not self._eof:
-//             await self._fill()
+//             await self._fill()                                          # -> S_RESUME_0
 //         return self._take(len(self._buf))
 //     if len(self._buf) == 0 and not self._eof:
-//         await self._fill()
+//         await self._fill()                                              # -> S_RESUME_1
 //     take = n if n < len(self._buf) else len(self._buf)
 //     return self._take(take)
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n < 0)) {
             __state = S_JOIN_0;
             continue;
@@ -509,7 +524,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
             }
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self._fill()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
@@ -517,7 +532,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await self._fill()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r1).value();
@@ -554,20 +569,20 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 //     if n < 0:
 //         raise ValueError("readexactly size can not be less than zero")
 //     while len(self._buf) < n and not self._eof:
-//         await self._fill()
+//         await self._fill()                                               # -> S_RESUME_0
 //     if len(self._buf) < n:
 //         raise IncompleteReadError(self._take(len(self._buf)), n)
 //     return self._take(n)
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readexactly::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n < 0)) {
             throw ::tpy::ValueError("readexactly size can not be less than zero");
         }
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self._fill()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
@@ -600,19 +615,19 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 //     the partial line at EOF without raising (matches CPython)."""
 //     idx = self._buf.find(b"\n")
 //     while idx < 0 and not self._eof:
-//         await self._fill()
+//         await self._fill()                                               # -> S_RESUME_0
 //         idx = self._buf.find(b"\n")
 //     if idx < 0:
 //         return self._take(len(self._buf))
 //     return self._take(idx + 1)
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readline::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         idx = ::tpy::bytes_find(__self._buf, ::tpy::bytes_literal("\n", 1));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self._fill()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
@@ -652,14 +667,14 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 //         raise ValueError("Separator should be at least one-byte string")
 //     idx = self._buf.find(separator)
 //     while idx < 0 and not self._eof:
-//         await self._fill()
+//         await self._fill()                                                  # -> S_RESUME_0
 //         idx = self._buf.find(separator)
 //     if idx < 0:
 //         raise IncompleteReadError(self._take(len(self._buf)), None)
 //     return self._take(idx + len(separator))
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_StreamReader_readuntil::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((::tpy::__len__(separator) == 0)) {
             throw ::tpy::ValueError("Separator should be at least one-byte string");
         }
@@ -667,7 +682,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self._fill()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         (void)std::move(__r0).value();
@@ -699,11 +714,11 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 // async def drain(self) -> None:
 //     if len(self._buf) > 0:
 //         loop = get_running_loop()
-//         await loop.sock_sendall(self._sock.get(), self._buf)
+//         await loop.sock_sendall(self._sock.get(), self._buf)  # -> S_RESUME_0
 //         self._buf = bytes()
 ::tpystd::tpy::Poll<::std::monostate> __coro_StreamWriter_drain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((::tpy::__len__(__self._buf) > 0)) {
             loop.emplace(get_running_loop());
             __sub_0.emplace(std::move((*loop).sock_sendall(__self._sock.get(), __self._buf)));
@@ -714,7 +729,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await loop.sock_sendall(self._sock.get(), self._buf)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -740,7 +755,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_StreamWriter_wait_closed::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -755,17 +770,17 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 //     # close() elsewhere, which cancels the accept task we await) surfaces as
 //     # CancelledError, which closes the server (idempotent) and re-raises.
 //     try:
-//         await self._task
+//         await self._task                                                      # -> S_RESUME_0
 //     except CancelledError:
 //         self.close()
 //         raise
 ::tpystd::tpy::Poll<::std::monostate> __coro_Server_serve_forever::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await self._task
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -812,7 +827,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_Server_wait_closed::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -829,7 +844,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<Server*> __coro_Server___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         Server* __tpy_async_ret = &(__self);
         return ::tpystd::tpy::Poll<Server*>::ready(std::move(__tpy_async_ret));
@@ -846,7 +861,7 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 ::tpystd::tpy::Poll<::std::monostate> __coro_Server___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.close();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -1082,11 +1097,6 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor) : _
 //     Executor, _ExecutorScope,
 //     _get_current_executor,
 // )
-//
-// # epoll interest masks (Linux-stable), passed to the reactor by the fd
-// # awaitables below. The EPOLL_CTL_* ops live in `_executor.py`.
-// EPOLLIN: Final[uint32] = uint32(0x001)
-// EPOLLOUT: Final[uint32] = uint32(0x004)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

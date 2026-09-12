@@ -248,16 +248,17 @@ void tuple_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x) {
     }
 }
 
+// # Generator: reads on both sides of a suspension use the extracted member.
 // def generate(x: bytearray | int32) -> Iterator[int32]:
 //     match x:
 //         case bytearray():
-//             yield x[0]  # tpyc: ok
-//             yield x[-1]  # tpyc: ok
+//             yield x[0]  # tpyc: ok                      # -> S_RESUME_0
+//             yield x[-1]  # tpyc: ok                     # -> S_RESUME_1
 //         case _:
-//             yield -1
+//             yield -1                                    # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = x;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -275,17 +276,17 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_generate::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x[0]  # tpyc: ok
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
         __state = S_RESUME_1;
         return static_cast<int32_t>(::tpy::bytes_getitem(__x, -1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x[-1]  # tpyc: ok
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }
@@ -304,17 +305,18 @@ __gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x)
     return __gen_generate(x);
 }
 
+// # Async: a resumed arm restores the same member-specific indexing route.
 // async def async_read(x: bytearray | int32) -> int32:
 //     match x:
 //         case bytearray():
 //             first = x[0]  # tpyc: ok
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)                    # -> S_RESUME_0
 //             return first + x[-1]  # tpyc: ok
 //         case _:
 //             return -1
 ::tpystd::tpy::Poll<int32_t> __coro_async_read::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = x;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -335,7 +337,7 @@ __gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x)
         ::std::unreachable();
         __builtin_unreachable();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

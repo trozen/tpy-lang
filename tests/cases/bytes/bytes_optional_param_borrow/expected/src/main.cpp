@@ -60,16 +60,16 @@ namespace tpyapp::main {
 
 // def gen(b: bytes | None) -> Iterator[int]:
 //     # simple generator (no await) owning the bytes|None param across yields
-//     yield 1
+//     yield 1                                                                            # -> S_RESUME_0
 //     if b is not None:
-//         yield int(b[0])           # reads buffer after a yield -> needs owned capture
+//         yield int(b[0])           # reads buffer after a yield -> needs owned capture  # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         if ((b.has_value())) {
             __state = S_RESUME_1;
             return ::tpy::BigInt(static_cast<uint64_t>(::tpy::bytes_getitem((*b), 0)));
@@ -78,7 +78,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield int(b[0])           # reads buffer after a yield -> needs owned capture
         __state = S_JOIN_0;
         continue;
     }

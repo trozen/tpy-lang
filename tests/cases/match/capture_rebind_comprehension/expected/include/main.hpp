@@ -17,12 +17,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # Over-trigger guard: a comprehension loop var reusing a reference-typed
-// # capture's name is a separate Python-3 scope, NOT a rebind of the capture, so
-// # it must not trigger the reference-rebind reject. Read-only through `p` after
-// # the comprehension is intentional -- the point is that `p` still resolves to
-// # the aliased Pet (the comprehension `p` did not leak or rebind it), not a
-// # copy-vs-alias observation.
 // class Pet:
 struct Pet {
     // hp: int

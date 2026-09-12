@@ -114,19 +114,19 @@ void comprehension(const std::vector<std::string>& ks) {
 
 // def gen_body(k: str) -> Iterator[bool]:
 //     # generator body
-//     yield has_item(NAMES, k)  # tpyc: ok -- direct, no two-step needed
-//     yield has_item_str(NAMES, k)
+//     yield has_item(NAMES, k)  # tpyc: ok -- direct, no two-step needed  # -> S_RESUME_0
+//     yield has_item_str(NAMES, k)                                        # -> S_RESUME_1
 std::expected<bool, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return has_item<std::string>((*NAMES), k);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield has_item(NAMES, k)  # tpyc: ok -- direct, no two-step needed
         __state = S_RESUME_1;
         return has_item_str((*NAMES), k);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield has_item_str(NAMES, k)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -143,18 +143,18 @@ __gen_gen_body gen_body(std::string_view k) {
 
 // async def async_body(k: str) -> bool:
 //     # async body (the resumable frame captures the str param OWNED)
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)                                               # -> S_RESUME_0
 //     # direct, no two-step needed: the instantiated body takes `str`'s own
 //     # forms, so nothing has to be materialized into a temp here
 //     return has_item(NAMES, k) and has_item_str(NAMES, k)  # tpyc: ok
 ::tpystd::tpy::Poll<bool> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();

@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def gen() -> Iterator[tuple[int32, Box]]:
 //     items: list[tuple[int32, Box]] = [(1, Box(5))]
 //     for _ in range(2):
-//         yield items[0]
+//         yield items[0]                              # -> S_RESUME_0
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield items[0]
         __state = S_JOIN_0;
         continue;
     }
@@ -41,22 +41,24 @@ __gen_gen gen() {
     return __gen_gen();
 }
 
+// # free generator, TWO yields (frame): the whole borrow-tuple loop var is
+// # relayed twice per inner pull, still aliasing the inner generator's element.
 // def relay_twice() -> Iterator[tuple[int32, Box]]:
 //     for p in gen():  # tpyc: ok
-//         yield p
-//         yield p
+//         yield p                                    # -> S_RESUME_0
+//         yield p                                    # -> S_RESUME_1
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_relay_twice::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_src_0.emplace(gen());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p
         __state = S_RESUME_1;
         return p;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p
         __state = S_JOIN_0;
         continue;
     }
@@ -163,22 +165,23 @@ void main() {
     std::cout << "method" << " " << ::tpy::ListPrinter(seen_m) << "\n";
 }
 
+// # generator METHOD, same shape.
 // def relay(self) -> Iterator[tuple[int32, Box]]:
 //     for p in gen():  # tpyc: ok
-//         yield p
-//         yield p
+//         yield p                                  # -> S_RESUME_0
+//         yield p                                  # -> S_RESUME_1
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_Hub_relay::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_src_0.emplace(gen());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p
         __state = S_RESUME_1;
         return p;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p
         __state = S_JOIN_0;
         continue;
     }

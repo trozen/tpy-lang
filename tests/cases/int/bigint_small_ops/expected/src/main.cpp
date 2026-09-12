@@ -28,16 +28,16 @@ std::expected<::tpy::BigInt, InvalidOperand> checked_floor(const ::tpy::BigInt& 
 
 // def generated(a: int, b: int) -> Iterator[int]:
 //     # Generator: exercise the same payload before and after resumption.
-//     yield a >> 1  # tpyc: ok
+//     yield a >> 1  # tpyc: ok                                             # -> S_RESUME_0
 //     if a < b:  # tpyc: ok
-//         yield a % b  # tpyc: ok
+//         yield a % b  # tpyc: ok                                          # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_generated::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ((a) >> (::tpy::BigInt(1)));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a >> 1  # tpyc: ok
         if ((a < b)) {
             __state = S_RESUME_1;
             return ((a) % (b));
@@ -46,7 +46,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_generated::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a % b  # tpyc: ok
         __state = S_JOIN_0;
         continue;
     }
@@ -67,18 +67,18 @@ __gen_generated generated(::tpy::BigInt a, ::tpy::BigInt b) {
 
 // async def async_ops(a: int, b: int) -> int:
 //     before = a // b  # tpyc: ok
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                                # -> S_RESUME_0
 //     # Async body: division and bitwise operations straddle a suspension.
 //     return before ^ (a >> 1)  # tpyc: ok
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_async_ops::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         before = ((a) / (b));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();

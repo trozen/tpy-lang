@@ -7,16 +7,16 @@ namespace tpyapp::main {
 // def gen(p: tuple[int32, Box], b: Box, cond: bool) -> Iterator[tuple[int32, Box]]:
 //     t = (1, b)
 //     u = p if cond else t
-//     yield u
+//     yield u                                                                        # -> S_RESUME_0
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t = std::tuple<int32_t, Box*>{1, &(b)};
         u = ((cond) ? (p) : (t));
         __state = S_RESUME_0;
         return u;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield u
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

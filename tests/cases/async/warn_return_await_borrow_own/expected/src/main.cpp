@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // async def take(h: Holder) -> Own[Payload]:
-//     return await h.borrow()  # tpyc: warning(/copies Payload into owned storage/)
+//     return await h.borrow()  # tpyc: warning(/copies Payload into owned storage/)  # -> S_RESUME_0
 ::tpystd::tpy::Poll<Payload> __coro_take::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(h);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await h.borrow()  # tpyc: warning(/copies Payload into owned storage/)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Payload>::pending();
         Payload __ret0 = Payload(*(std::move(__r0).value()));
@@ -33,15 +33,15 @@ __coro_take take(Holder& h) {
 }
 
 // async def take_copy(h: Holder) -> Own[Payload]:
-//     return copy(await h.borrow())  # tpyc: ok
+//     return copy(await h.borrow())  # tpyc: ok    # -> S_RESUME_0
 ::tpystd::tpy::Poll<Payload> __coro_take_copy::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(h);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return copy(await h.borrow())  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Payload>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -63,18 +63,18 @@ __coro_take_copy take_copy(Holder& h) {
 
 // async def amain() -> None:
 //     h = Holder(1)
-//     p = await take(h)
-//     q = await take_copy(h)
+//     p = await take(h)       # -> S_RESUME_0
+//     q = await take_copy(h)  # -> S_RESUME_1
 //     print(p.v, q.v, h.p.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h.emplace(Holder(1));
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: p = await take(h)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p.emplace(std::move(__r0).value());
@@ -83,7 +83,7 @@ __coro_take_copy take_copy(Holder& h) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: q = await take_copy(h)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         q.emplace(std::move(__r1).value());
@@ -108,7 +108,7 @@ __coro_amain amain() {
 ::tpystd::tpy::Poll<Payload*> __coro_Holder_borrow::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         Payload* __tpy_async_ret = &(__self.p);
         return ::tpystd::tpy::Poll<Payload*>::ready(std::move(__tpy_async_ret));

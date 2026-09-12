@@ -74,7 +74,6 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// # Defaults in parent propagated to child
 // @model
 // class WithDefaults:
 struct WithDefaults {
@@ -117,7 +116,6 @@ inline std::ostream& operator<<(std::ostream& os, const WithDefaults& obj) {
     return os;
 }
 
-// # Optional parent field + child field
 // @model
 // class Tagged:
 struct Tagged {
@@ -280,7 +278,6 @@ inline std::ostream& operator<<(std::ostream& os, const Scored& obj) {
     return os;
 }
 
-// # Multi-level: grandparent -> parent -> child
 // @model
 // class Admin(User):
 struct Admin : User {

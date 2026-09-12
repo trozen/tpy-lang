@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def inner() -> int:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)  # -> S_RESUME_0
 //     return 13
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -36,17 +36,17 @@ __coro_inner inner() {
 
 // async def main_coro() -> None:
 //     r = Runner()
-//     v = await r.with_timeout(inner(), 5.0)
+//     v = await r.with_timeout(inner(), 5.0)  # -> S_RESUME_0
 //     print(v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         r.emplace(Runner());
         __sub_0.emplace((*r), ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(inner()), 5.0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: v = await r.with_timeout(inner(), 5.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();

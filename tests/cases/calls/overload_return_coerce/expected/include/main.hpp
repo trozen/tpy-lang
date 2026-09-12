@@ -13,20 +13,28 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_val(const A& obj);
+// @overload
 // def get_val(obj: B) -> float: ...  # tpyc: ok
 double get_val(const B& obj);
+// @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_big(const C& obj);
+// @overload
 // def get_big(obj: B) -> float: ...  # tpyc: ok
 double get_big(const B& obj);
+// @overload
 // def get_wide(obj: A) -> int64: ...  # tpyc: ok
 int64_t get_wide(const A& obj);
+// @overload
 // def get_wide(obj: B) -> float: ...  # tpyc: ok
 double get_wide(const B& obj);
+// @overload
 // def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast(const A& obj);
+// @overload
 // def get_cast(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_cast(const C& obj);
 // def main() -> None:

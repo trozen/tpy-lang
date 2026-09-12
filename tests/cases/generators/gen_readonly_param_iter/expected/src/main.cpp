@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def tail(xs: readonly[list[int32]]) -> Iterator[int32]:
-//     yield -1
+//     yield -1                                             # -> S_RESUME_0
 //     for x in xs:
-//         yield x
+//         yield x                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_tail::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -48,10 +48,10 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
 //     data: list[int32] = [10, 20]
 //     print(sum(tail(data)))
 //     h = Holder()
-//     print(await h.total())
+//     print(await h.total())        # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         data.emplace(std::vector<int32_t>{10, 20});
         std::cout << ::tpy::builtin_sum<int32_t>(tail((*data))) << "\n";
         h.emplace(Holder());
@@ -59,7 +59,7 @@ __gen_tail tail(const std::vector<int32_t>& xs) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await h.total())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -112,12 +112,12 @@ void main() {
 //     n = 0
 //     if self.lst is not None:
 //         for x in self.lst:
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)  # -> S_RESUME_0
 //             n += x
 //     return n
 ::tpystd::tpy::Poll<int32_t> __coro_Holder_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         if ((__self.lst.has_value())) {
             __for_it_0.emplace(((*__self.lst)).begin());
@@ -129,7 +129,7 @@ void main() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

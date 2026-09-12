@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[int32]:
-//     yield 0
+//     yield 0                           # -> S_RESUME_0
 //     for x in pair(7, 8):  # tpyc: ok
-//         yield x
+//         yield x                       # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         int32_t __tmp_1 = 7;
         int32_t __tmp_2 = 8;
         __for_src_0.emplace(pair<int32_t>(__tmp_1, __tmp_2));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

@@ -17,10 +17,6 @@ void do_mutate(Sink& p, std::string_view s);
 // def main() -> None:
 void main();
 
-// # A const (readonly-inferred) method may mutate a reference-type PARAM -- not
-// # mutating `self` is independent of whether the method mutates its args. Each
-// # method below is const; we mutate a param and read it back after the call (the
-// # mutate-after-boundary rule -- proves the param is a mutable ref, not a copy).
 // class Sink:
 struct Sink {
     // buf: str
@@ -43,15 +39,12 @@ inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
 struct Renderer {
 
 
-    // # param mutated transitively via a mutating free function: `out` is `Sink&`
     // def via_call(self, out: Sink) -> None:
     void via_call(Sink& out) const;
 
-    // # param mutated via a direct method call: `out` is `Sink&`
     // def via_method(self, out: Sink) -> None:
     void via_method(Sink& out) const;
 
-    // # only `out` mutated: `a` stays `const Sink&`
     // def only_second(self, a: Sink, out: Sink) -> None:
     void only_second(const Sink& a, Sink& out) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Renderer";

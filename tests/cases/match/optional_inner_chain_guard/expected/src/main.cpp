@@ -163,16 +163,16 @@ std::string binding_guard(std::optional<std::string_view> x, bool flag) {
 //     # The same fold inside a resumable, where the arm bodies are frame blocks.
 //     match x:
 //         case None:
-//             yield "none"
+//             yield "none"                                                        # -> S_RESUME_0
 //         case "a" if flag:
-//             yield "a-flag"
+//             yield "a-flag"                                                      # -> S_RESUME_1
 //         case "a":
-//             yield "a"
+//             yield "a"                                                           # -> S_RESUME_2
 //         case _:
-//             yield "other"
+//             yield "other"                                                       # -> S_RESUME_3
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = x;
         if (!__match_subject_1.has_value()) {
             __state = S_RESUME_0;
@@ -193,19 +193,19 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "none"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "a-flag"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "a"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield "other"
         __state = S_JOIN_0;
         continue;
     }

@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // async def background() -> None:
 //     try:
-//         await asyncio.sleep(60.0)
+//         await asyncio.sleep(60.0)        # -> S_RESUME_0
 //         print("not reached")
 //     finally:
 //         print("background cleanup ran")
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(60.0)
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -76,7 +76,7 @@ __coro_background background() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background())));
         { auto __del_sink = std::move(t); }
         std::cout << "main done" << "\n";

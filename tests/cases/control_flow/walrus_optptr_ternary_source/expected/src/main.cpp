@@ -37,26 +37,26 @@ int32_t pick(bool c) {
 }
 
 // def walk(nodes: list[Node], flag: bool) -> Iterator[int32]:
-//     yield -1
+//     yield -1                                                               # -> S_RESUME_0
 //     i = 0
 //     while i < 2:
-//         yield value_of(m := (nodes[i] if flag else None))  # tpyc: ok
+//         yield value_of(m := (nodes[i] if flag else None))  # tpyc: ok      # -> S_RESUME_1
 //         if m is not None:
 //             m.v += 100              # the frame field aliases the element
 //             print(m.v)
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield value_of(m := (nodes[i] if flag else None))  # tpyc: ok
         if ((m != nullptr)) {
             m->v = ::tpy::add_check<int32_t>(m->v, 100);
             std::cout << m->v << "\n";

@@ -20,10 +20,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Inherited __repr__ / __str__ on a user record drives operator<< for
-// # subclasses that don't define their own. Native ancestors (e.g.
-// # BaseException) are skipped so user Exception subclasses still get the
-// # field-by-field default printer.
 // class Animal:
 struct Animal {
     // name: str
@@ -110,8 +106,6 @@ inline std::ostream& operator<<(std::ostream& os, const Echo& obj) {
 // class Pet(Dog):
 struct Pet : Dog {
 
-    // # Grandparent (Animal) defines __repr__; Dog has none; Pet has none.
-    // # Walks the full user MRO to find Animal.__repr__.
     // def __init__(self, name: str) -> None:
     Pet() = default;
     explicit Pet(std::string_view name);
@@ -126,7 +120,6 @@ inline std::ostream& operator<<(std::ostream& os, const Pet& obj) {
 // class LoudCat(Cat):
 struct LoudCat : Cat {
 
-    // # Parent (Cat) overrides Animal.__repr__; closer-wins per MRO.
     // def __init__(self, name: str) -> None:
     LoudCat() = default;
     explicit LoudCat(std::string_view name);

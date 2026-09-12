@@ -38,7 +38,6 @@ struct Holder {
     // self.slot = r
     std::optional<Rec> slot;
 
-    // # A ctor is a member, so this Own default keeps its C++ spelling.
     // def __init__(self, r: Own[Rec | None] = None) -> None:
     explicit Holder(std::optional<Rec>&& r = std::nullopt);
 

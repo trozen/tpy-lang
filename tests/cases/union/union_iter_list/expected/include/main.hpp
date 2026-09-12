@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Iterating over list of non-value union (value-variant elements)
 // class Dog:
 struct Dog {
     // name: str

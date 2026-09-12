@@ -54,17 +54,17 @@ struct __coro_consume {
 };
 // async def consume(it: Iterable[int]) -> None:
 //     for x in it:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                 # -> S_RESUME_0
 //         print(x)
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

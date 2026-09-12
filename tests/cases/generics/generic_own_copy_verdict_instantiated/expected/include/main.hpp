@@ -66,6 +66,7 @@ int32_t try_slot(::tpy::param_val_or_ref_t<T> v);
 // def match_slot[T](v: T, tag: int32) -> int32:
 template<typename T>
 int32_t match_slot(::tpy::param_val_or_ref_t<T> v, int32_t tag);
+// @error_return(Missing)
 // def er_slot[T](v: T) -> int32:
 template<typename T>
 std::expected<int32_t, Missing> er_slot(::tpy::param_val_or_ref_t<T> v);
@@ -180,7 +181,6 @@ inline std::ostream& operator<<(std::ostream& os, const Missing& obj) {
     return os;
 }
 
-// # constructor and method, field slot
 // class Holder[T]:
 template<typename T>
 struct Holder {
@@ -242,7 +242,6 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
     return os;
 }
 
-// # generic base declaration: `GenBase[Cell]` is named only through the header
 // class GenBase[T]:
 template<typename T>
 struct GenBase {
@@ -262,7 +261,6 @@ inline std::ostream& operator<<(std::ostream& os, const GenBase<T>& obj) {
     return os;
 }
 
-// # composite payload: `T | None` contains a param, so it hedges like a bare one
 // class OptHolder[T]:
 template<typename T>
 struct OptHolder {
@@ -287,9 +285,6 @@ inline std::ostream& operator<<(std::ostream& os, const OptHolder<T>& obj) {
     return os;
 }
 
-// # ... but NOT through a payload that is a reference type in its own right.
-// # `GBox[T]` is a struct that gets copied whatever `T` is, so the bound settles
-// # nothing and the hedge stands -- beside the twin, which says so concretely.
 // class GBox[T]:
 template<typename T>
 struct GBox {
@@ -309,11 +304,6 @@ inline std::ostream& operator<<(std::ostream& os, const GBox<T>& obj) {
     return os;
 }
 
-// # a METHOD-level bound shadows the class-level one, and the silencer reads the
-// # method's: `keep` is silent under its own `T: ValueType` while the ctor next
-// # to it, whose `T` is only `Copyable`, still hedges. (A shadowed name
-// # constrains the CLASS param rather than opening a fresh one, so the receiver
-// # must be instantiated at a value type for `keep` to be callable at all.)
 // class Shadowed[T: Copyable]:
 template<::tpy::Copyable T>
 struct Shadowed {
@@ -398,6 +388,7 @@ struct __coro_async_slot {
         return os << "<coroutine async_slot>";
     }
 };
+// # async body
 // async def async_slot[T](v: T) -> int32:
 //     xs: list[T] = []
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
@@ -406,7 +397,7 @@ template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_async_slot<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         xs.emplace(std::vector<T>{});
         (*xs).push_back(::tpy::param_to_storage<T>(v));
         __state = S_DONE;
@@ -476,20 +467,21 @@ struct __gen_gen_slot : public ::tpy::next_iter_mixin<__gen_gen_slot<T>, int32_t
         return os << "<generator gen_slot>";
     }
 };
+// # generator body
 // def gen_slot[T](v: T) -> Iterator[int32]:
 //     xs: list[T] = []
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-//     yield len(xs)
+//     yield len(xs)                                                   # -> S_RESUME_0
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_slot<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         xs.emplace(std::vector<T>{});
         (*xs).push_back(::tpy::param_to_storage<T>(v));
         __state = S_RESUME_0;
         return ::tpy::__len__((*xs));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(xs)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

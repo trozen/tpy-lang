@@ -11,10 +11,13 @@ struct NotFound;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(NotFound)
 // def lookup(items: list[int32], target: int32) -> int32:
 std::expected<int32_t, NotFound> lookup(const std::vector<int32_t>& items, int32_t target);
+// @error_return(NotFound)
 // def lookup_twice(items: list[int32], a: int32, b: int32) -> int32:
 std::expected<int32_t, NotFound> lookup_twice(const std::vector<int32_t>& items, int32_t a, int32_t b);
+// @error_return(NotFound)
 // def lookup_sum(items: list[int32], targets: list[int32]) -> int32:
 std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, const std::vector<int32_t>& targets);
 // def main() -> None:

@@ -8,32 +8,32 @@ namespace tpyapp::main {
 //     # await: fetch through the inherited templated coro, then mutate the box
 //     # and re-fetch -- the second value proves the coro aliased the receiver.
 //     b = IntBox(7)
-//     print("fetch:", await b.fetch())
+//     print("fetch:", await b.fetch())                                          # -> S_RESUME_0
 //     b.put(99)
-//     print("refetch:", await b.fetch())
+//     print("refetch:", await b.fetch())                                        # -> S_RESUME_1
 //
 //     # async with: the inherited __aenter__ bumps `entered` on the shared
 //     # manager; observing entered == 1 after exit proves it was not copied.
 //     g = IntGuard(42)
-//     async with g as v:
+//     async with g as v:                                                        # -> S_RESUME_2, S_RESUME_3
 //         print("entered:", v)
 //     print("count:", g.entered)
 //
 //     # async for: the inherited __anext__ advances `cur` across suspensions;
 //     # a copied iterator would never advance.
 //     total = 0
-//     async for x in IntCounter(3, 10):
+//     async for x in IntCounter(3, 10):                                         # -> S_RESUME_4
 //         total += x
 //     print("total:", total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(IntBox(7));
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("fetch:", await b.fetch())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -44,7 +44,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print("refetch:", await b.fetch())
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -56,7 +56,7 @@ namespace tpyapp::main {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: async with g as v:
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r2).value();
@@ -64,7 +64,7 @@ namespace tpyapp::main {
         __state = S_JOIN_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: async with g as v:
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r3).value();
@@ -77,7 +77,7 @@ namespace tpyapp::main {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: async for x in IntCounter(3, 10):
         try {
             auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
             if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

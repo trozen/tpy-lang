@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @type_param_default(T=DefaultInt)
 // def tag[T](xs: Iterable[T]) -> str:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 std::string tag(const T_xs& xs);

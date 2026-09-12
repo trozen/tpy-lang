@@ -19,8 +19,6 @@ std::string read_name(::tpy::Union<const Cat*, const Dog*> pet);
 // def test() -> None:
 void test();
 
-// # Union param mutation inference: mutated params stay T& (non-const);
-// # read-only union params become const T&.
 // class Cat:
 struct Cat {
     // name: str

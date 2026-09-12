@@ -22,20 +22,20 @@ void main() {
 
 // def __iter__(self) -> Iterator[int32]:
 //     for x in self.src:
-//         yield x
-//         yield x
+//         yield x                         # -> S_RESUME_0
+//         yield x                         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, __self.src);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

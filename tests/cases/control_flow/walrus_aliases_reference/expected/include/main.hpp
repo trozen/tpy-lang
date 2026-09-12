@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # A walrus binding of a reference-type lvalue aliases the source (mutation
-// # through the walrus target is visible on the source), like CPython.
 // class Box:
 struct Box {
     // self.v = v

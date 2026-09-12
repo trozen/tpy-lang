@@ -70,16 +70,16 @@ struct __coro_Runner_with_timeout {
 
 // async def with_timeout[T](self, coro: Own[Cancellable[T]],
 //                           timeout: float) -> Own[T]:
-//     return await asyncio.wait_for(coro, timeout)
+//     return await asyncio.wait_for(coro, timeout)            # -> S_RESUME_0
 template <typename T>
 ::tpystd::tpy::Poll<T> __coro_Runner_with_timeout<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(coro), timeout);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await asyncio.wait_for(coro, timeout)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
         auto __ret0 = std::move(__r0).value();

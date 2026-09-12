@@ -16,8 +16,6 @@ std::string lookup(const Headers& h, std::string_view name);
 // def main() -> None:
 void main();
 
-// # D16 phase 9: getattr(obj, name_var) with a runtime name -- routes to
-// # __getattr__ unconditionally (Option A: route-all-to-dunder).
 // class Headers:
 struct Headers {
 

@@ -2240,15 +2240,22 @@ class CodeGenContext:
         return self.any_ancestor_has_del(record_name)
 
     def _write_source_lines(self, out: TextIO, first_line_no: int,
-                            lines: list[str], indent: str = "") -> None:
+                            lines: list[str], indent: str = "",
+                            markers: 'dict[int, list[str]] | None' = None) -> None:
         """Write consecutive source lines as one comment block. The block is
         dedented by its common leading whitespace, never line by line, so a
-        multi-line statement keeps its relative indentation."""
+        multi-line statement keeps its relative indentation. `markers` maps a
+        source line number to tags appended after the line, aligned past the
+        block's widest line (a resumable frame's `S_RESUME_n` states)."""
         stripped = [ln.rstrip() for ln in lines]
         widths = [len(ln) - len(ln.lstrip()) for ln in stripped if ln.strip()]
         common = min(widths) if widths else 0
-        for offset, ln in enumerate(stripped):
-            text = ln[common:] if ln.strip() else ""
+        texts = [ln[common:] if ln.strip() else "" for ln in stripped]
+        column = max((len(t) for t in texts), default=0) + 2
+        for offset, text in enumerate(texts):
+            tags = markers.get(first_line_no + offset) if markers else None
+            if tags:
+                text = f"{text.ljust(column)}# -> {', '.join(tags)}"
             body = f" {text}" if text else ""
             if self.options.comment_line_numbers:
                 out.write(f"{indent}// {first_line_no + offset}:{body}\n")
@@ -2283,15 +2290,16 @@ class CodeGenContext:
             pass  # Fall back: just the start line.
         return min(end_idx, len(self.source_lines) - 1)
 
-    def emit_definition_source_block(self, out: TextIO, loc: SourceLocation | None,
-                                     indent: str = "") -> None:
-        """Echo a whole definition, def line through last body line, as one
-        comment block above its implementation, dedented as a block. A
-        location without an end line falls back to the signature echo."""
-        if not self.options.emit_source_comments:
+    def emit_definition_echo(self, out: TextIO, loc: SourceLocation | None,
+                             indent: str = "",
+                             markers: 'dict[int, list[str]] | None' = None) -> None:
+        """Echo a whole definition above its implementation: the decorators
+        and `#` comments above it, then the def line through the last body
+        line as one block dedented together. A location without an end line
+        falls back to the declaration echo."""
+        if not self.options.emit_source_comments or loc is None:
             return
-        if loc is None:
-            return
+        self.emit_preceding_comments(out, loc, indent)
         if loc.end_line is None:
             self.emit_source_comment(out, loc, indent)
             return
@@ -2300,7 +2308,18 @@ class CodeGenContext:
             return
         last = min(loc.end_line - 1, len(self.source_lines) - 1)
         self._write_source_lines(out, start_idx + 1,
-                                 self.source_lines[start_idx:last + 1], indent)
+                                 self.source_lines[start_idx:last + 1], indent,
+                                 markers)
+
+    def emit_declaration_echo(self, out: TextIO, loc: SourceLocation | None,
+                              indent: str = "") -> None:
+        """Echo a declaration: its decorators, then the signature's logical
+        line. The `#` comments above a definition belong to its
+        implementation's echo, so a declaration does not repeat them."""
+        if not self.options.emit_source_comments or loc is None:
+            return
+        self.emit_preceding_comments(out, loc, indent, comments=False)
+        self.emit_source_comment(out, loc, indent)
 
     def emit_module_source_block(self, out: TextIO, stmts, indent: str = "") -> None:
         """Echo the module body -- every top-level statement with the `#`
@@ -2312,7 +2331,8 @@ class CodeGenContext:
         prev_end = -1
         for stmt in stmts:
             loc = getattr(stmt, "loc", None)
-            if loc is None:
+            # A Final global echoes at its own declaration and definition.
+            if loc is None or getattr(stmt, "is_final", False):
                 continue
             start = loc.line - 1
             if not (0 <= start < len(self.source_lines)) or start <= prev_end:
@@ -2345,8 +2365,16 @@ class CodeGenContext:
         self._write_source_lines(out, start_idx + 1,
                                  self.source_lines[start_idx:end_idx + 1], indent)
 
-    def emit_preceding_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
-        """Emit comments and decorators preceding a definition as C++ comments.
+    def source_line_text(self, loc: SourceLocation | None) -> str | None:
+        """The stripped source line at `loc`, for a one-line note."""
+        if loc is None or not (0 <= loc.line - 1 < len(self.source_lines)):
+            return None
+        return self.source_lines[loc.line - 1].strip()
+
+    def emit_preceding_comments(self, out: TextIO, loc: SourceLocation | None,
+                                indent: str = "", *, comments: bool = True) -> None:
+        """Emit the decorators preceding a definition, and with `comments`
+        the `#` lines above them, as C++ comments.
 
         Walks backwards from the line before loc, skipping blank lines,
         collecting decorator lines (@...) and comment lines (#...) at the
@@ -2378,7 +2406,7 @@ class CodeGenContext:
         while idx >= 0 and not self.source_lines[idx].strip():
             idx -= 1
         # Collect comment lines at same indentation as the definition
-        while idx >= 0:
+        while comments and idx >= 0:
             stripped = self.source_lines[idx].strip()
             if stripped.startswith("#"):
                 line_indent = len(self.source_lines[idx]) - len(self.source_lines[idx].lstrip())

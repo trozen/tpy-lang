@@ -9,11 +9,11 @@ namespace tpyapp::main {
 //         xs = [1, 2]
 //     else:
 //         xs = [3]
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)      # -> S_RESUME_0
 //     return xs[0] + len(xs)
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n > 2)) {
             xs.emplace(std::vector<int32_t>{1, 2});
         } else {
@@ -23,7 +23,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -44,16 +44,16 @@ __coro_pick pick(::tpy::BigInt n) {
 }
 
 // async def drive() -> None:
-//     print(await pick(3))
-//     print(await pick(1))
+//     print(await pick(3))    # -> S_RESUME_0
+//     print(await pick(1))    # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(::tpy::BigInt(3));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await pick(3))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -63,7 +63,7 @@ __coro_pick pick(::tpy::BigInt n) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await pick(1))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();

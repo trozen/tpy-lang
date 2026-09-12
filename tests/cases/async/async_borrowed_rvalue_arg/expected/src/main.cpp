@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // async def via_union(a: Dog | Cat) -> str:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                 # -> S_RESUME_0
 //     if isinstance(a, Dog):
 //         return a.name
 //     return "cat"
 ::tpystd::tpy::Poll<std::string> __coro_via_union::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -44,18 +44,18 @@ __coro_via_union via_union(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // async def via_optional(a: Dog | None) -> str:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                     # -> S_RESUME_0
 //     if a is not None:
 //         return a.name
 //     return "none"
 ::tpystd::tpy::Poll<std::string> __coro_via_optional::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -81,16 +81,16 @@ __coro_via_optional via_optional(Dog* a) {
 }
 
 // async def via_ref(a: Dog) -> str:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)         # -> S_RESUME_0
 //     return a.name
 ::tpystd::tpy::Poll<std::string> __coro_via_ref::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -110,19 +110,22 @@ __coro_via_ref via_ref(Dog& a) {
     return __coro_via_ref(a);
 }
 
+// # Mixed signature: the str arg (position 0) is a by-value param and is not
+// # hoisted; only the borrowing union arg (position 1) is. Guards the per-index
+// # `_param_borrows` skip / off-by-one.
 // async def via_mixed(tag: str, a: Dog | Cat) -> str:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                           # -> S_RESUME_0
 //     if isinstance(a, Dog):
 //         return tag + ":" + a.name
 //     return tag + ":cat"
 ::tpystd::tpy::Poll<std::string> __coro_via_mixed::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -150,30 +153,30 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
 }
 
 // async def main() -> None:
-//     print(await via_union(Dog("rex")))
-//     print(await via_union(Cat("tom")))
-//     print(await via_optional(Dog("fido")))
-//     print(await via_ref(Dog("spot")))
+//     print(await via_union(Dog("rex")))                                        # -> S_RESUME_0
+//     print(await via_union(Cat("tom")))                                        # -> S_RESUME_1
+//     print(await via_optional(Dog("fido")))                                    # -> S_RESUME_2
+//     print(await via_ref(Dog("spot")))                                         # -> S_RESUME_3
 //     # None must NOT be hoisted (lowers to nullptr, not a borrow).
-//     print(await via_optional(None))
+//     print(await via_optional(None))                                           # -> S_RESUME_4
 //     # A stable lvalue must NOT be hoisted: its address already persists, and
 //     # hoisting would copy it (breaking @nocopy / mutation-through-borrow).
 //     held = Dog("held")
-//     print(await via_ref(held))
+//     print(await via_ref(held))                                                # -> S_RESUME_5
 //     # Mixed borrowed/non-borrowed params.
-//     print(await via_mixed("tag", Dog("max")))
+//     print(await via_mixed("tag", Dog("max")))                                 # -> S_RESUME_6
 //     # Lift inside a loop body: each suspension gets a distinct frame slot.
 //     for i in range(2):
-//         print(await via_ref(Dog("loop")))
+//         print(await via_ref(Dog("loop")))                                     # -> S_RESUME_7
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0.emplace(Dog("rex"));
         __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await via_union(Dog("rex")))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -184,7 +187,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await via_union(Cat("tom")))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -195,7 +198,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await via_optional(Dog("fido")))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -206,7 +209,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print(await via_ref(Dog("spot")))
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
@@ -216,7 +219,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __state = S_RESUME_4;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: print(await via_optional(None))
         auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
@@ -227,7 +230,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __state = S_RESUME_5;
         continue;
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: print(await via_ref(held))
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
@@ -239,7 +242,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __state = S_RESUME_6;
         continue;
     }
-    case S_RESUME_6: {
+    case S_RESUME_6: {  // after: print(await via_mixed("tag", Dog("max")))
         auto __r6 = ::tpy::poll_with_cancel(__sub_6, __cancel_pending, waker);
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_6 = std::move(__r6).value();
@@ -250,7 +253,7 @@ __coro_via_mixed via_mixed(std::string_view tag, ::tpy::Union<const Cat*, const 
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_7: {
+    case S_RESUME_7: {  // after: print(await via_ref(Dog("loop")))
         auto __r7 = ::tpy::poll_with_cancel(__sub_7, __cancel_pending, waker);
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r7).value();

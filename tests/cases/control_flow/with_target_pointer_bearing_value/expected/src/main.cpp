@@ -8,17 +8,17 @@ namespace tpyapp::main {
 //     pr = Pair(7)
 //     with pr as p:
 //         pass
-//     yield 1
+//     yield 1                                                        # -> S_RESUME_0
 //     item, tag = p
 //     item.v += 1
-//     yield item.v
-//     yield tag
+//     yield item.v                                                   # -> S_RESUME_1
+//     yield tag                                                      # -> S_RESUME_2
 //     # Observed through the manager's own handle: a copied element
 //     # would leave this at 7.
-//     yield pr.item.v
+//     yield pr.item.v                                                # -> S_RESUME_3
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         pr.emplace(Pair(7));
         auto& __ctx_1 = (*pr);
         p = __ctx_1.__enter__();
@@ -36,7 +36,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         auto& __tup_1 = p;
         item = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         tag = std::get<1>(__tup_1);
@@ -44,15 +44,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_1;
         return item->v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield item.v
         __state = S_RESUME_2;
         return tag;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield tag
         __state = S_RESUME_3;
         return (*pr).item.v;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield pr.item.v
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -66,18 +66,18 @@ void main() {
 //     for x in items:
 //         if n >= cap:
 //             break
-//         yield x
+//         yield x                                                      # -> S_RESUME_0
 //         n += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         n = ::tpy::add_check<int32_t>(n, 1);
         __state = S_JOIN_0;
         continue;
@@ -107,22 +107,22 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_first::__next__() {
 
 
 // def ro_pair(self, xs: readonly[list[int32]]) -> Iterator[int32]:
-//     yield 0
+//     yield 0                                                       # -> S_RESUME_0
 //     for x in xs:
-//         yield x
+//         yield x                                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -142,19 +142,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_ro_pair::__next__() {
 
 
 // def rec_val(self, r: readonly[Rec]) -> Iterator[int32]:
-//     yield r.v
-//     yield r.v + 1
+//     yield r.v                                            # -> S_RESUME_0
+//     yield r.v + 1                                        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return r.v;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield r.v
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(r.v, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield r.v + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -165,22 +165,22 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_rec_val::__next__() {
 
 
 // def dvals(self, d: readonly[dict[str, int32]]) -> Iterator[int32]:
-//     yield len(d)
+//     yield len(d)                                                    # -> S_RESUME_0
 //     for k in d:
-//         yield d[k]
+//         yield d[k]                                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__len__(d);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(d)
         __for_it_0.emplace((d).begin());
         __for_end_0.emplace((d).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield d[k]
         __state = S_JOIN_0;
         continue;
     }
@@ -200,19 +200,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_dvals::__next__() {
 
 
 // def echo(self, xs: list[int32]) -> Iterator[int32]:
-//     yield xs[0]
-//     yield xs[0]
+//     yield xs[0]                                      # -> S_RESUME_0
+//     yield xs[0]                                      # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Lim_echo::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield xs[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(xs, 0);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield xs[0]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

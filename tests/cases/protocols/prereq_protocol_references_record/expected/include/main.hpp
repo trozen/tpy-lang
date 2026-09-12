@@ -9,14 +9,12 @@ namespace tpyapp::main {
 
 struct Result;
 
-// # Prereq protocol that references Result in its signature
 // class Convertible(Protocol):
 template<typename T>
 concept Convertible = requires(T& t) {
     { t.to_result() } -> std::convertible_to<Result>;
 };
 
-// # A record that will be referenced by a prereq protocol
 // class Result:
 struct Result {
     // value: int32
@@ -33,7 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Result& obj) {
     return os;
 }
 
-// # Record that implements Convertible
 // class Message:
 struct Message {
     // text: str
@@ -55,7 +52,6 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 
 template<Convertible T> struct Wrapper;
 
-// # Bound protocol that references Wrapper[Message]
 // class WrapperMaker(Protocol):
 template<typename T>
 concept WrapperMaker = requires(T& t) {
@@ -70,7 +66,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Record with prereq protocol as bound, referenced by a bound protocol
 // class Wrapper[T: Convertible]:
 template<Convertible T>
 struct Wrapper {
@@ -96,7 +91,6 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     return os;
 }
 
-// # Implementation of WrapperMaker
 // class DefaultWrapperMaker:
 struct DefaultWrapperMaker {
 
@@ -111,7 +105,6 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj
     return os;
 }
 
-// # Record that uses WrapperMaker as a bound
 // class Container[T: WrapperMaker]:
 template<WrapperMaker T>
 struct Container {

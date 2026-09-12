@@ -11,8 +11,6 @@
 namespace tpyapp::defmod {
 
 inline constexpr std::string_view __name__ = "defmod";
-// # The default names THIS module's Final -- a caller in another module must not
-// # resolve it in its own scope.
 // BUMP: Final[int32] = 30
 inline constexpr int32_t BUMP = 30;
 

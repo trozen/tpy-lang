@@ -33,7 +33,6 @@ extern std::vector<int32_t>* arr;
 extern int32_t delta;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Test 8: Global pointer field access
 // class Point:
 struct Point {
     // a: int32
@@ -52,7 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Test 11: Method parameter shadows global
 // class Counter:
 struct Counter {
     // val: int32

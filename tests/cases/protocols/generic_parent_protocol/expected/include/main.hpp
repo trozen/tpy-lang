@@ -7,8 +7,6 @@
 
 namespace tpyapp::main {
 
-// # Counted[T] structurally requires `length()` plus inherits the
-// # `__iter__(self) -> Iterator[T]` requirement from Iterable[T].
 // class Counted[T](Iterable[T], Protocol):
 template<typename T, typename _T0>
 concept Counted = requires(T& t) {

@@ -4,23 +4,25 @@
 namespace tpyapp::main {
 
 
+// # The loop element must ALIAS the bag's element, not copy it: the mutation below
+// # is observed through the bag's own field after the loop.
 // def bump(bag: Bag) -> Iterator[int32]:
 //     for p in bag:
 //         p.x += 100
-//         yield p.x
-//         yield p.x
+//         yield p.x                       # -> S_RESUME_0
+//         yield p.x                       # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, bag);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p.x
         __state = S_RESUME_1;
         return (*p).x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p.x
         __state = S_JOIN_0;
         continue;
     }
@@ -66,23 +68,24 @@ void main() {
     std::cout << "mutations reached the bag:" << " " << ::tpy::__getitem__(bag.items, 0).x << " " << ::tpy::__getitem__(bag.items, 1).x << "\n";
 }
 
+// # Two yields -> a resumable frame, not the lambda peephole.
 // def __iter__(self) -> Iterator[Point]:
 //     for p in self.items:
-//         yield p
-//         yield p
+//         yield p                         # -> S_RESUME_0
+//         yield p                         # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p
         __state = S_RESUME_1;
         return (*p);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p
         __state = S_JOIN_0;
         continue;
     }

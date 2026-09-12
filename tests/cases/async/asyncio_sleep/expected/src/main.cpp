@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // async def main_coro() -> None:
 //     print("first")
-//     await asyncio.sleep(0.05)
+//     await asyncio.sleep(0.05)   # -> S_RESUME_0
 //     print("second")
-//     await asyncio.sleep(0.05)
+//     await asyncio.sleep(0.05)   # -> S_RESUME_1
 //     print("third")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "first" << "\n";
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.05)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.05)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -28,7 +28,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0.05)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

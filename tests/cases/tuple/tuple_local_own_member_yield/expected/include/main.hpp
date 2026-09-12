@@ -43,8 +43,6 @@ void main();
 struct Box {
     // val: int32
     int32_t val;
-    // # A heap member, so a slot moved out from under a live borrow is observable
-    // # (the borrowed read sees the stolen buffer) rather than silently fine.
     // items: list[int32]
     std::vector<int32_t> items;
 
@@ -303,6 +301,8 @@ inline auto gen(int32_t n) {
     );
 }
 
+// # The owning-CALL init at a SINGLE yield -- the peephole ladder's half of the
+// # same arm (the two-yield sibling above takes the resumable frame).
 // def gen_call_init_once(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     i = int32(0)
 //     while i < n:

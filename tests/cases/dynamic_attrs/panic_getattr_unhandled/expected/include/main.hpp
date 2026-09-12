@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Direct `obj.foo` access with no enclosing try/except: the throw propagates
-// # out of main() and the terminate handler prints the uncaught AttributeError.
 // class Bag:
 struct Bag {
 

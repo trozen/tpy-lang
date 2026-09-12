@@ -17,14 +17,18 @@ struct __gen_each_twice;
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 template <typename T>
 __gen_each_twice<T> each_twice(std::vector<T>& xs);
+// @overload
 // def total(xs: Iterable[Own[int32]]) -> int32: ...
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 int32_t total(T_xs&& xs);
+// @overload
 // def total(xs: int32) -> int32: ...
 int32_t total(int32_t xs);
+// @overload
 // def keysum(xs: Iterable[Own[Item]]) -> int32: ...
 template<::tpystd::typing::Iterable<Item> T_xs>
 int32_t keysum(T_xs&& xs);
+// @overload
 // def keysum(xs: int32) -> int32: ...
 int32_t keysum(int32_t xs);
 // def main() -> None:
@@ -80,24 +84,26 @@ struct __gen_each_twice : public ::tpy::next_iter_mixin<__gen_each_twice<T>, T> 
         return os << "<generator each_twice>";
     }
 };
+// # TWO yields, so this body takes the RESUMABLE FRAME: the loop var is a `T*`
+// # frame field, and the open-T copy must carry the deref (`T((*x))`).
 // def each_twice[T: Comparable](xs: list[T]) -> Iterator[Own[T]]:
 //     for x in xs:
-//         yield copy(x)  # tpyc: ok
-//         yield copy(x)  # tpyc: ok
+//         yield copy(x)  # tpyc: ok                                # -> S_RESUME_0
+//         yield copy(x)  # tpyc: ok                                # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_each_twice<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield copy(x)  # tpyc: ok
         __state = S_RESUME_1;
         return T((*x));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield copy(x)  # tpyc: ok
         __state = S_JOIN_0;
         continue;
     }

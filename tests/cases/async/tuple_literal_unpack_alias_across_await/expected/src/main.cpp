@@ -6,13 +6,13 @@ namespace tpyapp::main {
 
 // async def work(items: list[Counter]) -> None:
 //     a, b = (items[0], items[1])
-//     await asyncio.sleep(0.01)
+//     await asyncio.sleep(0.01)                  # -> S_RESUME_0
 //     a.n += 10
 //     print(items[0].n)
 //     print(b.n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __unpack_0_0 = &(::tpy::__getitem__(items, 0));
         __unpack_0_1 = &(::tpy::__getitem__(items, 1));
         a = __unpack_0_0;
@@ -21,7 +21,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -45,16 +45,16 @@ __coro_work work(std::vector<Counter>& items) {
 
 // async def amain() -> None:
 //     items = [Counter(1), Counter(2)]
-//     await work(items)
+//     await work(items)                 # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         items.emplace(std::vector<Counter>{Counter(1), Counter(2)});
         __sub_0.emplace((*items));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await work(items)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

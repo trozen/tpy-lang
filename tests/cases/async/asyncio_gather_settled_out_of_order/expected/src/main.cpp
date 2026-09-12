@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def fetch(n: int32, delay: float) -> int32:
-//     await asyncio.sleep(delay)
+//     await asyncio.sleep(delay)                     # -> S_RESUME_0
 //     return n
 ::tpystd::tpy::Poll<int32_t> __coro_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(delay)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(delay)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -39,7 +39,7 @@ __coro_fetch fetch(int32_t n, double delay) {
 //     tasks.append(asyncio.create_task(fetch(int32(0), 0.005)))   # settles last
 //     tasks.append(asyncio.create_task(fetch(int32(1), 0.003)))   # settles middle
 //     tasks.append(asyncio.create_task(fetch(int32(2), 0.001)))   # settles first
-//     results = await asyncio.gather_list_settled(tasks)
+//     results = await asyncio.gather_list_settled(tasks)                            # -> S_RESUME_0
 //     for r in results:
 //         if r.value is not None:
 //             print("ok:", r.value.get())
@@ -47,7 +47,7 @@ __coro_fetch fetch(int32_t n, double delay) {
 //             print("unexpected exc-slot")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(0, 0.005))));
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1, 0.003))));
@@ -56,7 +56,7 @@ __coro_fetch fetch(int32_t n, double delay) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: results = await asyncio.gather_list_settled(tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());

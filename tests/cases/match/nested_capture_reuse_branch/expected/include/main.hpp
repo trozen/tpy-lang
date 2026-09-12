@@ -16,9 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # The nested `match` that reuses a capture name need not sit at the arm's top
-// # level: buried under an `if` (or any compound statement) it still rebinds the
-// # outer capture, so the detector must walk sub-bodies, not just arm statements.
 // class Cat:
 struct Cat {
     // lives: int

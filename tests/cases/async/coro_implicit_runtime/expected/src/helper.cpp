@@ -4,12 +4,13 @@
 namespace tpyapp::helper {
 
 
+// # An imported async module must receive its own coroutine runtime dependency.
 // async def compute(n: int) -> int:  # tpyc: ok
 //     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));

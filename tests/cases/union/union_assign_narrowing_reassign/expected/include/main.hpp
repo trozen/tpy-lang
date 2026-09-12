@@ -17,7 +17,6 @@ void check(::tpy::Union<const Circle*, const Rect*> s);
 // def main() -> None:
 void main();
 
-// # Reassigned union var loses assignment narrowing, requires isinstance
 // class Circle:
 struct Circle {
     // radius: float

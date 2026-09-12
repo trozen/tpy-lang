@@ -18,7 +18,6 @@ void set_values(::tpy::varargs<Counter> args);
 // def main() -> None:
 void main();
 
-// # *args with non-value types: mutations through args visible to caller
 // class Counter:
 struct Counter {
     // value: int

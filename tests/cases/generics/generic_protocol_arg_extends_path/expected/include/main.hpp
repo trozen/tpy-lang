@@ -60,9 +60,6 @@ inline std::ostream& operator<<(std::ostream& os, const MyIter<T>& obj) {
     return os;
 }
 
-// # Explicit `Iterable[T]` parent populates `extends_protocols`, routing
-// # inference for `length[T](xs: Iterable[T])` through the extends path
-// # rather than structural method-match.
 // class MyList[T](Iterable[T]):
 template<typename T>
 struct MyList {

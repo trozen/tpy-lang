@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // async def first_bytes(b: bytes | None) -> int:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                                        # -> S_RESUME_0
 //     if b is None:
 //         return -1
 //     return int(b[0]) + int(b[1]) + int(b[2])   # reads buffer content post-await
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first_bytes::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -42,16 +42,16 @@ __coro_first_bytes first_bytes(std::optional<::tpy::BytesView> b) {
 }
 
 // async def str_len(s: Optional[str]) -> int:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                   # -> S_RESUME_0
 //     return len(s) if s is not None else -1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_str_len::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -72,19 +72,19 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
 }
 
 // async def main_coro() -> None:
-//     print(await first_bytes(b"abc"))   # literal temporary, read across suspension
-//     print(await first_bytes(None))
-//     print(await str_len("hello"))
-//     print(await str_len(None))
+//     print(await first_bytes(b"abc"))   # literal temporary, read across suspension  # -> S_RESUME_0
+//     print(await first_bytes(None))                                                  # -> S_RESUME_1
+//     print(await str_len("hello"))                                                   # -> S_RESUME_2
+//     print(await str_len(None))                                                      # -> S_RESUME_3
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = ::tpy::bytes_literal_owned("abc", 3);
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await first_bytes(b"abc"))   # literal temporary, read across suspension
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -94,7 +94,7 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await first_bytes(None))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -105,7 +105,7 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await str_len("hello"))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -115,7 +115,7 @@ __coro_str_len str_len(std::optional<std::string_view> s) {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print(await str_len(None))
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();

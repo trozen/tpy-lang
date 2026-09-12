@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int32_t __tpy_async_ret = 1;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -28,7 +28,7 @@ __coro_step step() {
 // async def ret_after_await() -> Own[Box]:
 //     b = Box()
 //     try:
-//         b.n += await step()
+//         b.n += await step()                                               # -> S_RESUME_0
 //         # The return value is captured here, but the finally runs first.
 //         return b
 //     finally:
@@ -36,12 +36,12 @@ __coro_step step() {
 ::tpystd::tpy::Poll<Box> __coro_ret_after_await::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(Box());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: b.n += await step()
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -86,15 +86,15 @@ __coro_ret_after_await ret_after_await() {
 }
 
 // async def driver() -> None:
-//     print((await ret_after_await()).n)
+//     print((await ret_after_await()).n)  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print((await ret_after_await()).n)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());

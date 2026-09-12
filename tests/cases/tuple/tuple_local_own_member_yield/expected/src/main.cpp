@@ -18,27 +18,29 @@ std::tuple<int32_t, Box> mk(int32_t v) {
     return std::tuple<int32_t, Box>{v, Box((::tpy::mul_check<int32_t>(v, 10)))};
 }
 
+// # Free function, two yields -- the resumable frame; each slot is dead after its
+// # own yield, so both move out.
 // def gen_twice(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     i = int32(0)
 //     while i < n:
 //         t = (i, Box(i * 10))
-//         yield t  # tpyc: ok
+//         yield t  # tpyc: ok                                   # -> S_RESUME_0
 //         u = (i + 100, Box(i))
-//         yield u  # tpyc: ok
+//         yield u  # tpyc: ok                                   # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_twice::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
         u.emplace(std::tuple<int32_t, Box>{(::tpy::add_check<int32_t>(i, 100)), Box(i)});
         __state = S_RESUME_1;
         return std::move((*u));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield u  # tpyc: ok
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -64,29 +66,30 @@ __gen_gen_twice gen_twice(int32_t n) {
     return __gen_gen_twice(n);
 }
 
+// # The owning-CALL init position.
 // def gen_call_init(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     i = int32(0)
 //     while i < n:
 //         # An owning CALL init keeps the per-element Own markers a literal init
 //         # drops, and binds the same storage tuple.
 //         t = mk(i)
-//         yield t  # tpyc: ok
+//         yield t  # tpyc: ok                                                     # -> S_RESUME_0
 //         v = mk(i + 100)
-//         yield v  # tpyc: ok
+//         yield v  # tpyc: ok                                                     # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
         v.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*v));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v  # tpyc: ok
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -112,30 +115,34 @@ __gen_gen_call_init gen_call_init(int32_t n) {
     return __gen_gen_call_init(n);
 }
 
+// # The owning-CALL init under a HIDDEN borrow: `saved` borrows into the slot and
+// # is read after the resume, so the last-use mark is retracted and the slot
+// # copies out. Moving it would hand the consumer the slot's buffer and leave
+// # `saved` reading a moved-from Box.
 // def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     i = int32(0)
 //     while i < n:
 //         t = mk(i)
 //         saved = take_ptr(t[1])
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)      # -> S_RESUME_0
 //         print("borrowed", saved.items[0])
 //         u = mk(i + 100)
-//         yield u  # tpyc: ok
+//         yield u  # tpyc: ok                                                # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrowed::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
         std::cout << "borrowed" << " " << ::tpy::__getitem__(saved->items, 0) << "\n";
         u.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*u));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield u  # tpyc: ok
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -162,29 +169,34 @@ __gen_gen_call_init_borrowed gen_call_init_borrowed(int32_t n) {
     return __gen_gen_call_init_borrowed(n);
 }
 
+// # The same hidden borrow, but DEAD before the yield: `saved`'s last read is the
+// # line above the suspension, so moving the slot out would be legal. The loan
+// # tracker holds a loan for the borrower's whole scope rather than to its last
+// # read, so the yield still copies and warns -- pinned as the conservative
+// # answer, not as the desired one.
 // def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     i = int32(0)
 //     while i < n:
 //         t = mk(i)
 //         saved = take_ptr(t[1])
 //         print("dead-borrow", saved.items[0])
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)         # -> S_RESUME_0
 //         u = mk(i + 100)
-//         yield u  # tpyc: ok
+//         yield u  # tpyc: ok                                                   # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrow_dead::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
         u.emplace(mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*u));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield u  # tpyc: ok
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -212,21 +224,24 @@ __gen_gen_call_init_borrow_dead gen_call_init_borrow_dead(int32_t n) {
     return __gen_gen_call_init_borrow_dead(n);
 }
 
+// # The tuple is bound BEFORE the loop, so the slot is live at every iteration:
+// # each pass copies out (one warning at the yield site) instead of moving, and
+// # the slot still holds its Box once the loop is done.
 // def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     t = mk(7)
 //     for _ in range(n):
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)  # -> S_RESUME_0
 //     print("preloop-kept", first_item(t[1]))
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t.emplace(mk(7));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
         __state = S_JOIN_0;
         continue;
     }
@@ -251,6 +266,7 @@ __gen_gen_preloop gen_preloop(int32_t n) {
     return __gen_gen_preloop(n);
 }
 
+// # The read-after-yield position.
 // def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     i = int32(0)
 //     while i < n:
@@ -260,25 +276,25 @@ __gen_gen_preloop gen_preloop(int32_t n) {
 //         # consumer deliberately does not mutate the yielded Box here -- that
 //         # copy IS a CPython divergence, tracked at
 //         # BUGS.md#tuple-yield-copy-warning-omits-aliasing.
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)         # -> S_RESUME_0
 //         print("live-gen", t[1].val)
 //         u = (i, Box(i))
-//         yield u  # tpyc: ok
+//         yield u  # tpyc: ok                                                   # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_live::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
         std::cout << "live-gen" << " " << std::get<1>((*t)).val << "\n";
         u.emplace(std::tuple<int32_t, Box>{i, Box(i)});
         __state = S_RESUME_1;
         return std::move((*u));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield u  # tpyc: ok
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -438,27 +454,28 @@ void main() {
     }
 }
 
+// # Method position on the frame: the slot reads through `__self`.
 // def pairs(self, n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     i = int32(0)
 //     while i < n:
 //         t = (self.base + i, Box(i * 10))
-//         yield t  # tpyc: ok
+//         yield t  # tpyc: ok                                     # -> S_RESUME_0
 //         u = (self.base - i, Box(i))
-//         yield u  # tpyc: ok
+//         yield u  # tpyc: ok                                     # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_Src_pairs::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
         u.emplace(std::tuple<int32_t, Box>{(::tpy::sub_check<int32_t>(__self.base, i)), Box(i)});
         __state = S_RESUME_1;
         return std::move((*u));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield u  # tpyc: ok
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;

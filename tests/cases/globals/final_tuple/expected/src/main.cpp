@@ -57,11 +57,6 @@ void main() {
     std::cout << outer << "\n";
 }
 
-// VERSION: Final[tuple[int32, int32, int32]] = (1, 2, 3)
-// PAIR: Final[tuple[str, bool]] = ("hello", True)
-// ARITH: Final[tuple[int32, int32]] = (10 + 20, 100 - 1)
-// NESTED: Final[tuple[tuple[str, int32], str]] = (("inner", 42), "outer")
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

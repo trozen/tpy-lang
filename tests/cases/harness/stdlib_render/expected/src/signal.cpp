@@ -28,13 +28,6 @@ void raise_signal(int32_t sig) {
 //
 // from tpy.extern import native_global
 // from _bindings import posix_signal
-//
-// # Sourced from <signal.h> via `tpy_const_*` extern symbols (see signal_impl.cpp),
-// # the way socket.py sources SO_*/AF_INET6. A plain `Final[int32] = 2` would emit
-// # `inline constexpr int32_t SIGINT = ...`, which the libc SIGINT macro (in scope
-// # in every generated TU on macOS) rewrites into a malformed declaration.
-// SIGINT: Final[int32] = native_global("tpy_const_sigint", binding="C")
-// SIGTERM: Final[int32] = native_global("tpy_const_sigterm", binding="C")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

@@ -11,6 +11,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @export
 // def pick(d: dict[str, int64]) -> dict[str, int64]:  # tpyc: warning(/dict parameter 'd' is copied in/)
 ::tpy::ordered_map<std::string, int64_t>& pick(::tpy::ordered_map<std::string, int64_t>& d);
 

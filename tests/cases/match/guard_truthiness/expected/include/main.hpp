@@ -79,7 +79,6 @@ void main();
 
 // class Plain:
 struct Plain {
-    // # Neither __bool__ nor __len__ -- Python's default object truthiness.
     // n: int32
     int32_t n;
 

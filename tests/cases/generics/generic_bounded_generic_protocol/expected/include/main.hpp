@@ -40,7 +40,6 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
-// # Bound is a parameterized user-defined protocol: Container[int32]
 // class Holder[V: Container[int32]]:
 template<Container<int32_t> V>
 struct Holder {

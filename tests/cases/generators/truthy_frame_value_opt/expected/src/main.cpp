@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def branch_suspends(v: int32 | None) -> Iterator[int32]:
 //     # The branch body yields -> CFG Branch terminator.
 //     if v:  # tpyc: warning(/Truthiness check on optional value/)
-//         yield 1
-//     yield 2
+//         yield 1                                                   # -> S_RESUME_0
+//     yield 2                                                       # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;
             return 1;
@@ -20,11 +20,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_branch_suspends::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -49,10 +49,10 @@ __gen_branch_suspends branch_suspends(std::optional<int32_t> v) {
 //     n = 0
 //     if v:  # tpyc: warning(/Truthiness check on optional value/)
 //         n = 1
-//     yield n
+//     yield n                                                            # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         if (::tpy::is_truthy(v)) {
             n = 1;
@@ -60,7 +60,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__next__()
         __state = S_RESUME_0;
         return n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -77,11 +77,11 @@ __gen_branch_no_suspend branch_no_suspend(std::optional<int32_t> v) {
 
 // def not_form(v: int32 | None) -> Iterator[int32]:
 //     if not v:  # tpyc: warning(/Truthiness check on optional value/)
-//         yield 1
-//     yield 2
+//         yield 1                                                       # -> S_RESUME_0
+//     yield 2                                                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!(::tpy::is_truthy(v)))) {
             __state = S_RESUME_0;
             return 1;
@@ -90,11 +90,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_not_form::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -117,21 +117,21 @@ __gen_not_form not_form(std::optional<int32_t> v) {
 //     # A trailing statement keeps the simple-generator peephole from
 //     # applying, so the loop head goes through the CFG.
 //     while v:  # tpyc: warning(/Truthiness check on optional value/)
-//         yield 1
+//         yield 1                                                      # -> S_RESUME_0
 //         v = None
-//     yield 2
+//     yield 2                                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_while_suspends::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         v = std::nullopt;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -159,11 +159,11 @@ __gen_while_suspends while_suspends(std::optional<int32_t> v) {
 //     # The optional reaches the frame as a promoted LOCAL rather than a param.
 //     v = b.f
 //     if v:  # tpyc: warning(/Truthiness check on optional value/)
-//         yield 1
-//     yield 2
+//         yield 1                                                                # -> S_RESUME_0
+//     yield 2                                                                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         v = b.f;
         if (::tpy::is_truthy(v)) {
             __state = S_RESUME_0;
@@ -173,11 +173,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_frame_local::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

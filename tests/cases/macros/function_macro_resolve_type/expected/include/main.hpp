@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @resolve_bool
 // def run() -> int32:
 int32_t run();
 // def main() -> None:

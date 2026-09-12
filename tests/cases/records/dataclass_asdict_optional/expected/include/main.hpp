@@ -46,7 +46,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Direct Optional[DC] field
 // @dataclass
 // class MaybePoint:
 struct MaybePoint {
@@ -73,7 +72,6 @@ inline std::ostream& operator<<(std::ostream& os, const MaybePoint& obj) {
     return os;
 }
 
-// # list[Optional[DC]] field
 // @dataclass
 // class PointList:
 struct PointList {
@@ -98,7 +96,6 @@ inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {
     return os;
 }
 
-// # Nested: Optional[DC] where DC itself has a nested DC
 // @dataclass
 // class Line:
 struct Line {
@@ -149,7 +146,6 @@ inline std::ostream& operator<<(std::ostream& os, const MaybeLine& obj) {
     return os;
 }
 
-// # Mixed: Optional + non-Optional DC fields
 // @dataclass
 // class Mixed:
 struct Mixed {
@@ -178,7 +174,6 @@ inline std::ostream& operator<<(std::ostream& os, const Mixed& obj) {
     return os;
 }
 
-// # dict[str, Optional[DC]]
 // @dataclass
 // class LabeledPoints:
 struct LabeledPoints {

@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // async def read_after_await() -> None:
 //     saved: Optional[Point] = Point(42)
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)              # -> S_RESUME_0
 //     saved = Point(7)
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)              # -> S_RESUME_1
 //     if saved is not None:
 //         print(saved.x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_read_after_await::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         saved = &*(__ptr_slot_f0 = Point(42));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -29,7 +29,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

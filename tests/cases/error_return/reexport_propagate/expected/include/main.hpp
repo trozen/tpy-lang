@@ -15,6 +15,7 @@ using ::tpyapp::errdef::AppError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(AppError)
 // def run(n: int32) -> int32:
 std::expected<int32_t, ::tpyapp::errdef::AppError> run(int32_t n);
 // def main() -> None:

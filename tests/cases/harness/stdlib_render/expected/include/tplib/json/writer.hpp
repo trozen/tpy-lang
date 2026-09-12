@@ -37,7 +37,6 @@ struct JsonWriter {
     // def __init__(self, indent: int32 = 0) -> None:
     explicit JsonWriter(int32_t indent = 0);
 
-    // # -- pretty-printing helpers (only called when _indent > 0) --
     // def _emit_nl(self) -> None:
     void _emit_nl();
 
@@ -50,7 +49,6 @@ struct JsonWriter {
     // def _pretty_close(self, bracket: str) -> None:
     void _pretty_close(std::string_view bracket);
 
-    // # -- public API --
     // def object_start(self) -> None:
     void object_start();
 

@@ -12,16 +12,22 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @overload
 // def in_loop(v: A, k: int) -> int: ...
 ::tpy::BigInt in_loop(const A& v, const ::tpy::BigInt& k);
+// @overload
 // def in_loop(v: B, k: int) -> int: ...
 ::tpy::BigInt in_loop(const B& v, const ::tpy::BigInt& k);
+// @overload
 // def in_branch(v: A, gate: bool) -> int: ...
 ::tpy::BigInt in_branch(const A& v, bool gate);
+// @overload
 // def in_branch(v: B, gate: bool) -> int: ...
 ::tpy::BigInt in_branch(const B& v, bool gate);
+// @overload
 // def toplevel(v: A) -> int: ...
 ::tpy::BigInt toplevel(const A& v);
+// @overload
 // def toplevel(v: B) -> int: ...
 ::tpy::BigInt toplevel(const B& v);
 // def main() -> None:

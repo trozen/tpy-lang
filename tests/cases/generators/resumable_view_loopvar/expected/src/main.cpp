@@ -7,23 +7,23 @@ namespace tpyapp::main {
 // def words_gen(words: list[str]) -> Iterator[int32]:
 //     i = 0
 //     while i < 2:
-//         yield i
-//         yield i + 1            # second yield forces the resumable-frame path
+//         yield i                                                                # -> S_RESUME_0
+//         yield i + 1            # second yield forces the resumable-frame path  # -> S_RESUME_1
 //         for w in words:
 //             print(w)
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_words_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(i, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i + 1            # second yield forces the resumable-frame path
         auto& __obj_0 = words;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -58,23 +58,23 @@ __gen_words_gen words_gen(std::vector<std::string>& words) {
 // def blobs_gen(blobs: list[bytes]) -> Iterator[int32]:
 //     i = 0
 //     while i < 2:
-//         yield i
-//         yield i + 1
+//         yield i                                        # -> S_RESUME_0
+//         yield i + 1                                    # -> S_RESUME_1
 //         for b in blobs:
 //             print(len(b))
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_blobs_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(i, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i + 1
         auto& __obj_0 = blobs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -106,26 +106,27 @@ __gen_blobs_gen blobs_gen(std::vector<::tpy::Bytes>& blobs) {
     return __gen_blobs_gen(blobs);
 }
 
+// # tuple-unpack loop var: the str element `name` is the pending-view target.
 // def pairs_gen(pairs: list[tuple[str, int32]]) -> Iterator[int32]:
 //     i = 0
 //     while i < 2:
-//         yield i
-//         yield i + 1
+//         yield i                                                    # -> S_RESUME_0
+//         yield i + 1                                                # -> S_RESUME_1
 //         for name, n in pairs:
 //             print(name, n)
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_pairs_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(i, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i + 1
         auto& __obj_0 = pairs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();

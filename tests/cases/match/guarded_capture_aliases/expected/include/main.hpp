@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # A guarded reference-capture arm aliases the subject on both guard-pass and
-// # guard-fail->next-arm paths; a scalar guarded capture copies (value semantics).
 // class Box:
 struct Box {
     // self.v = v

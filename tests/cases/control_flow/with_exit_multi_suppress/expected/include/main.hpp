@@ -17,17 +17,6 @@ void run();
 // def main() -> None:
 void main();
 
-// # Regression: nested context managers where the inner __exit__ suppresses.
-// # Earlier codegen propagated the same `body_terminates` flag to every layer
-// # (computed from the Python body). When the body always-raises AND the inner
-// # layer can_suppress, the outer layer's body (the inner try-catch) can still
-// # fall through -- but `body_terminates=True` was inherited, skipping the
-// # outer's normal-path __exit__. Each outer layer flips to False once an
-// # inner layer may suppress.
-// #
-// # The expected output records every enter/exit. The inner ValueError is
-// # suppressed by Inner.__exit__; control flows out of the inner try-catch
-// # into Outer's "normal" exit path. Both __exit__ calls fire exactly once.
 // class Outer:
 struct Outer {
 

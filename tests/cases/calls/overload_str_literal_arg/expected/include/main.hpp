@@ -11,17 +11,23 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def kind(x: bool) -> str:
 std::string kind(bool x);
+// @dispatch
 // def kind(x: str) -> str:
 std::string kind(std::string_view x);
+// @dispatch
 // def sv(x: bool) -> str:
 std::string sv(bool x);
+// @dispatch
 // def sv(x: StrView) -> str:
 std::string sv(std::string_view x);
+// @dispatch
 // def gen_ov[T](x: T) -> str:
 template<typename T>
 std::string gen_ov(::tpy::param_val_or_ref_t<T> x);
+// @dispatch
 // def gen_ov(x: bool) -> str:
 std::string gen_ov(bool x);
 // def echo(x: str) -> str:

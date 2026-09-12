@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A ctor field initializer reading a narrowed optional-ptr param via member
-// # access lowers `->` in the member-init list; a None-check field stays `!= nullptr`.
 // class Node:
 struct Node {
     // v: int

@@ -18,8 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Two sequential isinstance-and-return narrow a 3-member union down to the last
-// # member at the final fall-through.
 // class A:
 struct A {
     // self.ax = x

@@ -63,20 +63,20 @@ struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, T> {
 };
 
 // def items(self) -> Iterator[T]:  # tpyc: ok
-//     yield self.value
-//     yield self.value
+//     yield self.value                         # -> S_RESUME_0
+//     yield self.value                         # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Box_items<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.value;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.value
         __state = S_RESUME_1;
         return __self.value;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.value
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<Payload> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         Payload __tpy_async_ret = Payload();
         return ::tpystd::tpy::Poll<Payload>::ready(std::move(__tpy_async_ret));
@@ -32,7 +32,7 @@ int32_t size_of(Payload&& p) {
 }
 
 // async def used_again() -> int32:
-//     p = await make()
+//     p = await make()                                                          # -> S_RESUME_0
 //     # NOT the last use of p, so this must copy rather than move -- the copy
 //     # is what the warning names, and what keeps p.items intact for the read
 //     # below. A wrong move here would empty the vector and give 3 + 0.
@@ -40,12 +40,12 @@ int32_t size_of(Payload&& p) {
 //     return first + len(p.items)
 ::tpystd::tpy::Poll<int32_t> __coro_used_again::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: p = await make()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         p.emplace(std::move(__r0).value());
@@ -68,15 +68,15 @@ __coro_used_again used_again() {
 }
 
 // async def main_coro() -> None:
-//     print(await used_again())
+//     print(await used_again())   # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await used_again())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

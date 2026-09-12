@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def good(n: int32) -> int32:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)      # -> S_RESUME_0
 //     return n
 ::tpystd::tpy::Poll<int32_t> __coro_good::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -35,16 +35,16 @@ __coro_good good(int32_t n) {
 }
 
 // async def bad(tag: int32) -> int32:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)       # -> S_RESUME_0
 //     raise ValueError(f"boom-{tag}")
 ::tpystd::tpy::Poll<int32_t> __coro_bad::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -67,7 +67,7 @@ __coro_bad bad(int32_t tag) {
 //     tasks.append(asyncio.create_task(bad(int32(0))))     # exc at index 0
 //     tasks.append(asyncio.create_task(good(int32(99))))   # ok at index 1
 //     tasks.append(asyncio.create_task(bad(int32(2))))     # exc at last index
-//     results = await asyncio.gather_list_settled(tasks)
+//     results = await asyncio.gather_list_settled(tasks)                        # -> S_RESUME_0
 //     for r in results:
 //         if r.exception is not None:
 //             try:
@@ -78,7 +78,7 @@ __coro_bad bad(int32_t tag) {
 //             print("ok:", r.value.get())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bad(0))));
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(good(99))));
@@ -87,7 +87,7 @@ __coro_bad bad(int32_t tag) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: results = await asyncio.gather_list_settled(tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());

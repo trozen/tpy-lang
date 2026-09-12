@@ -9,12 +9,14 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def apply[T, U](f: Fn[[T], U], xs: list[T]) -> int32:  # tpyc: ok
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
 int32_t apply(__F0&& f, const std::vector<T>& xs);
+// @dispatch
 // def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
 template<typename T>
 ::tpy::val_or_ref_t<T> apply(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);

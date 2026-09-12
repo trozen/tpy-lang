@@ -469,20 +469,20 @@ void ulp_policy() {
 
 // def values() -> Iterator[float]:
 //     # Generator: error occurs only after the first suspension resumes.
-//     yield sqrt(4.0)  # tpyc: ok
-//     yield sqrt(-1.0)  # tpyc: ok
+//     yield sqrt(4.0)  # tpyc: ok                                         # -> S_RESUME_0
+//     yield sqrt(-1.0)  # tpyc: ok                                        # -> S_RESUME_1
 //     print("generator: unreachable")
 std::expected<double, ::tpy::StopIteration> __gen_values::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::stdlib::math::checked_sqrt(4.0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield sqrt(4.0)  # tpyc: ok
         __state = S_RESUME_1;
         return ::tpy::stdlib::math::checked_sqrt(-(1.0));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield sqrt(-1.0)  # tpyc: ok
         std::cout << "generator: unreachable" << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -500,16 +500,16 @@ __gen_values values() {
 
 // async def async_root(x: float) -> float:
 //     # Async: the checked call stays after the await.
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                            # -> S_RESUME_0
 //     return sqrt(x)  # tpyc: ok
 ::tpystd::tpy::Poll<double> __coro_async_root::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<double>::pending();
         (void)std::move(__r0).value();
@@ -530,20 +530,20 @@ __coro_async_root async_root(double x) {
 }
 
 // async def async_position() -> None:
-//     assert await async_root(9.0) == 3.0
+//     assert await async_root(9.0) == 3.0           # -> S_RESUME_0
 //     try:
-//         await async_root(-1.0)
+//         await async_root(-1.0)                    # -> S_RESUME_1
 //         print("async: unreachable")
 //     except ValueError:
 //         print("async: value then caught domain")
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_position::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(9.0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: assert await async_root(9.0) == 3.0
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -552,7 +552,7 @@ __coro_async_root async_root(double x) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await async_root(-1.0)
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

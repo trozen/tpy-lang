@@ -8,12 +8,12 @@ namespace tpyapp::main {
 //     match a:
 //         case Cat(lives=v):
 //             v = v + 1    # tpyc: ok
-//             yield v      # 6
+//             yield v      # 6                                       # -> S_RESUME_0
 //             v = v + 10   # rebind after the suspension, same slot
-//             yield v      # 16
+//             yield v      # 16                                      # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         {
             v = __match_subject_1.lives;
@@ -24,12 +24,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v      # 6
         v = ((v) + (::tpy::BigInt(10)));
         __state = S_RESUME_1;
         return v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v      # 16
         __state = S_JOIN_0;
         continue;
     }

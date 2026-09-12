@@ -880,7 +880,7 @@ class AsyncCoroCodegen:
         return True
 
     def gen_factory_forward_decl(self, out: "TextIO", func: TpyFunction) -> bool:
-        self.ctx.emit_source_comment(out, func.loc)
+        self.ctx.emit_declaration_echo(out, func.loc)
         return_type_name = self._struct_name_templated(func)
         self._emit_template_header(out, func)
         # Default arg values live on this forward decl (the canonical first
@@ -1759,7 +1759,7 @@ class AsyncCoroCodegen:
         cfg = self._build_resumable_cfg(func, record_name)
         yields = cfg.yield_sites
 
-        self.ctx.emit_source_comment(out, func.loc)
+        self.ctx.emit_declaration_echo(out, func.loc)
         self._emit_template_header(out, func, record_name=record_name)
         # Async coroutines are awaited, not iterated, so this is "" for them;
         # generator frames gain begin()/end() (see _generator_iter_base).
@@ -1955,7 +1955,7 @@ class AsyncCoroCodegen:
         Uses the templated struct name explicitly so zero-param generic
         async defs (no ctor args for CTAD to deduce T from) compile."""
         struct_name = self._struct_name_templated(func)
-        self.ctx.emit_source_comment(out, func.loc)
+        self.ctx.emit_declaration_echo(out, func.loc)
         self._emit_template_header(out, func)
         params = self._emit_params_decl(func)
         out.write(f"{struct_name} {escape_cpp_name(func.name)}({params}) {{\n")
@@ -2479,7 +2479,7 @@ class AsyncCoroCodegen:
         has_yields = bool(cfg.yield_sites)
         leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
 
-        self.ctx.emit_definition_source_block(out, func.loc)
+        self.ctx.emit_definition_echo(out, func.loc, markers=self._resume_markers(cfg))
         self._emit_template_header(out, func, record_name=record_name)
         out.write(f"{self._resumable_body_method_decl(func, struct_name)} {{\n")
         self._emit_resumable_body_prelude(out, has_yields)
@@ -4006,6 +4006,26 @@ class AsyncCoroCodegen:
         cfg._case_entries_cache = case_entries
         return case_entries
 
+    def _resume_markers(self, cfg: 'rcfg.CFG') -> dict[int, list[str]]:
+        """Source line -> the resume states that begin after it, for the
+        definition echo above the frame body."""
+        markers: dict[int, list[str]] = {}
+        for y in cfg.yield_sites:
+            loc = y.payload.source_loc
+            if loc is not None:
+                markers.setdefault(loc.line, []).append(f"S_RESUME_{y.suspension_index}")
+        return markers
+
+    def _resume_sources(self, cfg: 'rcfg.CFG') -> dict[int, str]:
+        """Suspension index -> the source line it resumes after, for the
+        case-label notes in the state machine."""
+        sources: dict[int, str] = {}
+        for y in cfg.yield_sites:
+            text = self.ctx.source_line_text(y.payload.source_loc)
+            if text is not None:
+                sources[y.suspension_index] = text
+        return sources
+
     def _emit_state_machine(self, out: "TextIO", func: TpyFunction,
                              cfg: 'rcfg.CFG') -> None:
         """Emit `while (true) switch (state) { ... }` for the CFG.
@@ -4027,8 +4047,15 @@ class AsyncCoroCodegen:
             out.write(f"{inner}switch (__state) {{\n")
         # Case-label order matches the enum in gen_coro_struct.
         order = sorted(case_entries.items(), key=lambda kv: kv[1])
+        after = self._resume_sources(cfg)
         for bb_id, label in order:
-            out.write(f"{inner}case {label.cpp_name()}: {{\n")
+            note = ""
+            if self.ctx.options.emit_source_comments:
+                if label.kind is _StateKind.INITIAL:
+                    note = "  // entry"
+                elif label.kind is _StateKind.RESUME and label.idx in after:
+                    note = f"  // after: {after[label.idx]}"
+            out.write(f"{inner}case {label.cpp_name()}: {{{note}\n")
             self.ctx.indent_level = 2
             self._emit_case(out, cfg, bb_id, case_entries, func)
             self.ctx.indent_level = 1

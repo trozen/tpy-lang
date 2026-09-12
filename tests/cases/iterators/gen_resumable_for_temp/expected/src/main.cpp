@@ -11,28 +11,28 @@ std::vector<int32_t> make() {
 }
 
 // def gen() -> Iterator[int32]:
-//     yield 0
+//     yield 0                    # -> S_RESUME_0
 //     for x in make():
-//         yield x
-//     yield -1
+//         yield x                # -> S_RESUME_1
+//     yield -1                   # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_src_0.emplace(make());
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

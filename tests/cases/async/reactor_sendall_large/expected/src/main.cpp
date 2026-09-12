@@ -25,17 +25,17 @@ int32_t _N{};
 
 // async def sender(sock: socket) -> None:
 //     loop = asyncio.get_running_loop()
-//     await loop.sock_sendall(sock, _PAYLOAD)
+//     await loop.sock_sendall(sock, _PAYLOAD)           # -> S_RESUME_0
 //     sock.shutdown(1)  # SHUT_WR -> receiver sees EOF
 ::tpystd::tpy::Poll<::std::monostate> __coro_sender::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_sendall(sock, _PAYLOAD)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await loop.sock_sendall(sock, _PAYLOAD)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -60,7 +60,7 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
 //     pos = 0
 //     mismatches = 0
 //     while True:
-//         chunk = await loop.sock_recv(sock, 4096)
+//         chunk = await loop.sock_recv(sock, 4096)  # -> S_RESUME_0
 //         n = len(chunk)
 //         if n == 0:
 //             break
@@ -72,14 +72,14 @@ __coro_sender sender(::tpystd::socket::socket& sock) {
 //     print(mismatches)
 ::tpystd::tpy::Poll<::std::monostate> __coro_receiver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(::tpystd::asyncio::get_running_loop());
         pos = 0;
         mismatches = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: chunk = await loop.sock_recv(sock, 4096)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         chunk = std::move(__r0).value();
@@ -132,11 +132,11 @@ __coro_receiver receiver(::tpystd::socket::socket& sock) {
 //     a.setblocking(False)
 //     b.setblocking(False)
 //     rx = asyncio.create_task(receiver(b))
-//     await sender(a)
-//     await rx
+//     await sender(a)                        # -> S_RESUME_0
+//     await rx                               # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
@@ -147,7 +147,7 @@ __coro_receiver receiver(::tpystd::socket::socket& sock) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await sender(a)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -156,7 +156,7 @@ __coro_receiver receiver(::tpystd::socket::socket& sock) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await rx
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

@@ -19,7 +19,6 @@ std::string classify(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # match/case with wildcard and capture patterns
 // class Dog:
 struct Dog {
     // name: str

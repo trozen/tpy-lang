@@ -11,6 +11,7 @@ struct Logger;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def ok() -> int:
 ::tpy::BigInt ok();
 

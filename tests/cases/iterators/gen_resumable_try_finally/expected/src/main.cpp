@@ -9,19 +9,19 @@ namespace tpyapp::main {
 //         try:
 //             if x == 99:
 //                 return
-//             yield x
+//             yield x                           # -> S_RESUME_0
 //         finally:
 //             print("done", x)
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counted::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         bool __fin_ran_1 = false;
         try {
             __fin_ran_1 = true;

@@ -18,8 +18,6 @@ void normal_inside();
 // def main() -> None:
 void main();
 
-// # __exit__ returning True suppresses an exception raised in the body
-// # (v1.5 M1: binary suppression -- the bool gates the rethrow).
 // class Suppressor:
 struct Suppressor {
     // self.name = name

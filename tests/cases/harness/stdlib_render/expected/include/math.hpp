@@ -27,6 +27,7 @@ inline constexpr double inf = std::numeric_limits<double>::infinity();
 // nan: Final[float] = float("nan")
 inline constexpr double nan = std::numeric_limits<double>::quiet_NaN();
 
+// @dispatch
 // def log(x: float, base: float) -> float:
 double log(double x, double base);
 // def hypot(*coords: float) -> float:
@@ -45,20 +46,25 @@ double degrees(double x);
 ::tpy::BigInt factorial(const ::tpy::BigInt& n);
 // def isqrt(n: int) -> int:
 ::tpy::BigInt isqrt(const ::tpy::BigInt& n);
+// @dispatch
 // def perm(n: int) -> int:
 ::tpy::BigInt perm(const ::tpy::BigInt& n);
+// @dispatch
 // def perm(n: int, k: int) -> int:
 ::tpy::BigInt perm(const ::tpy::BigInt& n, const ::tpy::BigInt& k);
 // def comb(n: int, k: int) -> int:
 ::tpy::BigInt comb(const ::tpy::BigInt& n, const ::tpy::BigInt& __param_k);
 // def isclose(a: float, b: float, *, rel_tol: float = 1e-09, abs_tol: float = 0.0) -> bool:
 bool isclose(double a, double b, double rel_tol = 1e-09, double abs_tol = 0.0);
+// @dispatch
 // def prod(iterable: Iterable[int32], *, start: int32 = int32(1)) -> int32:
 template<::tpystd::typing::Iterable<int32_t> T_iterable>
 int32_t prod(T_iterable& iterable, int32_t start = 1);
+// @dispatch
 // def prod(iterable: Iterable[int], *, start: int = 1) -> int:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_iterable>
 ::tpy::BigInt prod(T_iterable& iterable, const ::tpy::BigInt& start = ::tpy::BigInt(1));
+// @dispatch
 // def prod(iterable: Iterable[float], *, start: float = 1.0) -> float:
 template<::tpystd::typing::Iterable<double> T_iterable>
 double prod(T_iterable& iterable, double start = 1.0);

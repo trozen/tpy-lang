@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # A bare capture of a storage-form Optional FIELD subject aliases the field's
-// # value (the is_storage_form_optional_source branch of the pointer-subject fix).
 // class Box:
 struct Box {
     // self.v = v

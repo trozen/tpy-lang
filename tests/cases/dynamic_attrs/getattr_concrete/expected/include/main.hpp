@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # D16 Phase 1: __getattr__ -> str (concrete type) needs no narrowing at use sites.
 // class Headers:
 struct Headers {
     // _store: dict[str, str]

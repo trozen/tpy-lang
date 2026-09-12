@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // def twice(xs: list[Box]) -> Iterator[Box]:
 //     for b in xs:
-//         yield b
-//         yield b
+//         yield b                             # -> S_RESUME_0
+//         yield b                             # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_twice::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield b
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_JOIN_0;
         continue;
     }

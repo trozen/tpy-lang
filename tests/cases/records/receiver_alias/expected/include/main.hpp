@@ -256,6 +256,7 @@ inline __gen_Cell_rebound_steps Cell::rebound_steps() {
     return __gen_Cell_rebound_steps(*this);
 }
 
+// @readonly
 // def readonly_steps(self) -> Iterator[int32]:
 struct __gen_Cell_readonly_steps : public ::tpy::next_iter_mixin<__gen_Cell_readonly_steps, int32_t> {
     int32_t __state;

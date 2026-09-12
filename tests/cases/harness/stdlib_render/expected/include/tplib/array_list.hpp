@@ -22,10 +22,6 @@ template<typename T, std::size_t N>
 struct ArrayList {
     // _storage: UninitArrayStorage[T, N]
     ::tpy::UninitArrayStorage<T, N> _storage;
-    // # _size carries an "always non-negative" invariant -- declared as uint32
-    // # so that internal comparisons against uint32 storage offsets and counters
-    // # don't require sign-mixed compares. The `__len__` boundary casts back to
-    // # int32 to match Python convention.
     // _size: uint32
     uint32_t _size;
     bool __tpy_owned_ = true;

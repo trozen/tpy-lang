@@ -6,16 +6,16 @@ namespace tpyapp::main {
 
 // def src() -> Iterator[int32]:
 //     for i in range(3):
-//         yield i + 1
+//         yield i + 1            # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i + 1
         __state = S_JOIN_0;
         continue;
     }
@@ -40,21 +40,21 @@ __gen_src src() {
 }
 
 // def gen() -> Iterator[int32]:
-//     yield 0
+//     yield 0                      # -> S_RESUME_0
 //     for x in src():  # tpyc: ok
-//         yield x
+//         yield x                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_src_0.emplace(src());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

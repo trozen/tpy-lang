@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # Tests __del__ whose body is only super().__del__() -- effective body is empty
 // class Base:
 struct Base {
     bool __tpy_owned_ = true;

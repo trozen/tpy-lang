@@ -64,7 +64,7 @@ struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, st
 //     i = 0
 //     try:
 //         while i < len(ks) and i < len(vs):
-//             yield (ks[i], vs[i])
+//             yield (ks[i], vs[i])                                                     # -> S_RESUME_0
 //             i += 1
 //     finally:
 //         print("zip done")
@@ -72,12 +72,12 @@ template <typename K, typename V>
 std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy::StopIteration> __gen_zip_pairs<K, V>::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield (ks[i], vs[i])
         try {
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;

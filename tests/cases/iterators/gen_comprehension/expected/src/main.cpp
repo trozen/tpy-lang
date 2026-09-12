@@ -5,23 +5,23 @@ namespace tpyapp::main {
 
 
 // def two_then(n: int32) -> Iterator[int32]:
-//     yield 0
+//     yield 0                                 # -> S_RESUME_0
 //     i: int32 = 1
 //     while i <= n:
-//         yield i
+//         yield i                             # -> S_RESUME_1
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_two_then::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -47,23 +47,23 @@ __gen_two_then two_then(int32_t n) {
 }
 
 // def pairs(n: int32) -> Iterator[tuple[int32, int32]]:
-//     yield (0, 0)
+//     yield (0, 0)                                       # -> S_RESUME_0
 //     i: int32 = 1
 //     while i < n:
-//         yield (i, i * i)
+//         yield (i, i * i)                               # -> S_RESUME_1
 //         i += 1
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return std::tuple<int32_t, int32_t>{0, 0};
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield (0, 0)
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield (i, i * i)
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -89,23 +89,23 @@ __gen_pairs pairs(int32_t n) {
 }
 
 // def make_nodes(n: int32) -> Iterator[Own[Node]]:
-//     yield Node(0)
+//     yield Node(0)                                 # -> S_RESUME_0
 //     i: int32 = 1
 //     while i < n:
-//         yield Node(i)
+//         yield Node(i)                             # -> S_RESUME_1
 //         i += 1
 std::expected<Node, ::tpy::StopIteration> __gen_make_nodes::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return Node(0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield Node(0)
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield Node(i)
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -273,24 +273,24 @@ void main() {
 }
 
 // def around(self) -> Iterator[int32]:
-//     yield self.base - 1
-//     yield self.base
-//     yield self.base + 1
+//     yield self.base - 1               # -> S_RESUME_0
+//     yield self.base                   # -> S_RESUME_1
+//     yield self.base + 1               # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_around::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return (::tpy::sub_check<int32_t>(__self.base, 1));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.base - 1
         __state = S_RESUME_1;
         return __self.base;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.base
         __state = S_RESUME_2;
         return (::tpy::add_check<int32_t>(__self.base, 1));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield self.base + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

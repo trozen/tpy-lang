@@ -79,11 +79,6 @@ void test_shadow() {
 
 // import math
 //
-// # Final[float] initializer (would constexpr-panic without the fold).
-// MY_NAN: Final[float] = float("nan")
-// MY_INF: Final[float] = float("inf")
-// MY_NEG_INF: Final[float] = float("-inf")
-//
 // main()
 // test_shadow()
 void __tpy_init() {

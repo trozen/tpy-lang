@@ -400,10 +400,6 @@ void SSLSocket::sendall(::tpy::BytesView data) {
 // from tplib import Rc
 // from io import BufferedReader
 //
-// # CPython ssl.CERT_* values.
-// CERT_NONE: Final[int32] = 0
-// CERT_REQUIRED: Final[int32] = 2
-//
 // # Well-known platform CA-bundle locations (the curl/Go probe conventions),
 // # tried in order by load_default_certs(); SSL_CERT_FILE overrides the probe.
 // # A module global (not Final) so tests can inject a fixture bundle -- the

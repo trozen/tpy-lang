@@ -40,7 +40,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// # Mixed type sub-pattern and regular capture
 // class Pair[T]:
 template<typename T>
 struct Pair {

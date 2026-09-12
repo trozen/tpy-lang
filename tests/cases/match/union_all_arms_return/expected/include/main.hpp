@@ -17,7 +17,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # All match arms return -- code after match is unreachable but allowed
 // class Dog:
 struct Dog {
     // name: str

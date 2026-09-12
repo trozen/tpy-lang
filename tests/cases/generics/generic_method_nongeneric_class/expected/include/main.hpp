@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Method-level type parameter on a non-generic class
 // class Converter:
 struct Converter {
 

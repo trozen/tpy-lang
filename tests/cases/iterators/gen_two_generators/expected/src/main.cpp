@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def gen_a() -> Iterator[int32]:
-//     yield 1
-//     yield 2
+//     yield 1                      # -> S_RESUME_0
+//     yield 2                      # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_a::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -33,24 +33,24 @@ __gen_gen_a gen_a() {
 }
 
 // def gen_b() -> Iterator[int32]:
-//     yield 10
-//     yield 20
-//     yield 30
+//     yield 10                     # -> S_RESUME_0
+//     yield 20                     # -> S_RESUME_1
+//     yield 30                     # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_b::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 10;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 10
         __state = S_RESUME_1;
         return 20;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 20
         __state = S_RESUME_2;
         return 30;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 30
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

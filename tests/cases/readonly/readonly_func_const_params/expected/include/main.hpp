@@ -11,8 +11,10 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def read_box(b: Box, offset: int32) -> int32:
 int32_t read_box(const Box& b, int32_t offset);
+// @readonly
 // def sum_list(items: list[int32]) -> int32:
 int32_t sum_list(const std::vector<int32_t>& items);
 // def main() -> None:

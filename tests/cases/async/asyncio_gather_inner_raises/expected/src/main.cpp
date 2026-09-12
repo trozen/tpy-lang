@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // async def good() -> int32:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)  # -> S_RESUME_0
 //     print("good finished")
 //     return int32(99)
 ::tpystd::tpy::Poll<int32_t> __coro_good::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -42,7 +42,7 @@ __coro_good good() {
 ::tpystd::tpy::Poll<int32_t> __coro_bad::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "bad raising" << "\n";
         throw ::tpy::ValueError("bad");
     }
@@ -62,20 +62,20 @@ __coro_bad bad() {
 //     tasks.append(asyncio.create_task(bad()))
 //     tasks.append(asyncio.create_task(good()))
 //     try:
-//         results = await asyncio.gather_list(tasks)
+//         results = await asyncio.gather_list(tasks)  # -> S_RESUME_0
 //         print("got", len(results))
 //     except ValueError as e:
 //         print("caught ValueError:", e)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bad())));
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(good())));
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: results = await asyncio.gather_list(tasks)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

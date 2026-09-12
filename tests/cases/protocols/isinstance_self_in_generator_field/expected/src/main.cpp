@@ -38,15 +38,15 @@ void main() {
 
 // def describe(self) -> Iterator[str]:
 //     if isinstance(self, Dog):  # tpyc: ok
-//         yield "kind:dog"
-//         yield self.breed
-//         yield self.breed + "/" + self.name
+//         yield "kind:dog"                    # -> S_RESUME_0
+//         yield self.breed                    # -> S_RESUME_1
+//         yield self.breed + "/" + self.name  # -> S_RESUME_2
 //     else:
-//         yield "kind:pet"
-//         yield self.name
+//         yield "kind:pet"                    # -> S_RESUME_3
+//         yield self.name                     # -> S_RESUME_4
 std::expected<std::string, ::tpy::StopIteration> __gen_Pet_describe::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((dynamic_cast<const Dog*>(&__self) != nullptr)) {
             const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
             __state = S_RESUME_0;
@@ -56,26 +56,26 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_describe::__next__() 
             return "kind:pet";
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "kind:dog"
         const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
         __state = S_RESUME_1;
         return __self_narrowed.breed;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.breed
         const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
         __state = S_RESUME_2;
         return (::tpy::str_concat((::tpy::str_concat(__self_narrowed.breed, "/")), __self_narrowed.name));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield self.breed + "/" + self.name
         const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield "kind:pet"
         __state = S_RESUME_4;
         return __self.name;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: yield self.name
         __state = S_JOIN_0;
         continue;
     }

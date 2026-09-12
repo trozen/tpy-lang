@@ -12,11 +12,6 @@ void main() {
     std::cout << B << " " << NB << "\n";
 }
 
-// A: Final[int32] = 5
-// NA: Final[int32] = -A
-// B: Final[int64] = -1000
-// NB: Final[int64] = -B
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

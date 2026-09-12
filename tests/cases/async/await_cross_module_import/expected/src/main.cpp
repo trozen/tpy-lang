@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def local_double(x: int32) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                  # -> S_RESUME_0
 //     return x * 2
 ::tpystd::tpy::Poll<int32_t> __coro_local_double::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -35,22 +35,22 @@ __coro_local_double local_double(int32_t x) {
 }
 
 // async def amain() -> None:
-//     v1 = await ping()              # bare from-import (the reproducer)
-//     v2 = await aliased()           # aliased from-import
-//     v3 = await asyncmod.add(2, 3)  # qualified (inverse: must still work)
-//     v4 = await local_double(21)    # same-module (must not be over-qualified)
+//     v1 = await ping()              # bare from-import (the reproducer)         # -> S_RESUME_0
+//     v2 = await aliased()           # aliased from-import                       # -> S_RESUME_1
+//     v3 = await asyncmod.add(2, 3)  # qualified (inverse: must still work)      # -> S_RESUME_2
+//     v4 = await local_double(21)    # same-module (must not be over-qualified)  # -> S_RESUME_3
 //     print(v1)
 //     print(v2)
 //     print(v3)
 //     print(v4)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: v1 = await ping()              # bare from-import (the reproducer)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v1 = std::move(__r0).value();
@@ -59,7 +59,7 @@ __coro_local_double local_double(int32_t x) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: v2 = await aliased()           # aliased from-import
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v2 = std::move(__r1).value();
@@ -68,7 +68,7 @@ __coro_local_double local_double(int32_t x) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: v3 = await asyncmod.add(2, 3)  # qualified (inverse: must still work)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v3 = std::move(__r2).value();
@@ -77,7 +77,7 @@ __coro_local_double local_double(int32_t x) {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: v4 = await local_double(21)    # same-module (must not be over-qualified)
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v4 = std::move(__r3).value();

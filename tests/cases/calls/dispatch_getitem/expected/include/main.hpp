@@ -34,7 +34,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
     return os;
 }
 
-// # generic record, @auto_readonly variants: mutable + const operator per index type
 // class Store[T]:
 template<typename T>
 struct Store {
@@ -119,7 +118,6 @@ inline std::ostream& operator<<(std::ostream& os, const Store<T>& obj) {
     return os;
 }
 
-// # non-generic record, @readonly variants: a const operator per index type
 // class Digits:
 struct Digits {
     // xs: list[int32]

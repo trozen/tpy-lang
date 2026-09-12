@@ -37,12 +37,10 @@ struct Mut {
     // _a: Ptr[A]
     A* _a;
 
-    // # Param escapes via mutable Ptr[A] field -> must emit `A& a`, not `const A& a`.
     // def __init__(self, a: A) -> None:
     Mut() = default;
     explicit Mut(A& a);
 
-    // # Same escape through a non-__init__ method.
     // def set_a(self, a: A) -> None:
     void set_a(A& a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Mut";
@@ -58,7 +56,6 @@ struct Const {
     // _a: Ptr[readonly[A]]
     const A* _a;
 
-    // # Ptr[readonly[A]] field is `const A*`; matching `const A& a` stays const.
     // def __init__(self, a: A) -> None:
     Const() = default;
     explicit Const(const A& a);

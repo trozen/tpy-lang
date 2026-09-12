@@ -4,24 +4,26 @@
 namespace tpyapp::main {
 
 
+// # free generator, NON-self receiver: the same container-field alias off a
+// # PARAM, which had no admitted source row before.
 // def alias_param(h: Holder) -> Iterator[int32]:
 //     a = h.plain  # tpyc: ok
-//     yield a[1]
+//     yield a[1]                                  # -> S_RESUME_0
 //     h.plain[1] = 222
-//     yield a[1]
+//     yield a[1]                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_alias_param::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a = &(h.plain);
         __state = S_RESUME_0;
         return ::tpy::__getitem__((*a), 1);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a[1]
         ::tpy::__setitem__(h.plain, 1, 222);
         __state = S_RESUME_1;
         return ::tpy::__getitem__((*a), 1);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a[1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -65,10 +67,10 @@ void main() {
 // def direct(self) -> Iterator[int32]:
 //     if self.lst is not None:
 //         for x in self.lst:
-//             yield x
+//             yield x                   # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.lst.has_value())) {
             __for_it_0.emplace(((*__self.lst)).begin());
             __for_end_0.emplace(((*__self.lst)).end());
@@ -79,7 +81,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_1;
         continue;
     }
@@ -106,10 +108,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_direct::__next__() {
 //     h = self.lst
 //     if h is not None:
 //         for x in h:
-//             yield x
+//             yield x                      # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h = ::tpy::optional_to_ptr(__self.lst);
         if ((h != nullptr)) {
             __for_it_0.emplace(((*h)).begin());
@@ -121,7 +123,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() 
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_1;
         continue;
     }
@@ -144,24 +146,27 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_via_alias::__next__() 
 }
 
 
+// # generator METHOD, TWO yields (frame): the alias binds the field's
+// # ADDRESS (`a = &(__self.plain);`), so a write to the field after the
+// # bind is observed through it -- CPython's name binding.
 // def live_alias(self) -> Iterator[int32]:
 //     a = self.plain  # tpyc: ok
-//     yield a[0]
+//     yield a[0]                            # -> S_RESUME_0
 //     self.plain[0] = 111
-//     yield a[0]
+//     yield a[0]                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_live_alias::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a = &(__self.plain);
         __state = S_RESUME_0;
         return ::tpy::__getitem__((*a), 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a[0]
         ::tpy::__setitem__(__self.plain, 0, 111);
         __state = S_RESUME_1;
         return ::tpy::__getitem__((*a), 0);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a[0]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

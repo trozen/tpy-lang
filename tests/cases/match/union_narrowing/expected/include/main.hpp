@@ -17,7 +17,6 @@ void describe(::tpy::Union<const Circle*, const Rect*> s);
 // def main() -> None:
 void main();
 
-// # match/case subject narrowing: access fields on subject directly (no binding)
 // class Circle:
 struct Circle {
     // radius: float

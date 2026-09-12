@@ -43,14 +43,14 @@ void main() {
 // def describe(self) -> Iterator[str]:
 //     match self.payload:
 //         case Dog(name=n):
-//             yield "dog"
-//             yield n
+//             yield "dog"               # -> S_RESUME_0
+//             yield n                   # -> S_RESUME_1
 //         case Cat() as c:
-//             yield "cat"
-//             yield str(c.lives)
+//             yield "cat"               # -> S_RESUME_2
+//             yield str(c.lives)        # -> S_RESUME_3
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = __self.payload;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -70,19 +70,19 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "dog"
         __state = S_RESUME_1;
         return n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "cat"
         __state = S_RESUME_3;
         return ((*c).lives).to_string();
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield str(c.lives)
         __state = S_JOIN_0;
         continue;
     }

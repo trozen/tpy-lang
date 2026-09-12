@@ -6,7 +6,6 @@
 
 namespace tpystd::tpy {
 
-// # --- Structural protocols (concept generated from method signatures) ---
 // class Truthy(Protocol):
 template<typename T>
 concept Truthy = requires(const T& t) {
@@ -103,27 +102,11 @@ namespace tpystd::tpy {
 template<typename T> struct Poll;
 
 
-// # `Poll`'s body lives in this file (cpp_namespace `tpystd::tpy`) rather
-// # than alongside `Awaitable` in `tpy/coro/__init__.py` for codegen-
-// # ordering reasons: the `Awaitable[T]` concept's body needs `Poll[T]`'s
-// # full type, but codegen emits record full-defs after concepts within
-// # the same TU. Keeping the body here gets the full def into
-// # `_core/_types.hpp`, which `coro.hpp` already includes. The TPy qname
-// # is `tpy.coro.Poll` -- decoupled from the file's cpp_namespace -- so
-// # users see the same qname they import from (`from tpy.coro import
-// # Poll`). The C++ symbol is `::tpystd::tpy::Poll<T>` regardless.
-// # `Waker` / `Awaker` live in `tpy/coro/__init__.py`. `Task` is
-// # `@builtin_type("tpy.Task")` decorated in `asyncio._executor`.
 // @builtin_type("tpy.coro.Poll")
 // @nocopy
 // class Poll[T]:
 template<typename T>
 struct Poll {
-    // # A single owning slot tracks both the payload and its liveness; the
-    // # slot's own RAII drop covers cleanup, so Poll needs no __del__ and no
-    // # separate `_has` flag (which would duplicate the slot's alive-bit). The
-    // # slot moves correctly element-wise, so a Poll carrying an SSO str result
-    // # survives being moved up the poll chain.
     // _slot: _UninitStorage[T]
     ::tpy::UninitStorage<T> _slot;
 

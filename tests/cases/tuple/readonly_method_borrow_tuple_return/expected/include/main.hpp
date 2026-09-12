@@ -45,7 +45,6 @@ struct Maker {
     // def __init__(self) -> None:
     Maker();
 
-    // # Never mutates self -- readonly is INFERRED, and with it the const return.
     // def pair(self, c: Cell) -> tuple[Cell, Cell]:
     std::tuple<const Cell*, const Cell*> pair(const Cell& c) const;
 
@@ -56,7 +55,6 @@ struct Maker {
     // def mixed(self, c: Cell) -> tuple[Own[Cell], Cell]:
     std::tuple<Cell, const Cell*> mixed(const Cell& c) const;
 
-    // # The mutating sibling keeps the non-const render -- the inverse guard.
     // def bump_pair(self, c: Cell) -> tuple[Cell, Cell]:
     std::tuple<Cell*, Cell*> bump_pair(Cell& c);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Maker";

@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // def g(v: A | B) -> Iterator[bool]:
-//     yield isinstance(v, A)
+//     yield isinstance(v, A)          # -> S_RESUME_0
 std::expected<bool, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return std::holds_alternative<const A*>(v);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield isinstance(v, A)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

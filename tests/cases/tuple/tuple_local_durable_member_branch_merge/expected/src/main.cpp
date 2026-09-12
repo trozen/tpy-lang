@@ -9,10 +9,10 @@ namespace tpyapp::main {
 //         t = (1, b)
 //     else:
 //         t = (1, c)
-//     yield t
+//     yield t                                                          # -> S_RESUME_0
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (cond) {
             t = std::tuple<int32_t, Box*>{1, &(b)};
         } else {
@@ -21,7 +21,7 @@ std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next
         __state = S_RESUME_0;
         return t;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

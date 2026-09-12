@@ -7,22 +7,22 @@ namespace tpyapp::main {
 // def countdown(n: int32) -> Iterator[int32]:
 //     i = n
 //     while i > 0:
-//         yield i
+//         yield i                              # -> S_RESUME_0
 //         i -= 1
-//     yield -1
+//     yield -1                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = n;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         i = ::tpy::sub_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

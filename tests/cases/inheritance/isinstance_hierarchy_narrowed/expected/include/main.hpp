@@ -21,10 +21,6 @@ bool downcast_in_branch(::tpy::Union<const Cat*, const Dog*> x);
 // def main() -> None:
 void main();
 
-// # Inside a narrowing branch, isinstance checks against ancestors or
-// # descendants of the narrowed type fold via hierarchy walk -- even when
-// # the check type is not a declared union member, the narrowed-path fold
-// # short-circuits the usual "not a member of union" error.
 // class Animal:
 struct Animal {
     // name: str

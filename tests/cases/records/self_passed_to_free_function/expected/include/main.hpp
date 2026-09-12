@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def on_init(mod: Module):
 void on_init(Module& mod);
+// @readonly
 // def get_description(mod: Module) -> str:
 std::string get_description(const Module& mod);
 // def to_upper(s: str) -> str:
@@ -36,26 +37,18 @@ struct Module {
     // def log(self, s: str):
     void log(std::string_view s) const;
 
-    // # Passes self to mutating free function -- must NOT be const
     // def init(self):
     void init();
 
-    // # Passes self to readonly free function -- SHOULD be const
     // def describe(self) -> str:
     std::string describe() const;
 
-    // # Passes self.field to a free function -- should stay const
-    // # (field access, not self mutation)
     // def name_upper(self) -> str:
     std::string name_upper() const;
 
-    // # Calls a method that itself passes self to a mutating free function
-    // # -- transitively not const
     // def reinit(self):
     void reinit();
 
-    // # Passes self to a free function that structurally mutates a field
-    // # -- must NOT be const
     // def add_item(self, val: int32):
     void add_item(int32_t val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Module";

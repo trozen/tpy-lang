@@ -73,11 +73,9 @@ struct Container {
     // def mutate(self) -> None:
     void mutate() const;
 
-    // # Method call on self invalidates self.node narrowing
     // def read_after_method_call(self) -> int32:
     int32_t read_after_method_call() const;
 
-    // # Field reassignment invalidates narrowing
     // def read_after_reassign(self, other: Ptr[Node]) -> int32:
     int32_t read_after_reassign(Node* other);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
@@ -97,7 +95,6 @@ struct Wrapper {
     Wrapper() = default;
     explicit Wrapper(const Container& inner);
 
-    // # Method call on nested field invalidates its sub-path narrowing
     // def read_after_inner_mutate(self) -> int32:
     int32_t read_after_inner_mutate() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";

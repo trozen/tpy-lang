@@ -6,22 +6,22 @@ namespace tpyapp::main {
 
 // def g(items: list[Box]) -> Iterator[int]:
 //     a = items[0]
-//     yield a.n
+//     yield a.n                              # -> S_RESUME_0
 //     a.n += 10
-//     yield a.n
+//     yield a.n                              # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a = &(::tpy::__getitem__(items, 0));
         __state = S_RESUME_0;
         return a->n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a.n
         a->n = (a->n) + (::tpy::BigInt(10));
         __state = S_RESUME_1;
         return a->n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

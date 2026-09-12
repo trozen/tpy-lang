@@ -61,7 +61,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Test 13: User-defined method on pointer-local — uses ->
 // class Counter:
 struct Counter {
     // val: int32

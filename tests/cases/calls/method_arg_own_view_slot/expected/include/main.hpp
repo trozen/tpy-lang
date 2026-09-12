@@ -22,8 +22,6 @@ struct Bag {
     // def __init__(self) -> None:
     Bag();
 
-    // # The body cannot READ an Own[view] param yet (`name.own_read`), so the
-    // # case is about the ARGUMENT the call binds, not about `s`.
     // def keep(self, s: Own[StrView]) -> None:
     void keep(std::string_view s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";

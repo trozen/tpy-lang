@@ -19,6 +19,7 @@ struct Impl;
 extern Impl* obj;
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def safe_read(m: Mixed) -> int32:
 template<Mixed T_m>
 int32_t safe_read(const T_m& m);

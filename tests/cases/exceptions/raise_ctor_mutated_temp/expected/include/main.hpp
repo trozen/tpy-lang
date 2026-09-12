@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # raise X(Bag(...)) where the ctor mutates its ref param and the arg is a
-// # temporary -- the shared loop binds it to a named temp (rvalue can't bind Bag&).
 // class Bag:
 struct Bag {
     // items: list[int]

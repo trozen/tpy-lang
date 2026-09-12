@@ -52,8 +52,6 @@ extern int32_t _SEEK_SET;
 extern int32_t _SEEK_CUR;
 extern int32_t _SEEK_END;
 inline constexpr std::string_view __name__ = "io";
-// # CPython's io.DEFAULT_BUFFER_SIZE: chunk size for raw reads / the default
-// # BufferedReader buffer.
 // DEFAULT_BUFFER_SIZE: Final[int32] = 8192
 inline constexpr int32_t DEFAULT_BUFFER_SIZE = 8192;
 
@@ -232,16 +230,12 @@ inline std::ostream& operator<<(std::ostream& os, const BytesIO& obj) {
 // @nocopy
 // class FileIO:
 struct FileIO {
-    // # -1 sentinel marks closed/moved-from so __del__ won't double-close.
     // _fd: int64 = -1
     int64_t _fd = -1;
     // _closefd: bool
     bool _closefd;
     // _closed: bool
     bool _closed;
-    // # When the fd is a socket in timeout mode, a recv-timeout surfaces as an
-    // # EAGAIN/BlockingIOError from os.read; map it to TimeoutError so the
-    // # makefile/BufferedReader read path matches CPython's socket.timeout.
     // _timeout_mode: bool
     bool _timeout_mode;
     bool __tpy_owned_ = true;

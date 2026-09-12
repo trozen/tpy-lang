@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # An Exception subclass declares a data field via __init__ (no class annotation),
-// # then raises, catches, and reads it.
 // class AppError(Exception):
 struct AppError : ::tpy::Exception {
     // self.code = code

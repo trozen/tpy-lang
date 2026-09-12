@@ -12,8 +12,6 @@ void main() {
     std::cout << X << "\n";
 }
 
-// X: Final[int32] = 42
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

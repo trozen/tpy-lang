@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // async def main_coro() -> None:
 //     # Owned-element unpack: move the @nocopy Counter out, then mutate it.
-//     c, tag = await _OwnPair()
+//     c, tag = await _OwnPair()                                              # -> S_RESUME_0
 //     c.bump()
 //     c.bump()
 //     print(c.n, tag)
@@ -14,27 +14,27 @@ namespace tpyapp::main {
 //     # Re-await in a loop: the frame_slot must re-emplace each iteration.
 //     i: int32 = 0
 //     while i < 3:
-//         d, k = await _OwnPair()
+//         d, k = await _OwnPair()                                            # -> S_RESUME_1
 //         d.bump()
 //         print(d.n, k)
 //         i += 1
 //
 //     # Inverse: value tuple still unpacks.
-//     a, b = await _ValPair()
+//     a, b = await _ValPair()                                                # -> S_RESUME_2
 //     print(a, b)
 //
 //     # Reference-element tuple: the list is moved out, then mutated.
-//     lst, m = await _RefPair()
+//     lst, m = await _RefPair()                                              # -> S_RESUME_3
 //     lst.append(30)
 //     print(len(lst), lst[2], m)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_OwnPair()));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: c, tag = await _OwnPair()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
@@ -49,7 +49,7 @@ namespace tpyapp::main {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: d, k = await _OwnPair()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1.emplace(std::move(__r1).value());
@@ -63,7 +63,7 @@ namespace tpyapp::main {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: a, b = await _ValPair()
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -76,7 +76,7 @@ namespace tpyapp::main {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: lst, m = await _RefPair()
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3.emplace(std::move(__r3).value());

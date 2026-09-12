@@ -4,24 +4,27 @@
 namespace tpyapp::main {
 
 
+// # free two-yield generator (off the simple-generator peephole): the frame field
+// # is the same view the sync signature spells, so writes through it land in the
+// # caller's storage instead of in a buffer copied into the frame.
 // def bump_scalars(s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 //     s[0] += 10
-//     yield s[0]
+//     yield s[0]                                                    # -> S_RESUME_0
 //     s[1] += 10
-//     yield s[1]
+//     yield s[1]                                                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_scalars::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), 10));
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s[0]
         ::tpy::__setitem__(s, 1, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 1), 10));
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s[1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -36,22 +39,24 @@ __gen_bump_scalars bump_scalars(std::span<int32_t> s) {
     return __gen_bump_scalars(s);
 }
 
+// # free generator / record element: the element is mutated through the view
+// # after a suspension.
 // def bump_records(s: Span[P]) -> Iterator[int32]:  # tpyc: ok
-//     yield s[0].n
+//     yield s[0].n                                              # -> S_RESUME_0
 //     s[0].n += 10
-//     yield s[0].n
+//     yield s[0].n                                              # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_records::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0).n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s[0].n
         ::tpy::__getitem__(s, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0).n, 10);
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 0).n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s[0].n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -66,20 +71,23 @@ __gen_bump_records bump_records(std::span<P> s) {
     return __gen_bump_records(s);
 }
 
+// # `Span[readonly[int32]]` (const element): reading the same slot either side of
+// # a suspension observes a source mutated in between. A frame that copied the
+// # buffer would repeat the first read.
 // def read_ro_elems(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
-//     yield s[0]
-//     yield s[0]
+//     yield s[0]                                                               # -> S_RESUME_0
+//     yield s[0]                                                               # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_elems::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 0);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s[0]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -94,20 +102,22 @@ __gen_read_ro_elems read_ro_elems(std::span<const int32_t> s) {
     return __gen_read_ro_elems(s);
 }
 
+// # `readonly[Span[int32]]` -- the const sits on the view rather than the
+// # element, and the sync param spells the same `std::span<int32_t>`.
 // def read_ro_span(s: readonly[Span[int32]]) -> Iterator[int32]:  # tpyc: ok
-//     yield s[1]
-//     yield s[1]
+//     yield s[1]                                                              # -> S_RESUME_0
+//     yield s[1]                                                              # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_ro_span::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 1);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s[1]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s[1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -122,20 +132,22 @@ __gen_read_ro_span read_ro_span(std::span<int32_t> s) {
     return __gen_read_ro_span(s);
 }
 
+// # Reads BOTH slots across the suspension: the second pull needs the whole
+// # backing array alive, not just the first element.
 // def read_pair(s: Span[readonly[int32]]) -> Iterator[int32]:  # tpyc: ok
-//     yield s[0]
-//     yield s[1]
+//     yield s[0]                                                           # -> S_RESUME_0
+//     yield s[1]                                                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_read_pair::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s[1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -163,20 +175,22 @@ std::string make_str(int32_t n) {
     return (::tpy::bytes_repeat(::tpy::bytes_literal_owned("0123456789", 10), n));
 }
 
+// # Reads the CONTENT either side of a suspension, so a dangling view is a wrong
+// # answer rather than a stale length.
 // def head_tail(t: StrView) -> Iterator[str]:  # tpyc: ok
-//     yield t[0:4]
-//     yield t[len(t) - 4:len(t)]
+//     yield t[0:4]                                         # -> S_RESUME_0
+//     yield t[len(t) - 4:len(t)]                           # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_head_tail::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return std::string(::tpy::str_slice(t, ::tpy::BasicSlice{0, 4}));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t[0:4]
         __state = S_RESUME_1;
         return std::string(::tpy::str_slice(t, ::tpy::BasicSlice{(::tpy::sub_check<int32_t>(::tpy::__len__(t), 4)), ::tpy::__len__(t)}));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield t[len(t) - 4:len(t)]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -192,19 +206,19 @@ __gen_head_tail head_tail(std::string_view t) {
 }
 
 // def byte_ends(b: BytesView) -> Iterator[int32]:  # tpyc: ok
-//     yield b[0]
-//     yield b[len(b) - 1]
+//     yield b[0]                                               # -> S_RESUME_0
+//     yield b[len(b) - 1]                                      # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_byte_ends::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return static_cast<int32_t>(::tpy::bytes_getitem(b, 0));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield b[0]
         __state = S_RESUME_1;
         return static_cast<int32_t>(::tpy::bytes_getitem(b, (::tpy::sub_check<int32_t>(::tpy::__len__(b), 1))));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b[len(b) - 1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -220,16 +234,16 @@ __gen_byte_ends byte_ends(::tpy::BytesView b) {
 }
 
 // async def async_head(t: StrView) -> str:  # tpyc: ok
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)                          # -> S_RESUME_0
 //     return t[0:4] + "/" + t[len(t) - 4:len(t)]
 ::tpystd::tpy::Poll<std::string> __coro_async_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -250,16 +264,16 @@ __coro_async_head async_head(std::string_view t) {
 }
 
 // async def run_head() -> str:
-//     return await async_head(make_str(2))  # tpyc: ok
+//     return await async_head(make_str(2))  # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<std::string> __coro_run_head::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = make_str(2);
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await async_head(make_str(2))  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -278,20 +292,22 @@ __coro_run_head run_head() {
     return __coro_run_head();
 }
 
+// # The str/bytes VIEWS ride the same admission and stay borrowed, unlike the
+// # `str`/`bytes` params the frame copies into owned storage.
 // def view_lens(t: StrView, b: BytesView) -> Iterator[int32]:  # tpyc: ok
-//     yield len(t)
-//     yield len(b)
+//     yield len(t)                                                         # -> S_RESUME_0
+//     yield len(b)                                                         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_view_lens::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__len__(t);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(t)
         __state = S_RESUME_1;
         return ::tpy::__len__(b);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield len(b)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -306,20 +322,21 @@ __gen_view_lens view_lens(std::string_view t, ::tpy::BytesView b) {
     return __gen_view_lens(t, b);
 }
 
+// # async def: the write lands across a real suspension.
 // async def bump_async(s: Span[int32]) -> int32:  # tpyc: ok
 //     s[0] += 1
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)                                # -> S_RESUME_0
 //     s[1] += 1
 //     return s[0] + s[1]
 ::tpystd::tpy::Poll<int32_t> __coro_bump_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), 1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -340,17 +357,20 @@ __coro_bump_async bump_async(std::span<int32_t> s) {
     return __coro_bump_async(s);
 }
 
+// # INLINE await inside a coroutine: the literal's storage is hoisted into THIS
+// # frame, not into the suspending block, so the sub-coroutine's view survives
+// # the resume.
 // async def run_bump() -> int32:
-//     return await bump_async([7, 8])  # tpyc: ok
+//     return await bump_async([7, 8])  # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_run_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0.emplace(std::array<int32_t, 2>{7, 8});
         __sub_0.emplace(::tpy::as_mut_span((*__coro_arg_0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await bump_async([7, 8])  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -369,20 +389,25 @@ __coro_run_bump run_bump() {
     return __coro_run_bump();
 }
 
+// # -- a container (`T&`) slot, fed by a comprehension -------------------------
+// # The frame field is a `std::vector<int32_t>&`, so the comprehension's fresh
+// # vector still has to be named. Two yields keep both off the simple-generator
+// # peephole, and each reads a slot AFTER a suspension, so a buffer freed at the
+// # end of the calling statement is a wrong answer rather than a stale length.
 // def ends(xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
-//     yield xs[0]
-//     yield xs[len(xs) - 1]
+//     yield xs[0]                                            # -> S_RESUME_0
+//     yield xs[len(xs) - 1]                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_ends::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield xs[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1)));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield xs[len(xs) - 1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -397,23 +422,24 @@ __gen_ends ends(std::vector<int32_t>& xs) {
     return __gen_ends(xs);
 }
 
+// # enclosing two-yield generator, `for` head, rvalue `str` call
 // def outer_for() -> Iterator[str]:
-//     yield "start"
+//     yield "start"                                 # -> S_RESUME_0
 //     for v in head_tail(make_str(2)):  # tpyc: ok
-//         yield v
+//         yield v                                   # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_outer_for::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return "start";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "start"
         __coro_arg_0 = make_str(2);
         __for_src_0.emplace(head_tail(__coro_arg_0));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -438,23 +464,24 @@ __gen_outer_for outer_for() {
     return __gen_outer_for();
 }
 
+// # enclosing generator, `for` head, container literal at a `Span` param
 // def outer_span() -> Iterator[int32]:
-//     yield 0
+//     yield 0                                  # -> S_RESUME_0
 //     for v in read_pair([5, 6]):  # tpyc: ok
-//         yield v
+//         yield v                              # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_span::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __coro_arg_0.emplace(std::array<int32_t, 2>{5, 6});
         __for_src_0.emplace(read_pair(::tpy::as_span((*__coro_arg_0))));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -479,17 +506,19 @@ __gen_outer_span outer_span() {
     return __gen_outer_span();
 }
 
+// # enclosing generator, `for` head, comprehension at a FREE generator's
+// # container slot: the vector is seated on a field of THIS frame.
 // def outer_comp(src: list[int32]) -> Iterator[int32]:
-//     yield 0
+//     yield 0                                           # -> S_RESUME_0
 //     for v in ends([x * 3 for x in src]):  # tpyc: ok
-//         yield v
+//         yield v                                       # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __coro_arg_0.emplace(({
             std::vector<int32_t> __result;
             auto& __obj_0 = src;
@@ -506,7 +535,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -531,17 +560,23 @@ __gen_outer_comp outer_comp(std::vector<int32_t>& src) {
     return __gen_outer_comp(src);
 }
 
+// # enclosing generator, `for` head, comprehension at a generator METHOD's
+// # container slot -- the seam where the frame hoist re-lowers the argument at
+// # its owned slot and takes the comprehension's own temp rather than nesting a
+// # second one. The RECEIVER is an rvalue and takes a field of this frame too:
+// # `pair` reads `self.base` after each suspension, so a receiver left in the
+// # state's `case` block would print garbage from the second pull on.
 // def outer_comp_method(src: list[int32]) -> Iterator[int32]:
-//     yield 1
+//     yield 1                                                       # -> S_RESUME_0
 //     for v in Summer(100).pair([x * 2 for x in src]):  # tpyc: ok
-//         yield v
+//         yield v                                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __coro_arg_0.emplace(Summer(100));
         __coro_arg_1.emplace(({
             std::vector<int32_t> __result;
@@ -559,7 +594,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_outer_comp_method::__next__()
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -584,23 +619,24 @@ __gen_outer_comp_method outer_comp_method(std::vector<int32_t>& src) {
     return __gen_outer_comp_method(src);
 }
 
+// # enclosing generator, `for` head, f-string source
 // def outer_fstring(n: int32) -> Iterator[str]:
-//     yield "n"
+//     yield "n"                                             # -> S_RESUME_0
 //     for v in head_tail(f"val-{n}-tail-pad"):  # tpyc: ok
-//         yield v
+//         yield v                                           # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_outer_fstring::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return "n";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "n"
         __coro_arg_0 = std::format("val-{}-tail-pad", n);
         __for_src_0.emplace(head_tail(__coro_arg_0));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -625,19 +661,20 @@ __gen_outer_fstring outer_fstring(int32_t n) {
     return __gen_outer_fstring(n);
 }
 
+// # enclosing async def, coroutine handle bound to a local and awaited later
 // async def outer_bind() -> str:
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)                 # -> S_RESUME_0
 //     c = async_head(make_str(2))  # tpyc: ok
-//     await asyncio.sleep(0.0)
-//     return await c
+//     await asyncio.sleep(0.0)                 # -> S_RESUME_1
+//     return await c                           # -> S_RESUME_2
 ::tpystd::tpy::Poll<std::string> __coro_outer_bind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -648,7 +685,7 @@ __gen_outer_fstring outer_fstring(int32_t n) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0.0)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r1).value();
@@ -656,7 +693,7 @@ __gen_outer_fstring outer_fstring(int32_t n) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: return await c
         auto __r2 = ::tpy::poll_with_cancel(c, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         auto __ret2 = std::move(__r2).value();
@@ -675,20 +712,21 @@ __coro_outer_bind outer_bind() {
     return __coro_outer_bind();
 }
 
+// # enclosing async def, the escaping-Task form (not an inline await)
 // async def outer_task() -> str:
 //     t = asyncio.create_task(async_head(make_str(2)))  # tpyc: ok
-//     await asyncio.sleep(0.0)
-//     return await t
+//     await asyncio.sleep(0.0)                                      # -> S_RESUME_0
+//     return await t                                                # -> S_RESUME_1
 ::tpystd::tpy::Poll<std::string> __coro_outer_task::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = make_str(2);
         t.emplace(::tpystd::asyncio::create_task<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(async_head(__coro_arg_0))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -697,7 +735,7 @@ __coro_outer_bind outer_bind() {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: return await t
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         auto __ret1 = std::move(__r1).value();
@@ -716,19 +754,23 @@ __coro_outer_task outer_task() {
     return __coro_outer_task();
 }
 
+// # enclosing generator, `for` head inside a loop: the loop statement drains and
+// # destroys its iterator, so the field is free to take the next iteration's
+// # argument. Each pull must read THIS iteration's list, across the outer yield
+// # in between.
 // def outer_loop_for(n: int32) -> Iterator[int32]:
 //     for i in range(n):
 //         for v in read_pair([i, i + 10]):  # tpyc: ok
-//             yield v
+//             yield v                                   # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_outer_loop_for::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         __state = S_JOIN_1;
         continue;
     }
@@ -764,23 +806,26 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
     return __gen_outer_loop_for(n);
 }
 
+// # enclosing async def, a coroutine handle bound inside a loop and awaited in
+// # the same iteration: one name is one slot, so at most one handle is live and
+// # the per-site field serves every iteration. The bind crosses a suspension.
 // async def outer_loop_bind(n: int32) -> str:
 //     out = ""
 //     for i in range(n):
 //         c = async_head(f"val{i}-tailpad{i}")  # tpyc: ok
-//         await asyncio.sleep(0.0)
-//         out += await c + ";"
+//         await asyncio.sleep(0.0)                          # -> S_RESUME_0
+//         out += await c + ";"                              # -> S_RESUME_1
 //     return out
 ::tpystd::tpy::Poll<std::string> __coro_outer_loop_bind::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         out = "";
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -788,7 +833,7 @@ __gen_outer_loop_for outer_loop_for(int32_t n) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: out += await c + ";"
         auto __r1 = ::tpy::poll_with_cancel(c, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         __await_lift_0 = std::move(__r1).value();
@@ -821,21 +866,23 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
     return __coro_outer_loop_bind(n);
 }
 
+// # enclosing async def, `for` head over a generator method: the receiver
+// # outlives the outer coroutine's own suspension inside the loop body.
 // async def outer_async_recv(src: list[int32]) -> int32:
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)                            # -> S_RESUME_0
 //     n = 0
 //     for v in Summer(100).pair(src):  # tpyc: ok
-//         await asyncio.sleep(0.0)
+//         await asyncio.sleep(0.0)                        # -> S_RESUME_1
 //         n += v
 //     return n
 ::tpystd::tpy::Poll<int32_t> __coro_outer_async_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -846,7 +893,7 @@ __coro_outer_loop_bind outer_loop_bind(int32_t n) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0.0)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r1).value();
@@ -878,13 +925,15 @@ __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
     return __coro_outer_async_recv(src);
 }
 
+// # enclosing async def, the escaping-Task form: the receiver AND the argument of
+// # one call each take a field of this frame.
 // async def outer_task_recv() -> int32:
 //     t = asyncio.create_task(Adder(5).add([7, 8]))  # tpyc: ok
-//     await asyncio.sleep(0.0)
-//     return await t
+//     await asyncio.sleep(0.0)                                   # -> S_RESUME_0
+//     return await t                                             # -> S_RESUME_1
 ::tpystd::tpy::Poll<int32_t> __coro_outer_task_recv::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0.emplace(Adder(5));
         __coro_arg_1.emplace(std::array<int32_t, 2>{7, 8});
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*__coro_arg_0).add(::tpy::as_mut_span((*__coro_arg_1))))));
@@ -892,7 +941,7 @@ __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -901,7 +950,7 @@ __coro_outer_async_recv outer_async_recv(std::vector<int32_t>& src) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: return await t
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret1 = std::move(__r1).value();
@@ -1521,22 +1570,22 @@ void main() {
 
 // def scale(self, s: Span[int32]) -> Iterator[int32]:  # tpyc: ok
 //     s[0] *= self.factor
-//     yield s[0]
+//     yield s[0]                                                   # -> S_RESUME_0
 //     s[1] *= self.factor
-//     yield s[1]
+//     yield s[1]                                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Scaler_scale::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::__setitem__(s, 0, ::tpy::mul_check<int32_t>(::tpy::__getitem__(s, 0), __self.factor));
         __state = S_RESUME_0;
         return ::tpy::__getitem__(s, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s[0]
         ::tpy::__setitem__(s, 1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(s, 1), __self.factor));
         __state = S_RESUME_1;
         return ::tpy::__getitem__(s, 1);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s[1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1547,19 +1596,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Scaler_scale::__next__() {
 
 
 // def tag(self, t: StrView) -> Iterator[str]:  # tpyc: ok
-//     yield self.name + ":" + t[0:3]
-//     yield self.name + ":" + t[len(t) - 3:len(t)]
+//     yield self.name + ":" + t[0:3]                       # -> S_RESUME_0
+//     yield self.name + ":" + t[len(t) - 3:len(t)]         # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return (::tpy::str_concat((::tpy::str_concat(__self.name, ":")), ::tpy::str_slice(t, ::tpy::BasicSlice{0, 3})));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.name + ":" + t[0:3]
         __state = S_RESUME_1;
         return (::tpy::str_concat((::tpy::str_concat(__self.name, ":")), ::tpy::str_slice(t, ::tpy::BasicSlice{(::tpy::sub_check<int32_t>(::tpy::__len__(t), 3)), ::tpy::__len__(t)})));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.name + ":" + t[len(t) - 3:len(t)]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1571,18 +1620,18 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
 
 // async def add(self, s: Span[int32]) -> int32:  # tpyc: ok
 //     s[0] += self.step
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)                               # -> S_RESUME_0
 //     s[1] += self.step
 //     return s[0] + s[1]
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::__setitem__(s, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(s, 0), __self.step));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -1599,19 +1648,19 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Tagger_tag::__next__() {
 
 
 // def pair(self, xs: list[int32]) -> Iterator[int32]:  # tpyc: ok
-//     yield self.base + xs[0]
-//     yield self.base + xs[len(xs) - 1]
+//     yield self.base + xs[0]                                      # -> S_RESUME_0
+//     yield self.base + xs[len(xs) - 1]                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_pair::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(__self.base, ::tpy::__getitem__(xs, 0)));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.base + xs[0]
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.base, ::tpy::__getitem__(xs, (::tpy::sub_check<int32_t>(::tpy::__len__(xs), 1)))));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.base + xs[len(xs) - 1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1622,22 +1671,22 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_pair::__next__() {
 
 
 // def run(self) -> Iterator[str]:
-//     yield self.prefix
+//     yield self.prefix                             # -> S_RESUME_0
 //     for v in head_tail(make_str(2)):  # tpyc: ok
-//         yield self.prefix + v
+//         yield self.prefix + v                     # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.prefix;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.prefix
         __coro_arg_0 = make_str(2);
         __for_src_0.emplace(head_tail(__coro_arg_0));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.prefix + v
         __state = S_JOIN_0;
         continue;
     }
@@ -1657,23 +1706,25 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Outer_run::__next__() {
 }
 
 
+// # enclosing generator METHOD, rvalue RECEIVER: the receiver's own frame
+// # field rides beside the `self` capture.
 // def run_recv(self, xs: list[int32]) -> Iterator[int32]:
-//     yield len(self.prefix)
+//     yield len(self.prefix)                               # -> S_RESUME_0
 //     for v in Summer(100).pair(xs):  # tpyc: ok
-//         yield v + len(self.prefix)
+//         yield v + len(self.prefix)                       # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Outer_run_recv::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__len__(__self.prefix);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(self.prefix)
         __coro_arg_0.emplace(Summer(100));
         __for_src_0.emplace((*__coro_arg_0).pair(xs));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v + len(self.prefix)
         __state = S_JOIN_0;
         continue;
     }

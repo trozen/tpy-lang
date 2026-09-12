@@ -4,23 +4,25 @@
 namespace tpyapp::main {
 
 
+// # 1. free generator, list-param loop var -- the container half of the axis,
+// #    the cell this case exists for.
 // def each_list(xs: list[list[int32]]) -> Iterator[list[int32]]:
 //     for s in xs:
-//         yield s  # tpyc: ok
-//         yield s
+//         yield s  # tpyc: ok                                     # -> S_RESUME_0
+//         yield s                                                 # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_list::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: ok
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         __state = S_JOIN_0;
         continue;
     }
@@ -44,23 +46,25 @@ __gen_each_list each_list(std::vector<std::vector<int32_t>>& xs) {
     return __gen_each_list(xs);
 }
 
+// # 2. the record twin, an inverse guard: it compiled before the unification and
+// #    must keep the same emit through it.
 // def each_rec(xs: list[Box]) -> Iterator[Box]:
 //     for b in xs:
-//         yield b  # tpyc: ok
-//         yield b
+//         yield b  # tpyc: ok                    # -> S_RESUME_0
+//         yield b                                # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_rec::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield b  # tpyc: ok
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_JOIN_0;
         continue;
     }
@@ -84,23 +88,24 @@ __gen_each_rec each_rec(std::vector<Box>& xs) {
     return __gen_each_rec(xs);
 }
 
+// # 4. `*args` pack element.
 // def each_pack(*xs: list[int32]) -> Iterator[list[int32]]:
 //     for s in xs:
-//         yield s  # tpyc: ok
-//         yield s
+//         yield s  # tpyc: ok                                # -> S_RESUME_0
+//         yield s                                            # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_pack::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: ok
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         __state = S_JOIN_0;
         continue;
     }
@@ -124,26 +129,29 @@ __gen_each_pack each_pack(::tpy::varargs<std::vector<int32_t>> xs) {
     return __gen_each_pack(xs);
 }
 
+// # 6. a FRAME-LOCAL list: the yielded borrow points into frame-owned storage,
+// #    which outlives every pull -- the frame reads its own view back after the
+// #    consumer mutated through it.
 // def each_local() -> Iterator[list[int32]]:
 //     own: list[list[int32]] = [[1], [2]]
 //     for s in own:
-//         yield s  # tpyc: ok
-//         yield s
+//         yield s  # tpyc: ok                              # -> S_RESUME_0
+//         yield s                                          # -> S_RESUME_1
 //     print("framelocal-inner", len(own[0]), len(own[1]))
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_local::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         own.emplace(std::vector<std::vector<int32_t>>{{1}, {2}});
         __for_it_0.emplace(((*own)).begin());
         __for_end_0.emplace(((*own)).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: ok
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         __state = S_JOIN_0;
         continue;
     }
@@ -168,22 +176,24 @@ __gen_each_local each_local() {
     return __gen_each_local();
 }
 
+// # 7. an ALIAS local (`b = xs[0]`) at the record slot -- a pointer local that is
+// #    neither a frame slot nor a loop var.
 // def each_alias(xs: list[Box]) -> Iterator[Box]:
 //     b = xs[0]
-//     yield b  # tpyc: ok
-//     yield b
+//     yield b  # tpyc: ok                          # -> S_RESUME_0
+//     yield b                                      # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_alias::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b = &(::tpy::__getitem__(xs, 0));
         __state = S_RESUME_0;
         return (*b);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield b  # tpyc: ok
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -198,25 +208,27 @@ __gen_each_alias each_alias(std::vector<Box>& xs) {
     return __gen_each_alias(xs);
 }
 
+// # 8. a TERNARY of two frame-slot records: the branch-picked borrow, the leg the
+// #    record half gains from the unification.
 // def each_ternary(flag: bool) -> Iterator[Box]:
 //     p = Box(1)
 //     q = Box(2)
-//     yield p if flag else q  # tpyc: ok
-//     yield p if flag else q
+//     yield p if flag else q  # tpyc: ok          # -> S_RESUME_0
+//     yield p if flag else q                      # -> S_RESUME_1
 //     print("ternary-inner", p.v, q.v)
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_each_ternary::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         p.emplace(Box(1));
         q.emplace(Box(2));
         __state = S_RESUME_0;
         return ((flag) ? ((*p)) : ((*q)));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p if flag else q  # tpyc: ok
         __state = S_RESUME_1;
         return ((flag) ? ((*p)) : ((*q)));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p if flag else q
         std::cout << "ternary-inner" << " " << (*p).v << " " << (*q).v << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -232,23 +244,24 @@ __gen_each_ternary each_ternary(bool flag) {
     return __gen_each_ternary(flag);
 }
 
+// # 9. the axis's other container members.
 // def each_dict(xs: list[dict[int32, int32]]) -> Iterator[dict[int32, int32]]:
 //     for d in xs:
-//         yield d  # tpyc: ok
-//         yield d
+//         yield d  # tpyc: ok                                                   # -> S_RESUME_0
+//         yield d                                                               # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<::tpy::ordered_map<int32_t, int32_t>>, ::tpy::StopIteration> __gen_each_dict::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield d  # tpyc: ok
         __state = S_RESUME_1;
         return (*d);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield d
         __state = S_JOIN_0;
         continue;
     }
@@ -274,21 +287,21 @@ __gen_each_dict each_dict(std::vector<::tpy::ordered_map<int32_t, int32_t>>& xs)
 
 // def each_set(xs: list[set[int32]]) -> Iterator[set[int32]]:
 //     for s in xs:
-//         yield s  # tpyc: ok
-//         yield s
+//         yield s  # tpyc: ok                                  # -> S_RESUME_0
+//         yield s                                              # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<::tpy::ordered_set<int32_t>>, ::tpy::StopIteration> __gen_each_set::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: ok
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         __state = S_JOIN_0;
         continue;
     }
@@ -312,21 +325,22 @@ __gen_each_set each_set(std::vector<::tpy::ordered_set<int32_t>>& xs) {
     return __gen_each_set(xs);
 }
 
+// # 10. position coverage: a `with` body and a `finally` body.
 // def each_with(xs: list[list[int32]]) -> Iterator[list[int32]]:
 //     with Guard():
 //         for s in xs:
-//             yield s  # tpyc: ok
-//             yield s
+//             yield s  # tpyc: ok                                 # -> S_RESUME_0
+//             yield s                                             # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_with::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Guard());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: ok
         try {
             __state = S_RESUME_1;
             return (*s);
@@ -339,7 +353,7 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         try {
             __state = S_JOIN_0;
             continue;
@@ -414,19 +428,19 @@ __gen_each_with each_with(std::vector<std::vector<int32_t>>& xs) {
 //         print("finally-try")
 //     finally:
 //         for s in xs:
-//             yield s  # tpyc: warning(/'yield' inside 'finally'/)
-//             yield s
+//             yield s  # tpyc: warning(/'yield' inside 'finally'/)   # -> S_RESUME_0
+//             yield s                                                # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each_finally::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_3;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: warning(/'yield' inside 'finally'/)
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         __state = S_JOIN_0;
         continue;
     }
@@ -476,23 +490,27 @@ __gen_each_finally each_finally(std::vector<std::vector<int32_t>>& xs) {
     return __gen_each_finally(xs);
 }
 
+// # 12. an `Iterator[T]` PARAM as a for-head source (no source struct in the
+// #     consumer's frame, so its `__for_r` slot is spelled from the element type
+// #     rather than read off the producer): the slot must be the same
+// #     `val_or_ref<T>` the producer's `__next__` returns.
 // def boxes(xs: list[Box]) -> Iterator[Box]:
 //     for b in xs:
-//         yield b  # tpyc: ok
-//         yield b
+//         yield b  # tpyc: ok                 # -> S_RESUME_0
+//         yield b                             # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_boxes::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield b  # tpyc: ok
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_JOIN_0;
         continue;
     }
@@ -834,23 +852,24 @@ void main() {
     sec_iterparam();
 }
 
+// # 3. generator METHOD, container element off a list PARAM.
 // def each(self, xs: list[list[int32]]) -> Iterator[list[int32]]:
 //     for s in xs:
-//         yield s  # tpyc: ok
-//         yield s
+//         yield s  # tpyc: ok                                      # -> S_RESUME_0
+//         yield s                                                  # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Rows_each::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: ok
         __state = S_RESUME_1;
         return (*s);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         __state = S_JOIN_0;
         continue;
     }
@@ -869,20 +888,22 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 }
 
 
+// # 5. `self.<field>` at a container yield slot: the storage member binds
+// #    the val_or_ref slot bare, the leg the record half already had.
 // def field_twice(self) -> Iterator[list[int32]]:
-//     yield self.buf  # tpyc: ok
-//     yield self.buf
+//     yield self.buf  # tpyc: ok                   # -> S_RESUME_0
+//     yield self.buf                               # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_Rows_field_twice::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.buf;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.buf  # tpyc: ok
         __state = S_RESUME_1;
         return __self.buf;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.buf
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -893,19 +914,19 @@ std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __g
 
 
 // def twice(self) -> Iterator[readonly[list[int32]]]:
-//     yield self.buf  # tpyc: ok
-//     yield self.buf
+//     yield self.buf  # tpyc: ok                       # -> S_RESUME_0
+//     yield self.buf                                   # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<const std::vector<int32_t>>, ::tpy::StopIteration> __gen_ROBag_twice::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.buf;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.buf  # tpyc: ok
         __state = S_RESUME_1;
         return __self.buf;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.buf
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

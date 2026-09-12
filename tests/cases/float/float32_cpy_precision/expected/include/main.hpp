@@ -32,7 +32,6 @@ void union_param(const ::tpy::Union<double, float>& u);
 // def main() -> None:
 void main();
 
-// # method: a field of the type keeps the rounding through a method
 // class Meter:
 struct Meter {
     // total: float32

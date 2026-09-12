@@ -5,16 +5,16 @@ namespace tpyapp::svc {
 
 
 // async def __aenter__(self) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)            # -> S_RESUME_0
 //     return 5
 ::tpystd::tpy::Poll<int32_t> __coro_Gate___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -30,15 +30,15 @@ namespace tpyapp::svc {
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                        # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_Gate___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -56,11 +56,11 @@ namespace tpyapp::svc {
 //     if self.n <= 0:
 //         raise StopAsyncIteration()
 //     self.n -= 1
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)           # -> S_RESUME_0
 //     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_Ticker___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.n <= 0)) {
             throw ::tpy::StopAsyncIteration{};
         }
@@ -69,7 +69,7 @@ namespace tpyapp::svc {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -85,16 +85,16 @@ namespace tpyapp::svc {
 
 
 // async def fetch(self) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)       # -> S_RESUME_0
 //     return 3
 ::tpystd::tpy::Poll<int32_t> __coro_Svc_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

@@ -9,13 +9,13 @@ std::optional<int32_t> G;
 //     q = 0
 //     if p is not None:
 //         q = p
-//     yield q
+//     yield q                                 # -> S_RESUME_0
 //     if p is not None:
-//         yield p
-//     yield -1
+//         yield p                             # -> S_RESUME_1
+//     yield -1                                # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         q = 0;
         if ((p.has_value())) {
             q = (*p);
@@ -23,7 +23,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
         __state = S_RESUME_0;
         return q;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield q
         if ((p.has_value())) {
             __state = S_RESUME_1;
             return (*p);
@@ -32,11 +32,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -58,17 +58,17 @@ __gen_g g(std::optional<int32_t> p) {
 // def g_loop(d: dict[str, int32 | None]) -> Iterator[int32]:
 //     for val in d.values():
 //         if val is not None:
-//             yield val
+//             yield val                                       # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_loop::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_src_0.emplace(::tpy::dict_values(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield val
         __state = S_JOIN_1;
         continue;
     }
@@ -103,11 +103,11 @@ __gen_g_loop g_loop(::tpy::ordered_map<std::string, std::optional<int32_t>>& d) 
 
 // def g_whole(p: int32 | None) -> Iterator[int32 | None]:
 //     if p is not None:
-//         yield p
-//     yield None
+//         yield p                                          # -> S_RESUME_0
+//     yield None                                           # -> S_RESUME_1
 std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((p.has_value())) {
             __state = S_RESUME_0;
             return p;
@@ -116,11 +116,11 @@ std::expected<std::optional<int32_t>, ::tpy::StopIteration> __gen_g_whole::__nex
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield None
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -143,13 +143,13 @@ __gen_g_whole g_whole(std::optional<int32_t> p) {
 //     q2: int32 | None = None
 //     if p is not None:
 //         q2 = p
-//     yield 0
+//     yield 0                                             # -> S_RESUME_0
 //     if q2 is not None:
-//         yield q2
-//     yield -2
+//         yield q2                                        # -> S_RESUME_1
+//     yield -2                                            # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         q2 = std::nullopt;
         if ((p.has_value())) {
             q2 = p;
@@ -157,7 +157,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         if ((q2.has_value())) {
             __state = S_RESUME_1;
             return (*q2);
@@ -166,11 +166,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield q2
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -194,11 +194,11 @@ __gen_g_frame_whole g_frame_whole(std::optional<int32_t> p) {
 //     # guard still reaches the first yield; a re-read after that yield is the
 //     # reject error_narrowed_global_stale_yield pins.
 //     if G is not None:
-//         yield G
-//     yield -3
+//         yield G                                                                # -> S_RESUME_0
+//     yield -3                                                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((G.has_value())) {
             __state = S_RESUME_0;
             return (*G);
@@ -207,11 +207,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_global::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield G
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -3
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -232,11 +232,11 @@ __gen_g_global g_global() {
 
 // def g_view(s: str | None) -> Iterator[str]:
 //     if s is not None:
-//         yield s
-//     yield "end"
+//         yield s                              # -> S_RESUME_0
+//     yield "end"                              # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_g_view::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((s.has_value())) {
             __state = S_RESUME_0;
             return (*s);
@@ -245,11 +245,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_g_view::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "end"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

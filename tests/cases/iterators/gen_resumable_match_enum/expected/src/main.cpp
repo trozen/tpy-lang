@@ -49,16 +49,16 @@ namespace tpyapp::main {
 // def gen(c: Color) -> Iterator[int]:
 //     match c:
 //         case Color.RED:
-//             yield 1
-//             yield 2
+//             yield 1                  # -> S_RESUME_0
+//             yield 2                  # -> S_RESUME_1
 //         case Color.GREEN:
-//             yield 3
+//             yield 3                  # -> S_RESUME_2
 //         case Color.BLUE:
-//             yield 4
-//     yield 100
+//             yield 4                  # -> S_RESUME_3
+//     yield 100                        # -> S_RESUME_4
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = c;
         switch (__match_subject_1) {
         case Color::RED: {
@@ -80,23 +80,23 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 3
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield 4
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: yield 100
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

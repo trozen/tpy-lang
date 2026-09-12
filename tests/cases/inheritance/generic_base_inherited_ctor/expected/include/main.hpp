@@ -86,7 +86,6 @@ inline std::ostream& operator<<(std::ostream& os, const TypedI& obj) {
     return os;
 }
 
-// # Generic subclass whose own param feeds the base instantiation.
 // class TypedM[M](Typed[M]): ...
 template<typename M>
 struct TypedM : Typed<M> {

@@ -17,9 +17,6 @@ std::string describe(Animal& a);
 // def main() -> None:
 void main();
 
-// # Defining a method that hides a parent method emits a warning at the child
-// # class definition. Static dispatch means parent-typed references will call
-// # the parent's method, not the child's -- differs from Python.
 // class Animal:
 struct Animal {
     // name: str

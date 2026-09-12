@@ -31,10 +31,6 @@ void loop_exits(Gate& cm);
 // def main() -> None:
 void main();
 
-// # with-statement shapes over scalar-arg/no-arg managers: multi-manager LIFO
-// # exit, bool-__exit__ suppression, record-returning __enter__ (the borrow
-// # observed via mutation), a pointer-local manager, and break/continue/return
-// # through the with body.
 // class Gate:
 struct Gate {
     // n: int

@@ -7,20 +7,20 @@ namespace tpyapp::main {
 // async def process(rows: list[tuple[int32, Item]]) -> int32:
 //     total = 0
 //     for idx, it in rows:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                                     # -> S_RESUME_0
 //         it.n = idx * 10       # mutate after the await; `it` must alias + survive
 //         total += it.n
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_process::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __for_it_0.emplace((rows).begin());
         __for_end_0.emplace((rows).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -57,17 +57,17 @@ __coro_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
 
 // async def amain() -> None:
 //     rows: list[tuple[int32, Item]] = [(1, Item(0)), (2, Item(0))]
-//     print(await process(rows))
+//     print(await process(rows))                                     # -> S_RESUME_0
 //     print(rows[0][1].n, rows[1][1].n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         rows.emplace(std::vector<std::tuple<int32_t, Item>>{std::tuple<int32_t, Item>{1, Item(0)}, std::tuple<int32_t, Item>{2, Item(0)}});
         __sub_0.emplace((*rows));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await process(rows))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

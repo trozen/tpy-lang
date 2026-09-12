@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     try:
 //         return
 //     finally:
-//         yield 99
+//         yield 99                                       # -> S_RESUME_0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_then_finally_yield::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 99
         __state = S_JOIN_0;
         continue;
     }
@@ -64,18 +64,18 @@ __gen_gen_return_then_finally_yield gen_return_then_finally_yield() {
 //     try:
 //         if x < 0:
 //             raise ValueError("negative")
-//         yield x
+//         yield x                                                 # -> S_RESUME_0
 //     except ValueError:
-//         yield -1
+//         yield -1                                                # -> S_RESUME_1
 //     finally:
-//         yield 0
+//         yield 0                                                 # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_finally_yield::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         try {
             __state = S_JOIN_0;
             continue;
@@ -94,11 +94,11 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_fina
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 0
         __state = S_JOIN_1;
         continue;
     }

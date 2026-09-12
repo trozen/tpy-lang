@@ -45,9 +45,6 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // class RWView[W: Reads]:
 template<Reads W>
 struct RWView {
-    // # Mutable `W` param -> readonly Ptr: the new arm (UPCAST_TO_CONST_PTR for a
-    // # bare TypeParamRef actual). Keep the param `W`, not readonly[W] -- the
-    // # readonly form routes through a different path (see ROView).
     // _src: Ptr[readonly[W]]
     const W* _src;
 
@@ -73,8 +70,6 @@ inline std::ostream& operator<<(std::ostream& os, const RWView<W>& obj) {
 // class ROView[W: Reads]:
 template<Reads W>
 struct ROView {
-    // # readonly[W] param (ReadonlyType(W) actual) -> readonly Ptr: the
-    // # pre-existing readonly-borrow address-of path.
     // _src: Ptr[readonly[W]]
     const W* _src;
 

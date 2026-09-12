@@ -11,7 +11,6 @@ namespace tpyapp::main {
 //         return obj.x  # int32, stub -> int (not float)
 //     else:
 //         return obj.y
-// # Test 1: int32 returned where stub says -> int, union has float first
 // @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_val(const A& obj) {
@@ -32,7 +31,6 @@ double get_val(const B& obj) {
 //         return obj.z  # int64, stub -> int (not float)
 //     else:
 //         return obj.y
-// # Test 2: int64 returned where stub says -> int, union has float first
 // @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_big(const C& obj) {
@@ -53,7 +51,6 @@ double get_big(const B& obj) {
 //         return obj.x  # int32, stub -> int64 (not float)
 //     else:
 //         return obj.y
-// # Test 3: int32 returned where stub says -> int64, union has float first
 // @overload
 // def get_wide(obj: A) -> int64: ...  # tpyc: ok
 int64_t get_wide(const A& obj) {
@@ -74,7 +71,6 @@ double get_wide(const B& obj) {
 //         return obj.x  # int32, stub -> float (not int)
 //     else:
 //         return obj.z
-// # Test 4: int32 returned where stub says -> float, union has int first
 // @overload
 // def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast(const A& obj) {

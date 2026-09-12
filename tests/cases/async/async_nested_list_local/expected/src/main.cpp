@@ -6,12 +6,12 @@ namespace tpyapp::main {
 
 // async def work() -> int:
 //     rows = [[i, i + 1] for i in range(3) if i > 0]
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                          # -> S_RESUME_0
 //     rows[0][1] = 50
 //     return rows[0][0] + rows[0][1]
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_work::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         rows.emplace(({
             std::vector<std::array<int32_t, 2>> __result;
             const int32_t __stop_0 = 3;
@@ -27,7 +27,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -49,15 +49,15 @@ __coro_work work() {
 }
 
 // async def main() -> None:
-//     print(await work())
+//     print(await work())    # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await work())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

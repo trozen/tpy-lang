@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def classify(n: int32) -> Iterator[int32]:
 //     match n:
 //         case 5 as hit:
-//             yield hit
-//             yield hit + 1
+//             yield hit                       # -> S_RESUME_0
+//             yield hit + 1                   # -> S_RESUME_1
 //         case _:
-//             yield -1
+//             yield -1                        # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_classify::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = n;
         switch (__match_subject_1) {
         case 5: {
@@ -31,15 +31,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_classify::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield hit
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(hit, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield hit + 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }

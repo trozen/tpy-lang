@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // async def main_coro() -> None:
 //     tasks: list[asyncio.Task[int32]] = []
-//     results = await asyncio.gather_list(tasks)
+//     results = await asyncio.gather_list(tasks)  # -> S_RESUME_0
 //     print("len:", len(results))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: results = await asyncio.gather_list(tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());

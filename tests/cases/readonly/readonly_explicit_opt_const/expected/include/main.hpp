@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def maybe_read(b: Box, flag: bool) -> int32:
 int32_t maybe_read(const Box& b, bool flag);
 // def main() -> None:

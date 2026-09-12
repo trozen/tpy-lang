@@ -18,17 +18,17 @@ int32_t _code{};
 
 // async def normal_exit() -> None:
 //     try:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)    # -> S_RESUME_0
 //     finally:
 //         raise Err(bump())
 ::tpystd::tpy::Poll<::std::monostate> __coro_normal_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -81,18 +81,18 @@ __coro_normal_exit normal_exit() {
 
 // async def return_exit() -> None:
 //     try:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)    # -> S_RESUME_0
 //         return
 //     finally:
 //         raise Err(bump())
 ::tpystd::tpy::Poll<::std::monostate> __coro_return_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_3 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -141,17 +141,17 @@ __coro_return_exit return_exit() {
 
 // async def with_exit() -> None:
 //     with Thrower():
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_with_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Thrower());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_5 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -207,7 +207,7 @@ __coro_with_exit with_exit() {
 // async def handler_exit() -> None:
 //     # finally raises after the except handler completes normally.
 //     try:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                     # -> S_RESUME_0
 //         raise ValueError("v")
 //     except ValueError:
 //         print("caught")
@@ -216,11 +216,11 @@ __coro_with_exit with_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_handler_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -298,7 +298,7 @@ __coro_handler_exit handler_exit() {
 //     # inner finally raises on the return path; outer finally must still run.
 //     try:
 //         try:
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)                                            # -> S_RESUME_0
 //             return
 //         finally:
 //             print("inner fin")
@@ -308,11 +308,11 @@ __coro_handler_exit handler_exit() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_nested_exit::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_11 = false;
         try {
             bool __fin_ran_12 = false;
@@ -397,46 +397,46 @@ __coro_nested_exit nested_exit() {
 //     _code = 0
 //     print("-- normal_exit --")
 //     try:
-//         await normal_exit()
+//         await normal_exit()             # -> S_RESUME_0
 //     except Err as e:
 //         print(f"caught code={e.code}")
 //
 //     _code = 0
 //     print("-- return_exit --")
 //     try:
-//         await return_exit()
+//         await return_exit()             # -> S_RESUME_1
 //     except Err as e:
 //         print(f"caught code={e.code}")
 //
 //     _code = 0
 //     print("-- with_exit --")
 //     try:
-//         await with_exit()
+//         await with_exit()               # -> S_RESUME_2
 //     except Err as e:
 //         print(f"caught code={e.code}")
 //
 //     _code = 0
 //     print("-- handler_exit --")
 //     try:
-//         await handler_exit()
+//         await handler_exit()            # -> S_RESUME_3
 //     except Err as e:
 //         print(f"caught code={e.code}")
 //
 //     _code = 0
 //     print("-- nested_exit --")
 //     try:
-//         await nested_exit()
+//         await nested_exit()             # -> S_RESUME_4
 //     except Err as e:
 //         print(f"caught code={e.code}")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         _code = 0;
         std::cout << "-- normal_exit --" << "\n";
         __state = S_JOIN_5;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await normal_exit()
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -454,7 +454,7 @@ __coro_nested_exit nested_exit() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await return_exit()
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -472,7 +472,7 @@ __coro_nested_exit nested_exit() {
             throw;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: await with_exit()
         try {
             auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -490,7 +490,7 @@ __coro_nested_exit nested_exit() {
             throw;
         }
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: await handler_exit()
         try {
             auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
             if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -508,7 +508,7 @@ __coro_nested_exit nested_exit() {
             throw;
         }
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: await nested_exit()
         try {
             auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
             if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

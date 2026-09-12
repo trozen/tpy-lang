@@ -77,22 +77,23 @@ struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it
         return os << "<generator skip_first>";
     }
 };
+// # Generic protocol-param generator, param named `it`.
 // def skip_first[T](it: Iterable[T]) -> Iterator[T]:
 //     started = False
 //     for x in it:
 //         if started:
-//             yield x
+//             yield x                                 # -> S_RESUME_0
 //         started = True
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_skip_first<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         started = false;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_1;
         continue;
     }
@@ -156,20 +157,24 @@ struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it
         return os << "<generator gtakewhile>";
     }
 };
+// # The intersection of both fixes: a generator with a generic type param, a
+// # protocol param (`it`), AND an Fn param (`pred`) -- the real itertools shape.
+// # Also exercises the protocol-args-then-Fn-args template-arg ordering, and
+// # (being followed by other generators reusing `it`/`pred`) the no-leak path.
 // def gtakewhile[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 //     for x in it:
 //         if not pred(x):
 //             break
-//         yield x
+//         yield x                                                          # -> S_RESUME_0
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_gtakewhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -260,23 +265,24 @@ struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> 
         return os << "<generator first_n>";
     }
 };
+// # Another generic after the concrete ones -- the reverse order, also clean.
 // def first_n[T](it: Iterable[T], n: int32) -> Iterator[T]:
 //     c: int32 = 0
 //     for x in it:
 //         if c >= n:
 //             break
-//         yield x
+//         yield x                                            # -> S_RESUME_0
 //         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_first_n<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;

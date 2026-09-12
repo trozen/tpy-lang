@@ -93,7 +93,6 @@ std::vector<std::string> url_split_path_only(std::string_view path);
 // def _drop_inner_empties(segments: list[str]) -> Own[list[str]]:
 std::vector<std::string> _drop_inner_empties(const std::vector<std::string>& segments);
 
-// # ---------- result records ----------
 // class SplitResult:
 struct SplitResult {
     // scheme: str

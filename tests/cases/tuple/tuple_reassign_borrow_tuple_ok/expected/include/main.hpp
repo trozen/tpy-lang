@@ -17,11 +17,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A REASSIGNED tuple local DECL-INITIALIZED from a borrow source aliases its
-// # elements (it does not own them), so the decl-init must NOT warn "copies into
-// # owned storage". Read-only: write-through of a multi-source borrow-tuple local
-// # is not yet supported (const propagates from the differing sources), so only
-// # the no-warning behavior is exercisable here.
 // class Box:
 struct Box {
     // val: int

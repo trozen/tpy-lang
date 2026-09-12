@@ -17,9 +17,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # One arm rebinds a capture name that a sibling arm binds (same type) without
-// # rebinding: the hoist is collected across arms, so both arms bind the one
-// # hoisted slot by assignment and each arm's value flows out correctly.
 // class Cat:
 struct Cat {
     // lives: int

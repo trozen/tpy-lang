@@ -34,8 +34,6 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
     return os;
 }
 
-// # Local non-exception class shadowing 're.error' bare name. The qualified
-// # 'except re.error' below must still resolve to re.error, not this class.
 // class error:
 struct error {
 

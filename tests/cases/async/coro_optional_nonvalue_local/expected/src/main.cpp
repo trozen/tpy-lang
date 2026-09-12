@@ -20,13 +20,13 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
 //     h = maybe_p(items, i)
 //     if drop:
 //         h = None
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                             # -> S_RESUME_0
 //     if h is not None:
 //         return h.x
 //     return -1
 ::tpystd::tpy::Poll<int32_t> __coro_pick::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h = maybe_p(items, i);
         if (drop) {
             h = nullptr;
@@ -35,7 +35,7 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -65,13 +65,13 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
 //     items.append(P(10))
 //     items.append(P(20))
 //     items.append(P(30))
-//     print(await pick(items, 0, False))
-//     print(await pick(items, 2, False))
-//     print(await pick(items, 5, False))
-//     print(await pick(items, 0, True))
+//     print(await pick(items, 0, False))  # -> S_RESUME_0
+//     print(await pick(items, 2, False))  # -> S_RESUME_1
+//     print(await pick(items, 5, False))  # -> S_RESUME_2
+//     print(await pick(items, 0, True))   # -> S_RESUME_3
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         items.emplace(std::vector<P>{});
         (*items).push_back(P(10));
         (*items).push_back(P(20));
@@ -80,7 +80,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await pick(items, 0, False))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -90,7 +90,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await pick(items, 2, False))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -100,7 +100,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await pick(items, 5, False))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -110,7 +110,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print(await pick(items, 0, True))
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();

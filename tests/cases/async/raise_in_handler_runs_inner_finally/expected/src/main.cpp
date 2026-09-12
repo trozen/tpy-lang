@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_fail_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         throw ::tpy::ValueError("inner-fail");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -26,7 +26,7 @@ __coro_fail_value fail_value() {
 // async def go() -> int32:
 //     try:
 //         try:
-//             x = await fail_value()
+//             x = await fail_value()                # -> S_RESUME_0
 //             return x
 //         except ValueError:
 //             print("inner-handler")
@@ -41,11 +41,11 @@ __coro_fail_value fail_value() {
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: x = await fail_value()
         bool __fin_ran_1 = false;
         try {
             bool __fin_ran_2 = false;

@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def mutate(b: Box) -> None:
 void mutate(Box& b);
+// @readonly
 // def ok(b: Box) -> int32:
 int32_t ok(const Box& b);
 

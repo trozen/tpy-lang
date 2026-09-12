@@ -345,20 +345,20 @@ struct __gen_LocalBox_two : public ::tpy::next_iter_mixin<__gen_LocalBox_two<T>,
 };
 
 // def two(self) -> Iterator[T]:
-//     yield self.items[0]
-//     yield self.items[1]
+//     yield self.items[0]        # -> S_RESUME_0
+//     yield self.items[1]        # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_LocalBox_two<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(__self.items, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.items[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(__self.items, 1);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.items[1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

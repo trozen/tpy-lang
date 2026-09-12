@@ -43,6 +43,7 @@ __coro_in_async in_async(std::vector<::tpy::Union<Dog, double, int32_t>>& xs, st
 bool in_with(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 // def in_try(xs: list[Mixed], ys: list[Mixed]) -> bool:  # try/finally
 bool in_try(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
+// @error_return(Boom)
 // def in_error_return(xs: list[Mixed], ys: list[Mixed]) -> bool:  # @error_return
 std::expected<bool, Boom> in_error_return(const std::vector<::tpy::Union<Dog, double, int32_t>>& xs, const std::vector<::tpy::Union<Dog, double, int32_t>>& ys);
 // def in_match(xs: list[Mixed], ys: list[Mixed]) -> bool:  # match arm
@@ -142,12 +143,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// # `__ne__` INVERTED on purpose. A CONTAINER `!=` never reaches it -- CPython
-// # answers Py_NE from the first index whose items are not `==`, and the
-// # vector's rewritten `!=` does the same -- so the two languages agree here
-// # precisely because neither consults it. The union's own `operator!=` does
-// # call it; that row lives in `union/value_union_cross_alternative_eq`, the
-// # only case where a union `!=` is reachable directly.
 // class Tag:
 struct Tag {
     // n: int32
@@ -223,9 +218,6 @@ inline std::ostream& operator<<(std::ostream& os, const Kennel& obj) {
     return os;
 }
 
-// # A union FIELD is a storage slot too. The store COPIES the record into the
-// # slot and says so, which is why a storage position has no identity answer to
-// # give: the slot is not the object CPython would have aliased.
 // class Crate:
 struct Crate {
     // pet: Pet

@@ -21,11 +21,6 @@ void body_raises_exit_throws();
 // def main() -> None:
 void main();
 
-// # Regression: an __exit__ that RAISES on the with's fall-through path must run
-// # exactly once. The fall-through __exit__ copy sits after the catches, so its
-// # throw propagates instead of being caught by the with's own catch-all (which
-// # would call __exit__ a second time). Sibling of with_exit_double_call, which
-// # pins the suppressing path this shape must not regress.
 // class Thrower:
 struct Thrower {
 

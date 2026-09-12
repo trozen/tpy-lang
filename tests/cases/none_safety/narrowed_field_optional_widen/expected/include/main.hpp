@@ -22,8 +22,6 @@ Pod* take(T& t);
 // def main() -> None:
 void main();
 
-// # A NARROWED storage-form Optional field widened back to an Optional arg or
-// # return slot must take the optional_to_ptr lift (aliasing), never `&(field)`.
 // class Pod:
 struct Pod {
     // x: int

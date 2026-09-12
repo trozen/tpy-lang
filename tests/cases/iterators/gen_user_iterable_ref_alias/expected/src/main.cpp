@@ -7,20 +7,20 @@ namespace tpyapp::main {
 // def bump(bag: Bag) -> Iterator[int32]:
 //     for p in bag:
 //         p.x += 100
-//         yield p.x
-//         yield p.x
+//         yield p.x                       # -> S_RESUME_0
+//         yield p.x                       # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, bag);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p.x
         __state = S_RESUME_1;
         return (*p).x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p.x
         __state = S_JOIN_0;
         continue;
     }

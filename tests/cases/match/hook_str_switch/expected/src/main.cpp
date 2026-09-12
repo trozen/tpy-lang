@@ -7,22 +7,22 @@ namespace tpyapp::main {
 // def gen(s: str, flag: bool) -> Iterator[str]:
 //     match s:
 //         case "z" if flag:  # a guarded prefix arm, emitted before the switch
-//             yield "guarded"
+//             yield "guarded"                                                   # -> S_RESUME_0
 //         case "a":
-//             yield "1"
+//             yield "1"                                                         # -> S_RESUME_1
 //         case "b":
-//             yield "2"
+//             yield "2"                                                         # -> S_RESUME_2
 //         case "c":
-//             yield "3"
+//             yield "3"                                                         # -> S_RESUME_3
 //         case "d":
-//             yield "4"
+//             yield "4"                                                         # -> S_RESUME_4
 //         case "e":
-//             yield "5"
+//             yield "5"                                                         # -> S_RESUME_5
 //         case other:  # a trailing capture, bound into the frame
-//             yield "other:" + other
+//             yield "other:" + other                                            # -> S_RESUME_6
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = s;
         if (__match_subject_1 == "z") {
             if (flag) {
@@ -85,31 +85,31 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "guarded"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "1"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "2"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield "3"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: yield "4"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: yield "5"
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_6: {
+    case S_RESUME_6: {  // after: yield "other:" + other
         __state = S_JOIN_0;
         continue;
     }
@@ -133,10 +133,10 @@ __gen_gen gen(std::string_view s, bool flag) {
 //         case "a":
 //             # A suspension inside a bucket arm: the resume state belongs to
 //             # the arm's own block, not the dispatch.
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)                                           # -> S_RESUME_0
 //             return "A"
 //         case "bb":
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)                                           # -> S_RESUME_1
 //             return "B"
 //         case "ccc":
 //             return "C"
@@ -145,11 +145,11 @@ __gen_gen gen(std::string_view s, bool flag) {
 //         case "eeeee":
 //             return "E"
 //         case _:
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)                                           # -> S_RESUME_2
 //             return "?"
 ::tpystd::tpy::Poll<std::string> __coro_acoro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = s;
         switch (__match_subject_1.size()) {
         case 1: {
@@ -208,7 +208,7 @@ __gen_gen gen(std::string_view s, bool flag) {
         ::std::unreachable();
         __builtin_unreachable();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -217,7 +217,7 @@ __gen_gen gen(std::string_view s, bool flag) {
         std::string __tpy_async_ret = "A";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r1).value();
@@ -226,7 +226,7 @@ __gen_gen gen(std::string_view s, bool flag) {
         std::string __tpy_async_ret = "B";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: await asyncio.sleep(0)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r2).value();
@@ -247,18 +247,18 @@ __coro_acoro acoro(std::string_view s) {
 }
 
 // async def amain() -> None:
-//     print(await acoro("a"))
-//     print(await acoro("ccc"))
-//     print(await acoro("zz"))
+//     print(await acoro("a"))    # -> S_RESUME_0
+//     print(await acoro("ccc"))  # -> S_RESUME_1
+//     print(await acoro("zz"))   # -> S_RESUME_2
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "a";
         __sub_0.emplace(__coro_arg_0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await acoro("a"))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -269,7 +269,7 @@ __coro_acoro acoro(std::string_view s) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await acoro("ccc"))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -280,7 +280,7 @@ __coro_acoro acoro(std::string_view s) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await acoro("zz"))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();

@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def get(h: H) -> Box | None:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)          # -> S_RESUME_0
 //     return h.opt
 ::tpystd::tpy::Poll<Box*> __coro_get::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box*>::pending();
         (void)std::move(__r0).value();
@@ -34,19 +34,21 @@ __coro_get get(H& h) {
     return __coro_get(h);
 }
 
+// # Inverse: an owning return (Own[Box] | None, fresh value) must keep working --
+// # the value is owned, the binding consumes it.
 // async def make(present: bool) -> Own[Box] | None:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                         # -> S_RESUME_0
 //     if present:
 //         return Box(7)
 //     return None
 ::tpystd::tpy::Poll<std::optional<Box>> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::optional<Box>>::pending();
         (void)std::move(__r0).value();
@@ -73,28 +75,28 @@ __coro_make make(bool present) {
 
 // async def main_coro() -> None:
 //     h = H(Box(1))
-//     t = await get(h)
+//     t = await get(h)                                                          # -> S_RESUME_0
 //     if t is not None:
 //         t.val = 99              # write through the aliased borrow
 //     if h.opt is not None:
 //         print(h.opt.val)        # 99 -- visible on the field (alias)
 //
 //     empty = H(None)
-//     e = await get(empty)
+//     e = await get(empty)                                                      # -> S_RESUME_1
 //     print("none" if e is None else "?")
 //
-//     owned = await make(True)
+//     owned = await make(True)                                                  # -> S_RESUME_2
 //     print(owned.val if owned is not None else -1)   # 7 (owning path intact)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         Box __tmp_1 = Box(::tpy::BigInt(1));
         h.emplace(H(&(__tmp_1)));
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: t = await get(h)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         t = std::move(__r0).value();
@@ -110,7 +112,7 @@ __coro_make make(bool present) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: e = await get(empty)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         e = std::move(__r1).value();
@@ -120,7 +122,7 @@ __coro_make make(bool present) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: owned = await make(True)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         owned = std::move(__r2).value();

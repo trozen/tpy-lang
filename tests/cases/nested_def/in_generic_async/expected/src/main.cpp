@@ -6,16 +6,16 @@ namespace tpyapp::main {
 
 // async def main() -> None:
 //     xs = [5, 1]
-//     print((await combine(xs)).n)
+//     print((await combine(xs)).n)  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         xs.emplace(std::array<int32_t, 2>{5, 1});
         __sub_0.emplace((*xs));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print((await combine(xs)).n)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());

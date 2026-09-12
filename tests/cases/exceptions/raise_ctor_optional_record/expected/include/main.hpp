@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # raise X(rec) with a `Record | None` ctor param routes through the shared
-// # arg-lowering loop (optional-ptr arm: &rec -> ptr_to_optional); copy intended.
 // class Node:
 struct Node {
     // v: int

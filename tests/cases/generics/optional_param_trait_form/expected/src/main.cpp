@@ -28,19 +28,19 @@ int32_t mk() {
 }
 
 // def gen_body(n: int32) -> Iterator[bool]:
-//     yield probe_gen(n + 1)  # tpyc: ok
-//     yield probe_twin(n + 1)
+//     yield probe_gen(n + 1)  # tpyc: ok     # -> S_RESUME_0
+//     yield probe_twin(n + 1)                # -> S_RESUME_1
 std::expected<bool, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return probe_gen<int32_t>((::tpy::add_check<int32_t>(n, 1)));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield probe_gen(n + 1)  # tpyc: ok
         __state = S_RESUME_1;
         return probe_twin((::tpy::add_check<int32_t>(n, 1)));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield probe_twin(n + 1)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -74,7 +74,7 @@ std::expected<bool, Stop> er_twin(int32_t n) {
 ::tpystd::tpy::Poll<bool> __coro_probe_async_twin::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         bool __tpy_async_ret = (val.has_value());
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -95,7 +95,7 @@ __coro_probe_async_twin probe_async_twin(std::optional<int32_t> val) {
 ::tpystd::tpy::Poll<bool> __coro_probe_pinned_twin::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         bool __tpy_async_ret = (val != nullptr);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -116,8 +116,8 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
 //     v_none: int32 | None = None
 //     c = Cell(5)
 //     none_cell: Cell | None = None
-//     print("async_value", await probe_async(v), await probe_async(v_none),
-//           await probe_async_twin(n + 1), await probe_async_twin(None))
+//     print("async_value", await probe_async(v), await probe_async(v_none),        # -> S_RESUME_0, S_RESUME_1
+//           await probe_async_twin(n + 1), await probe_async_twin(None))           # -> S_RESUME_2, S_RESUME_3
 //     # reference T: the frame slot is the pointer form at this instantiation, so
 //     # both coroutines below hold a BORROW of `pin` from creation to the await.
 //     # The mutation in that window lands on the object they point at, and the
@@ -126,15 +126,15 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
 //     co = probe_async(pin)
 //     co_twin = probe_pinned_twin(pin)
 //     pin.n = 7
-//     print("async_ref", await probe_async(c), await probe_async(none_cell),
-//           await co, await co_twin, pin.n)
+//     print("async_ref", await probe_async(c), await probe_async(none_cell),       # -> S_RESUME_4, S_RESUME_5
+//           await co, await co_twin, pin.n)                                        # -> S_RESUME_6, S_RESUME_7
 //     # T = None -- the degenerate instantiation, whose await-arg slot is the
 //     # unit optional; and an rvalue argument, which must NOT hoist a frame
 //     # local at a value T (the slot owns there, so there is nothing to borrow).
-//     print("async_unit", await probe_async(None), await probe_async(mk()))
+//     print("async_unit", await probe_async(None), await probe_async(mk()))        # -> S_RESUME_8, S_RESUME_9
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         v = (::tpy::add_check<int32_t>(n, 1));
         v_none = std::nullopt;
         c.emplace(Cell(5));
@@ -143,7 +143,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("async_value", await probe_async(v), await probe_async(v_none),
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -152,7 +152,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print("async_value", await probe_async(v), await probe_async(v_none),
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -162,7 +162,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: await probe_async_twin(n + 1), await probe_async_twin(None))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -171,7 +171,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: await probe_async_twin(n + 1), await probe_async_twin(None))
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
@@ -185,7 +185,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_4;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: print("async_ref", await probe_async(c), await probe_async(none_cell),
         auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
@@ -194,7 +194,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_5;
         continue;
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: print("async_ref", await probe_async(c), await probe_async(none_cell),
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
@@ -202,7 +202,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_6;
         continue;
     }
-    case S_RESUME_6: {
+    case S_RESUME_6: {  // after: await co, await co_twin, pin.n)
         auto __r6 = ::tpy::poll_with_cancel(co, __cancel_pending, waker);
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_6 = std::move(__r6).value();
@@ -210,7 +210,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_7;
         continue;
     }
-    case S_RESUME_7: {
+    case S_RESUME_7: {  // after: await co, await co_twin, pin.n)
         auto __r7 = ::tpy::poll_with_cancel(co_twin, __cancel_pending, waker);
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r7).value();
@@ -220,7 +220,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_8;
         continue;
     }
-    case S_RESUME_8: {
+    case S_RESUME_8: {  // after: print("async_unit", await probe_async(None), await probe_async(mk()))
         auto __r8 = ::tpy::poll_with_cancel(__sub_8, __cancel_pending, waker);
         if (__r8.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_8 = std::move(__r8).value();
@@ -230,7 +230,7 @@ __coro_probe_pinned_twin probe_pinned_twin(Pinned* val) {
         __state = S_RESUME_9;
         continue;
     }
-    case S_RESUME_9: {
+    case S_RESUME_9: {  // after: print("async_unit", await probe_async(None), await probe_async(mk()))
         auto __r9 = ::tpy::poll_with_cancel(__sub_9, __cancel_pending, waker);
         if (__r9.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_9 = std::move(__r9).value();

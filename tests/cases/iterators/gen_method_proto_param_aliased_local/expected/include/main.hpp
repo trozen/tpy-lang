@@ -72,16 +72,16 @@ struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_i
 //     xs = it
 //     for x in xs:
 //         for _ in range(self.times):
-//             yield x
+//             yield x                                     # -> S_RESUME_0
 template <::tpystd::typing::Iterable<int32_t> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Repeater_run<T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_1;
         continue;
     }

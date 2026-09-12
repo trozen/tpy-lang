@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def alias_param(b: Box) -> int32:
 int32_t alias_param(const Box& b);
 // def main() -> None:

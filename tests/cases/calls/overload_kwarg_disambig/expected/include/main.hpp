@@ -9,8 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def pick(x: int32, *, tag: str = "") -> str:
 std::string pick(int32_t x, std::string_view tag = "");
+// @dispatch
 // def pick(x: int32, *, tag: int32 = 0) -> int32:
 int32_t pick(int32_t x, int32_t tag = 0);
 // def main() -> None:

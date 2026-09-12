@@ -12,9 +12,6 @@ void main() {
     std::cout << ALIAS << "\n";
 }
 
-// BASE: Final[int32] = 10
-// ALIAS: Final[int32] = BASE
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

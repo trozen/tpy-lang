@@ -12,19 +12,19 @@ namespace tpyapp::main {
 //     loop = asyncio.get_running_loop()
 //
 //     try:
-//         await asyncio.wait_for(loop.sock_recv(b, 16), 0.01)
+//         await asyncio.wait_for(loop.sock_recv(b, 16), 0.01)       # -> S_RESUME_0
 //         print("recv: not reached")
 //     except TimeoutError:
 //         print("recv: timed out")
 //
 //     try:
-//         await asyncio.wait_for(loop.sock_sendall(a, _BIG), 0.01)
+//         await asyncio.wait_for(loop.sock_sendall(a, _BIG), 0.01)  # -> S_RESUME_1
 //         print("sendall: not reached")
 //     except TimeoutError:
 //         print("sendall: timed out")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
@@ -34,7 +34,7 @@ namespace tpyapp::main {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.wait_for(loop.sock_recv(b, 16), 0.01)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -53,7 +53,7 @@ namespace tpyapp::main {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.wait_for(loop.sock_sendall(a, _BIG), 0.01)
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

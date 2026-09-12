@@ -14,11 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: print() on a narrowed value-Optional BigInt field. The print
-// # path's BigInt branch fires from get_resolved_type (narrowed inner) before
-// # the OptionalType branch can intercept, so the BigInt formatter must see
-// # the storage->value boundary handled by gen_expr_deref. int32/str/bool/
-// # float fields are already covered by narrowed_field_print.
 // class Stats:
 struct Stats {
     // total: int | None

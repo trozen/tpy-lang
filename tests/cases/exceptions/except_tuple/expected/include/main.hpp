@@ -26,10 +26,6 @@ void repeated();
 // def main() -> None:
 void main();
 
-// # The `except (A, B):` tuple form. The parser expands it into one ordinary
-// # single-type clause per element, so each arm binds `e` at its own exact type --
-// # `.code` below resolves per-arm even though AErr and BErr declare it
-// # independently, with no common base but Exception.
 // class AErr(Exception):
 struct AErr : ::tpy::Exception {
     // self.code = code

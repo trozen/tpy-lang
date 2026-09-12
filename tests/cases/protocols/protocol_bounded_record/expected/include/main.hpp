@@ -9,7 +9,6 @@ namespace tpyapp::main {
 
 template<::tpystd::tpy::Comparable T> struct SortedPair;
 
-// # Protocol that references the bounded generic record
 // class PairFactory(Protocol):
 template<typename T>
 concept PairFactory = requires(T& t) {
@@ -26,7 +25,6 @@ SortedPair<int32_t> create_pair(::tpy::param_val_or_ref_t<T> factory, int32_t a,
 // def main() -> None:
 void main();
 
-// # A generic record with a bounded type parameter
 // class SortedPair[T: Comparable]:
 template<::tpystd::tpy::Comparable T>
 struct SortedPair {

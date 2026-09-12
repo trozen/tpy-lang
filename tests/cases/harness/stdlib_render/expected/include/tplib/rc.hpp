@@ -14,16 +14,6 @@
 namespace tpystd::tplib::rc {
 
 struct _RcCellBase;
-// # TODO: Once @dynamic protocols support fields (see
-// # docs/DYNAMIC_PROTOCOL_DESIGN.md:559-561 -- "protocol-field gap"),
-// # move `strong` and `weak` to _RcCellBase as direct fields and keep
-// # only `release_payload` as a virtual method. That removes the vcall
-// # from every counter op, leaving just one indirect call per cell
-// # (the drop) -- matching std::shared_ptr's control-block shape. The
-// # fused-release API below ALREADY collapses to 1 vcall per Rc op
-// # (see method docs), so the @dynamic-fields work would only buy
-// # cache-line + icache savings on the existing path, not a per-op
-// # count reduction.
 // @dynamic
 // class _RcCellBase(Protocol):
 template<typename T>
@@ -64,10 +54,6 @@ struct _RcCell : _RcCellBase {
     uint32_t strong;
     // weak: uint32
     uint32_t weak;
-    // # A single owning slot: tracks its own liveness and moves correctly, so a
-    // # cell over a payload with SSO-`str`/non-relocatable fields survives the
-    // # one move into heap storage at `new_` (the payload is constructed in
-    // # place after that move, while the slot is still empty).
     // storage: UninitStorage[U]
     ::tpy::UninitStorage<U> storage;
 
@@ -160,10 +146,6 @@ inline std::ostream& operator<<(std::ostream& os, const _RcCell<U>& obj) {
 // class Rc[T](Deref[T], Covariant[T]):
 template<typename T>
 struct Rc {
-    // # `_cell` is bookkeeping outside the readonly boundary (the refcount lives
-    // # behind it): clone/downgrade bump it through a readonly handle, the
-    // # std::shared_ptr const-copy pattern. `_payload` stays inside the boundary
-    // # so a readonly handle still yields readonly T.
     // _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
     _RcCellBase* _cell;
     // _payload: Ptr[T]
@@ -402,8 +384,6 @@ template<typename T>
 struct Weak {
     // _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
     _RcCellBase* _cell;
-    // # _payload dangles between strong=0 and weak=0, but is only dereferenced
-    // # via upgrade() after the strong-count check confirms the payload is live.
     // _payload: Ptr[T]
     T* _payload;
     bool __tpy_owned_ = true;

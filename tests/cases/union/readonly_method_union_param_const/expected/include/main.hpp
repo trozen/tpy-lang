@@ -16,10 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Sync inferred-readonly method, union param used discriminant-only (no member
-// # access -> address does not escape) -> the verdict deep-consts it, so the
-// # param is const everywhere. Complements readonly_method_union_param (member
-// # access -> address escapes -> mutable everywhere).
 // class Dog:
 struct Dog {
 

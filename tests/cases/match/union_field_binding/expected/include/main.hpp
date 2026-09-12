@@ -17,7 +17,6 @@ void describe(::tpy::Union<const Circle*, const Rect*> s);
 // def main() -> None:
 void main();
 
-// # match/case with keyword field bindings on a 2-member union
 // class Circle:
 struct Circle {
     // radius: float

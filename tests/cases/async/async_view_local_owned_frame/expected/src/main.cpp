@@ -13,11 +13,11 @@ std::tuple<std::string, std::string> pair(int32_t n) {
 // async def read_addr() -> None:
 //     # The promoted owned fields must survive the suspension.
 //     host, port = pair(9)
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                    # -> S_RESUME_0
 //     print(host, port)
 ::tpystd::tpy::Poll<::std::monostate> __coro_read_addr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = pair(9);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
@@ -25,7 +25,7 @@ std::tuple<std::string, std::string> pair(int32_t n) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

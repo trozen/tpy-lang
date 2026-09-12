@@ -25,23 +25,23 @@ void main() {
 }
 
 // def bump(self) -> Iterator[int32]:
-//     yield 0
+//     yield 0                           # -> S_RESUME_0
 //     for n in self.nodes:  # tpyc: ok
 //         n.val += 10
-//         yield n.val
+//         yield n.val                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_bump::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_it_0.emplace((__self.nodes).begin());
         __for_end_0.emplace((__self.nodes).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield n.val
         __state = S_JOIN_0;
         continue;
     }

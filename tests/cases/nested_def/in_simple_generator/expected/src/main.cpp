@@ -11,10 +11,10 @@ namespace tpyapp::main {
 //         return x + base
 //
 //     for i in range(k):
-//         yield scale(i)
+//         yield scale(i)                 # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         base = 100;
         // def scale: frame member
         __for_i_0.emplace(int32_t(0));
@@ -22,7 +22,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield scale(i)
         __state = S_JOIN_0;
         continue;
     }

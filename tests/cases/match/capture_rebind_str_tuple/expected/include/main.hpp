@@ -18,10 +18,6 @@ std::string relabel(const Box& b);
 // def main() -> None:
 void main();
 
-// # Sibling coverage for the rebound-capture hoist across the value-type family:
-// # a `str` capture rebound in a nested block and a tuple-of-values capture
-// # rebound at arm top level both assign their own local, leaving the matched
-// # object untouched (CPython rebinds a fresh local).
 // class Box:
 struct Box {
     // label: str

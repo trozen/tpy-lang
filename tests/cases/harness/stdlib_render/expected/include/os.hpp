@@ -43,8 +43,6 @@ struct _WalkEmit;
 struct terminal_size;
 
 inline constexpr std::string_view __name__ = "os";
-// # st_mode S_IF* type bits, for DirEntry's stat fallback when readdir's d_type is
-// # unknown or a symlink (which is_dir/is_file must follow).
 // _S_IFMT: Final[int64] = 0o170000
 inline constexpr int64_t _S_IFMT = 61440;
 // _S_IFDIR: Final[int64] = 0o040000
@@ -53,9 +51,6 @@ inline constexpr int64_t _S_IFDIR = 16384;
 inline constexpr int64_t _S_IFREG = 32768;
 // _S_IFLNK: Final[int64] = 0o120000
 inline constexpr int64_t _S_IFLNK = 40960;
-// # POSIX path/line separators and special names (os.name is "posix"). altsep is
-// # None on POSIX (omitted; matches the os.path decision). These mirror the
-// # os.path constants for the values shared between the two modules.
 // name: Final[str] = "posix"
 inline constexpr std::string_view name = "posix";
 // sep: Final[str] = "/"
@@ -93,8 +88,10 @@ std::vector<std::string> listdir(std::string_view path = ".");
 __gen_walk walk(std::string_view top, bool topdown = true, std::optional<std::function<void(const ::tpy::OSError&)>> onerror = std::nullopt, bool followlinks = false);
 // def mkdir(path: str, mode: int64 = 0o777) -> None:
 void mkdir(std::string_view path, int64_t mode = 511);
+// @dispatch
 // def getenv(key: str) -> str | None:
 std::optional<std::string> getenv(std::string_view key);
+// @dispatch
 // def getenv(key: str, default: str) -> str:
 std::string getenv(std::string_view key, std::string_view default_);
 // def putenv(key: str, value: str) -> None:
@@ -152,10 +149,6 @@ std::optional<int64_t> cpu_count();
 // def unlink(path: str) -> None:
 void unlink(std::string_view path);
 
-// # os.scandir entry. `_kind` is the normalized readdir d_type (1 dir / 2 file /
-// # 3 symlink / 0 unknown). is_dir/is_file follow symlinks (CPython default), so a
-// # symlink or an unknown kind falls back to stat; is_symlink uses lstat. stat()
-// # returns a fresh stat_result each call (CPython caches per follow_symlinks).
 // class DirEntry:
 struct DirEntry {
     // name: str
@@ -188,11 +181,6 @@ inline std::ostream& operator<<(std::ostream& os, const DirEntry& obj) {
     return os;
 }
 
-// # Bottomup post-order stack markers: `yield from`/recursion are unsupported, so
-// # the post-order walk uses an explicit stack of two kinds of entry -- a dir to
-// # scan (`_WalkExpand`) and a dir whose subtree is already yielded and is now
-// # ready to emit (`_WalkEmit`, carrying its scan result). `isinstance` on the
-// # popped union discriminates them.
 // class _WalkExpand:
 struct _WalkExpand {
     // path: str
@@ -230,9 +218,6 @@ inline std::ostream& operator<<(std::ostream& os, const _WalkEmit& obj) {
     return os;
 }
 
-// # os.get_terminal_size result. Attribute access only (no tuple/sequence
-// # protocol, unlike CPython's terminal_size named tuple); st[0]/unpacking is a
-// # clean compile error, not a silent divergence.
 // class terminal_size:
 struct terminal_size {
     // columns: int64

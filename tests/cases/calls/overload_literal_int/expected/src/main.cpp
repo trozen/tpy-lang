@@ -81,10 +81,6 @@ std::string classify(int32_t x) {
 //     if x == 1:
 //         return 42
 //     return "two"
-// # A literal-only group with NO base-type fallback stub: an accepted call must
-// # land on one of the Literal stubs, and the per-stub return types make that
-// # selection observable. The call whose literal matches no stub is the reject
-// # pinned by tests/cases/calls/error_overload_literal_no_match.
 // @overload
 // def only_lit(x: Literal[1]) -> int32: ...
 int32_t only_lit__lit_1(int32_t x) {

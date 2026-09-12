@@ -8,10 +8,10 @@ namespace tpyapp::main {
 //     if b is None:
 //         return
 //     for x in b:
-//         yield int(x)
+//         yield int(x)                              # -> S_RESUME_0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_each_byte::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!b.has_value())) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -21,7 +21,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_each_byte::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield int(x)
         __state = S_JOIN_0;
         continue;
     }
@@ -50,12 +50,12 @@ __gen_each_byte each_byte(std::optional<::tpy::BytesView> b) {
 //         return -1
 //     n = 0
 //     for _c in s:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                # -> S_RESUME_0
 //         n += 1
 //     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_count_chars::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!s.has_value())) {
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = -1;
@@ -67,7 +67,7 @@ __gen_each_byte each_byte(std::optional<::tpy::BytesView> b) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -103,10 +103,10 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
 //     for v in each_byte(b"ab" + b"c"):
 //         total += v
 //     print(total)
-//     print(await count_chars("hello"))
+//     print(await count_chars("hello"))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __coro_arg_0 = (::tpy::bytes_concat(::tpy::bytes_literal_owned("ab", 2), ::tpy::bytes_literal_owned("c", 1)));
         {
@@ -125,7 +125,7 @@ __coro_count_chars count_chars(std::optional<std::string_view> s) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await count_chars("hello"))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

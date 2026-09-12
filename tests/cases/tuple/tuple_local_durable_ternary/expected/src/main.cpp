@@ -8,17 +8,17 @@ namespace tpyapp::main {
 //     t = (1, b)
 //     t2 = (2, c)
 //     u = t if cond else t2
-//     yield u
+//     yield u                                                          # -> S_RESUME_0
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t = std::tuple<int32_t, Box*>{1, &(b)};
         t2 = std::tuple<int32_t, Box*>{2, &(c)};
         u = ((cond) ? (t) : (t2));
         __state = S_RESUME_0;
         return u;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield u
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

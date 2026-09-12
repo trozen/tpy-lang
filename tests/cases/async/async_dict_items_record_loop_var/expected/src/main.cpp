@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(n, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -29,13 +29,13 @@ __coro_step step(int32_t n) {
 //     d = {n: Box(n)}
 //     total = 0
 //     for kv in d.items():
-//         total = await step(kv[0])
+//         total = await step(kv[0])                                    # -> S_RESUME_0
 //         # The element is borrowed, so this write lands in the dict.
 //         kv[1].v = 99
 //     return total + d[n].v
 ::tpystd::tpy::Poll<int32_t> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         d.emplace(::tpy::ordered_map<int32_t, Box>({{n, Box(n)}}));
         total = 0;
         __for_src_0.emplace(::tpy::dict_items((*d)));
@@ -44,7 +44,7 @@ __coro_step step(int32_t n) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: total = await step(kv[0])
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         total = std::move(__r0).value();

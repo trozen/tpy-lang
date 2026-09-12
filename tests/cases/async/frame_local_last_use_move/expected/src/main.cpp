@@ -9,13 +9,13 @@ namespace tpyapp::main {
 //     seen: list[bytes] = []
 //     buf = [1, 2, 3, 4]
 //     ba = bytearray(b"abcd")
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                                  # -> S_RESUME_0
 //     out.append(buf)  # the frame slot, moved at its last use
 //     seen.append(bytes(ba))  # the written copy into a `bytes` element slot
 //     return len(out) + len(out[0]) + len(seen[0]) + n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_collect::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         out.emplace(std::vector<std::vector<int32_t>>{});
         seen.emplace(std::vector<::tpy::Bytes>{});
         buf.emplace(std::vector<int32_t>{1, 2, 3, 4});
@@ -24,7 +24,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -47,15 +47,15 @@ __coro_collect collect(::tpy::BigInt n) {
 }
 
 // async def amain() -> None:
-//     print(await collect(1))
+//     print(await collect(1))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(::tpy::BigInt(1));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await collect(1))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

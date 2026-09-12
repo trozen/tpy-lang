@@ -20,7 +20,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # @nocopy: the reads are reference-bound, so a silent copy is an error.
 // @nocopy
 // class V3:
 struct V3 {

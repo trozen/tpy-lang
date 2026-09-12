@@ -20,9 +20,6 @@ std::string describe_zoo(const Zoo& z);
 // def main() -> None:
 void main();
 
-// # Record with union field used as first variant member in an outer union.
-// # Verifies that records with union-typed fields get a default constructor,
-// # which std::variant requires for its first alternative.
 // class Ball:
 struct Ball {
     // color: str

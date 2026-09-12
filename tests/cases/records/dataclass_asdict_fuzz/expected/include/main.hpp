@@ -26,7 +26,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Simple flat
 // @dataclass
 // class Point:
 struct Point {
@@ -53,7 +52,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Mixed types
 // @dataclass
 // class Person:
 struct Person {
@@ -80,7 +78,6 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
-// # Nested dataclass
 // @dataclass
 // class Line:
 struct Line {
@@ -107,7 +104,6 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
     return os;
 }
 
-// # Nested with mixed types
 // @dataclass
 // class NamedPoint:
 struct NamedPoint {
@@ -134,7 +130,6 @@ inline std::ostream& operator<<(std::ostream& os, const NamedPoint& obj) {
     return os;
 }
 
-// # List of dataclasses
 // @dataclass
 // class Polygon:
 struct Polygon {
@@ -159,7 +154,6 @@ inline std::ostream& operator<<(std::ostream& os, const Polygon& obj) {
     return os;
 }
 
-// # Nested list of dataclasses with mixed types
 // @dataclass
 // class Drawing:
 struct Drawing {
@@ -186,7 +180,6 @@ inline std::ostream& operator<<(std::ostream& os, const Drawing& obj) {
     return os;
 }
 
-// # Deeply nested
 // @dataclass
 // class Wrapper:
 struct Wrapper {
@@ -211,7 +204,6 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
-// # Dataclass with optional field
 // @dataclass
 // class MaybeNamed:
 struct MaybeNamed {
@@ -238,7 +230,6 @@ inline std::ostream& operator<<(std::ostream& os, const MaybeNamed& obj) {
     return os;
 }
 
-// # Empty list field
 // @dataclass
 // class Container:
 struct Container {
@@ -263,7 +254,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// # Multiple list fields
 // @dataclass
 // class MultiList:
 struct MultiList {
@@ -290,7 +280,6 @@ inline std::ostream& operator<<(std::ostream& os, const MultiList& obj) {
     return os;
 }
 
-// # Dict with dataclass values
 // @dataclass
 // class DictOfDC:
 struct DictOfDC {
@@ -315,7 +304,6 @@ inline std::ostream& operator<<(std::ostream& os, const DictOfDC& obj) {
     return os;
 }
 
-// # Tuple with dataclass element
 // @dataclass
 // class TupleMixed:
 struct TupleMixed {
@@ -340,7 +328,6 @@ inline std::ostream& operator<<(std::ostream& os, const TupleMixed& obj) {
     return os;
 }
 
-// # Tuple with all dataclass elements
 // @dataclass
 // class TupleAllDC:
 struct TupleAllDC {

@@ -43,7 +43,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// # Forward record type param from a generic class method
 // class Container[T]:
 template<typename T>
 struct Container {

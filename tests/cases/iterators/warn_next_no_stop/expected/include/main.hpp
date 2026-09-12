@@ -25,7 +25,6 @@ struct InfiniteCounter {
     // def __iter__(self) -> InfiniteCounter:
     InfiniteCounter& __iter__();
 
-    // # tpyc: warning(/no 'raise StopIteration'/)
     // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.InfiniteCounter";

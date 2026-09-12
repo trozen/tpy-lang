@@ -970,7 +970,7 @@ class FunctionGenerator:
         cpp_name: str | None = None, return_type_override: TpyType | None = None,
     ) -> None:
         """Emit a single function forward declaration."""
-        self.ctx.emit_source_comment(out, func.loc)
+        self.ctx.emit_declaration_echo(out, func.loc)
         name = escape_cpp_name(cpp_name or func.name)
         proto_params = self.protocols.get_all_protocol_params(func.params)
         has_dynamic = self._has_dynamic_protocol_params(func.params)
@@ -1128,8 +1128,7 @@ class FunctionGenerator:
         if overload_stubs:
             # The shared implementation's source echoes once above the
             # group; each specialization below echoes only its stub line.
-            self.ctx.emit_preceding_comments(out, func.loc)
-            self.ctx.emit_definition_source_block(out, func.loc)
+            self.ctx.emit_definition_echo(out, func.loc)
             if self._overload_stubs_are_literal_only(overload_stubs, func):
                 for stub in overload_stubs:
                     self._gen_literal_specialized_function(out, func, stub)
@@ -1141,8 +1140,7 @@ class FunctionGenerator:
                     out.write("\n")
                 return
 
-        self.ctx.emit_preceding_comments(out, func.loc)
-        self.ctx.emit_definition_source_block(out, func.loc)
+        self.ctx.emit_definition_echo(out, func.loc)
 
         if func.linkage == FunctionLinkage.EXPORT_C:
             c_name = func.native_name or func.name
@@ -1205,8 +1203,7 @@ class FunctionGenerator:
         injects literal narrowing facts for dead branch elimination.
         Name is mangled to avoid C++ signature collisions.
         """
-        self.ctx.emit_preceding_comments(out, stub.loc)
-        self.ctx.emit_source_comment(out, stub.loc)
+        self.ctx.emit_declaration_echo(out, stub.loc)
 
         mangled = self._literal_mangled_name(impl.name, stub)
         rp = self._get_reassigned_params(impl)
@@ -1255,8 +1252,7 @@ class FunctionGenerator:
         template routes the whole group to the header), so it is `inline` to
         stay ODR-safe -- hence the `in_header` flag.
         """
-        self.ctx.emit_preceding_comments(out, stub.loc)
-        self.ctx.emit_source_comment(out, stub.loc)
+        self.ctx.emit_declaration_echo(out, stub.loc)
 
         impl_defaults = impl.defaults if impl.defaults else []
         missing_params = impl.params[len(stub.params):]
@@ -1730,11 +1726,10 @@ class FunctionGenerator:
             sig_override_suffix = override_suffix
 
         out.write("\n")
-        self.ctx.emit_preceding_comments(out, method.loc, indent=sig_indent)
         if mode == "decl":
-            self.ctx.emit_source_comment(out, method.loc, indent=sig_indent)
+            self.ctx.emit_declaration_echo(out, method.loc, sig_indent)
         else:
-            self.ctx.emit_definition_source_block(out, method.loc, sig_indent)
+            self.ctx.emit_definition_echo(out, method.loc, sig_indent)
         fn_params = self._collect_fn_params(method.params)
         if proto_params or new_method_params or fn_params:
             # Bounds for new method type params only (class param bounds go on the requires clause)
@@ -1950,8 +1945,7 @@ class FunctionGenerator:
         Special case: Final[str] uses std::string_view (string literals have
         static lifetime, constexpr requires literal type).
         """
-        self.ctx.emit_preceding_comments(out, stmt.loc)
-        self.ctx.emit_source_comment(out, stmt.loc)
+        self.ctx.emit_declaration_echo(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
         cpp_type = var_type.to_cpp()
         # Final[str] -> constexpr std::string_view (string literals are static)
@@ -1973,7 +1967,7 @@ class FunctionGenerator:
         var_type = self._resolve_global_type(stmt)
         if is_constexpr_eligible(var_type):
             return  # Defined in header via inline constexpr
-        self.ctx.emit_source_comment(out, stmt.loc)
+        self.ctx.emit_declaration_echo(out, stmt.loc)
         cpp_type = var_type.to_cpp()
         init_expr = self._gen_final_init_expr(stmt, var_type)
         out.write(f"const {cpp_type} {stmt.name} = {init_expr};\n")

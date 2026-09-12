@@ -74,7 +74,7 @@ template <::tpystd::typing::Iterable<int32_t> T>
 ::tpystd::tpy::Poll<int32_t> __coro_Summer_total<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         result = 0;
         auto& __src_0 = __self.items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

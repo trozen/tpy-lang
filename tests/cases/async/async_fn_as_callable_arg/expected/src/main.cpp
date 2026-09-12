@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def double(n: int32) -> int32:
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)          # -> S_RESUME_0
 //     return n + n
 ::tpystd::tpy::Poll<int32_t> __coro_double_::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -38,17 +38,17 @@ __coro_double_ double_(int32_t n) {
 //                     a: int32, b: int32) -> int32:
 //     t1 = asyncio.create_task(factory(a))  # tpyc: ok
 //     t2 = asyncio.create_task(factory(b))
-//     return await t1 + await t2
+//     return await t1 + await t2                                            # -> S_RESUME_0, S_RESUME_1
 ::tpystd::tpy::Poll<int32_t> __coro_run_twice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t1.emplace(::tpystd::asyncio::create_task<int32_t>(factory(a)));
         t2.emplace(::tpystd::asyncio::create_task<int32_t>(factory(b)));
         __sub_0 = &((*t1));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await t1 + await t2
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -57,7 +57,7 @@ __coro_double_ double_(int32_t n) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: return await t1 + await t2
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -79,15 +79,15 @@ __coro_run_twice run_twice(std::function<std::unique_ptr<::tpystd::coro::Cancell
 }
 
 // async def main_coro() -> int32:
-//     return await run_twice(double, 3, 5)
+//     return await run_twice(double, 3, 5)  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace([](int32_t __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<int32_t>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(double_(__a0)); }, 3, 5);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await run_twice(double, 3, 5)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();

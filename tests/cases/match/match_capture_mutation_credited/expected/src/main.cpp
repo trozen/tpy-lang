@@ -214,16 +214,20 @@ void poly_subject(Pet& p) {
     }
 }
 
+// # generator body. The suspension is OUTSIDE the match: an arm that carries one
+// # turns the capture into a frame field, which is an emplaced COPY, so the
+// # mutation would stop at that copy instead of reaching the caller
+// # (BUGS.md#resumable-match-capture-frame-emplace-copies)
 // def gen_body(a: Counter | Cat) -> Iterator[int32]:
 //     match a:
 //         case Counter() as c:
 //             c.n += 1  # tpyc: ok
 //         case Cat() as k:
 //             k.hunger += 1
-//     yield 1
+//     yield 1                                         # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -242,7 +246,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -257,6 +261,7 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
     return __gen_gen_body(a);
 }
 
+// # async body: the same union param at the coroutine's own parameter slot
 // async def async_body(a: Counter | Cat) -> int32:
 //     match a:
 //         case Counter() as c:
@@ -268,7 +273,7 @@ __gen_gen_body gen_body(::tpy::Union<Cat*, Counter*> a) {
 ::tpystd::tpy::Poll<int32_t> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {

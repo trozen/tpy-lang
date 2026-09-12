@@ -114,23 +114,23 @@ void main() {
 //     # Generator: the alias remains live before and after suspension.
 //     me = self  # tpyc: ok
 //     me.n += 1
-//     yield me.n
+//     yield me.n                                                        # -> S_RESUME_0
 //     me.n += 2
-//     yield self.n
+//     yield self.n                                                      # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         me = &(__self);
         me->n = ::tpy::add_check<int32_t>(me->n, 1);
         __state = S_RESUME_0;
         return me->n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield me.n
         me->n = ::tpy::add_check<int32_t>(me->n, 2);
         __state = S_RESUME_1;
         return __self.n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -144,25 +144,25 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_steps::__next__() {
 //     first = self  # tpyc: ok
 //     # Existing alias-of-alias sources and rebinds to self share the frame.
 //     me = first
-//     yield me.n
+//     yield me.n                                                              # -> S_RESUME_0
 //     me = self  # tpyc: ok
 //     me.n += 1
-//     yield self.n
+//     yield self.n                                                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         first = &(__self);
         me = first;
         __state = S_RESUME_0;
         return me->n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield me.n
         me = &(__self);
         me->n = ::tpy::add_check<int32_t>(me->n, 1);
         __state = S_RESUME_1;
         return __self.n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -172,23 +172,24 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_rebound_steps::__next__(
 }
 
 
+// @readonly
 // def readonly_steps(self) -> Iterator[int32]:
 //     # The frame alias and its captured receiver must agree on constness.
 //     me = self  # tpyc: ok
-//     yield me.n
-//     yield me.n
+//     yield me.n                                                            # -> S_RESUME_0
+//     yield me.n                                                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         me = &(__self);
         __state = S_RESUME_0;
         return me->n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield me.n
         __state = S_RESUME_1;
         return me->n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield me.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -201,19 +202,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Cell_readonly_steps::__next__
 // async def update(self) -> int32:
 //     # Async: the frame alias survives an actual suspension point.
 //     me = self  # tpyc: ok
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                         # -> S_RESUME_0
 //     me.n += 6
 //     self.n += 7
 //     return me.n
 ::tpystd::tpy::Poll<int32_t> __coro_Cell_update::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         me = &(__self);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

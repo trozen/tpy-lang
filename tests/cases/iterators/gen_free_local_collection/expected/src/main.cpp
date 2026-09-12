@@ -9,12 +9,12 @@ namespace tpyapp::main {
 //     d = {1: 10, 2: 20}
 //     s = {7, 8}
 //     for n in nums:
-//         yield n
-//     yield len(d)
-//     yield len(s)
+//         yield n                # -> S_RESUME_0
+//     yield len(d)               # -> S_RESUME_1
+//     yield len(s)               # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         nums.emplace(std::array<int32_t, 3>{1, 2, 3});
         d.emplace(::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
         s.emplace(::tpy::ordered_set<int32_t>({7, 8}));
@@ -23,15 +23,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield len(d)
         __state = S_RESUME_2;
         return ::tpy::__len__((*s));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield len(s)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

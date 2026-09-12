@@ -127,7 +127,6 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     return os;
 }
 
-// # generator METHOD: the view rides beside the `self` capture.
 // class Scaler:
 struct Scaler {
     // factor: int32
@@ -164,7 +163,6 @@ inline std::ostream& operator<<(std::ostream& os, const Tagger& obj) {
     return os;
 }
 
-// # async METHOD flavour of the same capture.
 // class Adder:
 struct Adder {
     // step: int32
@@ -201,7 +199,6 @@ inline std::ostream& operator<<(std::ostream& os, const Summer& obj) {
     return os;
 }
 
-// # enclosing generator METHOD: the hoisted field rides beside the `self` capture.
 // class Outer:
 struct Outer {
     // prefix: str

@@ -46,7 +46,6 @@ inline constexpr int32_t HTTPS_PORT = 443;
 //              injected: Own[Box[_Connection]] | None) -> Own[HTTPResponse]:
 ::tpystd::http::client::HTTPResponse _urlopen(std::string_view url, std::optional<::tpy::BytesView> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context, std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> injected);
 
-// # Subclasses OSError like CPython's URLError, so `except OSError` catches it.
 // class URLError(OSError):
 struct URLError : ::tpy::OSError {
 

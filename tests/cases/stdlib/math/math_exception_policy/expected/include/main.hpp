@@ -46,6 +46,7 @@ __coro_async_root async_root(double x);
 __coro_async_position async_position();
 // def closure_position(x: float) -> None:
 void closure_position(double x);
+// @error_return(MarkerError)
 // def error_return_root(x: float) -> float:
 std::expected<double, MarkerError> error_return_root(double x);
 // def optional_root(x: float | None) -> float:

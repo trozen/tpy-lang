@@ -20,7 +20,7 @@ void main() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_Worker_go::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.n = ::tpy::add_check<int32_t>(__self.n, 1);
         std::cout << __self.n << "\n";
         __state = S_DONE;

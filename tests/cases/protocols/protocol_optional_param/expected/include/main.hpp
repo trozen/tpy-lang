@@ -69,7 +69,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// # Required + optional protocol params in constructor
 // class MixedContainer:
 struct MixedContainer {
     // count: int
@@ -95,7 +94,6 @@ inline std::ostream& operator<<(std::ostream& os, const MixedContainer& obj) {
     return os;
 }
 
-// # Generic class with Optional[Protocol] constructor param
 // class GenericContainer[T]:
 template<typename T>
 struct GenericContainer {

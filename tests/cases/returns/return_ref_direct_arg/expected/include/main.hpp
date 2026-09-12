@@ -19,7 +19,6 @@ void bump(Point& p);
 // def test() -> None:
 void test();
 
-// # Test: ref-returning call passed directly as mutable ref arg -- no copy, mutation propagates
 // class Point:
 struct Point {
     // x: int

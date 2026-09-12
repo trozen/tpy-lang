@@ -87,6 +87,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
+// @readonly
 // def ro_names(self) -> Iterator[str]:
 struct __gen_Pet_ro_names : public ::tpy::next_iter_mixin<__gen_Pet_ro_names, std::string> {
     int32_t __state;

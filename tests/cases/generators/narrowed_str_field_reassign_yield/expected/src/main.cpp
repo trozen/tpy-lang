@@ -40,11 +40,11 @@ void main() {
 //         # The reassign from the narrowed field forces q's frame
 //         # storage owned.
 //         q = self.s
-//     yield "start"
-//     yield q
+//     yield "start"                                                # -> S_RESUME_0
+//     yield q                                                      # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_reassigned::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         q = "";
         if ((__self.s.has_value())) {
             q = (*__self.s);
@@ -52,11 +52,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_reassigned::__nex
         __state = S_RESUME_0;
         return "start";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "start"
         __state = S_RESUME_1;
         return q;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield q
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

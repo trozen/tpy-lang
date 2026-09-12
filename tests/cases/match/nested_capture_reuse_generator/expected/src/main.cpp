@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // def counts(a: Cat, b: Cat) -> Iterator[int]:
 //     match a:
 //         case Cat(lives=v):
-//             yield v          # 1 -- the outer bind
+//             yield v          # 1 -- the outer bind                                # -> S_RESUME_0
 //             match b:
 //                 case Cat(lives=v):   # tpyc: ok -- rebinds across the suspension
 //                     pass
-//             yield v          # 2 -- the inner bind, read after resuming
+//             yield v          # 2 -- the inner bind, read after resuming           # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         {
             v = __match_subject_1.lives;
@@ -24,7 +24,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v          # 1 -- the outer bind
         auto& __match_subject_2 = b;
         {
             v = __match_subject_2.lives;
@@ -32,7 +32,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__() {
         __state = S_RESUME_1;
         return v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v          # 2 -- the inner bind, read after resuming
         __state = S_JOIN_0;
         continue;
     }

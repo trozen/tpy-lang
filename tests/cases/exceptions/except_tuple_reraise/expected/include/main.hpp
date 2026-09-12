@@ -17,9 +17,6 @@ void inner(const ::tpy::BigInt& which);
 // def main() -> None:
 void main();
 
-// # A bare `raise` inside an `except (A, B):` body. Each expanded arm re-raises the
-// # exception it actually caught, so the original dynamic type reaches the outer
-// # handler -- the arm duplication must not collapse both types into one.
 // class AErr(Exception):
 struct AErr : ::tpy::Exception {
 

@@ -16,10 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # BaseN.method(self, ...) resolves through BaseN's MRO so inherited methods
-// # (defined on a grandparent) are reachable even when BaseN itself doesn't
-// # declare them. Here 'identify' lives on Root; Middle inherits it; Leaf reaches
-// # Middle.identify -> Root.identify via the unbound-self form.
 // class Root:
 struct Root {
 

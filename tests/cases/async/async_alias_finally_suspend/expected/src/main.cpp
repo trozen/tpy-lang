@@ -10,17 +10,17 @@ namespace tpyapp::main {
 //     try:
 //         return xs
 //     finally:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)         # -> S_RESUME_0
 //         print(len(ys))
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         xs.emplace(std::vector<int32_t>{1, 2, 3});
         ys = &((*xs));
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<int32_t>>::pending();
         (void)std::move(__r0).value();
@@ -72,16 +72,16 @@ __coro_make make() {
 }
 
 // async def driver() -> int32:
-//     r = await make()
+//     r = await make()          # -> S_RESUME_0
 //     return len(r)
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await make()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         r.emplace(std::move(__r0).value());

@@ -546,9 +546,6 @@ std::optional<std::string> HTTPResponse::getheader(std::string_view name, std::o
 // import socket
 // import ssl
 // from io import BufferedReader
-//
-// HTTP_PORT: Final[int32] = 80
-// HTTPS_PORT: Final[int32] = 443
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

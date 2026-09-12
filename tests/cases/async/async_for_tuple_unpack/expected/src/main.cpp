@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // async def sum_squares(p: Pairs) -> int:
 //     total = 0
-//     async for k, sq in p:
+//     async for k, sq in p:                # -> S_RESUME_0
 //         total += sq
 //     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sum_squares::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __for_itr_0.emplace((p).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for k, sq in p:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -72,16 +72,16 @@ __coro_sum_squares sum_squares(Pairs& p) {
 
 // async def main() -> None:
 //     p = Pairs(4)
-//     print(await sum_squares(p))
+//     print(await sum_squares(p))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         p.emplace(Pairs(::tpy::BigInt(4)));
         __sub_0.emplace((*p));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await sum_squares(p))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -109,7 +109,7 @@ __coro_main main() {
 ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt, ::tpy::BigInt>> __coro_PairIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.n >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

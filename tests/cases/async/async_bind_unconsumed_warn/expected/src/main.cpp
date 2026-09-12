@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_note::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "ran" << " " << tag << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -29,11 +29,11 @@ __coro_note note(std::string_view tag) {
 //     c = note("dropped")  # tpyc: warning(/never consumed/)
 //     d = note("first")
 //     d = note("second")  # tpyc: warning(/drops the previous coroutine/)
-//     await d
-//     await asyncio.sleep(0.001)
+//     await d                                                              # -> S_RESUME_0
+//     await asyncio.sleep(0.001)                                           # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "dropped";
         c.emplace(note(__coro_arg_0));
         __coro_arg_1 = "first";
@@ -43,7 +43,7 @@ __coro_note note(std::string_view tag) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await d
         auto __r0 = ::tpy::poll_with_cancel(d, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -52,7 +52,7 @@ __coro_note note(std::string_view tag) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0.001)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

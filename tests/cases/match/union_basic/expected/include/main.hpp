@@ -18,7 +18,6 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # match/case on a 3-member union with class patterns and wildcard default
 // class Dog:
 struct Dog {
     // name: str

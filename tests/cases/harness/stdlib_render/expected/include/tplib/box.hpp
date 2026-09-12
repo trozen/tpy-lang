@@ -17,9 +17,6 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "tplib.box";
 
-// # @nocopy: deliberate duplication is always explicit via Box.clone. Mirrors
-// # Rc -- both own a heap allocation, both have __del__, and both expose an
-// # explicit clone().
 // @nocopy
 // class Box[T](Deref[T], Covariant[T]):
 template<typename T>

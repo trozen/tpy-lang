@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def gen() -> Iterator[int]:
 //     rows = [[i, i + 1] for i in range(3) if i > 0]
 //     for r in rows:
-//         yield r[0]
-//         yield r[1]
+//         yield r[0]                                  # -> S_RESUME_0
+//         yield r[1]                                  # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         rows.emplace(({
             std::vector<std::array<int32_t, 2>> __result;
             const int32_t __stop_0 = 3;
@@ -28,11 +28,11 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield r[0]
         __state = S_RESUME_1;
         return ::tpy::BigInt(::tpy::__getitem__((*r), 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield r[1]
         __state = S_JOIN_0;
         continue;
     }

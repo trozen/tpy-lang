@@ -19,19 +19,19 @@ void boom(const ::tpy::BigInt& which) {
 //     for i in range(2):
 //         try:
 //             boom(i)
-//             yield -1
+//             yield -1                      # -> S_RESUME_0
 //         except (AErr, BErr):  # tpyc: ok
-//             yield i
-//             yield i * 100
+//             yield i                       # -> S_RESUME_1, S_RESUME_3
+//             yield i * 100                 # -> S_RESUME_2, S_RESUME_4
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         try {
             __state = S_JOIN_1;
             continue;
@@ -45,19 +45,19 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i
         __state = S_RESUME_2;
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(i, 100)));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield i * 100
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield i
         __state = S_RESUME_4;
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(i, 100)));
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: yield i * 100
         __state = S_JOIN_1;
         continue;
     }

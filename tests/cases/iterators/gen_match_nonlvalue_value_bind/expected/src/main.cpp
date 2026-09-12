@@ -7,12 +7,12 @@ namespace tpyapp::main {
 // def gen() -> Iterator[int]:
 //     match Box("hello-world"):
 //         case Box(label=v):
-//             yield 1
+//             yield 1            # -> S_RESUME_0
 //             print(v)
-//             yield 2
+//             yield 2            # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __match_subject_1 = Box("hello-world");
         {
             v = __match_subject_1.label;
@@ -22,12 +22,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         std::cout << v << "\n";
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_JOIN_0;
         continue;
     }

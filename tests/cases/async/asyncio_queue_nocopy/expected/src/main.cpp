@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // async def main_coro() -> None:
 //     q: Queue[Box[int32]] = Queue(0)
-//     await q.put(Box(int32(10)))
+//     await q.put(Box(int32(10)))      # -> S_RESUME_0
 //     q.put_nowait(Box(int32(20)))
-//     a = await q.get()
+//     a = await q.get()                # -> S_RESUME_1
 //     b = q.get_nowait()
 //     print(a.get(), b.get())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         q.emplace(::tpystd::asyncio::Queue<::tpystd::tplib::box::Box<int32_t>>(0));
         __sub_0.emplace((*q), ::tpystd::tplib::box::Box<int32_t>(10));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await q.put(Box(int32(10)))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -29,7 +29,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: a = await q.get()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a.emplace(std::move(__r1).value());

@@ -20,10 +20,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A value-typed match capture rebound via the DECLARE-shaped forms -- a bare
-// # `v = ...`, a walrus, or a rebind nested in an inner block -- assigns the
-// # capture's own local rather than redeclaring it (CPython's `match` is not its
-// # own scope, so all three rebind the same local).
 // class Cat:
 struct Cat {
     // lives: int

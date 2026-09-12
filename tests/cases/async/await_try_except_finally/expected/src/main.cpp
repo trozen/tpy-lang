@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int32_t __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -30,7 +30,7 @@ __coro_value value(int32_t n) {
 ::tpystd::tpy::Poll<int32_t> __coro_fail::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         throw ::tpy::ValueError("oops");
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -47,13 +47,13 @@ __coro_fail fail() {
 // async def go(should_fail: bool) -> int32:
 //     result = int32(0)
 //     try:
-//         a = await value(int32(1))
+//         a = await value(int32(1))          # -> S_RESUME_0
 //         result = a
 //         if should_fail:
-//             b = await fail()
+//             b = await fail()               # -> S_RESUME_1
 //             result = result + b
 //         else:
-//             b = await value(int32(2))
+//             b = await value(int32(2))      # -> S_RESUME_2
 //             result = result + b
 //     except ValueError:
 //         result = int32(99)
@@ -63,12 +63,12 @@ __coro_fail fail() {
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         result = 0;
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: a = await value(int32(1))
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -105,7 +105,7 @@ __coro_fail fail() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: b = await fail()
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -135,7 +135,7 @@ __coro_fail fail() {
             throw;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: b = await value(int32(2))
         try {
             auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();

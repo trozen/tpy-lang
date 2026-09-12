@@ -27,19 +27,15 @@ struct Item {
     Item() = default;
     explicit Item(std::string_view name, std::string_view desc, std::string_view label);
 
-    // # Warning: -> str copies the field
     // def get_name(self) -> str:
     std::string get_name() const;
 
-    // # No warning: -> StrView is zero-copy
     // def get_desc(self) -> StrView:
     std::string_view get_desc() const;
 
-    // # No warning: -> String is explicit owned
     // def get_label(self) -> String:
     ::tpy::String get_label() const;
 
-    // # No warning: dunder method
     // def __str__(self) -> str:
     std::string __str__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Item";

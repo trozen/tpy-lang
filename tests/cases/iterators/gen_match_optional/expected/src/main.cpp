@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def gen(x: Optional[int]) -> Iterator[int]:
 //     match x:
 //         case None:
-//             yield -1
+//             yield -1                         # -> S_RESUME_0
 //         case v:
-//             yield v
-//             yield v * 2
+//             yield v                          # -> S_RESUME_1
+//             yield v * 2                      # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = x;
         if (!__match_subject_1.has_value()) {
             __state = S_RESUME_0;
@@ -29,15 +29,15 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_RESUME_2;
         return ((v) * (::tpy::BigInt(2)));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield v * 2
         __state = S_JOIN_0;
         continue;
     }

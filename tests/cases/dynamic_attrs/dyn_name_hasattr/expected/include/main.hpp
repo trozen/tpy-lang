@@ -16,9 +16,6 @@ bool has(const Headers& h, std::string_view name);
 // def main() -> None:
 void main();
 
-// # D16 phase 9: hasattr(obj, name_var) with a runtime name -- requires
-// # the receiver to be dyn-readable; routes to __getattr__ and reports
-// # True/False based on whether AttributeError is raised.
 // class Headers:
 struct Headers {
 

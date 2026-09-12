@@ -114,21 +114,21 @@ struct __gen_Summer_each_doubled : public ::tpy::next_iter_mixin<__gen_Summer_ea
 
 // def each_doubled(self) -> Iterator[int32]:
 //     for x in self.items:
-//         yield x
-//         yield x * 2
+//         yield x                             # -> S_RESUME_0
+//         yield x * 2                         # -> S_RESUME_1
 template <::tpystd::typing::Iterable<int32_t> T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Summer_each_doubled<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, __self.items);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 2));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x * 2
         __state = S_JOIN_0;
         continue;
     }

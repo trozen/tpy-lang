@@ -11,8 +11,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @pure
 // def add_values(a: int32, b: int32) -> int32:
 int32_t add_values(int32_t a, int32_t b);
+// @pure
 // def compute(p: Point) -> int32:
 int32_t compute(const Point& p);
 // def use_readonly(p: readonly[Point]) -> None:

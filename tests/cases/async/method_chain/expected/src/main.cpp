@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // async def main_coro() -> None:
 //     m = Math(7)
-//     q = await m.quad_base()
+//     q = await m.quad_base()     # -> S_RESUME_0
 //     print(q)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         m.emplace(Math(7));
         __sub_0.emplace((*m));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: q = await m.quad_base()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         q = std::move(__r0).value();
@@ -41,7 +41,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<int32_t> __coro_Math_double_base::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(__self.base, 2));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -53,16 +53,16 @@ __coro_main_coro main_coro() {
 
 
 // async def quad_base(self) -> int32:
-//     d = await self.double_base()
+//     d = await self.double_base()     # -> S_RESUME_0
 //     return d * 2
 ::tpystd::tpy::Poll<int32_t> __coro_Math_quad_base::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(__self);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: d = await self.double_base()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         d = std::move(__r0).value();

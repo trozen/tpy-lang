@@ -22,7 +22,6 @@ void greet(::tpyapp::pet::Pet& pet);
 // def main() -> None:
 void main();
 
-// # Direct inheritance (C++ struct Dog : Pet)
 // class Dog(Pet):
 struct Dog : ::tpyapp::pet::Pet {
 
@@ -37,7 +36,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// # Structural conformance (no explicit inheritance)
 // class Cat:
 struct Cat {
 

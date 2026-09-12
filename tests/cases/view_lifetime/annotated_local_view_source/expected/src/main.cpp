@@ -73,16 +73,16 @@ void hoisted_branch(std::string_view sv, bool flag) {
 // def gen_frame(sv: StrView) -> Iterator[int]:
 //     label: str = sv  # tpyc: ok
 //     print(label)
-//     yield len(label)
+//     yield len(label)                          # -> S_RESUME_0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_frame::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         label = sv;
         std::cout << label << "\n";
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__(label));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(label)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

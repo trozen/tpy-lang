@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # D16 Phase 1: child class inherits __getattr__ from parent via MRO.
 // class Parent:
 struct Parent {
     // _store: dict[str, str]

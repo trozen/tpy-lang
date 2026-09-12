@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // async def amain() -> None:
-//     async with Gate() as v:
+//     async with Gate() as v:     # -> S_RESUME_0, S_RESUME_1
 //         print(v)
 //     t = Ticker()
-//     print(await t.__anext__())
+//     print(await t.__anext__())  # -> S_RESUME_2
 //     s = Svc()
-//     print(await s.fetch())
+//     print(await s.fetch())      # -> S_RESUME_3
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Gate());
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with Gate() as v:
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();
@@ -27,7 +27,7 @@ namespace tpyapp::main {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async with Gate() as v:
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -40,7 +40,7 @@ namespace tpyapp::main {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await t.__anext__())
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r2).value();
@@ -51,7 +51,7 @@ namespace tpyapp::main {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print(await s.fetch())
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r3).value();
@@ -93,18 +93,19 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// # `async with` embeds __aenter__/__aexit__; the manager is svc.Gate.
 // async def __aenter__(self) -> int32:
-//     async with svc.Gate() as v:
+//     async with svc.Gate() as v:       # -> S_RESUME_0, S_RESUME_1
 //         return v + 1
 ::tpystd::tpy::Poll<int32_t> __coro_Gate___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(::tpyapp::svc::Gate());
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with svc.Gate() as v:
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         v = std::move(__r0).value();
@@ -112,7 +113,7 @@ __coro_amain amain() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async with svc.Gate() as v:
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r1).value();
@@ -158,15 +159,15 @@ __coro_amain amain() {
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                        # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_Gate___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -180,18 +181,19 @@ __coro_amain amain() {
 }
 
 
+// # `async for` embeds the source's __anext__ coro; the source is svc.Ticker.
 // async def __anext__(self) -> int32:
-//     async for v in svc.Ticker(3):
+//     async for v in svc.Ticker(3):    # -> S_RESUME_0
 //         self.total += v
 //     return self.total
 ::tpystd::tpy::Poll<int32_t> __coro_Ticker___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_itr_0.emplace((::tpyapp::svc::Ticker(3)).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for v in svc.Ticker(3):
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -236,18 +238,19 @@ __coro_amain amain() {
 }
 
 
+// # An owner-typed inline await embeds the callee coro; the owner is svc.Svc.
 // async def fetch(self) -> int32:
 //     h = svc.Svc()
-//     return await h.fetch()
+//     return await h.fetch()       # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_Svc_fetch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h.emplace(::tpyapp::svc::Svc());
         __sub_0.emplace((*h));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await h.fetch()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();

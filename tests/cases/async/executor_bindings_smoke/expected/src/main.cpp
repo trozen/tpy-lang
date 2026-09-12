@@ -23,7 +23,7 @@ void check_outside() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_check_inside::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h = ::tpystd::asyncio::_executor::_get_current_executor();
         std::cout << "inside null?" << " " << ::tpy::print_bool((h == nullptr)) << "\n";
         ::tpystd::asyncio::_executor::_clear_current_executor();
@@ -57,7 +57,7 @@ void check_sleep() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_trivial::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

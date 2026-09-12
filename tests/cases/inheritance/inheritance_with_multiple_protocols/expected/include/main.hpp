@@ -7,7 +7,6 @@
 
 namespace tpyapp::main {
 
-// # Protocols
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
@@ -32,7 +31,6 @@ struct Car;
 extern Car* c;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Base class
 // class Vehicle:
 struct Vehicle {
     // brand: str
@@ -54,7 +52,6 @@ inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
     return os;
 }
 
-// # Inherit from class AND implement multiple protocols
 // class Car(Vehicle, Printable, Measurable, Describable):
 struct Car : Vehicle {
     // model: str

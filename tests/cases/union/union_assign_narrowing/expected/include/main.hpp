@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Assignment narrowing: union var initialized with concrete type narrows without isinstance
 // class Circle:
 struct Circle {
     // radius: float

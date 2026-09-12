@@ -17,8 +17,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # A literal field sub-pattern on a union arm (`Dog(legs=4)`) must compare the
-// # field, not match every Dog. Regression: the condition used to be dropped.
 // class Dog:
 struct Dog {
     // legs: int

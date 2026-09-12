@@ -18,10 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A plain record is always truthy, but reaching `a.b.c` must still check that
-// # `a.b` is not None -- the always-true fold used to drop the whole render and
-// # with it the check, so a None `b` silently took the branch. CPython raises
-// # AttributeError here; TPy panics on the null-optional deref.
 // class C:
 struct C {
     // v: int

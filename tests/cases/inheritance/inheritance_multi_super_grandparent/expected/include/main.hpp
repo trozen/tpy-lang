@@ -17,8 +17,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Only the grandparent (GA) defines tag(); A inherits without overriding.
-// # super().tag() skips past A and codegen emits this->GA::tag() directly.
 // class GA:
 struct GA {
 

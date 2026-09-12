@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # str()/f-string for containers holding records
 // class Point:
 struct Point {
     // x: int

@@ -25,7 +25,6 @@ bool test_or_rhs(::tpy::Union<const A*, const B*> v);
 // def main() -> None:
 void main();
 
-// # isinstance in compound conditions: and/or, negation, multi-variable
 // class A:
 struct A {
     // x: int

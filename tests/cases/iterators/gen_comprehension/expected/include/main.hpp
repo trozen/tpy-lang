@@ -119,23 +119,24 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
         return os << "<generator head>";
     }
 };
+// # Iterating an Iterable[T] param forces the frame and makes the struct templated.
 // def head[T](it: Iterable[T], n: int32) -> Iterator[T]:
 //     c: int32 = 0
 //     for x in it:
 //         if c >= n:
 //             break
-//         yield x
+//         yield x                                         # -> S_RESUME_0
 //         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -257,6 +258,7 @@ inline Node::Node(int32_t v) : v(v) {}
 // def __init__(self, base: int32) -> None:
 //     self.base = base
 inline Counter::Counter(int32_t base) : base(base) {}
+// # Inverse guard: simple generators (peephole path) must keep working.
 // def simple(n: int32) -> Iterator[int32]:
 //     i: int32 = 0
 //     while i < n:

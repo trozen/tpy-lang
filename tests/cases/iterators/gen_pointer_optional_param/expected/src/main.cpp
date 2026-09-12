@@ -7,22 +7,22 @@ namespace tpyapp::main {
 // def gen_n_times(p: P | None, n: int32) -> Iterator[int32]:
 //     for _ in range(n):
 //         if p is not None:
-//             yield p.n
+//             yield p.n                                       # -> S_RESUME_0
 //         else:
-//             yield -1
+//             yield -1                                        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_n_times::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p.n
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_JOIN_1;
         continue;
     }

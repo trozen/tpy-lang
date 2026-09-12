@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Direct `obj.foo` access inside try/except AttributeError: the missing-attribute
-// # raise propagates as a throw and is caught by the except clause.
 // class Bag:
 struct Bag {
 

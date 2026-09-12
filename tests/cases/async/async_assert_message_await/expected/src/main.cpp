@@ -10,7 +10,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::string> __coro_msg::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "building" << " " << tag << "\n";
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat(tag, "!"));
@@ -28,11 +28,11 @@ __coro_msg msg(std::string_view tag) {
 }
 
 // async def go(x: int32) -> None:
-//     assert x > 0, await msg("positive")
+//     assert x > 0, await msg("positive")  # -> S_RESUME_0
 //     print("passed", x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!((x > 0)))) {
             __coro_arg_0 = "positive";
             __sub_0.emplace(__coro_arg_0);
@@ -43,7 +43,7 @@ __coro_msg msg(std::string_view tag) {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: assert x > 0, await msg("positive")
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -69,19 +69,19 @@ __coro_go go(int32_t x) {
 }
 
 // async def main_coro() -> None:
-//     await go(2)
+//     await go(2)                  # -> S_RESUME_0
 //     try:
-//         await go(0)
+//         await go(0)              # -> S_RESUME_1
 //     except AssertionError as e:
 //         print("caught", e)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(2);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await go(2)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -89,7 +89,7 @@ __coro_go go(int32_t x) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await go(0)
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

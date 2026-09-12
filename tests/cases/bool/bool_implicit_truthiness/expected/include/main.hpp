@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Test implicit truthiness via __bool__() in if/while/not/and/or
 // class Container:
 struct Container {
     // count: int

@@ -11,6 +11,7 @@ struct Foo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def get_count(f: Foo) -> int32:
 int32_t get_count(const Foo& f);
 // def main() -> None:

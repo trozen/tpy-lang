@@ -4,23 +4,24 @@
 namespace tpyapp::main {
 
 
+// # resumable consumer iterating a TEMPORARY generator source directly
 // def wrap(n: int32) -> Iterator[int32]:
-//     yield -1
+//     yield -1                            # -> S_RESUME_0
 //     for x in repeat_n(5, n):
-//         yield x
+//         yield x                         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_wrap::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         int32_t __tmp_1 = 5;
         __for_src_0.emplace(repeat_n<int32_t>(__tmp_1, n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

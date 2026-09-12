@@ -14,10 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: same shape as narrowed_field_reassign_none_box but for a
-// # value-Optional field (`int | None`). The field's C++ storage is
-// # `std::optional<BigInt>`; reassigning to None after narrowing must
-// # emit `std::nullopt`, not `nullptr`.
 // class Holder:
 struct Holder {
     // slot: int | None

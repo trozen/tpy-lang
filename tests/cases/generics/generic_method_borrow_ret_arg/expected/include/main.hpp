@@ -86,7 +86,6 @@ inline std::ostream& operator<<(std::ostream& os, const Bumper<T>& obj) {
     return os;
 }
 
-// # method body
 // class Owner:
 struct Owner {
     // h: Holder

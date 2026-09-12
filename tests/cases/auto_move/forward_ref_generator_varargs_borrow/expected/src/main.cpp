@@ -142,22 +142,22 @@ void main() {
 //     n = 0
 //     for s in xs:
 //         n += len(s)
-//         yield n
-//     yield -1
+//         yield n                                # -> S_RESUME_0
+//     yield -1                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -186,22 +186,22 @@ __gen_gen gen(::tpy::varargs<const std::vector<int32_t>> xs) {
 //     n = 0
 //     for s in xs:
 //         n += len(s)
-//         yield n
-//     yield len(extra)
+//         yield n                                                      # -> S_RESUME_0
+//     yield len(extra)                                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_kwgen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield len(extra)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -258,22 +258,22 @@ int32_t drop(std::vector<int32_t>&& xs) {
 //     n = 0
 //     for s in xs:
 //         n += len(s)
-//         yield n
-//     yield -1
+//         yield n                                        # -> S_RESUME_0
+//     yield -1                                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Collector_sizes::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

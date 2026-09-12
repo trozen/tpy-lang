@@ -45,16 +45,12 @@ struct Entry {
     // def __init__(self, name: bytes) -> None:
     explicit Entry(::tpy::BytesView name);
 
-    // # method: a bytes field against a bytes param and a literal
     // def is_named(self, other: bytes) -> bool:
     bool is_named(::tpy::BytesView other) const;
 
-    // # method: a bytes needle against a set field
     // def has_tag(self, tag: bytes) -> bool:
     bool has_tag(::tpy::BytesView tag) const;
 
-    // # user __contains__ with a bytes parameter: a literal needle renders the
-    // # static span into its `::tpy::BytesView` slot
     // def __contains__(self, tag: bytes) -> bool:
     bool __contains__(::tpy::BytesView tag) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Entry";
@@ -69,8 +65,6 @@ inline std::ostream& operator<<(std::ostream& os, const Entry& obj) {
 struct Bag {
 
 
-    // # user __contains__ whose slot OWNS the argument: a literal needle keeps
-    // # the owned render, since the view does not convert to the owner
     // def __contains__(self, value: Own[bytes]) -> bool:
     bool __contains__(::tpy::Bytes value) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
@@ -84,8 +78,6 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
 // class Box[T]:
 template<typename T>
 struct Box {
-    // # generic __contains__: the open-T slot is the instantiation's parameter
-    // # form, the view at bytes, so a literal needle takes the static span
     // item: T
     T item;
 

@@ -9,8 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @overload
 // def log(x: float) -> float: ...  # tpyc: ok
 double log(double x);
+// @overload
 // def log(x: float, base: float) -> float: ...  # tpyc: ok
 double log(double x, double base);
 // def main() -> None:

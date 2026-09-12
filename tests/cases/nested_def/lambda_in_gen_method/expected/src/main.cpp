@@ -18,20 +18,22 @@ int32_t push(std::vector<int32_t>& ys, int32_t v) {
     return ::tpy::__len__(ys);
 }
 
+// # free generator, two yields (frame): the captured name is an ordinary frame
+// # member (a param), the shape that used to emit `[n]` for a struct member.
 // def two_yield(n: int32) -> Iterator[int32]:
-//     yield apply(lambda x: x + n, 1)  # tpyc: ok
-//     yield apply(lambda x: x + n, 2)  # tpyc: ok
+//     yield apply(lambda x: x + n, 1)  # tpyc: ok  # -> S_RESUME_0
+//     yield apply(lambda x: x + n, 2)  # tpyc: ok  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_two_yield::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield apply(lambda x: x + n, 1)  # tpyc: ok
         __state = S_RESUME_1;
         return apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield apply(lambda x: x + n, 2)  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -46,22 +48,25 @@ __gen_two_yield two_yield(int32_t n) {
     return __gen_two_yield(n);
 }
 
+// # The by-value capture is what makes a lambda safe to hand to a callee that
+// # STORES it: `r.cb` outlives the generator frame, and the snapshot it holds
+// # still reads 10 after the generator is exhausted and gone.
 // def store(n: int32, r: Registry) -> Iterator[int32]:
 //     r.register(lambda x: x + n)  # tpyc: ok
-//     yield 1
-//     yield 2
+//     yield 1                                           # -> S_RESUME_0
+//     yield 2                                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_store::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         r.register_([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); });
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -76,26 +81,30 @@ __gen_store store(int32_t n, Registry& r) {
     return __gen_store(n, r);
 }
 
+// # The frame capture is a snapshot, so a captured local reassigned after the
+// # capture point warns exactly as it does in a sync body -- and, like
+// # nested_def/escaping_value_capture_reassigned, the closure runs BEFORE the
+// # reassignment so TPy and CPython still agree on the output.
 // def cell() -> Iterator[int32]:
 //     step = 1
 //     f: Callable[[int32], int32] = lambda x: x + step  # tpyc: warning(/reassigned after the closure is created/)
-//     yield apply(f, 1)
+//     yield apply(f, 1)                                                                                             # -> S_RESUME_0
 //     step = 100
-//     yield step
+//     yield step                                                                                                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         step = 1;
         f = [step = step](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, step)); };
         __state = S_RESUME_0;
         return apply(f, 1);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield apply(f, 1)
         step = 100;
         __state = S_RESUME_1;
         return step;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield step
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -110,20 +119,25 @@ __gen_cell cell() {
     return __gen_cell();
 }
 
+// # free generator, two yields (frame), NON-ESCAPING slot: `xs` is a borrowed
+// # reference-type param, so its frame member is the caller's object and the
+// # capture binds a reference to it -- the mutation through the closure is
+// # visible on the caller's list, as it is in the sync twin
+// # (nested_def/container_params) and in CPython.
 // def ref_capture(xs: list[int32]) -> Iterator[int32]:
-//     yield apply_fn(lambda v: push(xs, v), 9)  # tpyc: ok
-//     yield apply_fn(lambda i: xs[i], 2)  # tpyc: ok
+//     yield apply_fn(lambda v: push(xs, v), 9)  # tpyc: ok  # -> S_RESUME_0
+//     yield apply_fn(lambda i: xs[i], 2)  # tpyc: ok        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_ref_capture::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return apply_fn([&xs = xs](int32_t v) -> int32_t { return push(xs, v); }, 9);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield apply_fn(lambda v: push(xs, v), 9)  # tpyc: ok
         __state = S_RESUME_1;
         return apply_fn([&xs = xs](int32_t i) -> int32_t { return ::tpy::__getitem__(xs, i); }, 2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield apply_fn(lambda i: xs[i], 2)  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -138,20 +152,24 @@ __gen_ref_capture ref_capture(std::vector<int32_t>& xs) {
     return __gen_ref_capture(xs);
 }
 
+// # free generator, two yields (frame): an `Own[T]` member is snapshotted by its
+// # PAYLOAD, so the wrapper is peeled before the copyable verdict -- a value-typed
+// # payload copies, the `__del__`-carrying one rejects
+// # (nested_def/error_frame_lambda_nocopy_snapshot).
 // def own_capture(p: Own[Pt]) -> Iterator[int32]:
-//     yield apply(lambda i: i + p.x, 1)  # tpyc: ok
-//     yield apply(lambda i: i + p.x, 2)  # tpyc: ok
+//     yield apply(lambda i: i + p.x, 1)  # tpyc: ok  # -> S_RESUME_0
+//     yield apply(lambda i: i + p.x, 2)  # tpyc: ok  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_capture::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 1);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield apply(lambda i: i + p.x, 1)  # tpyc: ok
         __state = S_RESUME_1;
         return apply([p = p](int32_t i) -> int32_t { return (::tpy::add_check<int32_t>(i, p.x)); }, 2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield apply(lambda i: i + p.x, 2)  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -271,22 +289,26 @@ void main() {
     }
 }
 
+// # generator METHOD, two yields (resumable frame): the receiver is the
+// # frame's `__self` reference member, and the lambda copies that HANDLE --
+// # so a field written between the two yields is visible to the second
+// # lambda, exactly as a sync method's `this` capture behaves.
 // def emit(self) -> Iterator[int32]:
-//     yield apply(lambda x: x + self.n, 1)  # tpyc: ok
+//     yield apply(lambda x: x + self.n, 1)  # tpyc: ok  # -> S_RESUME_0
 //     self.n = 100
-//     yield apply(lambda x: x + self.n, 2)  # tpyc: ok
+//     yield apply(lambda x: x + self.n, 2)  # tpyc: ok  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_D_emit::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 1);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield apply(lambda x: x + self.n, 1)  # tpyc: ok
         __self.n = 100;
         __state = S_RESUME_1;
         return apply([&__self = __self](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, __self.n)); }, 2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield apply(lambda x: x + self.n, 2)  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

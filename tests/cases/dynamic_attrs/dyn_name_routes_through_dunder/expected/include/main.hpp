@@ -14,10 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # D16 phase 9 (Option A): when getattr(obj, name_var) is called with a
-// # runtime name that happens to match a declared field name, the builtin
-// # still routes through __getattr__ rather than reading the field.
-// # CPython divergence -- documented in DYNAMIC_ATTRS_DESIGN.md divergence #8.
 // class Hybrid:
 struct Hybrid {
     // declared: str

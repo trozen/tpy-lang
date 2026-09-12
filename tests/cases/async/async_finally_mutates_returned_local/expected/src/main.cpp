@@ -13,7 +13,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<Box> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(Box());
         {
             bool __fin_ran_1 = false;
@@ -55,7 +55,7 @@ __coro_f f() {
 ::tpystd::tpy::Poll<std::optional<Box>> __coro_f_opt::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b = nullptr;
         if (flag) {
             b = &*(__ptr_slot_f0 = Box());
@@ -92,6 +92,10 @@ __coro_f_opt f_opt(bool flag) {
     return __coro_f_opt(flag);
 }
 
+// # This case should also test mutation through a closure, like the sync
+// # via_closure case does. It can't yet: a nested def that captures a local
+// # does not compile inside an async def (BUGS.md). Add that shape once it
+// # works.
 // async def f_alias() -> Own[Box]:
 //     b = Box()
 //     a = b
@@ -102,7 +106,7 @@ __coro_f_opt f_opt(bool flag) {
 ::tpystd::tpy::Poll<Box> __coro_f_alias::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(Box());
         a = &((*b));
         {
@@ -134,21 +138,21 @@ __coro_f_alias f_alias() {
 }
 
 // async def main() -> None:
-//     r = await f()
+//     r = await f()                      # -> S_RESUME_0
 //     print(r.n)
-//     o = await f_opt(True)
+//     o = await f_opt(True)              # -> S_RESUME_1
 //     if o is not None:
 //         print(o.n)
-//     print(await f_opt(False) is None)
-//     print((await f_alias()).n)
+//     print(await f_opt(False) is None)  # -> S_RESUME_2
+//     print((await f_alias()).n)         # -> S_RESUME_3
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await f()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r.emplace(std::move(__r0).value());
@@ -158,7 +162,7 @@ __coro_f_alias f_alias() {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: o = await f_opt(True)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         o = std::move(__r1).value();
@@ -170,7 +174,7 @@ __coro_f_alias f_alias() {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await f_opt(False) is None)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r2).value();
@@ -180,7 +184,7 @@ __coro_f_alias f_alias() {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print((await f_alias()).n)
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1.emplace(std::move(__r3).value());

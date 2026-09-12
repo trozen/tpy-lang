@@ -6,12 +6,12 @@ namespace tpyapp::main {
 
 // async def opt_branch(v: int32 | None) -> int32:
 //     if v:  # tpyc: warning(/Truthiness check on optional value/)
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                    # -> S_RESUME_0
 //         return 1
 //     return 2
 ::tpystd::tpy::Poll<int32_t> __coro_opt_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (::tpy::is_truthy(v)) {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -22,7 +22,7 @@ namespace tpyapp::main {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -44,12 +44,12 @@ __coro_opt_branch opt_branch(std::optional<int32_t> v) {
 
 // async def list_branch(xs: list[int32]) -> int32:
 //     if xs:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                    # -> S_RESUME_0
 //         return 1
 //     return 2
 ::tpystd::tpy::Poll<int32_t> __coro_list_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((::tpy::__len__(xs) != 0)) {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -60,7 +60,7 @@ __coro_opt_branch opt_branch(std::optional<int32_t> v) {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -83,18 +83,18 @@ __coro_list_branch list_branch(std::vector<int32_t>& xs) {
 // async def str_while(t: str) -> int32:
 //     n = 0
 //     while t:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)         # -> S_RESUME_0
 //         n += 1
 //         t = ""
 //     return n
 ::tpystd::tpy::Poll<int32_t> __coro_str_while::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -130,12 +130,12 @@ __coro_str_while str_while(std::string_view t) {
 //     # A boolop recurses into both operands, so each side takes its own
 //     # render -- a container length test and an optional truthiness test.
 //     if xs and v:  # tpyc: warning(/Truthiness check on optional value/)
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                            # -> S_RESUME_0
 //         return 1
 //     return 2
 ::tpystd::tpy::Poll<int32_t> __coro_and_branch::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (((::tpy::__len__(xs) != 0) && ::tpy::is_truthy(v))) {
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -146,7 +146,7 @@ __coro_str_while str_while(std::string_view t) {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -167,21 +167,21 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
 }
 
 // async def main_async() -> None:
-//     print("zero", await opt_branch(0))
-//     print("none", await opt_branch(None))
-//     print("five", await opt_branch(5))
-//     print("list", await list_branch([1]), await list_branch([]))
-//     print("str", await str_while("x"), await str_while(""))
-//     print("and", await and_branch([1], 5), await and_branch([1], 0),
-//           await and_branch([], 5))
+//     print("zero", await opt_branch(0))                                # -> S_RESUME_0
+//     print("none", await opt_branch(None))                             # -> S_RESUME_1
+//     print("five", await opt_branch(5))                                # -> S_RESUME_2
+//     print("list", await list_branch([1]), await list_branch([]))      # -> S_RESUME_3, S_RESUME_4
+//     print("str", await str_while("x"), await str_while(""))           # -> S_RESUME_5, S_RESUME_6
+//     print("and", await and_branch([1], 5), await and_branch([1], 0),  # -> S_RESUME_7, S_RESUME_8
+//           await and_branch([], 5))                                    # -> S_RESUME_9
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("zero", await opt_branch(0))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -191,7 +191,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print("none", await opt_branch(None))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -201,7 +201,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print("five", await opt_branch(5))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -212,7 +212,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print("list", await list_branch([1]), await list_branch([]))
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
@@ -222,7 +222,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_4;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: print("list", await list_branch([1]), await list_branch([]))
         auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
@@ -233,7 +233,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_5;
         continue;
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: print("str", await str_while("x"), await str_while(""))
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
@@ -243,7 +243,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_6;
         continue;
     }
-    case S_RESUME_6: {
+    case S_RESUME_6: {  // after: print("str", await str_while("x"), await str_while(""))
         auto __r6 = ::tpy::poll_with_cancel(__sub_6, __cancel_pending, waker);
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_6 = std::move(__r6).value();
@@ -254,7 +254,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_7;
         continue;
     }
-    case S_RESUME_7: {
+    case S_RESUME_7: {  // after: print("and", await and_branch([1], 5), await and_branch([1], 0),
         auto __r7 = ::tpy::poll_with_cancel(__sub_7, __cancel_pending, waker);
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r7).value();
@@ -264,7 +264,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_8;
         continue;
     }
-    case S_RESUME_8: {
+    case S_RESUME_8: {  // after: print("and", await and_branch([1], 5), await and_branch([1], 0),
         auto __r8 = ::tpy::poll_with_cancel(__sub_8, __cancel_pending, waker);
         if (__r8.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_8 = std::move(__r8).value();
@@ -274,7 +274,7 @@ __coro_and_branch and_branch(std::vector<int32_t>& xs, std::optional<int32_t> v)
         __state = S_RESUME_9;
         continue;
     }
-    case S_RESUME_9: {
+    case S_RESUME_9: {  // after: await and_branch([], 5))
         auto __r9 = ::tpy::poll_with_cancel(__sub_9, __cancel_pending, waker);
         if (__r9.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_9 = std::move(__r9).value();

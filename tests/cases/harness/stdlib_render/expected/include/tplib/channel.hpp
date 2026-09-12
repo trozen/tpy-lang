@@ -473,17 +473,17 @@ struct __gen_Receiver___iter__ : public ::tpy::next_iter_mixin<__gen_Receiver___
 // def __iter__(self) -> Iterator[Own[T]]:
 //     while True:
 //         try:
-//             yield self.recv()
+//             yield self.recv()            # -> S_RESUME_0
 //         except ChannelClosed:
 //             return
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.recv()
         try {
             __state = S_JOIN_1;
             continue;

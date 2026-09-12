@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def guarded(a: Cat | Dog) -> Iterator[int32]:
 //     match a:
 //         case Cat(lives=v) if v > 3:  # a guarded arm's field capture
-//             yield v
-//             yield v + 1
+//             yield v                                                   # -> S_RESUME_0
+//             yield v + 1                                               # -> S_RESUME_1
 //         case _:
-//             yield 0
+//             yield 0                                                   # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -44,17 +44,17 @@ __match_end_2:;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         auto& __a = *std::get<const Cat*>(a);
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(v, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v + 1
         auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 0
         __state = S_JOIN_0;
         continue;
     }
@@ -76,14 +76,14 @@ __gen_guarded guarded(::tpy::Union<const Cat*, const Dog*> a) {
 // def guarded_cond(a: Cat | Dog, flag: bool) -> Iterator[int32]:
 //     match a:
 //         case Cat(lives=9) if flag:  # a field CONDITION beside the guard
-//             yield 9
+//             yield 9                                                       # -> S_RESUME_0
 //         case Dog(lives=v):
-//             yield v
+//             yield v                                                       # -> S_RESUME_1
 //         case _:
-//             yield -1
+//             yield -1                                                      # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded_cond::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -115,17 +115,17 @@ __match_end_2:;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 9
         auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         auto& __a = *std::get<const Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }
@@ -147,13 +147,13 @@ __gen_guarded_cond guarded_cond(::tpy::Union<const Cat*, const Dog*> a, bool fla
 // def nested(h: Holder) -> Iterator[int32]:
 //     match h:
 //         case Holder(pet=Cat(lives=v)):  # the union field's extraction alias
-//             yield v
-//             yield v + 1
+//             yield v                                                           # -> S_RESUME_0
+//             yield v + 1                                                       # -> S_RESUME_1
 //         case _:
-//             yield 0
+//             yield 0                                                           # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = h;
         if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
             auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
@@ -167,15 +167,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(v, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v + 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 0
         __state = S_JOIN_0;
         continue;
     }
@@ -198,21 +198,21 @@ __gen_nested nested(Holder& h) {
 //     # A frame local spelled like the aliased FIELD: the alias name derives
 //     # from the runtime base, so the two cannot collide.
 //     pet = Cat(1)
-//     yield pet.lives
+//     yield pet.lives                                                         # -> S_RESUME_0
 //     match h:
 //         case Holder(pet=Cat(lives=v)):
-//             yield v
+//             yield v                                                         # -> S_RESUME_1
 //         case _:
-//             yield 0
-//     yield pet.lives
+//             yield 0                                                         # -> S_RESUME_2
+//     yield pet.lives                                                         # -> S_RESUME_3
 std::expected<int32_t, ::tpy::StopIteration> __gen_nested_shadow::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         pet.emplace(Cat(1));
         __state = S_RESUME_0;
         return (*pet).lives;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield pet.lives
         auto& __match_subject_1 = h;
         if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
             auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
@@ -226,15 +226,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_nested_shadow::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 0
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield pet.lives
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -256,13 +256,13 @@ __gen_nested_shadow nested_shadow(Holder& h) {
 // async def a_guarded(a: Cat | Dog) -> int32:
 //     match a:
 //         case Cat(lives=v) if v > 3:
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)           # -> S_RESUME_0
 //             return v
 //         case _:
 //             return 0
 ::tpystd::tpy::Poll<int32_t> __coro_a_guarded::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -296,7 +296,7 @@ __match_end_2:;
         ::std::unreachable();
         __builtin_unreachable();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -318,17 +318,17 @@ __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // async def amain() -> None:
-//     print(await a_guarded(Cat(5)))
-//     print(await a_guarded(Dog(1)))
+//     print(await a_guarded(Cat(5)))  # -> S_RESUME_0
+//     print(await a_guarded(Dog(1)))  # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0.emplace(Cat(5));
         __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await a_guarded(Cat(5)))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -339,7 +339,7 @@ __coro_a_guarded a_guarded(::tpy::Union<const Cat*, const Dog*> a) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await a_guarded(Dog(1)))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();

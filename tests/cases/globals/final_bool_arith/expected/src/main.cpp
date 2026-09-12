@@ -10,13 +10,6 @@ void main() {
     std::cout << ::tpy::print_bool(AND_) << " " << ::tpy::print_bool(OR_) << " " << ::tpy::print_bool(EQ) << " " << ::tpy::print_bool(NE) << "\n";
 }
 
-// T: Final[bool] = True
-// F: Final[bool] = False
-// AND_: Final[bool] = T and F
-// OR_: Final[bool] = T or F
-// EQ: Final[bool] = T == F
-// NE: Final[bool] = T != F
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

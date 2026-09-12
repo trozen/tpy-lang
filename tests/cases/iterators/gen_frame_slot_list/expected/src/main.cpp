@@ -9,12 +9,12 @@ namespace tpyapp::main {
 //     history.append(1)
 //     history.append(2)
 //     history.append(3)
-//     yield len(history)
+//     yield len(history)         # -> S_RESUME_0
 //     history.append(4)
-//     yield len(history)
+//     yield len(history)         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         history.emplace(std::vector<int32_t>{});
         (*history).push_back(1);
         (*history).push_back(2);
@@ -22,12 +22,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_0;
         return ::tpy::__len__((*history));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(history)
         (*history).push_back(4);
         __state = S_RESUME_1;
         return ::tpy::__len__((*history));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield len(history)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

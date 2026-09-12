@@ -92,6 +92,7 @@ inline void Bag::add(std::optional<Pic>&& p) {
 inline void Bag::put(std::optional<Pic>&& p, std::vector<std::optional<Pic>>& sink) {
     sink.push_back(p ? std::optional<Pic>(std::move(*p)) : std::nullopt);
 }
+// # Generator body.
 // def gen(k: int32) -> Iterator[int32]:
 //     patches: list[Pic | None] = []
 //     for j in range(k):

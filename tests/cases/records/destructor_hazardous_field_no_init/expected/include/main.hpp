@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Hazardous: raw pointer field with no in-class initializer. Codegen
-// # suppresses Hazard()'s default ctor so default-construction is impossible.
 // class Hazard:
 struct Hazard {
     // _handle: Ptr[int32]
@@ -38,8 +36,6 @@ inline std::ostream& operator<<(std::ostream& os, const Hazard& obj) {
     return os;
 }
 
-// # Safe sibling: str field has a well-defined empty default at the C++ level
-// # (std::string_view{} -> empty view). Path-2 still emits Safe() = default;.
 // class Safe:
 struct Safe {
     // name: str

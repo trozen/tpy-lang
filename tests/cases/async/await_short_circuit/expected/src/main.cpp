@@ -10,7 +10,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_num::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "eval" << " " << tag << "\n";
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
@@ -29,26 +29,26 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
 
 // async def main() -> None:
 //     # or, left truthy: right skipped, result is the left value (5, not True)
-//     r1 = await num("or1-left", 5) or await num("or1-right-skip", 9)
+//     r1 = await num("or1-left", 5) or await num("or1-right-skip", 9)           # -> S_RESUME_0, S_RESUME_1
 //     print("r1", r1)
 //     # or, left falsy: right evaluated, result is the right value
-//     r2 = await num("or2-left", 0) or await num("or2-right-run", 7)
+//     r2 = await num("or2-left", 0) or await num("or2-right-run", 7)            # -> S_RESUME_2, S_RESUME_3
 //     print("r2", r2)
 //     # and, left falsy: right skipped, result is the left value (0)
-//     r3 = await num("and1-left", 0) and await num("and1-right-skip", 9)
+//     r3 = await num("and1-left", 0) and await num("and1-right-skip", 9)        # -> S_RESUME_4, S_RESUME_5
 //     print("r3", r3)
 //     # and, left truthy: right evaluated, result is the right value (8)
-//     r4 = await num("and2-left", 3) and await num("and2-right-run", 8)
+//     r4 = await num("and2-left", 3) and await num("and2-right-run", 8)         # -> S_RESUME_6, S_RESUME_7
 //     print("r4", r4)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "or1-left";
         __sub_0.emplace(__coro_arg_0, ::tpy::BigInt(5));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r1 = await num("or1-left", 5) or await num("or1-right-skip", 9)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_0 = std::move(__r0).value();
@@ -64,7 +64,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: r1 = await num("or1-left", 5) or await num("or1-right-skip", 9)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_1 = std::move(__r1).value();
@@ -72,7 +72,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: r2 = await num("or2-left", 0) or await num("or2-right-run", 7)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_2 = std::move(__r2).value();
@@ -88,7 +88,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             continue;
         }
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: r2 = await num("or2-left", 0) or await num("or2-right-run", 7)
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_3 = std::move(__r3).value();
@@ -96,7 +96,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: r3 = await num("and1-left", 0) and await num("and1-right-skip", 9)
         auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_4 = std::move(__r4).value();
@@ -112,7 +112,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             continue;
         }
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: r3 = await num("and1-left", 0) and await num("and1-right-skip", 9)
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_5 = std::move(__r5).value();
@@ -120,7 +120,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_6: {
+    case S_RESUME_6: {  // after: r4 = await num("and2-left", 3) and await num("and2-right-run", 8)
         auto __r6 = ::tpy::poll_with_cancel(__sub_6, __cancel_pending, waker);
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_6 = std::move(__r6).value();
@@ -136,7 +136,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             continue;
         }
     }
-    case S_RESUME_7: {
+    case S_RESUME_7: {  // after: r4 = await num("and2-left", 3) and await num("and2-right-run", 8)
         auto __r7 = ::tpy::poll_with_cancel(__sub_7, __cancel_pending, waker);
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __sc_7 = std::move(__r7).value();

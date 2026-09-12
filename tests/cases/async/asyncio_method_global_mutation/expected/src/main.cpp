@@ -7,19 +7,19 @@ int32_t total{};
 
 // async def main_coro() -> None:
 //     w = Worker()
-//     await w.add(5)
+//     await w.add(5)              # -> S_RESUME_0
 //     print("total =", total)
-//     await w.add(3)
+//     await w.add(3)              # -> S_RESUME_1
 //     print("total =", total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         w.emplace(Worker());
         __sub_0.emplace((*w), 5);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await w.add(5)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -29,7 +29,7 @@ int32_t total{};
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await w.add(3)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -57,16 +57,16 @@ void main() {
 
 // async def add(self, n: int32) -> None:
 //     global total
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)              # -> S_RESUME_0
 //     total += n
 ::tpystd::tpy::Poll<::std::monostate> __coro_Worker_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

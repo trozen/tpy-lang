@@ -34,10 +34,13 @@ struct BadDoc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @export
 // def has_nul(x: int64) -> int64:  # tpyc: warning(/docstring will not be visible from Python/)
 int64_t has_nul(int64_t x);
+// @export
 // def clean(x: int64) -> int64:  # tpyc: ok
 int64_t clean(int64_t x);
+// @export
 // def boom() -> None:  # tpyc: ok
 void boom();
 

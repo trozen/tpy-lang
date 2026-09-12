@@ -126,7 +126,6 @@ inline std::ostream& operator<<(std::ostream& os, const VHolder<T>& obj) {
     return os;
 }
 
-// # the bounded twin: a concrete value payload, silent for the same reason.
 // class IntHolder:
 struct IntHolder {
     // val: int32

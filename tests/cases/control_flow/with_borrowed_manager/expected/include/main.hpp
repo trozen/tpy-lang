@@ -16,8 +16,6 @@ void run(Counter& c);
 // def main() -> None:
 void main();
 
-// # Regression: `with` on a reference-type lvalue manager must borrow it (not
-// # copy), so __enter__/__exit__ act on the original. Mutate-and-observe + reuse.
 // class Counter:
 struct Counter {
     // n: int

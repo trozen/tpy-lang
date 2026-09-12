@@ -16,8 +16,6 @@ std::string lookup(const Headers& h, std::string_view name);
 // def main() -> None:
 void main();
 
-// # D16 phase 9: 3-arg getattr(obj, name_var, default) with a runtime name --
-// # routes to __getattr__; AttributeError caught and `default` substituted.
 // class Headers:
 struct Headers {
 

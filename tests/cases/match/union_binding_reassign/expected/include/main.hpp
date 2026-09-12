@@ -17,7 +17,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # Pattern binding can be reassigned inside the match arm body
 // class Dog:
 struct Dog {
     // name: str

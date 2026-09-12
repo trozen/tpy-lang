@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # User Exception subclass with no own __init__ inherits Exception(message).
-// # Plain `class E(Exception): pass` should accept E("...") just like Python.
 // class MyError(Exception):
 struct MyError : ::tpy::Exception {
 
@@ -33,7 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
     return os;
 }
 
-// # Multi-level pass-through: each link inherits Exception's __init__.
 // class Outer(MyError):
 struct Outer : MyError {
 

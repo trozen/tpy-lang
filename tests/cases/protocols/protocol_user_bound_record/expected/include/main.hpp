@@ -7,14 +7,12 @@
 
 namespace tpyapp::main {
 
-// # User-defined protocol
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
-// # Implementation of Printable
 // class Message:
 struct Message {
     // text: str
@@ -36,7 +34,6 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 
 template<Printable T> struct Container;
 
-// # Protocol that references the bounded record - this is the key test
 // class ContainerFactory(Protocol):
 template<typename T>
 concept ContainerFactory = requires(T& t) {
@@ -53,7 +50,6 @@ Container<Message> create_container(::tpy::param_val_or_ref_t<F> factory, std::s
 // def main() -> None:
 void main();
 
-// # Record with user-defined protocol bound
 // class Container[T: Printable]:
 template<Printable T>
 struct Container {
@@ -79,7 +75,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
-// # Factory implementation
 // class DefaultFactory:
 struct DefaultFactory {
 

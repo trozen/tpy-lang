@@ -11,7 +11,6 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "world";
 
-// # A world-space point. Shares the class name `Point` with screen.Point.
 // class Point:
 struct Point {
     // self.lat = lat

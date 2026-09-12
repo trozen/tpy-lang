@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // async def roundtrip() -> int:
 //     tx, rx = channel[int](4)
-//     await tx.send(7)
-//     await tx.send(35)
+//     await tx.send(7)                  # -> S_RESUME_0
+//     await tx.send(35)                 # -> S_RESUME_1
 //     tx.close()
 //     total = 0
 //     while True:
 //         try:
-//             total += await rx.recv()
+//             total += await rx.recv()  # -> S_RESUME_2
 //         except ChannelClosed:
 //             break
 //     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_roundtrip::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = ::tpystd::tpy::channel::channel<::tpy::BigInt>(4);
         tx.emplace(std::move(std::get<0>(__tup_1)));
         rx.emplace(std::move(std::get<1>(__tup_1)));
@@ -26,7 +26,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await tx.send(7)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -35,7 +35,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await tx.send(35)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
@@ -45,7 +45,7 @@ namespace tpyapp::main {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: total += await rx.recv()
         try {
             auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();

@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # repr() on records without __repr__ uses default "<ClassName object at 0xADDR>"
 // class Foo:
 struct Foo {
     // x: int

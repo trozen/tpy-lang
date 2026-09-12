@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // def gen_return_normal() -> Iterator[int]:
 //     try:
-//         yield 1
+//         yield 1                            # -> S_RESUME_0
 //     finally:
 //         return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_normal::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_1 = false;
         try {
             __fin_ran_1 = true;
@@ -67,18 +67,18 @@ __gen_gen_return_normal gen_return_normal() {
 
 // def gen_return_suppresses_exc() -> Iterator[int]:
 //     try:
-//         yield 1
+//         yield 1                                    # -> S_RESUME_0
 //         raise ValueError("suppressed")
 //     finally:
 //         return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_suppresses_exc::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             throw ::tpy::ValueError("suppressed");
         } catch (...) {
@@ -116,20 +116,20 @@ __gen_gen_return_suppresses_exc gen_return_suppresses_exc() {
 // def gen_return_in_loop() -> Iterator[int]:
 //     for i in range(5):
 //         try:
-//             yield i
+//             yield i                         # -> S_RESUME_0
 //         finally:
 //             if i == 2:
 //                 return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_in_loop::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(5));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         bool __fin_ran_3 = false;
         try {
             __fin_ran_3 = true;

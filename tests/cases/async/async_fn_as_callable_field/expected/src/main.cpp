@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def handle(c: Own[Conn]) -> None:
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)             # -> S_RESUME_0
 //     print("handled " + str(c.id))
 ::tpystd::tpy::Poll<::std::monostate> __coro_handle::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -36,16 +36,16 @@ __coro_handle handle(Conn c) {
 
 // async def main_coro() -> None:
 //     d = Dispatcher(handle)
-//     await d.run(3)
+//     await d.run(3)              # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         d.emplace(Dispatcher([](Conn&& __a0) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(handle(std::move(__a0))); }));
         __sub_0.emplace((*d), 3);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await d.run(3)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -77,10 +77,10 @@ void main() {
 //         tasks.append(asyncio.create_task(self._cb(Conn(i))))
 //         i += 1
 //     for t in tasks:
-//         await t
+//         await t                                               # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_Dispatcher_run::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<std::monostate>>{});
         i = 0;
         while ((i < count)) {
@@ -92,7 +92,7 @@ void main() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

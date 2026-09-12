@@ -18,8 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A list literal first declared inside a match arm and read after the
-// # match resolves in the arm's hoisted pre-declaration.
 // class Point:
 struct Point {
     // x: int

@@ -26,13 +26,13 @@ void main() {
 //         # by the owner after the generator drains.
 //         m[3] = 30
 //         for k in m:
-//             yield k
+//             yield k                                                      # -> S_RESUME_0
 //     m = None
 //     if m is None:
-//         yield -1
+//         yield -1                                                         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         m = ::tpy::optional_to_ptr(__self.d);
         if ((m != nullptr)) {
             ::tpy::__setitem__((*m), 3, 30);
@@ -45,11 +45,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_keys_of::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield k
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_JOIN_2;
         continue;
     }

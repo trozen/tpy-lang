@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def gen_with_yield(xs: list[int]) -> Iterator[int]:
 //     with Tracer("g"):
 //         for x in xs:
-//             yield x
+//             yield x                                  # -> S_RESUME_0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Tracer("g"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         try {
             __state = S_JOIN_0;
             continue;

@@ -17,14 +17,14 @@ bool free_fn(const ::tpy::Union<double, int32_t>& a, const ::tpy::Union<double, 
 }
 
 // def gen(a: int32 | float64, b: int32 | float64) -> Iterator[bool]:  # generator
-//     yield a == b  # tpyc: ok
+//     yield a == b  # tpyc: ok                                                     # -> S_RESUME_0
 std::expected<bool, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return (a == b);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a == b  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -44,7 +44,7 @@ __gen_gen gen(::tpy::Union<double, int32_t> a, ::tpy::Union<double, int32_t> b) 
 ::tpystd::tpy::Poll<bool> __coro_in_async::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         bool __tpy_async_ret = (a == b);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -423,15 +423,15 @@ bool str_int_eq(const ::tpy::Union<int32_t, std::string>& a, const ::tpy::Union<
 }
 
 // async def amain(x: int32 | float64, y: int32 | float64) -> None:
-//     print("async", await in_async(x, y))
+//     print("async", await in_async(x, y))                          # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(x, y);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("async", await in_async(x, y))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

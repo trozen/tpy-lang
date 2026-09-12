@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def src() -> Iterator[int32]:
-//     yield 1
-//     yield 2
+//     yield 1                    # -> S_RESUME_0
+//     yield 2                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_src::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -33,26 +33,26 @@ __gen_src src() {
 }
 
 // def gen() -> Iterator[int32]:
-//     yield 0
+//     yield 0                      # -> S_RESUME_0
 //     for x in src():  # tpyc: ok
-//         yield x
-//     yield 9
+//         yield x                  # -> S_RESUME_1
+//     yield 9                      # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_src_0.emplace(src());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 9
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def greetings(name: str) -> Iterator[str]:
-//     yield "hello " + name
-//     yield "goodbye " + name
+//     yield "hello " + name                   # -> S_RESUME_0
+//     yield "goodbye " + name                 # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_greetings::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return (::tpy::str_concat("hello ", name));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "hello " + name
         __state = S_RESUME_1;
         return (::tpy::str_concat("goodbye ", name));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "goodbye " + name
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

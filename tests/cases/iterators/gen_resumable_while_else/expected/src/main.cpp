@@ -9,28 +9,28 @@ namespace tpyapp::main {
 //     while i < n:
 //         if i == brk:
 //             break
-//         yield i
+//         yield i                                    # -> S_RESUME_0
 //         i += 1
 //     else:
-//         yield -1
-//     yield -2
+//         yield -1                                   # -> S_RESUME_1
+//     yield -2                                       # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -8,18 +8,18 @@ namespace tpyapp::main {
 //     try:
 //         print("serving")
 //         raise_signal(SIGINT)
-//         await asyncio.sleep(10.0)
+//         await asyncio.sleep(10.0)  # -> S_RESUME_0
 //         print("not reached")
 //     finally:
 //         print("shutdown cleanup")
 ::tpystd::tpy::Poll<::std::monostate> __coro_serve::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(10.0)
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);

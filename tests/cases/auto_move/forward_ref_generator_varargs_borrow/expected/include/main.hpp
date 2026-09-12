@@ -35,8 +35,6 @@ int32_t drop(std::vector<int32_t>&& xs);
 struct Caller {
 
 
-    // # Defined BEFORE Collector, so the method generator is forward-referenced
-    // # and only the registration-time borrow stamp can see the pack.
     // def run(self) -> int32:
     int32_t run() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Caller";

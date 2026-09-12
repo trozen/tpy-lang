@@ -91,6 +91,12 @@ inline auto decl_inside_for(std::vector<int32_t>& xs) {
     );
 }
 
+// # The alias-rebind clobber warning fires here because the rule reads
+// # `is_generator`, not the simple-generator peephole (a codegen fact sema cannot
+// # consult -- it depends on `requires_resumable_frame`, which sema is still
+// # setting). The pinned output below is the PEEPHOLE's, which is correct today;
+// # deleting the peephole makes it the wrong value the warning already announces
+// # (TODO.md's peephole entry, bin (e)).
 // def alias_holds_across_rebind(n: int32) -> Iterator[int32]:
 //     i = 0
 //     while i < n:

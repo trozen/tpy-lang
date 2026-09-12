@@ -14,24 +14,24 @@ std::tuple<std::string, std::string> pair(int32_t n) {
 //     # The tuple temp dies at the first yield; the promoted owned fields
 //     # must survive to the post-suspension read.
 //     host, port = pair(7)
-//     yield 1
+//     yield 1                                                              # -> S_RESUME_0
 //     print(host, port)
-//     yield 2
+//     yield 2                                                              # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_across_yield::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = pair(7);
         host = std::get<0>(__tup_1);
         port = std::get<1>(__tup_1);
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         std::cout << host << " " << port << "\n";
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -50,21 +50,21 @@ __gen_unpack_across_yield unpack_across_yield() {
 //     # A dict-key loop var yielded into an owned Iterator[str] slot: the
 //     # promoted local converts cleanly where a view field failed the build.
 //     for k in d:
-//         yield k
-//     yield "end"
+//         yield k                                                             # -> S_RESUME_0
+//     yield "end"                                                             # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_dict_keys::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((d).begin());
         __for_end_0.emplace((d).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield k
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "end"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -91,27 +91,27 @@ __gen_dict_keys dict_keys(::tpy::ordered_map<std::string, int32_t>& d) {
 // def blob_slices(blobs: list[bytes]) -> Iterator[int32]:
 //     # bytes sibling: a container-element view local crossing a yield.
 //     for b in blobs:
-//         yield len(b)
+//         yield len(b)                                                   # -> S_RESUME_0
 //     total = blobs[0]  # tpyc: type(bytes)
-//     yield 100
-//     yield len(total)
+//     yield 100                                                          # -> S_RESUME_1
+//     yield len(total)                                                   # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_blob_slices::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((blobs).begin());
         __for_end_0.emplace((blobs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(b)
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 100
         __state = S_RESUME_2;
         return ::tpy::__len__(total);
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield len(total)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -140,17 +140,17 @@ __gen_blob_slices blob_slices(std::vector<::tpy::Bytes>& blobs) {
 //     # A literal-sourced local has static storage: stays a zero-copy view.
 //     lit = "static"  # tpyc: type(StrView)
 //     view: StrView = "explicit"  # tpyc: type(StrView)
-//     yield 1
+//     yield 1                                                                # -> S_RESUME_0
 //     print(lit, view)
 std::expected<int32_t, ::tpy::StopIteration> __gen_static_sources::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         lit = "static";
         view = "explicit";
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         std::cout << lit << " " << view << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

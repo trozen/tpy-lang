@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def each(xs: list[int32]) -> Iterator[list[int32]]:
-//     yield xs  # the list param handed out by reference, twice
-//     yield xs
+//     yield xs  # the list param handed out by reference, twice  # -> S_RESUME_0
+//     yield xs                                                   # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __gen_each::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return xs;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield xs  # the list param handed out by reference, twice
         __state = S_RESUME_1;
         return xs;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield xs
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -33,19 +33,19 @@ __gen_each each(std::vector<int32_t>& xs) {
 }
 
 // def rep(b: P) -> Iterator[P]:
-//     yield b  # the record param handed out by reference
-//     yield b
+//     yield b  # the record param handed out by reference  # -> S_RESUME_0
+//     yield b                                              # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<P>, ::tpy::StopIteration> __gen_rep::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return b;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield b  # the record param handed out by reference
         __state = S_RESUME_1;
         return b;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -61,19 +61,19 @@ __gen_rep rep(P& b) {
 }
 
 // def pairs(d: dict[str, int32]) -> Iterator[dict[str, int32]]:
-//     yield d
-//     yield d
+//     yield d                                                    # -> S_RESUME_0
+//     yield d                                                    # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<::tpy::ordered_map<std::string, int32_t>>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return d;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield d
         __state = S_RESUME_1;
         return d;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield d
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -93,7 +93,7 @@ __gen_pairs pairs(::tpy::ordered_map<std::string, int32_t>& d) {
 ::tpystd::tpy::Poll<int32_t> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(n, 1));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -112,18 +112,18 @@ __coro_step step(int32_t n) {
 // async def late() -> int32:
 //     x: int32  # annotation only: the frame already declares the field
 //     s: str  # same for a str slot -- no default-construct line either
-//     await step(0)
+//     await step(0)                                                      # -> S_RESUME_0
 //     x = 1
 //     s = "hi"
 //     return x + len(s)
 ::tpystd::tpy::Poll<int32_t> __coro_late::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await step(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -147,21 +147,21 @@ __coro_late late() {
 
 // def late_gen() -> Iterator[int32]:
 //     n: int32  # the generator flavor of the same annotation-only decl
-//     yield 0
+//     yield 0                                                            # -> S_RESUME_0
 //     n = 5
-//     yield n
+//     yield n                                                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_late_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         n = 5;
         __state = S_RESUME_1;
         return n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -177,15 +177,15 @@ __gen_late_gen late_gen() {
 }
 
 // async def amain() -> None:
-//     print(await late())
+//     print(await late())     # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await late())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

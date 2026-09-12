@@ -7,14 +7,12 @@
 
 namespace tpyapp::main {
 
-// # Protocol with a single field
 // class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
     { t.value } -> std::convertible_to<int32_t>;
 };
 
-// # Protocol with multiple fields
 // class HasXY(Protocol):
 template<typename T>
 concept HasXY = requires(T& t) {
@@ -22,7 +20,6 @@ concept HasXY = requires(T& t) {
     { t.y } -> std::convertible_to<int32_t>;
 };
 
-// # Protocol with fields and methods combined
 // class Container(Protocol):
 template<typename T>
 concept Container = requires(T& t) {
@@ -30,7 +27,6 @@ concept Container = requires(T& t) {
     { t.count } -> std::convertible_to<int32_t>;
 };
 
-// # Generic protocol with field using type parameter
 // class Holder[T](Protocol):
 template<typename T, typename _T0>
 concept Holder = requires(T& t) {
@@ -60,7 +56,6 @@ int32_t get_item(::tpy::param_val_or_ref_t<T> holder);
 // def main() -> None:
 void main();
 
-// # Record conforming to HasValue
 // class Point:
 struct Point {
     // value: int32
@@ -77,7 +72,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Record conforming to HasXY
 // class Vec2:
 struct Vec2 {
     // x: int32
@@ -96,7 +90,6 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     return os;
 }
 
-// # Record conforming to Container
 // class Box:
 struct Box {
     // count: int32
@@ -116,7 +109,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// # Record conforming to Holder[int32]
 // class IntHolder:
 struct IntHolder {
     // item: int32
@@ -133,7 +125,6 @@ inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
     return os;
 }
 
-// # Generic class with protocol field bound
 // class Wrapper[T: HasValue]:
 template<HasValue T>
 struct Wrapper {

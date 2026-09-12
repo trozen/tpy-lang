@@ -73,7 +73,6 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
 
 // class _ParseState:
 struct _ParseState {
-    // # Mutable scratch for one strptime run (mirrors _strptime.py locals).
     // has_year: bool
     bool has_year;
     // year: int

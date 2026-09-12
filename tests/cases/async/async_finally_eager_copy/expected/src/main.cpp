@@ -15,7 +15,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total_up::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 1;
         int32_t __stop_0 = k;
         for (int32_t i = 0; i < __stop_0; ++i) {

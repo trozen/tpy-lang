@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // async def runner() -> None:
 //     src = Source(3)
-//     async for x in src:
+//     async for x in src:                                    # -> S_RESUME_0
 //         src.push(x)  # tpyc: warning(/Mutation of 'src'/)
 ::tpystd::tpy::Poll<::std::monostate> __coro_runner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         src.emplace(Source(::tpy::BigInt(3)));
         __for_itr_0.emplace(((*src)).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in src:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -65,21 +65,23 @@ __coro_runner runner() {
     return __coro_runner();
 }
 
+// # post_loop: the iterator loan expires with the `async for`, so mutating the
+// # iterable after the loop is fine.
 // async def post_loop() -> None:
 //     src = Source(2)
-//     async for x in src:
+//     async for x in src:            # -> S_RESUME_0
 //         pass
 //     src.push(9)  # tpyc: ok
 //     print("post_loop:", src.seen)
 ::tpystd::tpy::Poll<::std::monostate> __coro_post_loop::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         src.emplace(Source(::tpy::BigInt(2)));
         __for_itr_0.emplace(((*src)).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in src:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -129,24 +131,26 @@ __coro_post_loop post_loop() {
     return __coro_post_loop();
 }
 
+// # nested: the INNER `async for` ends without expiring the outer loan, so the
+// # append to the outer iterable after it still warns.
 // async def nested() -> None:
 //     outer = Source(2)
 //     inner = Source(1)
-//     async for x in outer:
-//         async for y in inner:
+//     async for x in outer:                                          # -> S_RESUME_0
+//         async for y in inner:                                      # -> S_RESUME_1
 //             inner.push(y)  # tpyc: warning(/Mutation of 'inner'/)
 //         outer.push(x)  # tpyc: warning(/Mutation of 'outer'/)
 //     print("nested:", outer.seen, inner.seen)
 ::tpystd::tpy::Poll<::std::monostate> __coro_nested::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         outer.emplace(Source(::tpy::BigInt(2)));
         inner.emplace(Source(::tpy::BigInt(1)));
         __for_itr_0.emplace(((*outer)).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in outer:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -163,7 +167,7 @@ __coro_post_loop post_loop() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async for y in inner:
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -254,7 +258,7 @@ void main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_SrcIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.cursor >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

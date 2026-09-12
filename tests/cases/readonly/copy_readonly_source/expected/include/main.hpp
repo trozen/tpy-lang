@@ -46,6 +46,7 @@ void sec_closure(const Cell& c);
 void sec_with(const Cell& c);
 // def sec_try_finally(c: readonly[Cell]) -> None:
 void sec_try_finally(const Cell& c);
+// @error_return(Missing)
 // def ret_copy(c: readonly[Cell]) -> int32:
 std::expected<int32_t, Missing> ret_copy(const Cell& c);
 // def sec_error_return(c: readonly[Cell]) -> None:
@@ -90,12 +91,10 @@ struct Holder {
     // def get(self) -> auto_readonly[Cell]:
     const Cell& get() const;
 
-    // # method: a readonly field read reaches the Own[Cell] slot via copy().
     // @readonly
     // def sec_method(self) -> None:
     void sec_method() const;
 
-    // # method: the source is an auto_readonly BORROW RETURN, not a field read.
     // @readonly
     // def sec_borrow_ret(self) -> None:
     void sec_borrow_ret() const;

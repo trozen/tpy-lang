@@ -17,10 +17,6 @@ void upcast(Dog& d);
 // def main() -> None:
 void main();
 
-// # A plain upcast of a record lvalue into a nullable base-typed local. The slot
-// # is a pointer, so the bind is the address of the same object -- no copy, no
-// # representation change: mutating through the base handle is visible through
-// # the derived one.
 // class Pet:
 struct Pet {
     // name: str

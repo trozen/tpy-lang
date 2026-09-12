@@ -20,7 +20,6 @@ void test_ptr_to_const_ptr();
 // def test_const_ptr_preserves_value() -> None:
 void test_const_ptr_preserves_value();
 
-// # Test Ptr[readonly[T]] type for read-only pointers
 // class Point:
 struct Point {
     // x: int32

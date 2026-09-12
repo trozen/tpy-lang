@@ -77,7 +77,6 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
 
 // class Pinned:
 struct Pinned {
-    // # cross-module enum default: must qualify to sidemod's namespace
     // state: RemoteState = RemoteState.BUSY
     ::tpyapp::sidemod::RemoteState state = ::tpyapp::sidemod::RemoteState::BUSY;
 

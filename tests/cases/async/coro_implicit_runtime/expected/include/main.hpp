@@ -45,7 +45,6 @@ __coro_cleanup cleanup(::tpy::BigInt n);
 // def main() -> None:
 void main();
 
-// # Method and nested-record method: the defining module owns both frame dependencies.
 // class Worker:
 struct Worker {
 
@@ -83,7 +82,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
     return os;
 }
 
-// # Context-manager methods: no async-with caller is needed to require these frames.
 // class Gate:
 struct Gate {
 
@@ -296,13 +294,14 @@ struct __coro_identity {
         return os << "<coroutine identity>";
     }
 };
+// # Generic twin: its template frame still needs the coroutine runtime header.
 // async def identity[T](n: T) -> T:  # tpyc: ok
 //     return n
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_identity<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(n));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));

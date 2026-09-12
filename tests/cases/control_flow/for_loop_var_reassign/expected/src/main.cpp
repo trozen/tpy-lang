@@ -813,20 +813,20 @@ void bound_order(const ::tpy::BigInt& step) {
 //     for i in range(3):
 //         # Suspension already preserves separate frame induction state.
 //         i = 10  # tpyc: ok
-//         yield i
+//         yield i                                                         # -> S_RESUME_0
 //         count += 1
 //         if count > 10:
 //             break
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_generator::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         count = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         count = ::tpy::add_check<int32_t>(count, 1);
         if ((count > 10)) {
             __state = S_JOIN_1;
@@ -866,21 +866,21 @@ __gen_generator generator() {
 //     for i in range(3):
 //         # Await resumes with the independent iterator state intact.
 //         i = 10  # tpyc: ok
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                       # -> S_RESUME_0
 //         count += 1
 //         if count > 10:
 //             break
 //     print("async", count)
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         count = 0;
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

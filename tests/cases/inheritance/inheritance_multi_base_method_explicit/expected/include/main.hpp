@@ -16,10 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # BaseN.method(self, ...) disambiguates calls to a specific ancestor's method.
-// # Each base defines its own 'describe' variant; the child overrides to satisfy
-// # the cross-base conflict check but still dispatches to each base statically
-// # via BaseN.describe(self).
 // class Left:
 struct Left {
 

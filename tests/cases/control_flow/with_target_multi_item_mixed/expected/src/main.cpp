@@ -8,13 +8,13 @@ Item* SHARED{};
 // def steps() -> Iterator[int32]:
 //     with Owner(5) as owned, Delegator() as lent:
 //         pass
-//     yield 0
+//     yield 0                                                                       # -> S_RESUME_0
 //     owned.n += 1  # mutating through the kept manager's storage, post-suspension
-//     yield owned.n
-//     yield lent.n
+//     yield owned.n                                                                 # -> S_RESUME_1
+//     yield lent.n                                                                  # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Owner(5));
         auto& __ctx_1 = (*__with_ctx_0);
         owned.emplace(__ctx_1.__enter__());
@@ -45,16 +45,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         (*owned).n = ::tpy::add_check<int32_t>((*owned).n, 1);
         __state = S_RESUME_1;
         return (*owned).n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield owned.n
         __state = S_RESUME_2;
         return (*lent).n;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield lent.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

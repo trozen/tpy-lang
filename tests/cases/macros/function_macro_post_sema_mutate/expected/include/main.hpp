@@ -13,6 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sentinel(c: Counter) -> int32:
 int32_t sentinel(const Counter& c);
+// @resolve_bump
 // def poke(c: Counter) -> int32:
 int32_t poke(Counter& c);
 // def main() -> None:

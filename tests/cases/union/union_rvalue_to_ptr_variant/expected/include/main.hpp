@@ -18,8 +18,6 @@ void greet(::tpy::Union<const Cat*, const Dog*> pet);
 // def main() -> None:
 void main();
 
-// # Constructor rvalue passed to pointer-variant union param
-// # Tests rvalue materialization for function, constructor, and method calls
 // class Dog:
 struct Dog {
     // name: str

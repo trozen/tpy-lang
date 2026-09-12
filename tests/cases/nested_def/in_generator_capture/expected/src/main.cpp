@@ -15,12 +15,12 @@ namespace tpyapp::main {
 //     # Bound AFTER the def: must still hoist to a frame field (the sema
 //     # namespace-identity fix) to survive the yields below.
 //     bonus = 100
-//     yield total
+//     yield total                                                         # -> S_RESUME_0
 //     add(7)
-//     yield total + bonus
+//     yield total + bonus                                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         // def add: frame member
         add(5);
@@ -28,12 +28,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_0;
         return total;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield total
         add(7);
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(total, bonus));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield total + bonus
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -5,18 +5,18 @@ namespace tpyapp::main {
 
 
 // async def describe(a: Dog | Cat) -> str:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                # -> S_RESUME_0
 //     if isinstance(a, Dog):
 //         return "dog"
 //     return "cat"
 ::tpystd::tpy::Poll<std::string> __coro_describe::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
@@ -44,17 +44,17 @@ __coro_describe describe(::tpy::Union<const Cat*, const Dog*> a) {
 }
 
 // async def main() -> None:
-//     print(await describe(Dog()))
-//     print(await describe(Cat()))
+//     print(await describe(Dog()))  # -> S_RESUME_0
+//     print(await describe(Cat()))  # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0.emplace(Dog());
         __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await describe(Dog()))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -65,7 +65,7 @@ __coro_describe describe(::tpy::Union<const Cat*, const Dog*> a) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await describe(Cat()))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();

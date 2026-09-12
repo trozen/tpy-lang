@@ -67,7 +67,6 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-// # Storage-form Optional source through codegen lift (`optional_to_ptr`).
 // class Holder:
 struct Holder {
     // opt: Node | None

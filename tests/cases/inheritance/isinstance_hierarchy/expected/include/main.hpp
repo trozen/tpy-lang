@@ -31,9 +31,6 @@ bool tuple_no_match(const Dog& d);
 // def main() -> None:
 void main();
 
-// # isinstance() walks the user-record inheritance chain at compile time.
-// # Upcasts (child -> ancestor) fold to True, same-type to True, unrelated
-// # types to False.
 // class Animal:
 struct Animal {
     // name: str

@@ -12,27 +12,27 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
 
 // def g() -> Iterator[int]:
 //     a, b = make_pair()
-//     yield a
-//     yield b
-//     yield a + b
+//     yield a                # -> S_RESUME_0
+//     yield b                # -> S_RESUME_1
+//     yield a + b            # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = make_pair();
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         __state = S_RESUME_0;
         return a;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a
         __state = S_RESUME_1;
         return b;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_RESUME_2;
         return ((a) + (b));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield a + b
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

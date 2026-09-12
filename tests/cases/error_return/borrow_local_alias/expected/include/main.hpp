@@ -12,6 +12,7 @@ struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(E)
 // def propagate(h: H) -> int32:
 std::expected<int32_t, E> propagate(H& h);
 // def main() -> None:

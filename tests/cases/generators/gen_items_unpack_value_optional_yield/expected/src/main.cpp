@@ -8,17 +8,17 @@ namespace tpyapp::main {
 //     for k, v in d.items():
 //         # `v` is a value-optional unpack target narrowed before the yield.
 //         if v is not None and len(k) > 0:
-//             yield v
+//             yield v                                                         # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_items::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         __state = S_JOIN_1;
         continue;
     }

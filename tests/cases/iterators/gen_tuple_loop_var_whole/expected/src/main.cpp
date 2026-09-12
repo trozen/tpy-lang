@@ -4,25 +4,26 @@
 namespace tpyapp::main {
 
 
+// # free generator: reference element, mutated after a yield
 // def walk_free(xs: list[tuple[int32, A]]) -> Iterator[int32]:
 //     for t in xs:  # tpyc: ok
-//         yield t[0]
+//         yield t[0]                                            # -> S_RESUME_0
 //         t[1].v += 100
-//         yield t[1].v
+//         yield t[1].v                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_free::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t[0]
         std::get<1>((*t)).v = ::tpy::add_check<int32_t>(std::get<1>((*t)).v, 100);
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield t[1].v
         __state = S_JOIN_0;
         continue;
     }
@@ -46,23 +47,24 @@ __gen_walk_free walk_free(std::vector<std::tuple<int32_t, A>>& xs) {
     return __gen_walk_free(xs);
 }
 
+// # all-value element tuple: a plain value field, copy is unobservable
 // def walk_value(xs: list[tuple[int32, int32]]) -> Iterator[int32]:
 //     for t in xs:  # tpyc: ok
-//         yield t[0]
-//         yield t[1]
+//         yield t[0]                                                 # -> S_RESUME_0
+//         yield t[1]                                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t[0]
         __state = S_RESUME_1;
         return std::get<1>((*t));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield t[1]
         __state = S_JOIN_0;
         continue;
     }
@@ -86,24 +88,25 @@ __gen_walk_value walk_value(std::vector<std::tuple<int32_t, int32_t>>& xs) {
     return __gen_walk_value(xs);
 }
 
+// # async def: the same classification serves the coroutine frame
 // async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 //     total = 0
 //     for t in xs:  # tpyc: ok
 //         total += t[0]
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                             # -> S_RESUME_0
 //         t[1].v += 100
 //         total += t[1].v
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_walk_async::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -136,26 +139,28 @@ __coro_walk_async walk_async(std::vector<std::tuple<int32_t, A>>& xs) {
     return __coro_walk_async(xs);
 }
 
+// # dict_items proxy: `&(*it)` is ill-formed on the prvalue proxy, so this one
+// # keeps the borrow-form tuple field and its tuple_to_pointer bind
 // def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 //     for kv in d.items():  # tpyc: ok
-//         yield kv[0]
+//         yield kv[0]                                    # -> S_RESUME_0
 //         kv[1].v += 100
-//         yield kv[1].v
+//         yield kv[1].v                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield kv[0]
         std::get<1>(kv)->v = ::tpy::add_check<int32_t>(std::get<1>(kv)->v, 100);
         __state = S_RESUME_1;
         return std::get<1>(kv)->v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield kv[1].v
         __state = S_JOIN_0;
         continue;
     }
@@ -179,15 +184,17 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
     return __gen_walk_items(d);
 }
 
+// # async + dict_items with an ALL-VALUE element: the proxy cannot be
+// # address-taken, so this one keeps the plain value-tuple field and its bare bind
 // async def sum_items(d: dict[int32, int32]) -> int32:
 //     total = 0
 //     for kv in d.items():  # tpyc: ok
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                        # -> S_RESUME_0
 //         total += kv[0] + kv[1]
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_sum_items::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
@@ -195,7 +202,7 @@ __gen_walk_items walk_items(::tpy::ordered_map<int32_t, A>& d) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -228,18 +235,18 @@ __coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d) {
 
 // async def async_section() -> None:
 //     ays = [(5, A(50))]
-//     print("async", await walk_async(ays))
+//     print("async", await walk_async(ays))          # -> S_RESUME_0
 //     print("async src", ays[0][1].v)
-//     print("async items", await sum_items({1: 2}))
+//     print("async items", await sum_items({1: 2}))  # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ays.emplace(std::vector<std::tuple<int32_t, A>>{std::tuple<int32_t, A>{5, A(50)}});
         __sub_0.emplace((*ays));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("async", await walk_async(ays))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -251,7 +258,7 @@ __coro_sum_items sum_items(::tpy::ordered_map<int32_t, int32_t>& d) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print("async items", await sum_items({1: 2}))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -356,25 +363,26 @@ void main() {
     std::cout << "items src" << " " << ::tpy::__getitem__(d, 7).v << "\n";
 }
 
+// # generator method: same field over a field-rooted source
 // def walk(self) -> Iterator[int32]:
 //     for t in self.xs:  # tpyc: ok
-//         yield t[0]
+//         yield t[0]                  # -> S_RESUME_0
 //         t[1].v += 100
-//         yield t[1].v
+//         yield t[1].v                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.xs).begin());
         __for_end_0.emplace((__self.xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t[0]
         std::get<1>((*t)).v = ::tpy::add_check<int32_t>(std::get<1>((*t)).v, 100);
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield t[1].v
         __state = S_JOIN_0;
         continue;
     }
@@ -393,23 +401,25 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
 }
 
 
+// # readonly method: the source iterates const, so the field is `const T*`
+// @readonly
 // def peek(self) -> Iterator[int32]:
 //     for t in self.xs:  # tpyc: ok
-//         yield t[0]
-//         yield t[1].v
+//         yield t[0]                  # -> S_RESUME_0
+//         yield t[1].v                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_peek::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.xs).begin());
         __for_end_0.emplace((__self.xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t[0]
         __state = S_RESUME_1;
         return std::get<1>((*t)).v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield t[1].v
         __state = S_JOIN_0;
         continue;
     }

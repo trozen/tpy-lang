@@ -18,9 +18,6 @@ std::string relabel(const Cat& a, const Cat& b);
 // def main() -> None:
 void main();
 
-// # A nested `match` reusing an outer arm's capture name REBINDS it: a `match` is
-// # not its own scope in Python, so the inner capture writes the same function
-// # local and its value flows out of the outer arm.
 // class Cat:
 struct Cat {
     // lives: int

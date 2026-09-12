@@ -19,9 +19,6 @@ std::string either(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # Conditional (`Dog(legs=4)`) and bare-type (`Dog()`) arms on the same variant
-// # are distinct: a non-matching value falls through. Covers int and str literal
-// # fields, multiple literals on one variant, and a literal in an or-alternative.
 // class Dog:
 struct Dog {
     // legs: int

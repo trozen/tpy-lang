@@ -143,14 +143,14 @@ int32_t count_eq(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*
 }
 
 // def gen_eq(a: Pet, b: Pet) -> Iterator[bool]:  # generator frame
-//     yield a == b  # tpyc: ok
+//     yield a == b  # tpyc: ok                                      # -> S_RESUME_0
 std::expected<bool, ::tpy::StopIteration> __gen_gen_eq::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return (a == b);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a == b  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -182,7 +182,7 @@ bool in_closure(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*,
 ::tpystd::tpy::Poll<bool> __coro_in_async::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         bool __tpy_async_ret = (a == b);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -285,15 +285,15 @@ void bump(::tpy::Union<Cat*, Dog*> u) {
 }
 
 // async def amain(a: Pet, b: Pet) -> None:
-//     print("async", await in_async(a, b))
+//     print("async", await in_async(a, b))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(a, b);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("async", await in_async(a, b))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

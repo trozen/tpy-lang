@@ -72,8 +72,6 @@ struct _ServerSockets;
 struct Server;
 
 inline constexpr std::string_view __name__ = "asyncio";
-// # epoll interest masks (Linux-stable), passed to the reactor by the fd
-// # awaitables below. The EPOLL_CTL_* ops live in `_executor.py`.
 // EPOLLIN: Final[uint32] = uint32(0x001)
 inline constexpr uint32_t EPOLLIN = 1;
 // EPOLLOUT: Final[uint32] = uint32(0x004)
@@ -189,19 +187,6 @@ inline std::ostream& operator<<(std::ostream& os, const _SignalScope& obj) {
     return os;
 }
 
-// # The socket awaitables are hand-written (like SleepFuture / _QueueWait),
-// # NOT `async def`s, for two reasons: each parks by returning Pending +
-// # arming the reactor (no nested await), and an `async def` taking a
-// # reference-type by-value param (`data: bytes`) hits a coro-frame
-// # storage-form codegen gap (see BUGS.md). `sock_recv` / `sock_sendall` /
-// # `sock_accept` / `sock_connect` are thin sync factories returning these
-// # awaitables, the same shape as `gather(...) -> Own[_GatherFuture]`.
-// #
-// # Each holds a `Ptr[socket]` (the socket outlives the in-flight op, owned
-// # by the caller across the await) and drives the public `socket` methods,
-// # parking on `BlockingIOError` -- mirroring CPython's `loop.sock_*`, which
-// # call the same public methods and catch EAGAIN/EINPROGRESS rather than
-// # reaching into socket internals.
 // @nocopy
 // class _SockRecv:
 struct _SockRecv {
@@ -345,9 +330,6 @@ struct SleepFuture {
     SleepFuture() = default;
     explicit SleepFuture(double seconds);
 
-    // # Required for structural conformance to `@dynamic Cancellable[T]`
-    // # (in `tpy.coro`). Mirrors the codegen-emitted `cancel()` on
-    // # every generated coro struct.
     // def cancel(self) -> None:
     void cancel();
 
@@ -1151,9 +1133,6 @@ struct Event {
     // def clear(self) -> None:
     void clear();
 
-    // # Required for structural conformance to `@dynamic Cancellable[T]`
-    // # (in `tpy.coro`). Event cancellation is task-level (see
-    // # Future.cancel above for the rationale); body is a no-op.
     // def cancel(self) -> None:
     void cancel() const;
 
@@ -1195,9 +1174,6 @@ struct Lock {
 
     __coro_Lock___aexit__ __aexit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb);
 
-    // # Called by `_LockAcquire.__poll__` through a `Ptr[Lock]`: grab the
-    // # lock if free, else park `waker` in FIFO order. Returns True iff
-    // # acquired this poll.
     // def _try_acquire(self, waker: Waker) -> bool:
     bool _try_acquire(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio.Lock";
@@ -1223,8 +1199,6 @@ struct _LockAcquire {
     _LockAcquire(_LockAcquire&&) = default;
     _LockAcquire& operator=(_LockAcquire&&) = default;
 
-    // # Task-level cancellation (the parked acquirer throws at its
-    // # suspension); no inner state to flip.
     // def cancel(self) -> None:
     void cancel() const;
 
@@ -1245,10 +1219,6 @@ struct Semaphore {
     int32_t _value;
     // _waiters: list[Waker]
     std::vector<::tpystd::coro::Waker> _waiters;
-    // # Upper bound for release(); -1 means unbounded (plain Semaphore). The
-    // # bound lives here, gated in release(), rather than in a BoundedSemaphore
-    // # override -- TPy uses static method dispatch, so an override would only
-    // # fire through a BoundedSemaphore-typed reference (and warns about it).
     // _bound: int32
     int32_t _bound;
 
@@ -1272,7 +1242,6 @@ struct Semaphore {
 
     __coro_Semaphore___aexit__ __aexit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb);
 
-    // # See `Lock._try_acquire`: take a permit if available, else park.
     // def _try_acquire(self, waker: Waker) -> bool:
     bool _try_acquire(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio.Semaphore";
@@ -1349,7 +1318,6 @@ template<typename T>
 struct Queue {
     // _items: list[T]
     std::vector<T> _items;
-    // # Public, like CPython's Queue.maxsize; <= 0 means unbounded.
     // maxsize: int32
     int32_t maxsize;
     // _getters: list[Waker]
@@ -1984,17 +1952,17 @@ struct __coro_Queue_put {
 };
 
 // async def put(self, item: Own[T]) -> None:
-//     await _QueueWait[T](self, 1)
+//     await _QueueWait[T](self, 1)            # -> S_RESUME_0
 //     self.put_nowait(item)
 template <typename T>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Queue_put<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_QueueWait<T>(&__self, 1)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await _QueueWait[T](self, 1)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -2040,17 +2008,17 @@ struct __coro_Queue_get {
 };
 
 // async def get(self) -> Own[T]:
-//     await _QueueWait[T](self, 0)
+//     await _QueueWait[T](self, 0)  # -> S_RESUME_0
 //     return self.get_nowait()
 template <typename T>
 ::tpystd::tpy::Poll<T> __coro_Queue_get<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_QueueWait<T>(&__self, 0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await _QueueWait[T](self, 0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
         (void)std::move(__r0).value();
@@ -2096,16 +2064,16 @@ struct __coro_Queue_join {
 };
 
 // async def join(self) -> None:
-//     await _QueueWait[T](self, 2)
+//     await _QueueWait[T](self, 2)  # -> S_RESUME_0
 template <typename T>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Queue_join<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_QueueWait<T>(&__self, 2)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await _QueueWait[T](self, 2)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -2472,17 +2440,33 @@ struct __coro_wait_for {
         return os << "<coroutine wait_for>";
     }
 };
+// # Await `coro` with a steady-clock deadline of `timeout` seconds.
+// # Returns the coroutine's value if it completes before the deadline.
+// # Otherwise propagates `cancel()` to the coroutine, pumps it until it
+// # observes the cancellation, then raises `TimeoutError`. A non-
+// # positive `timeout` triggers the deadline on the first poll (matches
+// # CPython).
+// #
+// # Outer cancellation of a task awaiting `wait_for` propagates through
+// # to the inner coroutine: the resume-case cancel-check (in every
+// # async-def coro frame) calls `cancel()` on the in-flight sub-coro
+// # before polling, so the inner observes `CancelledError` at its
+// # suspension point and can run `finally`-with-await cleanup before
+// # the cancellation surfaces to the caller.
+// # `-> Own[T]` for the same reason as `run`: the awaited inner result is
+// # an owned value moved up the poll chain; a bare `-> T` would make this
+// # a borrow contract at object-typed instantiations.
 // async def wait_for[T](coro: Own[Cancellable[T]], timeout: float) -> Own[T]:
-//     return await _WaitForFuture[T](coro, timeout)
+//     return await _WaitForFuture[T](coro, timeout)                            # -> S_RESUME_0
 template <typename T>
 ::tpystd::tpy::Poll<T> __coro_wait_for<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_WaitForFuture<T>(std::move(coro), timeout)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await _WaitForFuture[T](coro, timeout)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -2526,17 +2510,29 @@ struct __coro_gather_list {
         return os << "<coroutine gather_list>";
     }
 };
+// # Run `tasks` concurrently and return their results in input order.
+// # On the first sub-task exception (or outer cancellation), propagates
+// # `cancel()` to the remaining sub-tasks, waits for them to settle, then
+// # re-raises the first exception encountered.
+// #
+// # Two homogeneous entrypoints share the same `_GatherFuture[T]` engine:
+// #  - `gather(*tasks)` -- variadic-positional form.
+// #  - `gather_list(tasks)` -- list-shaped form.
+// # Both require all tasks to share return type `T`. The CPython-shape
+// # heterogeneous variadic form `gather[*Ts](*coros) -> tuple[*Ts]`
+// # remains deferred (needs variadic generics + the async-def `*args`
+// # codegen fix; see TODO.md / BUGS.md).
 // async def gather_list[T](tasks: list[Task[T]]) -> Own[list[T]]:
-//     return await _GatherFuture[T](tasks)
+//     return await _GatherFuture[T](tasks)                         # -> S_RESUME_0
 template <typename T>
 ::tpystd::tpy::Poll<std::vector<T>> __coro_gather_list<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_GatherFuture<T>(tasks)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await _GatherFuture[T](tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<T>>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -2581,18 +2577,38 @@ struct __coro_gather_list_settled {
         return os << "<coroutine gather_list_settled>";
     }
 };
+// # Run `tasks` concurrently and harvest every result -- value OR
+// # exception -- into `list[Settled[T]]` in input order. Variant of
+// # CPython `asyncio.gather(*coros, return_exceptions=True)`: a sub-task
+// # failure does NOT cancel siblings (each runs to completion); a
+// # sub-task cancelled independently is collected as a `Settled` entry
+// # with `exception` populated (its `CancelledError`). Cancelling the
+// # gather caller itself propagates cancel into the sub-tasks for
+// # cleanup and then re-raises `CancelledError` to the caller -- it is
+// # NOT swallowed into the result list (matching CPython: cancelling
+// # gather() cancels it).
+// #
+// # TPy-specific shape: returns `list[Settled[T]]` rather than CPython's
+// # `list[T | BaseException]`. Two reasons: (1) TPy lowers union
+// # elements in containers to a value-variant and the exception root is
+// # a polymorphic owner (slicing risk); (2) `isinstance` against
+// # `Box[Throwable]` as a union member isn't yet supported. The
+// # `Settled[T]` record gives clean field-based discrimination; the
+// # exception is a `Box[Throwable]` (re-raise to recover the subclass).
+// #
+// # Sibling of `gather_list` / `gather` (cancel-and-re-raise variants).
 // async def gather_list_settled[T](
 //         tasks: list[Task[T]]) -> Own[list[Settled[T]]]:
-//     return await _GatherSettledFuture[T](tasks)
+//     return await _GatherSettledFuture[T](tasks)          # -> S_RESUME_0
 template <typename T>
 ::tpystd::tpy::Poll<std::vector<Settled<T>>> __coro_gather_list_settled<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(_GatherSettledFuture<T>(tasks)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await _GatherSettledFuture[T](tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<Settled<T>>>::pending();
         auto __ret0 = std::move(__r0).value();

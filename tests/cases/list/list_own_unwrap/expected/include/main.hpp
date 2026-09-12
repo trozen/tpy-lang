@@ -17,9 +17,6 @@ void show(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # OwnType must be stripped from element types in list literals so that
-// # non-last-use variables don't cause spurious "mixed types" errors.
-// # Also tests ptr-variant -> value-variant conversion for container storage.
 // class Cat:
 struct Cat {
     // name: str

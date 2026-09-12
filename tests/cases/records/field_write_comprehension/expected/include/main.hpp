@@ -40,7 +40,6 @@ struct Pic {
     // def __init__(self) -> None:
     Pic();
 
-    // # Method body, a nested comprehension.
     // def fill(self, w: int32, h: int32) -> None:
     void fill(int32_t w, int32_t h);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pic";
@@ -60,8 +59,6 @@ struct Grid {
     // data: list[list[int32]]
     std::vector<std::vector<int32_t>> data;
 
-    // # The doom shape: locals first, so the field writes land in the
-    // # constructor BODY rather than the member-init prefix.
     // def __init__(self, raw: list[int32]) -> None:
     Grid() = default;
     explicit Grid(const std::vector<int32_t>& raw);
@@ -142,6 +139,7 @@ inline Grid::Grid(const std::vector<int32_t>& raw) {
         ::tpy::__setitem__(::tpy::__getitem__(this->data, j), 0, (::tpy::add_check<int32_t>(j, 1)));
     }
 }
+// # Generator body.
 // def gen(p: Pic, k: int32) -> Iterator[int32]:
 //     for i in range(k):
 //         p.flat = [i + j for j in range(2)]  # tpyc: ok

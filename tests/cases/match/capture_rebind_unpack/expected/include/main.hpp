@@ -16,10 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # A value-typed match capture rebound via tuple-unpack binds by value (a copy):
-// # the unpack writes the local, leaving the subject's field untouched -- matching
-// # CPython, where the capture is a fresh local. Exercises the written_names
-// # TpyTupleUnpack rebind-detection branch end to end.
 // class Cat:
 struct Cat {
     // lives: int

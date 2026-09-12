@@ -11,6 +11,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @hotpath
 // def scale(x: int) -> int:  # tpyc: ok
 ::tpy::BigInt scale(const ::tpy::BigInt& x);
 // def main() -> None:

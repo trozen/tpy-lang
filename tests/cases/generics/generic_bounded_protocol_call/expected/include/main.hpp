@@ -7,14 +7,12 @@
 
 namespace tpyapp::main {
 
-// # Test 2: User-defined protocol
 // class Stringable(Protocol):
 template<typename T>
 concept Stringable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
-// # Test 7: Protocol with multiple methods
 // class MultiMethod(Protocol):
 template<typename T>
 concept MultiMethod = requires(T& t) {
@@ -22,7 +20,6 @@ concept MultiMethod = requires(T& t) {
     { t.get_value() } -> std::convertible_to<int32_t>;
 };
 
-// # Test 9: User protocol with Self in signature - Self should resolve to T, not the protocol
 // class Clonable(Protocol):
 template<typename T>
 concept Clonable = requires(T& t) {
@@ -64,7 +61,6 @@ bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 // def main() -> None:
 void main();
 
-// # Test 4: Generic class with bounded type parameter
 // class Printer[T: Stringable]:
 template<Stringable T>
 struct Printer {
@@ -85,7 +81,6 @@ inline std::ostream& operator<<(std::ostream& os, const Printer<T>& obj) {
     return os;
 }
 
-// # Test 5: Type satisfying multiple protocols (Stringable and Sized)
 // class MyValue:
 struct MyValue {
     // val: int32
@@ -114,7 +109,6 @@ inline std::ostream& operator<<(std::ostream& os, const MyValue& obj) {
     return os;
 }
 
-// # Another type satisfying Stringable
 // class Point:
 struct Point {
     // x: int32
@@ -136,7 +130,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Type satisfying MultiMethod protocol
 // class Widget:
 struct Widget {
     // name: str
@@ -161,7 +154,6 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
-// # Type satisfying Clonable protocol
 // class Box:
 struct Box {
     // value: int32

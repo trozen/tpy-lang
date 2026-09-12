@@ -33,7 +33,6 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x);
 
-    // # The subject: a consuming builder step handing the receiver back.
     // def updated(self: Own[Self]) -> Own[Self]:
     Point updated() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
@@ -78,7 +77,6 @@ struct Ticket {
     Ticket(Ticket&&) = default;
     Ticket& operator=(Ticket&&) = default;
 
-    // # A copy here cannot compile, so this leg pins that the return MOVES.
     // def stamped(self: Own[Self]) -> Own[Self]:
     Ticket stamped() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ticket";

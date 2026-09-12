@@ -8,22 +8,22 @@ namespace tpyapp::main {
 //     # Two distinct write sites: Resource(1)'s slot is never revisited, so
 //     # its payload drops only at frame destruction, after Resource(2)'s.
 //     saved: Optional[Resource] = Resource(1)
-//     yield 1
+//     yield 1                                                                # -> S_RESUME_0
 //     saved = Resource(2)
-//     yield 2
+//     yield 2                                                                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         saved = &*(__ptr_slot_f0 = Resource(1));
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         saved = &*(__ptr_slot_f1 = Resource(2));
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -16,23 +16,25 @@ std::vector<int32_t> mk_row(int32_t v) {
     return {v};
 }
 
+// # free generator, two yields (frame): `copy(<frame loop var>)` at an owning
+// # record slot, and a call declaring `-> Own[Node]`.
 // def fresh_records(src: list[Node]) -> Iterator[Own[Node]]:
 //     for p in src:
-//         yield copy(p)  # tpyc: ok
-//         yield mk(p.val * 10)  # tpyc: ok
+//         yield copy(p)  # tpyc: ok                           # -> S_RESUME_0
+//         yield mk(p.val * 10)  # tpyc: ok                    # -> S_RESUME_1
 std::expected<Node, ::tpy::StopIteration> __gen_fresh_records::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((src).begin());
         __for_end_0.emplace((src).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield copy(p)  # tpyc: ok
         __state = S_RESUME_1;
         return mk((((p->val) * (::tpy::BigInt(10)))).to_fixed_check<int32_t>());
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield mk(p.val * 10)  # tpyc: ok
         __state = S_JOIN_0;
         continue;
     }
@@ -56,23 +58,25 @@ __gen_fresh_records fresh_records(std::vector<Node>& src) {
     return __gen_fresh_records(src);
 }
 
+// # `Own[CONTAINER]` slot -- the same admission over the reference axis's
+// # container half, not just records.
 // def fresh_rows(src: list[list[int32]]) -> Iterator[Own[list[int32]]]:
 //     for r in src:
-//         yield copy(r)  # tpyc: ok
-//         yield mk_row(len(r))  # tpyc: ok
+//         yield copy(r)  # tpyc: ok                                      # -> S_RESUME_0
+//         yield mk_row(len(r))  # tpyc: ok                               # -> S_RESUME_1
 std::expected<std::vector<int32_t>, ::tpy::StopIteration> __gen_fresh_rows::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((src).begin());
         __for_end_0.emplace((src).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield copy(r)  # tpyc: ok
         __state = S_RESUME_1;
         return mk_row(::tpy::__len__((*r)));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield mk_row(len(r))  # tpyc: ok
         __state = S_JOIN_0;
         continue;
     }
@@ -181,23 +185,24 @@ void main() {
     std::cout << "method" << " " << ::tpy::ListPrinter(kept_m) << " " << ::tpy::__getitem__(bag.items, 0).val << "\n";
 }
 
+// # generator METHOD, same two owning sources.
 // def drain(self) -> Iterator[Own[Node]]:
 //     for p in self.items:
-//         yield copy(p)  # tpyc: ok
-//         yield mk(p.val + 1)  # tpyc: ok
+//         yield copy(p)  # tpyc: ok        # -> S_RESUME_0
+//         yield mk(p.val + 1)  # tpyc: ok  # -> S_RESUME_1
 std::expected<Node, ::tpy::StopIteration> __gen_Bag_drain::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield copy(p)  # tpyc: ok
         __state = S_RESUME_1;
         return mk((((p->val) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield mk(p.val + 1)  # tpyc: ok
         __state = S_JOIN_0;
         continue;
     }

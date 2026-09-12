@@ -16,9 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: union param on a readonly method, narrowed member access (address
-// # escapes -> mutable everywhere). Before the fix the call site forced deep-const
-// # off a coarse readonly flag and clashed with the mutable signature.
 // class Dog:
 struct Dog {
 

@@ -47,21 +47,21 @@ struct __gen_echo : public ::tpy::next_iter_mixin<__gen_echo<T_it>, ::tpy::BigIn
 };
 // def echo(it: Iterable[int]) -> Iterator[int]:
 //     for x in it:
-//         yield x
-//         yield x
+//         yield x                                # -> S_RESUME_0
+//         yield x                                # -> S_RESUME_1
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_echo<T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

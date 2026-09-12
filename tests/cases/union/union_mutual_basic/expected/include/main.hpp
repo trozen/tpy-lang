@@ -65,7 +65,6 @@ inline std::ostream& operator<<(std::ostream& os, const BinOp& obj) {
     return os;
 }
 
-// # Recursive union field in a non-recursive record
 // class ExprBox:
 struct ExprBox {
     // expr: Box[Expr]

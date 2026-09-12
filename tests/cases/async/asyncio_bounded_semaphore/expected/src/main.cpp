@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // async def worker(sem: BoundedSemaphore, c: Counters) -> None:
-//     async with sem:
+//     async with sem:                                            # -> S_RESUME_0, S_RESUME_2
 //         c.active += 1
 //         if c.active > c.peak:
 //             c.peak = c.active
-//         await asyncio.sleep(0.001)
+//         await asyncio.sleep(0.001)                             # -> S_RESUME_1
 //         c.active -= 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0 = &(sem);
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with sem:
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -27,7 +27,7 @@ namespace tpyapp::main {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0.001)
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -43,7 +43,7 @@ namespace tpyapp::main {
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: async with sem:
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
@@ -94,8 +94,8 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
 // async def main_coro() -> None:
 //     sem = BoundedSemaphore(2)
 //     print("locked0:", sem.locked())
-//     await sem.acquire()
-//     await sem.acquire()
+//     await sem.acquire()                                                        # -> S_RESUME_0
+//     await sem.acquire()                                                        # -> S_RESUME_1
 //     print("locked_full:", sem.locked())
 //     sem.release()
 //     sem.release()
@@ -112,7 +112,7 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
 //     while i < 5:
 //         tasks.append(asyncio.create_task(worker(fresh, c)))
 //         i += 1
-//     await asyncio.gather(*tasks)
+//     await asyncio.gather(*tasks)                                               # -> S_RESUME_2
 //     print("peak:", c.peak)
 //
 //     # Degenerate bound: BoundedSemaphore(0).release() raises immediately.
@@ -131,14 +131,14 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
 //         print("caught negative")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         sem.emplace(::tpystd::asyncio::BoundedSemaphore(2));
         std::cout << "locked0:" << " " << ::tpy::print_bool((*sem).locked()) << "\n";
         __sub_0.emplace((*sem));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await sem.acquire()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -147,7 +147,7 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await sem.acquire()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -175,7 +175,7 @@ __coro_worker worker(::tpystd::asyncio::BoundedSemaphore& sem, Counters& c) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: await asyncio.gather(*tasks)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();

@@ -47,6 +47,7 @@ int32_t bump_and_read(::tpy::Union<A*, B*> u);
 int32_t with_body(::tpy::Union<A*, B*> v);
 // def try_finally(v: A | B) -> int32:
 int32_t try_finally(::tpy::Union<A*, B*> v);
+// @error_return(Err)
 // def error_body(v: A | B) -> int32:
 std::expected<int32_t, Err> error_body(::tpy::Union<A*, B*> v);
 // def match_arm(v: A | B) -> int32:
@@ -224,8 +225,6 @@ struct Relay {
     Relay() = default;
     explicit Relay(::tpy::Union<A*, B*> v);
 
-    // # method body (the method mutates self, so its union param is not
-    // # inferred deep-const)
     // def go(self, v: A | B) -> int32:
     int32_t go(::tpy::Union<A*, B*> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Relay";
@@ -245,8 +244,6 @@ struct Reader {
     Reader() = default;
     explicit Reader(int32_t base);
 
-    // # method body: the method mutates nothing, so its narrowed subject binds
-    // # `const A&` and its own union param is deep-const too
     // def read(self, v: A | B) -> int32:
     int32_t read(::tpy::Union<const A*, const B*> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Reader";
@@ -262,7 +259,6 @@ struct Tally {
     // k: int32
     int32_t k;
 
-    // # constructor parameter, forwarded to a second deep-const slot
     // def __init__(self, u: A | B) -> None:
     Tally() = default;
     explicit Tally(::tpy::Union<const A*, const B*> u);

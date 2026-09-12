@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // def static_source_view() -> Iterator[str]:
 //     lit = "static"  # tpyc: type(StrView)
-//     yield lit  # tpyc: ok
-//     yield "end"
+//     yield lit  # tpyc: ok                   # -> S_RESUME_0
+//     yield "end"                             # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_static_source_view::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         lit = "static";
         __state = S_RESUME_0;
         return std::string(lit);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield lit  # tpyc: ok
         __state = S_RESUME_1;
         return "end";
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "end"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -36,20 +36,20 @@ __gen_static_source_view static_source_view() {
 
 // def static_bytes_view() -> Iterator[bytes]:
 //     raw = b"xy"  # tpyc: type(BytesView)
-//     yield raw  # tpyc: ok
-//     yield raw
+//     yield raw  # tpyc: ok                    # -> S_RESUME_0
+//     yield raw                                # -> S_RESUME_1
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_static_bytes_view::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         raw = ::tpy::bytes_literal_owned("xy", 2);
         __state = S_RESUME_0;
         return ::tpy::Bytes(raw);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield raw  # tpyc: ok
         __state = S_RESUME_1;
         return ::tpy::Bytes(raw);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield raw
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -66,20 +66,20 @@ __gen_static_bytes_view static_bytes_view() {
 
 // def explicit_view_local(s: StrView) -> Iterator[str]:
 //     v: StrView = s  # tpyc: ok
-//     yield v  # tpyc: ok
-//     yield "tail"
+//     yield v  # tpyc: ok                                # -> S_RESUME_0
+//     yield "tail"                                       # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_explicit_view_local::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         v = s;
         __state = S_RESUME_0;
         return std::string(v);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v  # tpyc: ok
         __state = S_RESUME_1;
         return "tail";
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "tail"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -94,20 +94,26 @@ __gen_explicit_view_local explicit_view_local(std::string_view s) {
     return __gen_explicit_view_local(s);
 }
 
+// # NOT the intended output: the snapshot here is doubly conservative, and pins
+// # that rather than endorses it. `h` is held by reference and `__enter__` returns
+// # a view of `h.label`, so a view field would be sound -- but the with-target
+// # rule promotes on the enter type's CATEGORY, so `label` is an owning
+// # `std::string`, and the yield sink then copies an already-owned string. Both
+// # halves are filed in BUGS.md; a fix should show up as a delta here.
 // def with_view_target(h: Holder) -> Iterator[str]:
 //     with h as label:
-//         yield label  # tpyc: ok
-//         yield label
+//         yield label  # tpyc: ok                    # -> S_RESUME_0
+//         yield label                                # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_with_view_target::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0 = &(h);
         label = (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield label  # tpyc: ok
         try {
             __state = S_RESUME_1;
             return std::string(label);
@@ -119,7 +125,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_with_view_target::__next_
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield label
         bool __fin_ran_2 = false;
         try {
             __fin_ran_2 = true;
@@ -160,19 +166,19 @@ __gen_with_view_target with_view_target(Holder& h) {
 }
 
 // def owned_param_stays_bare(s: str) -> Iterator[str]:
-//     yield s  # tpyc: ok
-//     yield s
+//     yield s  # tpyc: ok                               # -> S_RESUME_0
+//     yield s                                           # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_owned_param_stays_bare::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return s;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s  # tpyc: ok
         __state = S_RESUME_1;
         return s;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

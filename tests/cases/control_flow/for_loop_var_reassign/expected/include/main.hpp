@@ -49,6 +49,7 @@ void bound_order(const ::tpy::BigInt& step);
 __gen_generator generator();
 // async def async_body() -> None:
 __coro_async_body async_body();
+// @error_return(MarkerError)
 // def error_body() -> int:
 std::expected<::tpy::BigInt, MarkerError> error_body();
 // def match_body(subject: int) -> None:
@@ -58,6 +59,7 @@ template<::tpy::AnyFixedInt T>
 ::tpy::BigInt generic_count(std::vector<T>& values);
 // def concrete_count(values: list[int32]) -> int:
 ::tpy::BigInt concrete_count(std::vector<int32_t>& values);
+// @noalloc
 // def readonly32(stop: int32) -> int32:
 int32_t readonly32(int32_t stop);
 // def readonly_big(start: int, stop: int) -> int:

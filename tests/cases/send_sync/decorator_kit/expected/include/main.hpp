@@ -18,6 +18,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_forced;
 
+// @unsafe_send
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 __coro_forced forced(std::vector<int32_t>& xs);
 // def main() -> None:
@@ -91,6 +92,7 @@ inline std::ostream& operator<<(std::ostream& os, const SharedTable& obj) {
     return os;
 }
 
+// @unsafe_send
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 struct __coro_forced {
     int32_t __state;
@@ -130,6 +132,7 @@ inline ArenaBuffer::ArenaBuffer() : data(std::vector<int32_t>{}) {}
 // def __init__(self) -> None:
 //     self.data = []
 inline SharedTable::SharedTable() : data(std::vector<int32_t>{}) {}
+// @nosync
 // def gen_forced(n: int32) -> Iterator[int32]:    # tpyc: frame_send(yes) frame_sync(no)
 //     i = 0
 //     while i < n:

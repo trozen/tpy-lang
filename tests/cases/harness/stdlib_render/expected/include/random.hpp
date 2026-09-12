@@ -32,8 +32,10 @@ inline constexpr std::string_view __name__ = "random";
 
 // def random() -> float:
 double random();
+// @dispatch
 // def seed() -> None:
 void seed();
+// @dispatch
 // def seed(n: int32) -> None:
 void seed(int32_t n);
 // def getrandbits(k: int32) -> int:
@@ -46,10 +48,13 @@ template<typename T>
 // def shuffle[T](seq: list[T]) -> None:
 template<typename T>
 void shuffle(std::vector<T>& seq);
+// @dispatch
 // def randrange(stop: int32) -> int32:
 int32_t randrange(int32_t stop);
+// @dispatch
 // def randrange(start: int32, stop: int32) -> int32:
 int32_t randrange(int32_t start, int32_t stop);
+// @dispatch
 // def randrange(start: int32, stop: int32, step: int32) -> int32:
 int32_t randrange(int32_t start, int32_t stop, int32_t step);
 // def randbytes(n: int32) -> bytes:
@@ -79,16 +84,10 @@ double vonmisesvariate(double mu, double kappa);
 
 // class Random:
 struct Random {
-    // # Inline fixed-size state (std::array<uint32_t, 624>). Stack-allocated,
-    // # compile-time size enables bounds-check elision in __getitem__, and
-    // # loop unrolling / auto-vectorization in the twist. Measured ~3x
-    // # speedup vs list[uint32] on MT hot path.
     // _state: Array[uint32, 624]
     std::array<uint32_t, 624> _state;
     // _index: int32
     int32_t _index;
-    // # Cached second value from gauss()'s Box-Muller pair. Matches CPython's
-    // # self.gauss_next using a bool flag instead of float|None sentinel.
     // _gauss_next: float
     double _gauss_next;
     // _has_gauss_next: bool
@@ -118,7 +117,6 @@ struct Random {
     // def getrandbits(self, k: int32) -> int:
     ::tpy::BigInt getrandbits(int32_t k);
 
-    // # ---------- Integer helpers ----------
     // def _randbelow(self, n: uint32) -> uint32:
     uint32_t _randbelow(uint32_t n);
 
@@ -178,10 +176,6 @@ struct Random {
         }
     }
 
-    // # ---------- Continuous distributions ----------
-    // # All straight ports of CPython's Lib/random.py methods. Byte-identical
-    // # output on the same seed because libm (cos/sin/log/exp/sqrt) is the
-    // # same underlying implementation under CPython and TPy on Linux.
     // def uniform(self, a: float, b: float) -> float:
     double uniform(double a, double b);
 

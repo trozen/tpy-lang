@@ -16,7 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Union field assignment via method: pointer-variant to value-variant in self.field = param
 // class Dog:
 struct Dog {
     // name: str

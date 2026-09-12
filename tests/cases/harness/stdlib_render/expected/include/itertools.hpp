@@ -80,14 +80,14 @@ struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat<T>, T> {
 // def repeat[T](object: T, times: Optional[int32] = None) -> Iterator[T]:
 //     if times is None:
 //         while True:
-//             yield object
+//             yield object                                                 # -> S_RESUME_0
 //     else:
 //         for _ in range(times):
-//             yield object
+//             yield object                                                 # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!times.has_value())) {
             __state = S_JOIN_1;
             continue;
@@ -98,11 +98,11 @@ std::expected<T, ::tpy::StopIteration> __gen_repeat<T>::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield object
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield object
         __state = S_JOIN_2;
         continue;
     }
@@ -177,24 +177,24 @@ struct __gen_cycle : public ::tpy::next_iter_mixin<__gen_cycle<T, T_it>, T> {
 //     saved: list[T] = []
 //     for x in it:
 //         saved.append(x)
-//         yield x
+//         yield x                                # -> S_RESUME_0
 //     while len(saved) > 0:
 //         for y in saved:
-//             yield y
+//             yield y                            # -> S_RESUME_1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_cycle<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         saved.emplace(std::vector<T>{});
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield y
         __state = S_JOIN_2;
         continue;
     }
@@ -270,23 +270,25 @@ struct __gen_islice : public ::tpy::next_iter_mixin<__gen_islice<T, T_it>, T> {
         return os << "<generator islice>";
     }
 };
+// # Single-argument `islice(it, stop)` only; the `islice(it, start, stop[, step])`
+// # form needs a second overload (see docs/STDLIB_ROADMAP.md).
 // def islice[T](it: Iterable[T], stop: int32) -> Iterator[T]:
 //     i: int32 = 0
 //     for x in it:
 //         if i >= stop:
 //             break
-//         yield x
+//         yield x                                              # -> S_RESUME_0
 //         i += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_islice<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -354,16 +356,16 @@ struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<T, T_it, 
 //     for x in it:
 //         if not pred(x):
 //             break
-//         yield x
+//         yield x                                                         # -> S_RESUME_0
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_takewhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -434,17 +436,17 @@ struct __gen_dropwhile : public ::tpy::next_iter_mixin<__gen_dropwhile<T, T_it, 
 //             if pred(x):
 //                 continue
 //             dropping = False
-//         yield x
+//         yield x                                                         # -> S_RESUME_0
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_dropwhile<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         dropping = true;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -516,16 +518,16 @@ struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<T, T_
 // def filterfalse[T](pred: Fn[[T], bool], it: Iterable[T]) -> Iterator[T]:
 //     for x in it:
 //         if not pred(x):
-//             yield x
+//             yield x                                                       # -> S_RESUME_0
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
 std::expected<T, ::tpy::StopIteration> __gen_filterfalse<T, T_it, F_pred>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_1;
         continue;
     }

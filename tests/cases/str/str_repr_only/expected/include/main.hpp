@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Test __repr__ fallback: str()/print()/f-string fall back to __repr__ when no __str__
 // class Tag:
 struct Tag {
     // label: str

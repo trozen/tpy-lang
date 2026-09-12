@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A None-compare on an already-NARROWED storage-form Optional field must keep
-// # .has_value() semantics (the C++ shape stays std::optional<T>).
 // class Pod:
 struct Pod {
     // x: int

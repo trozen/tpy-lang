@@ -101,7 +101,6 @@ inline std::ostream& operator<<(std::ostream& os, const Labels<T, N>& obj) {
 
 // class StrLabels:
 struct StrLabels {
-    // # The monomorphic twin of Labels[str, 4]: every slot below is spelled str.
     // items: ArrayList[str, 4]
     ::tpystd::tplib::array_list::ArrayList<std::string, 4> items;
 

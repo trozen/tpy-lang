@@ -9,9 +9,11 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @overload
 // def pick[T: Comparable](xs: list[T]) -> int32: ...
 template<::tpystd::tpy::Comparable T>
 int32_t pick(const std::vector<T>& xs);
+// @overload
 // def pick(xs: str) -> int32: ...
 int32_t pick(std::string_view xs);
 // def main() -> None:

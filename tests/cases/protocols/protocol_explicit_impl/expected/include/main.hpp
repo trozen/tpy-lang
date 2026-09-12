@@ -7,7 +7,6 @@
 
 namespace tpyapp::main {
 
-// # Define a custom protocol
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
@@ -19,7 +18,6 @@ struct Person;
 extern Person* p;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Class that explicitly implements Printable
 // class Person(Printable):
 struct Person {
     // name: str

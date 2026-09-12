@@ -184,6 +184,8 @@ inline __gen_Capped_keep<F_pred> Capped::keep(F_pred&& pred, std::vector<int32_t
 // def __init__(self, cap: int32) -> None:
 //     self.cap = cap
 inline Capped::Capped(int32_t cap) : cap(cap) {}
+// # Simple-peephole Fn generator (yield is a direct child) -- the inverse:
+// # this path already worked and must keep working.
 // def transform(fn: Fn[[int32], int32], it: list[int32]) -> Iterator[int32]:
 //     for x in it:
 //         yield fn(x)

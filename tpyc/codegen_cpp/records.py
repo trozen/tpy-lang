@@ -316,8 +316,7 @@ class RecordGenerator:
 
         # Emit class header as source comments (preceding comments + class line)
         if record.loc:
-            self.ctx.emit_preceding_comments(out, record.loc)
-            self.ctx.emit_source_comment(out, record.loc)
+            self.ctx.emit_declaration_echo(out, record.loc)
 
         # Generate template prefix for generic records
         if record.type_params:
@@ -358,8 +357,7 @@ class RecordGenerator:
 
         # Fields
         for fld in record.fields:
-            self.ctx.emit_preceding_comments(out, fld.loc, indent=INDENT)
-            self.ctx.emit_source_comment(out, fld.loc, indent=INDENT)
+            self.ctx.emit_declaration_echo(out, fld.loc, INDENT)
             cpp_type = self.types.type_to_cpp(fld.type)
             default = ""
             if fld.default_value is not None:
@@ -412,8 +410,7 @@ class RecordGenerator:
             # constant shadowing a global wins, as it does in C++.
             const_scope = self._thir_const_scope(record_info)
             for cc_name, cc_fld in record_info.class_constants.items():
-                self.ctx.emit_preceding_comments(out, cc_fld.loc, indent=INDENT)
-                self.ctx.emit_source_comment(out, cc_fld.loc, indent=INDENT)
+                self.ctx.emit_declaration_echo(out, cc_fld.loc, INDENT)
                 cpp_type = self.types.type_to_cpp(cc_fld.type)
                 if cc_fld.default_expr is not None:
                     init = self._thir_class_const_init(cc_name, cc_fld,
@@ -443,11 +440,10 @@ class RecordGenerator:
             # Only the declaration is emitted here in that case.
             ctor_out_of_line = self._ctor_can_be_out_of_line(record)
 
-            self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
             if ctor_out_of_line:
-                self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
+                self.ctx.emit_declaration_echo(out, record.init_method.loc, INDENT)
             else:
-                self.ctx.emit_definition_source_block(out, record.init_method.loc, INDENT)
+                self.ctx.emit_definition_echo(out, record.init_method.loc, INDENT)
             if has_params:
                 init_defaults = record.init_method.defaults if record.init_method.defaults else None
                 has_required_params = not init_defaults or any(d is None for d in init_defaults)
@@ -966,8 +962,7 @@ class RecordGenerator:
         elif mode == "def_hpp":
             return
         out.write("\n")
-        self.ctx.emit_preceding_comments(out, init.loc)
-        self.ctx.emit_definition_source_block(out, init.loc)
+        self.ctx.emit_definition_echo(out, init.loc)
         if init.params:
             _, cpp_params = self._ctor_cpp_params(record, emit_defaults=False)
             out.write(f"{inline_prefix}{q}::{n}({cpp_params})")
@@ -1324,11 +1319,10 @@ class RecordGenerator:
 
         # --- Destructor with drop-flag guard ---
         out.write("\n")
-        self.ctx.emit_preceding_comments(out, del_method.loc, indent=ind)
         if mode == "decl":
-            self.ctx.emit_source_comment(out, del_method.loc, indent=ind)
+            self.ctx.emit_declaration_echo(out, del_method.loc, ind)
         else:
-            self.ctx.emit_definition_source_block(out, del_method.loc, ind)
+            self.ctx.emit_definition_echo(out, del_method.loc, ind)
         if mode == "decl":
             out.write(f"{INDENT}~{cpp_name}();\n")
             return

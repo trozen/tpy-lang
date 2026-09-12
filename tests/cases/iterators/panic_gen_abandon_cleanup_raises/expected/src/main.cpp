@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // def gen() -> Iterator[int]:
 //     try:
-//         yield 1
-//         yield 2
+//         yield 1                           # -> S_RESUME_0
+//         yield 2                           # -> S_RESUME_1
 //     finally:
 //         raise ValueError("cleanup boom")
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             __state = S_RESUME_1;
             return ::tpy::BigInt(2);
@@ -26,7 +26,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         bool __fin_ran_2 = false;
         try {
             __fin_ran_2 = true;

@@ -6,16 +6,16 @@ namespace tpyapp::main {
 
 // async def driver() -> None:
 //     c = Container()
-//     print(await c.last_n())
+//     print(await c.last_n())  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c.emplace(Container());
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await c.last_n())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -36,18 +36,18 @@ __coro_driver driver() {
 }
 
 // async def last_n(self) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)        # -> S_RESUME_0
 //     for it in self.items:
 //         pass
 //     return it.n
 ::tpystd::tpy::Poll<int32_t> __coro_Container_last_n::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

@@ -9,8 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def pick(x: int32, y: int32) -> int32:
 int32_t pick(int32_t x, int32_t y);
+// @dispatch
 // def pick[U](x: U, y: U) -> U:
 template<typename U>
 ::tpy::val_or_ref_t<U> pick(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y);

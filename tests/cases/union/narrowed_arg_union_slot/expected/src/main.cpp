@@ -213,14 +213,15 @@ int32_t match_capture(::tpy::Union<A*, B*> v) {
     ::std::unreachable();
 }
 
+// # generator body: the alias survives the yield, so the lift renders after it
 // def gen_body(v: A | B) -> Iterator[int32]:
 //     if isinstance(v, A):
-//         yield v.n
+//         yield v.n                           # -> S_RESUME_0
 //         bump(v)  # tpyc: ok
-//         yield v.n
+//         yield v.n                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (std::holds_alternative<A*>(v)) {
             auto& __v = *std::get<A*>(v);
             __state = S_RESUME_0;
@@ -231,13 +232,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v.n
         auto& __v = *std::get<A*>(v);
         bump(::tpy::Union<A*, B*>{&(__v)});
         __state = S_RESUME_1;
         return __v.n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v.n
         auto& __v = *std::get<A*>(v);
         __state = S_JOIN_0;
         continue;
@@ -257,17 +258,18 @@ __gen_gen_body gen_body(::tpy::Union<A*, B*> v) {
     return __gen_gen_body(v);
 }
 
+// # generator body, match arm
 // def gen_match(v: A | B) -> Iterator[int32]:
 //     match v:
 //         case A():
-//             yield v.n
+//             yield v.n                        # -> S_RESUME_0
 //             bump(v)  # tpyc: ok
-//             yield v.n
+//             yield v.n                        # -> S_RESUME_1
 //         case _:
-//             yield -1
+//             yield -1                         # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_match::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = v;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -285,18 +287,18 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_match::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v.n
         auto& __v = *std::get<A*>(v);
         bump(::tpy::Union<A*, B*>{&(__v)});
         __state = S_RESUME_1;
         return __v.n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v.n
         auto& __v = *std::get<A*>(v);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }
@@ -315,16 +317,18 @@ __gen_gen_match gen_match(::tpy::Union<A*, B*> v) {
     return __gen_gen_match(v);
 }
 
+// # async body: the resumable frame re-establishes the alias per resume state,
+// # so the lift renders both before the suspension and after it
 // async def async_body(v: A | B) -> int32:
 //     if isinstance(v, A):
 //         bump(v)  # tpyc: ok
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)            # -> S_RESUME_0
 //         bump(v)  # tpyc: ok
 //         return v.n
 //     return -1
 ::tpystd::tpy::Poll<int32_t> __coro_async_body::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (std::holds_alternative<A*>(v)) {
             auto& __v = *std::get<A*>(v);
             bump(::tpy::Union<A*, B*>{&(__v)});
@@ -338,7 +342,7 @@ __gen_gen_match gen_match(::tpy::Union<A*, B*> v) {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -360,17 +364,18 @@ __coro_async_body async_body(::tpy::Union<A*, B*> v) {
     return __coro_async_body(v);
 }
 
+// # async body, match arm across a suspension
 // async def async_match(v: A | B) -> int32:
 //     match v:
 //         case A():
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)         # -> S_RESUME_0
 //             bump(v)  # tpyc: ok
 //             return v.n
 //         case _:
 //             return -1
 ::tpystd::tpy::Poll<int32_t> __coro_async_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = v;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -390,7 +395,7 @@ __coro_async_body async_body(::tpy::Union<A*, B*> v) {
         ::std::unreachable();
         __builtin_unreachable();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -573,20 +578,21 @@ int32_t loop_const(const std::vector<::tpy::Union<A, B>>& xs) {
     return k;
 }
 
+// # generator factory param
 // def gen_total(v: A | B) -> Iterator[int32]:
-//     yield total(v)  # tpyc: ok
-//     yield total(v)
+//     yield total(v)  # tpyc: ok               # -> S_RESUME_0
+//     yield total(v)                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_total::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return total(v);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield total(v)  # tpyc: ok
         __state = S_RESUME_1;
         return total(v);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield total(v)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -601,17 +607,18 @@ __gen_gen_total gen_total(::tpy::Union<const A*, const B*> v) {
     return __gen_gen_total(v);
 }
 
+// # async factory param
 // async def async_total(v: A | B) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                 # -> S_RESUME_0
 //     return total(v)  # tpyc: ok
 ::tpystd::tpy::Poll<int32_t> __coro_async_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -937,20 +944,20 @@ int32_t assign_narrowed() {
 
 // async def async_main() -> None:
 //     t = A(140)
-//     print("async", await async_body(t), t.n)
+//     print("async", await async_body(t), t.n)         # -> S_RESUME_0
 //     u = A(150)
-//     print("async-match", await async_match(u), u.n)
+//     print("async-match", await async_match(u), u.n)  # -> S_RESUME_1
 //     w: A | B = A(240)
-//     print("async-const", await async_total(w))
+//     print("async-const", await async_total(w))       # -> S_RESUME_2
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t.emplace(A(140));
         __sub_0.emplace(::tpy::Union<A*, B*>{&((*t))});
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("async", await async_body(t), t.n)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -961,7 +968,7 @@ int32_t assign_narrowed() {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print("async-match", await async_match(u), u.n)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -972,7 +979,7 @@ int32_t assign_narrowed() {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print("async-const", await async_total(w))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();

@@ -112,7 +112,6 @@ inline std::ostream& operator<<(std::ostream& os, const Trace& obj) {
     return os;
 }
 
-// # generator METHOD: the pack rides beside the `self` capture.
 // class Collector:
 struct Collector {
     // base: int32
@@ -131,9 +130,6 @@ inline std::ostream& operator<<(std::ostream& os, const Collector& obj) {
     return os;
 }
 
-// # Second no-varargs sibling: an inferred-`@readonly` receiver makes the
-// # `self` field a const container, so the const comes from the SOURCE's
-// # root rather than from the element's own type.
 // class Album:
 struct Album {
     // items: list[Point]
@@ -151,9 +147,6 @@ inline std::ostream& operator<<(std::ostream& os, const Album& obj) {
     return os;
 }
 
-// # METHOD flavour of the same climb: the pack's operands are the enclosing
-// # METHOD's params, so the mutation has to be recorded self-relative against
-// # both of them -- the generator producing the pack is a method too.
 // class Grower:
 struct Grower {
     // tag: int32
@@ -273,19 +266,21 @@ struct __gen_merge_shape : public ::tpy::next_iter_mixin<__gen_merge_shape<T>, i
         return os << "<generator merge_shape>";
     }
 };
+// # free function / container element in the `heapq.merge` shape: a
+// # NON-suspending loop over the pack, then a suspending `while`.
 // def merge_shape[T: Comparable](*xs: list[T]) -> Iterator[int32]:  # tpyc: ok
 //     total = 0
 //     for s in xs:
 //         total += len(s)
 //     i = 0
 //     while i < total:
-//         yield i
+//         yield i                                                               # -> S_RESUME_0
 //         i += 1
-//     yield -1
+//     yield -1                                                                  # -> S_RESUME_1
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_merge_shape<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         auto& __obj_0 = xs;
         auto __beg_0 = __obj_0.begin();
@@ -298,12 +293,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_merge_shape<T>::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -573,24 +568,27 @@ struct __gen_bump_generic : public ::tpy::next_iter_mixin<__gen_bump_generic<T>,
         return os << "<generator bump_generic>";
     }
 };
+// # free function / bare generic pack element: the frame loop var borrows the
+// # element instead of copying it into an owning slot, so the bump is seen by
+// # the caller. The bound is a protocol so the body can call through `T`.
 // def bump_generic[T: Counter](*xs: T) -> Iterator[int32]:  # tpyc: ok
 //     for x in xs:
-//         yield x.bump()
-//     yield -1
+//         yield x.bump()                                                # -> S_RESUME_0
+//     yield -1                                                          # -> S_RESUME_1
 template <typename T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_generic<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x.bump()
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -674,33 +672,37 @@ struct __gen_readonly_next : public ::tpy::next_iter_mixin<__gen_readonly_next<T
         return os << "<generator readonly_next>";
     }
 };
+// # `next` strategy (an `Iterator[T]` protocol source) with a readonly element:
+// # the loop var is a `const Point*` reaching through the producer's yield slot
+// # to the ORIGINAL list. Read twice around a suspension so the caller can mutate
+// # the source in between: a copying slot would repeat the first read.
 // def readonly_next(it: Iterator[readonly[Point]]) -> Iterator[int32]:  # tpyc: ok
 //     for p in it:
 //         # `yield p.x` copies an int32, but the ephemeral-borrow escape check
 //         # roots on `p` and refuses it -- BUGS.md#ephemeral-value-read-escape.
 //         before = p.x
-//         yield before
+//         yield before                                                              # -> S_RESUME_0
 //         # Same borrow, after the caller's mutation of the source.
 //         after = p.x
-//         yield after
-//     yield -1
+//         yield after                                                               # -> S_RESUME_1
+//     yield -1                                                                      # -> S_RESUME_2
 template <::tpystd::typing::Iterator<Point> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_readonly_next<T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield before
         after = p->x;
         __state = S_RESUME_1;
         return after;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield after
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -845,6 +847,8 @@ inline void Grower::grow_both(std::vector<std::vector<int32_t>>& p, std::vector<
         }
     }
 }
+// # Producer for the multi-root section: the pack element is yielded straight
+// # out, so the consumer's loop var borrows EVERY operand of the one pack slot.
 // def each_pack(*xs: list[list[int32]]) -> Iterator[list[list[int32]]]:  # tpyc: ok
 //     for s in xs:
 //         yield s

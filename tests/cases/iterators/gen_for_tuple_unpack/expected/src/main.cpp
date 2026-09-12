@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def sums(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
-//     yield -1
+//     yield -1                                                    # -> S_RESUME_0
 //     for a, b in pairs:
-//         yield a + b
+//         yield a + b                                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         __for_it_0.emplace((pairs).begin());
         __for_end_0.emplace((pairs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a + b
         __state = S_JOIN_0;
         continue;
     }
@@ -49,16 +49,16 @@ __gen_sums sums(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 
 // def firsts(pairs: list[tuple[int32, int32]]) -> Iterator[int32]:
 //     for x, _ in pairs:
-//         yield x
+//         yield x                                                   # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((pairs).begin());
         __for_end_0.emplace((pairs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -86,22 +86,22 @@ __gen_firsts firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
 
 // def multi(p1: list[tuple[int32, int32]], p2: list[tuple[int32, int32]]) -> Iterator[int32]:
 //     for a, b in p1:
-//         yield a + b
+//         yield a + b                                                                          # -> S_RESUME_0
 //     for c, d in p2:
-//         yield c * d
+//         yield c * d                                                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((p1).begin());
         __for_end_0.emplace((p1).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a + b
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield c * d
         __state = S_JOIN_1;
         continue;
     }

@@ -4,22 +4,23 @@
 namespace tpyapp::main {
 
 
+// # free function, `from m import g`
 // def free_import() -> Iterator[int32]:
-//     yield 0
+//     yield 0                            # -> S_RESUME_0
 //     for x in walk():  # tpyc: ok
-//         yield x
+//         yield x                        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_import::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_src_0.emplace(::tpyapp::gensrc::walk());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -44,22 +45,23 @@ __gen_free_import free_import() {
     return __gen_free_import();
 }
 
+// # free function reached through the module object, `import m; m.g()`
 // def module_call() -> Iterator[int32]:
-//     yield 10
+//     yield 10                             # -> S_RESUME_0
 //     for x in gensrc.walk():  # tpyc: ok
-//         yield x
+//         yield x                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_module_call::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 10;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 10
         __for_src_0.emplace(::tpyapp::gensrc::walk());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -84,22 +86,23 @@ __gen_module_call module_call() {
     return __gen_module_call();
 }
 
+// # generator method on an imported class
 // def imported_method(s: Src) -> Iterator[int32]:
-//     yield 20
+//     yield 20                                     # -> S_RESUME_0
 //     for x in s.steps():  # tpyc: ok
-//         yield x
+//         yield x                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_imported_method::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 20;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 20
         __for_src_0.emplace(s.steps());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -124,24 +127,25 @@ __gen_imported_method imported_method(::tpyapp::gensrc::Src& s) {
     return __gen_imported_method(s);
 }
 
+// # generic cross-module callee: the field carries the inferred type args
 // def generic_callee() -> Iterator[int32]:
-//     yield 30
+//     yield 30                              # -> S_RESUME_0
 //     for x in pair(1, 2):  # tpyc: ok
-//         yield x
+//         yield x                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_callee::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 30;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 30
         int32_t __tmp_1 = 1;
         int32_t __tmp_2 = 2;
         __for_src_0.emplace(::tpyapp::gensrc::pair<int32_t>(__tmp_1, __tmp_2));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -166,22 +170,24 @@ __gen_generic_callee generic_callee() {
     return __gen_generic_callee();
 }
 
+// # generic OWNER, cross-module: namespace and owner type args both come off the
+// # receiver's rendered type
 // def generic_owner_imported(b: Box[int32]) -> Iterator[int32]:
-//     yield 40
+//     yield 40                                                   # -> S_RESUME_0
 //     for v in b.two():  # tpyc: ok
-//         yield v
+//         yield v                                                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_imported::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 40;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 40
         __for_src_0.emplace(b.two());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -206,22 +212,23 @@ __gen_generic_owner_imported generic_owner_imported(::tpyapp::gensrc::Box<int32_
     return __gen_generic_owner_imported(b);
 }
 
+// # generic OWNER, same module -- the leg the shared naming grammar lifts
 // def generic_owner_local(b: LocalBox[int32]) -> Iterator[int32]:
-//     yield 50
+//     yield 50                                                     # -> S_RESUME_0
 //     for v in b.two():  # tpyc: ok
-//         yield v
+//         yield v                                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_owner_local::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 50;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 50
         __for_src_0.emplace(b.two());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -246,23 +253,25 @@ __gen_generic_owner_local generic_owner_local(LocalBox<int32_t>& b) {
     return __gen_generic_owner_local(b);
 }
 
+// # The embedded frame BORROWS its receiver: mutating `b` between pulls must be
+// # visible to the callee on its next resume, and to the caller after the loop.
 // def mutate_receiver(b: Bag) -> Iterator[int32]:
-//     yield 60
+//     yield 60                                     # -> S_RESUME_0
 //     for v in b.readings():  # tpyc: ok
 //         b.bump()
-//         yield v
+//         yield v                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_mutate_receiver::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 60;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 60
         __for_src_0.emplace(b.readings());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
@@ -288,22 +297,24 @@ __gen_mutate_receiver mutate_receiver(::tpyapp::gensrc::Bag& b) {
     return __gen_mutate_receiver(b);
 }
 
+// # The embedded frame is pulled LAZILY: the callee runs only as far as each
+// # `__next__` demands, interleaved with the consumer's own work.
 // def lazy_interleave() -> Iterator[int32]:
-//     yield 70
+//     yield 70                               # -> S_RESUME_0
 //     for x in chatty():  # tpyc: ok
-//         yield x
+//         yield x                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_lazy_interleave::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 70;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 70
         __for_src_0.emplace(::tpyapp::gensrc::chatty());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -328,22 +339,24 @@ __gen_lazy_interleave lazy_interleave() {
     return __gen_lazy_interleave();
 }
 
+// # Abandoned mid-delegation: the consumer breaks, and the callee's `finally`
+// # still runs when the frames are torn down.
 // def abandoned() -> Iterator[int32]:
-//     yield 80
+//     yield 80                         # -> S_RESUME_0
 //     for x in guarded():  # tpyc: ok
-//         yield x
+//         yield x                      # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_abandoned::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 80;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 80
         __for_src_0.emplace(::tpyapp::gensrc::guarded());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -368,21 +381,22 @@ __gen_abandoned abandoned() {
     return __gen_abandoned();
 }
 
+// # async position: the same field, in a coroutine that suspends in the loop body
 // async def async_position() -> int32:
 //     total: int32 = 0
 //     for x in walk():  # tpyc: ok
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)        # -> S_RESUME_0
 //         total += x
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_async_position::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __for_src_0.emplace(::tpyapp::gensrc::walk());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

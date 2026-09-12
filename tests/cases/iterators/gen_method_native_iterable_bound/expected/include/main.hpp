@@ -71,12 +71,12 @@ struct __gen_Wrap_summary : public ::tpy::next_iter_mixin<__gen_Wrap_summary<T>,
 //     for x in self.items:
 //         total += x
 //         count += 1
-//     yield total
-//     yield count
+//     yield total                        # -> S_RESUME_0
+//     yield count                        # -> S_RESUME_1
 template <::tpy::NativeIterable<int32_t> T>
 std::expected<int32_t, ::tpy::StopIteration> __gen_Wrap_summary<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         count = 0;
         auto& __obj_0 = __self.items;
@@ -90,11 +90,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Wrap_summary<T>::__next__() {
         __state = S_RESUME_0;
         return total;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield total
         __state = S_RESUME_1;
         return count;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield count
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

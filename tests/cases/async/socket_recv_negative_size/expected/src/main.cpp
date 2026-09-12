@@ -15,13 +15,13 @@ namespace tpyapp::main {
 //
 //     loop = asyncio.get_running_loop()
 //     try:
-//         await loop.sock_recv(b, -1)
+//         await loop.sock_recv(b, -1)    # -> S_RESUME_0
 //         print("async: no error")
 //     except ValueError:
 //         print("async: ValueError")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = ::tpystd::socket::socketpair();
         a.emplace(std::move(std::get<0>(__tup_1)));
         b.emplace(std::move(std::get<1>(__tup_1)));
@@ -38,7 +38,7 @@ namespace tpyapp::main {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await loop.sock_recv(b, -1)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

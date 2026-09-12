@@ -5,20 +5,20 @@ namespace tpyapp::main {
 
 
 // def names(a: readonly[Dog | Cat]) -> Iterator[str]:
-//     yield "a"
+//     yield "a"                                        # -> S_RESUME_0
 //     match a:
 //         case Dog():
-//             yield a.name
+//             yield a.name                             # -> S_RESUME_1
 //         case Cat():
-//             yield a.name
-//     yield "b"
+//             yield a.name                             # -> S_RESUME_2
+//     yield "b"                                        # -> S_RESUME_3
 std::expected<std::string, ::tpy::StopIteration> __gen_names::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return "a";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "a"
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -37,17 +37,17 @@ std::expected<std::string, ::tpy::StopIteration> __gen_names::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.name
         auto& __a = *std::get<const Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield a.name
         auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield "b"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

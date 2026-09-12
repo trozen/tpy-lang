@@ -18,7 +18,6 @@ double area(::tpy::Union<const Circle*, const Rect*, const Triangle*> s);
 // def main() -> None:
 void main();
 
-// # isinstance elif chain with three-member union
 // class Circle:
 struct Circle {
     // radius: float

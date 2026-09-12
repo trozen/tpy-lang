@@ -37,18 +37,6 @@ Flag* observe(Counter& cnt, Flag& f);
 // def main():
 void main();
 
-// # Truthiness of an un-narrowed pointer-repr Optional[record] is CPython's
-// # `x is not None and bool(x)`: null-check AND the inner record's
-// # __bool__/__len__ (regression: it emitted only the non-null pointer test, so
-// # a non-None but falsy record read truthy). Covers if / not / and / while and
-// # a side-effecting operand (the call must evaluate exactly once). A value-repr
-// # str|None control stays on the is_truthy render.
-// #
-// # A storage-form Optional[record] source (record field / container element) is
-// # std::optional, not a T*, so it must NOT take the ptr_truthy dispatch (that
-// # would fail to compile). field_test / elem_test guard that it still builds
-// # (they use only None / truthy values -- the falsy-non-None dunder-dispatch gap
-// # on storage-form sources is a separate open shape, see BUGS.md).
 // class Flag:
 struct Flag {
     // self.on = on

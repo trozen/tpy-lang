@@ -17,7 +17,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # match/case with as-pattern: case Dog() as d:
 // class Dog:
 struct Dog {
     // name: str

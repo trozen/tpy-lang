@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Outer_Inner_echo::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 205;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -28,21 +28,21 @@ __coro_Outer_Inner_echo Outer_Inner_echo() {
 // def delegated(inner: Outer.Inner) -> Iterator[int]:
 //     # A yield in the loop embeds the nested method's concrete frame.
 //     for value in inner.values():  # tpyc: ok
-//         yield value
+//         yield value                                                   # -> S_RESUME_0
 //     # Keep the consumer on the named resumable route too.
-//     yield -1
+//     yield -1                                                          # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_delegated::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_src_0.emplace(inner.values());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield value
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -69,15 +69,15 @@ __gen_delegated delegated(Outer::Inner& inner) {
 
 // async def nested_compute(inner: Outer.Inner, delta: int = 1) -> int:
 //     # The default-bearing factory signature needs Outer to be complete.
-//     return await inner.compute(delta)  # tpyc: ok
+//     return await inner.compute(delta)  # tpyc: ok                        # -> S_RESUME_0
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_nested_compute::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(inner, delta);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await inner.compute(delta)  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -101,37 +101,37 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
 //     inner = Outer.Inner(1)
 //     pending = inner.compute(1)  # tpyc: ok
 //     inner.value = 40
-//     print("bound:", await pending, inner.value)  # tpyc: ok
+//     print("bound:", await pending, inner.value)  # tpyc: ok                                # -> S_RESUME_0
 //
 //     # Direct await: the sub-frame is declared in the module, outside Outer.
-//     print("await:", await inner.compute(1), inner.value)  # tpyc: ok
+//     print("await:", await inner.compute(1), inner.value)  # tpyc: ok                       # -> S_RESUME_1
 //
 //     # Generic method: template arguments attach to the same nested identity.
-//     print("generic:", await inner.echo(7))  # tpyc: ok
+//     print("generic:", await inner.echo(7))  # tpyc: ok                                     # -> S_RESUME_2
 //
 //     # Generic nested class: concrete owner arguments survive frame qualification.
 //     box = Outer.Box(7)
 //     boxed = box.get()  # tpyc: ok
 //     box.value = 8
-//     print("generic class:", await boxed, box.value)  # tpyc: ok
+//     print("generic class:", await boxed, box.value)  # tpyc: ok                            # -> S_RESUME_3
 //
 //     # Imported alias: frames belong to the helper's custom module namespace.
 //     remote = Remote.Worker(10)
 //     imported = remote.compute(1)  # tpyc: ok
 //     remote.value = 20
-//     print("imported bound:", await imported, remote.value)  # tpyc: ok
-//     print("imported await:", await remote.compute(1), remote.value)  # tpyc: ok
+//     print("imported bound:", await imported, remote.value)  # tpyc: ok                     # -> S_RESUME_4
+//     print("imported await:", await remote.compute(1), remote.value)  # tpyc: ok            # -> S_RESUME_5
 //
 //     # Async context manager: entry and exit both act on the original receiver.
 //     gate = Outer.Gate()
-//     async with gate as entered:  # tpyc: ok
+//     async with gate as entered:  # tpyc: ok                                                # -> S_RESUME_6, S_RESUME_7
 //         gate.value += 10
 //         print("context body:", entered, gate.value)
 //     print("context exit:", gate.value)
 //
 //     # Finally: the nested method's cleanup keeps the receiver aliased too.
 //     try:
-//         print("try:", await inner.cleanup())  # tpyc: ok
+//         print("try:", await inner.cleanup())  # tpyc: ok                                   # -> S_RESUME_8
 //     finally:
 //         print("finally:", inner.value)
 //
@@ -139,7 +139,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
 //     for value in inner.values():  # tpyc: ok
 //         print("async iteration:", value)
 //         inner.value += 10
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                                             # -> S_RESUME_9
 //     print("async iteration receiver:", inner.value)
 //
 //     # Owner paths that flatten to identical underscore-separated names coexist.
@@ -147,35 +147,35 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
 //     joined = Outer.Layer_Deep()
 //     split = Outer_Layer.Deep()
 //     flat = Outer_Layer_Deep()
-//     print("deep:", await deep.compute())  # tpyc: ok
-//     print("joined:", await joined.compute())  # tpyc: ok
-//     print("split:", await split.compute())  # tpyc: ok
-//     print("flat:", await flat.compute())  # tpyc: ok
+//     print("deep:", await deep.compute())  # tpyc: ok                                       # -> S_RESUME_10
+//     print("joined:", await joined.compute())  # tpyc: ok                                   # -> S_RESUME_11
+//     print("split:", await split.compute())  # tpyc: ok                                     # -> S_RESUME_12
+//     print("flat:", await flat.compute())  # tpyc: ok                                       # -> S_RESUME_13
 //     # The flat free-function name must not collide with Inner.echo's frame.
-//     print("free:", await Outer_Inner_echo())  # tpyc: ok
+//     print("free:", await Outer_Inner_echo())  # tpyc: ok                                   # -> S_RESUME_14
 //
 //     # Free async: the nested parameter aliases across factory creation and await.
 //     free_pending = nested_compute(inner)  # tpyc: ok
 //     inner.value = 70
-//     print("free bound:", await free_pending, inner.value)  # tpyc: ok
-//     print("free await:", await nested_compute(inner, 2), inner.value)  # tpyc: ok
+//     print("free bound:", await free_pending, inner.value)  # tpyc: ok                      # -> S_RESUME_15
+//     print("free await:", await nested_compute(inner, 2), inner.value)  # tpyc: ok          # -> S_RESUME_16
 //
 //     # Generic/default twin: both factory spellings retain the same receiver.
 //     generic_pending = nested_echo(inner, 7)  # tpyc: ok
 //     inner.value = 80
-//     print("generic free bound:", await generic_pending, inner.value)  # tpyc: ok
-//     print("generic free await:", await nested_echo(inner, 9, 2), inner.value)  # tpyc: ok
+//     print("generic free bound:", await generic_pending, inner.value)  # tpyc: ok           # -> S_RESUME_17
+//     print("generic free await:", await nested_echo(inner, 9, 2), inner.value)  # tpyc: ok  # -> S_RESUME_18
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_sections::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         inner.emplace(Outer::Inner(1));
         pending.emplace((*inner).compute(1));
         (*inner).value = ::tpy::BigInt(40);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("bound:", await pending, inner.value)  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(pending, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -185,7 +185,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print("await:", await inner.compute(1), inner.value)  # tpyc: ok
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -195,7 +195,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print("generic:", await inner.echo(7))  # tpyc: ok
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
@@ -207,7 +207,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: print("generic class:", await boxed, box.value)  # tpyc: ok
         auto __r3 = ::tpy::poll_with_cancel(boxed, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3 = std::move(__r3).value();
@@ -219,7 +219,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_4;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: print("imported bound:", await imported, remote.value)  # tpyc: ok
         auto __r4 = ::tpy::poll_with_cancel(imported, __cancel_pending, waker);
         if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_4 = std::move(__r4).value();
@@ -229,7 +229,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_5;
         continue;
     }
-    case S_RESUME_5: {
+    case S_RESUME_5: {  // after: print("imported await:", await remote.compute(1), remote.value)  # tpyc: ok
         auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
         if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_5 = std::move(__r5).value();
@@ -241,7 +241,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_6;
         continue;
     }
-    case S_RESUME_6: {
+    case S_RESUME_6: {  // after: async with gate as entered:  # tpyc: ok
         auto __r6 = ::tpy::poll_with_cancel(__sub_6, __cancel_pending, waker);
         if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         entered = std::move(__r6).value();
@@ -249,7 +249,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_JOIN_3;
         continue;
     }
-    case S_RESUME_7: {
+    case S_RESUME_7: {  // after: async with gate as entered:  # tpyc: ok
         auto __r7 = ::tpy::poll_with_cancel(__sub_7, __cancel_pending, waker);
         if (__r7.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r7).value();
@@ -262,7 +262,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_8: {
+    case S_RESUME_8: {  // after: print("try:", await inner.cleanup())  # tpyc: ok
         bool __fin_ran_1 = false;
         try {
             auto __r8 = ::tpy::poll_with_cancel(__sub_8, __cancel_pending, waker);
@@ -282,7 +282,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
             throw;
         }
     }
-    case S_RESUME_9: {
+    case S_RESUME_9: {  // after: await asyncio.sleep(0)
         auto __r9 = ::tpy::poll_with_cancel(__sub_9, __cancel_pending, waker);
         if (__r9.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r9).value();
@@ -290,7 +290,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_10: {
+    case S_RESUME_10: {  // after: print("deep:", await deep.compute())  # tpyc: ok
         auto __r10 = ::tpy::poll_with_cancel(__sub_10, __cancel_pending, waker);
         if (__r10.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_7 = std::move(__r10).value();
@@ -300,7 +300,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_11;
         continue;
     }
-    case S_RESUME_11: {
+    case S_RESUME_11: {  // after: print("joined:", await joined.compute())  # tpyc: ok
         auto __r11 = ::tpy::poll_with_cancel(__sub_11, __cancel_pending, waker);
         if (__r11.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_8 = std::move(__r11).value();
@@ -310,7 +310,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_12;
         continue;
     }
-    case S_RESUME_12: {
+    case S_RESUME_12: {  // after: print("split:", await split.compute())  # tpyc: ok
         auto __r12 = ::tpy::poll_with_cancel(__sub_12, __cancel_pending, waker);
         if (__r12.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_9 = std::move(__r12).value();
@@ -320,7 +320,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_13;
         continue;
     }
-    case S_RESUME_13: {
+    case S_RESUME_13: {  // after: print("flat:", await flat.compute())  # tpyc: ok
         auto __r13 = ::tpy::poll_with_cancel(__sub_13, __cancel_pending, waker);
         if (__r13.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_10 = std::move(__r13).value();
@@ -330,7 +330,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_14;
         continue;
     }
-    case S_RESUME_14: {
+    case S_RESUME_14: {  // after: print("free:", await Outer_Inner_echo())  # tpyc: ok
         auto __r14 = ::tpy::poll_with_cancel(__sub_14, __cancel_pending, waker);
         if (__r14.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_11 = std::move(__r14).value();
@@ -341,7 +341,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_15;
         continue;
     }
-    case S_RESUME_15: {
+    case S_RESUME_15: {  // after: print("free bound:", await free_pending, inner.value)  # tpyc: ok
         auto __r15 = ::tpy::poll_with_cancel(free_pending, __cancel_pending, waker);
         if (__r15.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_12 = std::move(__r15).value();
@@ -351,7 +351,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_16;
         continue;
     }
-    case S_RESUME_16: {
+    case S_RESUME_16: {  // after: print("free await:", await nested_compute(inner, 2), inner.value)  # tpyc: ok
         auto __r16 = ::tpy::poll_with_cancel(__sub_16, __cancel_pending, waker);
         if (__r16.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_13 = std::move(__r16).value();
@@ -362,7 +362,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_17;
         continue;
     }
-    case S_RESUME_17: {
+    case S_RESUME_17: {  // after: print("generic free bound:", await generic_pending, inner.value)  # tpyc: ok
         auto __r17 = ::tpy::poll_with_cancel(generic_pending, __cancel_pending, waker);
         if (__r17.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_14 = std::move(__r17).value();
@@ -372,7 +372,7 @@ __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta) {
         __state = S_RESUME_18;
         continue;
     }
-    case S_RESUME_18: {
+    case S_RESUME_18: {  // after: print("generic free await:", await nested_echo(inner, 9, 2), inner.value)  # tpyc: ok
         auto __r18 = ::tpy::poll_with_cancel(__sub_18, __cancel_pending, waker);
         if (__r18.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_15 = std::move(__r18).value();
@@ -521,17 +521,17 @@ void main() {
 }
 
 // async def compute(self, delta: int) -> int:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                   # -> S_RESUME_0
 //     self.value += delta
 //     return self.value
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_5_Inner_7_compute::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -549,17 +549,17 @@ void main() {
 
 // async def cleanup(self) -> int:
 //     try:
-//         return await self.compute(1)  # tpyc: ok
+//         return await self.compute(1)  # tpyc: ok  # -> S_RESUME_0
 //     finally:
 //         self.value += 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_5_Inner_7_cleanup::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await self.compute(1)  # tpyc: ok
         bool __fin_ran_3 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -603,19 +603,19 @@ void __coro_2_5_Outer_5_Inner_7_cleanup::__finally_0() {
 
 // def values(self) -> Iterator[int]:
 //     # Two yields require a named resumable frame.
-//     yield self.value  # tpyc: ok
-//     yield self.value  # tpyc: ok
+//     yield self.value  # tpyc: ok                   # -> S_RESUME_0
+//     yield self.value  # tpyc: ok                   # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_values::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.value;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.value  # tpyc: ok
         __state = S_RESUME_1;
         return __self.value;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.value  # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -626,17 +626,17 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_val
 
 
 // async def __aenter__(self) -> int:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)          # -> S_RESUME_0
 //     self.value += 1
 //     return self.value
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_4_Gate_10___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -653,16 +653,16 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_val
 
 
 // async def __aexit__(self, et: None, ev: None, tb: None) -> None:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                        # -> S_RESUME_0
 //     self.value += 100
 ::tpystd::tpy::Poll<::std::monostate> __coro_2_5_Outer_4_Gate_9___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -682,7 +682,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_val
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_3_5_Outer_5_Layer_4_Deep_7_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 201;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -698,7 +698,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_val
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_10_Layer_Deep_7_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 202;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -714,7 +714,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_val
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_11_Outer_Layer_4_Deep_7_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 203;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -730,7 +730,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_2_5_Outer_5_Inner_6_val
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Outer_Layer_Deep_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 204;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));

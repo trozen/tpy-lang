@@ -17,8 +17,6 @@ std::string describe(::tpy::Union<const Other*, const Wrapper*> w);
 // def main() -> None:
 void main();
 
-// # `field=None` on a union subject: the None check must run, not match every
-// # Wrapper regardless of `child`.
 // class Wrapper:
 struct Wrapper {
     // child: "str | None"

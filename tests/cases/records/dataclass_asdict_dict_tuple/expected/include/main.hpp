@@ -43,7 +43,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # dict[str, Dataclass] -- values recursed
 // @dataclass
 // class DictOfDC:
 struct DictOfDC {
@@ -68,7 +67,6 @@ inline std::ostream& operator<<(std::ostream& os, const DictOfDC& obj) {
     return os;
 }
 
-// # tuple[Dataclass, scalar] -- DC elements recursed
 // @dataclass
 // class TupleOfDC:
 struct TupleOfDC {
@@ -93,7 +91,6 @@ inline std::ostream& operator<<(std::ostream& os, const TupleOfDC& obj) {
     return os;
 }
 
-// # tuple[Dataclass, Dataclass] -- both recursed
 // @dataclass
 // class TupleAllDC:
 struct TupleAllDC {

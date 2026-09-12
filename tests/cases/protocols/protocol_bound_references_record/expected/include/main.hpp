@@ -9,14 +9,12 @@ namespace tpyapp::main {
 
 struct Foo;
 
-// # User-defined protocol that references Foo
 // class FooMaker(Protocol):
 template<typename T>
 concept FooMaker = requires(T& t) {
     { t.make() } -> std::convertible_to<Foo>;
 };
 
-// # A record that will be referenced by a bound protocol
 // class Foo:
 struct Foo {
     // value: int32
@@ -33,7 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
     return os;
 }
 
-// # Implementation of FooMaker
 // class DefaultFooMaker:
 struct DefaultFooMaker {
 
@@ -50,7 +47,6 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFooMaker& obj) {
 
 template<FooMaker T> struct Bar;
 
-// # Protocol that references the bounded record Bar
 // class BarUser(Protocol):
 template<typename T>
 concept BarUser = requires(T& t) {
@@ -63,7 +59,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Record with the bound protocol as a type parameter bound
 // class Bar[T: FooMaker]:
 template<FooMaker T>
 struct Bar {

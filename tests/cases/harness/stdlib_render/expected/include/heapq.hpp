@@ -223,6 +223,21 @@ std::vector<T> nlargest(int32_t n, const std::vector<T>& a) {
     }
     return result;
 }
+// # One cursor per input; each step scans the live heads and emits the smallest,
+// # advancing only that input's cursor. O(inputs) per element vs CPython's
+// # O(log inputs) heap -- merging many streams is rare, so the linear scan is the
+// # simpler tradeoff (and a value-ordered heap can't help here: its comparator
+// # can't reach back into the source lists, so it would have to store a copy or
+// # an unsafe pointer per entry). Strict `<` makes the lowest-indexed input win
+// # ties, so equal elements emit in input order -- stable, like CPython.
+// #
+// # Inputs are compared in place by index, never copied into merge state. The
+// # yield is an explicit `copy()` into an owned `Own[T]` slot, so the consumer
+// # owns each element (it can store it without an implicit-copy warning) -- which
+// # is why merge yields copies, not the source objects, for reference-type T (the
+// # copy-not-alias divergence in the header). `iterables[best]` is re-indexed
+// # inline rather than bound to a local: a non-const local alias of the const
+// # vararg element won't compile.
 // def merge[T: Comparable](*iterables: list[T]) -> Iterator[Own[T]]:
 //     cursors: list[int32] = []
 //     for src in iterables:

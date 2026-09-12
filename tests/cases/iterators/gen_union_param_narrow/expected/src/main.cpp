@@ -50,18 +50,18 @@ void main() {
 }
 
 // def voices(self, a: Dog | Cat) -> Iterator[str]:
-//     yield "start"
+//     yield "start"                                 # -> S_RESUME_0
 //     if isinstance(a, Dog):  # tpyc: ok
-//         yield a.sound()
+//         yield a.sound()                           # -> S_RESUME_1
 //     else:
-//         yield "not-a-dog"
+//         yield "not-a-dog"                         # -> S_RESUME_2
 std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return "start";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "start"
         if (std::holds_alternative<Dog*>(a)) {
             auto& __a = *std::get<Dog*>(a);
             __state = S_RESUME_1;
@@ -72,12 +72,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__next__() 
             return "not-a-dog";
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.sound()
         auto& __a = *std::get<Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "not-a-dog"
         auto& __a = *std::get<Cat*>(a);
         __state = S_JOIN_0;
         continue;
@@ -94,12 +94,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__next__() 
 
 // def first(self, a: Dog | Cat) -> Iterator[str]:
 //     if isinstance(a, Dog):  # tpyc: ok
-//         yield a.sound()
+//         yield a.sound()                          # -> S_RESUME_0
 //     else:
-//         yield a.sound()
+//         yield a.sound()                          # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_Owner_first::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (std::holds_alternative<Dog*>(a)) {
             auto& __a = *std::get<Dog*>(a);
             __state = S_RESUME_0;
@@ -110,12 +110,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Owner_first::__next__() {
             return __a.sound();
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a.sound()
         auto& __a = *std::get<Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.sound()
         auto& __a = *std::get<Cat*>(a);
         __state = S_JOIN_0;
         continue;

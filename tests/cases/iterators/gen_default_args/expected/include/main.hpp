@@ -80,6 +80,7 @@ struct Box {
     // def __init__(self) -> None:
     Box();
 
+    // # Simple generator METHOD with a default (the record_name peephole path).
     // def upto_m(self, stop: int32 = 2) -> Iterator[int32]:
     //     i: int32 = 0
     //     while i < stop:
@@ -185,23 +186,25 @@ struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
         return os << "<generator head>";
     }
 };
+// # Generic generator (protocol param) with a default -- the proto-param
+// # default-threading path, resumable via the break.
 // def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
 //     c: int32 = 0
 //     for x in it:
 //         if c >= n:
 //             break
-//         yield x
+//         yield x                                             # -> S_RESUME_0
 //         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -335,30 +338,31 @@ struct __gen_Box2_take : public ::tpy::next_iter_mixin<__gen_Box2_take<T>, T> {
     }
 };
 
+// # Resumable generator method on a GENERIC class -- the monomorphic twin.
 // def take(self, n: int32 = 2) -> Iterator[T]:
 //     c: int32 = 0
 //     for x in self.items:
 //         if c >= n:
 //             break
-//         yield x
+//         yield x                               # -> S_RESUME_0
 //         c += 1
-//     yield self.items[0]
+//     yield self.items[0]                       # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_Box2_take<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c = 0;
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.items[0]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -399,6 +403,7 @@ inline Rec::Rec(int32_t v) : v(v) {}
 // def __init__(self) -> None:
 //     self.base = 0
 inline Box::Box() : base(0) {}
+// # Simple generator (single yield in a tail while-loop), two literal defaults.
 // def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
 //     i: int32 = 0
 //     while i < stop:
@@ -418,6 +423,7 @@ inline auto upto(int32_t stop = 3, int32_t step = 1) {
     );
 }
 
+// # Default referencing a module-level Final constant.
 // def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
 //     i: int32 = 0
 //     while i < stop:

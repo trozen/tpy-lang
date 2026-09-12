@@ -42,24 +42,25 @@ std::optional<::tpyapp::main::Mode> EnumUtil<::tpyapp::main::Mode>::try_parse(st
 namespace tpyapp::main {
 
 
+// # Resumable generator (two yields), one default.
 // def bounded(limit: int32 = 2) -> Iterator[int32]:
-//     yield 0
+//     yield 0                                        # -> S_RESUME_0
 //     i: int32 = 1
 //     while i <= limit:
-//         yield i
+//         yield i                                    # -> S_RESUME_1
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bounded::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -409,24 +410,25 @@ void main() {
     }
 }
 
+// # Resumable generator METHOD (two yields) -- the reproducer.
 // def bounded_m(self, limit: int32 = 2) -> Iterator[int32]:
-//     yield self.base
+//     yield self.base                                        # -> S_RESUME_0
 //     i: int32 = 1
 //     while i <= limit:
-//         yield self.base + i
+//         yield self.base + i                                # -> S_RESUME_1
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.base;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.base
         i = 1;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.base + i
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -446,25 +448,26 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_bounded_m::__next__() {
 }
 
 
+// # Every default shape at the resumable-method position, in one signature.
 // def shapes(self, tag: str = "t", flag: bool = True, ratio: float = 0.5,
 //            m: Mode = Mode.B, r: Rec | None = None, w: int32 = int32(3),
 //            neg: int32 = -1, f: int32 = WIDTH) -> Iterator[int32]:
-//     yield self.base
+//     yield self.base                                                      # -> S_RESUME_0
 //     print("shapes", tag, flag, ratio, m == Mode.B,
 //           -1 if r is None else r.v, w, neg, f)
-//     yield self.base + 1
+//     yield self.base + 1                                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_shapes::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.base;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.base
         std::cout << "shapes" << " " << tag << " " << ::tpy::print_bool(flag) << " " << ::tpy::print_float(ratio) << " " << ::tpy::print_bool((m == Mode::B)) << " " << (((r == nullptr)) ? (-1) : (r->v)) << " " << w << " " << neg << " " << f << "\n";
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.base, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.base + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -475,9 +478,6 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_shapes::__next__() {
 
 
 // from enum import Enum
-//
-// DEFAULT_STOP: Final[int32] = 4
-// WIDTH: Final[int32] = 7
 //
 // main()
 void __tpy_init() {

@@ -7,24 +7,24 @@ namespace tpyapp::main {
 // def loop(a: int | str) -> Iterator[str]:
 //     count = 0
 //     while isinstance(a, int):
-//         yield "tick"
-//         yield str(a + 1)
+//         yield "tick"                      # -> S_RESUME_0
+//         yield str(a + 1)                  # -> S_RESUME_1
 //         count += 1
 //         if count >= 3:
 //             break
 std::expected<std::string, ::tpy::StopIteration> __gen_loop::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         count = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "tick"
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_1;
         return (((__a) + (::tpy::BigInt(1)))).to_string();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);
         count = ::tpy::add_check<int32_t>(count, 1);
         if ((count >= 3)) {
@@ -62,22 +62,22 @@ __gen_loop loop(::tpy::Union<::tpy::BigInt, std::string> a) {
 
 // def checked(a: int | str) -> Iterator[str]:
 //     assert isinstance(a, int)
-//     yield "checked"
-//     yield str(a + 100)
+//     yield "checked"                          # -> S_RESUME_0
+//     yield str(a + 100)                       # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_checked::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (!(std::holds_alternative<::tpy::BigInt>(a))) ::tpy::raise_assertion_error();
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_0;
         return "checked";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "checked"
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_1;
         return (((__a) + (::tpy::BigInt(100)))).to_string();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield str(a + 100)
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});

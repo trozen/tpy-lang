@@ -12,18 +12,18 @@ Source make() {
 
 // async def total() -> int:
 //     s = 0
-//     async for x in make():
+//     async for x in make():  # -> S_RESUME_0
 //         s += x
 //     return s
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         s = 0;
         __for_itr_0.emplace((make()).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in make():
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -67,15 +67,15 @@ __coro_total total() {
 }
 
 // async def main() -> None:
-//     print(await total())
+//     print(await total())   # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await total())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -103,7 +103,7 @@ __coro_main main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.n <= 0)) {
             throw ::tpy::StopAsyncIteration{};
         }

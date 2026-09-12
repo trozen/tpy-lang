@@ -56,6 +56,7 @@ void hoisted_reseat(int32_t k);
 std::string label(int32_t k);
 // def str_append_temp(k: int32) -> None:
 void str_append_temp(int32_t k);
+// @error_return(MyErr)
 // def error_return_body(k: int32) -> int32:
 std::expected<int32_t, MyErr> error_return_body(int32_t k);
 // def main() -> None:
@@ -166,12 +167,10 @@ struct Site {
     // n: int32
     int32_t n;
 
-    // # Constructor body (a local decl, not the field initializer itself).
     // def __init__(self, k: int32) -> None:
     Site() = default;
     explicit Site(int32_t k);
 
-    // # Method body.
     // def bump(self, k: int32) -> None:
     void bump(int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Site";

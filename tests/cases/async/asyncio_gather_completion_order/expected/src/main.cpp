@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // async def slow(start: Event) -> int32:
-//     await start
+//     await start                         # -> S_RESUME_0
 //     print("slow done")
 //     return int32(100)
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0 = &(start);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await start
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -43,7 +43,7 @@ __coro_slow slow(::tpystd::asyncio::Event& start) {
 ::tpystd::tpy::Poll<int32_t> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         start.set();
         std::cout << "fast done" << "\n";
         __state = S_DONE;
@@ -66,12 +66,12 @@ __coro_fast fast(::tpystd::asyncio::Event& start) {
 //     tasks: list[asyncio.Task[int32]] = []
 //     tasks.append(asyncio.create_task(slow(start)))
 //     tasks.append(asyncio.create_task(fast(start)))
-//     results = await asyncio.gather_list(tasks)
+//     results = await asyncio.gather_list(tasks)      # -> S_RESUME_0
 //     print("result[0]:", results[0])
 //     print("result[1]:", results[1])
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         start.emplace(::tpystd::asyncio::Event());
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow((*start)))));
@@ -80,7 +80,7 @@ __coro_fast fast(::tpystd::asyncio::Event& start) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: results = await asyncio.gather_list(tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());

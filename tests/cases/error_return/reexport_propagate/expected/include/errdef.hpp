@@ -11,6 +11,7 @@ struct AppError;
 
 inline constexpr std::string_view __name__ = "errdef";
 
+// @error_return(AppError)
 // def check(n: int32) -> int32:
 std::expected<int32_t, AppError> check(int32_t n);
 

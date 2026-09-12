@@ -17,10 +17,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # INVERSE guard: a nested match binding a DIFFERENT name must not disturb the
-// # outer capture -- the outer binding keeps aliasing its own subject rather than
-// # being hoisted and re-seated. The nested-capture rebind detection must key on
-// # the name, not on the mere presence of a nested match in the arm.
 // class Inner:
 struct Inner {
     // n: int

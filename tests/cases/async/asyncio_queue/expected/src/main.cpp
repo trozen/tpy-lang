@@ -7,16 +7,16 @@ namespace tpyapp::main {
 // async def producer(q: Queue[int32]) -> None:
 //     i = 0
 //     while i < 5:
-//         await q.put(i)
+//         await q.put(i)                        # -> S_RESUME_0
 //         i += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await q.put(i)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -50,18 +50,18 @@ __coro_producer producer(::tpystd::asyncio::Queue<int32_t>& q) {
 // async def consumer(q: Queue[int32], out: list[int32]) -> None:
 //     n = 0
 //     while n < 5:
-//         x = await q.get()
+//         x = await q.get()                                       # -> S_RESUME_0
 //         out.append(x)
 //         q.task_done()
 //         n += 1
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: x = await q.get()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         x = std::move(__r0).value();
@@ -100,11 +100,11 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
 //     out: list[int32] = []
 //     pt = asyncio.create_task(producer(q))
 //     ct = asyncio.create_task(consumer(q, out))
-//     await q.join()
-//     await asyncio.gather(pt, ct)
+//     await q.join()                                                      # -> S_RESUME_0
+//     await asyncio.gather(pt, ct)                                        # -> S_RESUME_1
 //     print("got:", out)
 //     # All work drained -- join() now returns on its first poll.
-//     await q.join()
+//     await q.join()                                                      # -> S_RESUME_2
 //     print("joined again")
 //     try:
 //         q.task_done()
@@ -135,7 +135,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
 //     print("unbounded full:", qu.full(), "qsize:", qu.qsize())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         q.emplace(::tpystd::asyncio::Queue<int32_t>(2));
         std::cout << "empty:" << " " << ::tpy::print_bool((*q).empty()) << " " << "full:" << " " << ::tpy::print_bool((*q).full()) << " " << "qsize:" << " " << (*q).qsize() << " " << "maxsize:" << " " << (*q).maxsize << "\n";
         out.emplace(std::vector<int32_t>{});
@@ -145,7 +145,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await q.join()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -155,7 +155,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.gather(pt, ct)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -165,7 +165,7 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: await q.join()
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();

@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def bump(d: dict[int32, C]) -> Iterator[int32]:
 //     for k, c in d.items():
 //         c.v = c.v + 1
-//         yield k
+//         yield k                                  # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_src_0.emplace(::tpy::dict_items(d));
         __for_it_0.emplace(((*__for_src_0)).begin());
         __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield k
         __state = S_JOIN_0;
         continue;
     }

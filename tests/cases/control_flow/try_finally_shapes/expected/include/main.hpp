@@ -30,11 +30,6 @@ void nested();
 // def main() -> None:
 void main();
 
-// # try/finally (no-handler) shapes: hoisted first-declares read after the
-// # block, return through the finally (value + bare), a returning finally
-// # overriding the try's return, break/continue re-emitting the finally
-// # inside a loop, nested try/finally, and a try inside a with body (mixed
-// # finally-frame kinds on the return path).
 // class CM:
 struct CM {
     // n: int

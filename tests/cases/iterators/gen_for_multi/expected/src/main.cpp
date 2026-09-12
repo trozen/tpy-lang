@@ -5,40 +5,40 @@ namespace tpyapp::main {
 
 
 // def multi(items: list[int32], n: int32) -> Iterator[int32]:
-//     yield -1
+//     yield -1                                                 # -> S_RESUME_0
 //     for x in items:
-//         yield x * 10
-//     yield -2
+//         yield x * 10                                         # -> S_RESUME_1
+//     yield -2                                                 # -> S_RESUME_2
 //     for i in range(n):
-//         yield i * i
-//     yield -3
+//         yield i * i                                          # -> S_RESUME_3
+//     yield -3                                                 # -> S_RESUME_4
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x * 10
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -2
         __for_i_1.emplace(int32_t(0));
         __for_stop_1.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield i * i
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: yield -3
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

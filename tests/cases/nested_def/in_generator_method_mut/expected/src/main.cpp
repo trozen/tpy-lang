@@ -30,17 +30,17 @@ void main() {
 //
 //     for i in range(k):
 //         push(i + 1)
-//         yield self.total
+//         yield self.total                       # -> S_RESUME_0
 std::expected<int32_t, ::tpy::StopIteration> __gen_Tally_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         // def push: frame member
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(k));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.total
         __state = S_JOIN_0;
         continue;
     }

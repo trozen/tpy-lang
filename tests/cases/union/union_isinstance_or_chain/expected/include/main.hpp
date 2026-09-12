@@ -24,8 +24,6 @@ std::string negated_or(::tpy::Union<const A*, const B*> v);
 // def main() -> None:
 void main();
 
-// # or-chain isinstance: isinstance(v, A) or isinstance(v, B) must emit
-// # holds_alternative against the original variant, not an extracted ref.
 // class A:
 struct A {
     // tag: int

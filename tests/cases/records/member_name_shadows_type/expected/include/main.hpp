@@ -245,9 +245,6 @@ inline std::ostream& operator<<(std::ostream& os, const fbase& obj) {
 struct printer {
 
 
-    // # Inverse guard: no member named `day`, so its `day` reference must render
-    // # BARE (not qualified) -- confirms qualification stays scoped to colliding
-    // # records. The snapshot is the check.
     // def emit(self) -> Own[day]:
     day emit() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.printer";

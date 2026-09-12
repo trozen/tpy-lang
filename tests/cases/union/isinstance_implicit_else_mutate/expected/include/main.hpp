@@ -17,8 +17,6 @@ void bump(::tpy::Union<Box*, Other*> x);
 // def main() -> None:
 void main();
 
-// # The fall-through narrowed access must alias the member (not copy): mutate a
-// # field through it and observe the change on the original object.
 // class Box:
 struct Box {
     // self.n = n

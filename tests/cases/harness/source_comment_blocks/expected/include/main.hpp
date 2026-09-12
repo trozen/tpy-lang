@@ -15,6 +15,8 @@ struct Reader;
 
 extern ::tpy::ordered_map<std::string, int32_t>* TABLE;
 inline constexpr std::string_view __name__ = "__main__";
+// SCALE: Final[int32] = 2
+inline constexpr int32_t SCALE = 2;
 
 struct __gen_pair;
 struct __coro_doubled;
@@ -32,8 +34,6 @@ int32_t helper(int32_t f);
 // def main() -> None:
 void main();
 
-// # method and constructor: the class declaration echoes members, each
-// # implementation echoes its own body
 // class Counter:
 struct Counter {
     // n: int32
@@ -53,7 +53,6 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// # decorated method: the decorator rides above the def line inside the block
 // class Reader:
 struct Reader {
     // n: int32
@@ -147,6 +146,7 @@ inline Reader::Reader() : n(2) {}
 inline int32_t Reader::peek() const {
     return (::tpy::add_check<int32_t>(this->n, 1));
 }
+// # simple generator: the block sits above the lambda-backed definition
 // def upto(n: int32) -> Iterator[int32]:
 //     for i in range(n):
 //         yield i

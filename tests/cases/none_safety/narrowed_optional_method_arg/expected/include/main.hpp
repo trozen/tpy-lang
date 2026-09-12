@@ -21,8 +21,6 @@ void test_self_call(Printer& p);
 // def main() -> None:
 void main();
 
-// # Narrowed Optional passed as argument to method on another object.
-// # Verifies that value-optional unwrap (*x) is emitted in method call codegen.
 // class Printer:
 struct Printer {
 

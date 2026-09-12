@@ -73,8 +73,6 @@ int32_t _hex_val(int32_t c);
 // class HTTPException(Exception):
 struct HTTPException : ::tpy::Exception {
 
-    // # Explicit __init__ + String param: compiler-gap workaround for
-    // # exception subclasses (StrView default-arg on a user ctor).
     // def __init__(self, message: String = "") -> None:
     explicit HTTPException(const ::tpy::String& message = "");
 

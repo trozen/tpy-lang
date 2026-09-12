@@ -9,11 +9,11 @@ namespace tpyapp::main {
 //         r = 100
 //     else:
 //         r = n + 1
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)         # -> S_RESUME_0
 //     return r + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_if::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n == 0)) {
             r = 100;
         } else {
@@ -23,7 +23,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -50,11 +50,11 @@ __coro_coro_if coro_if(::tpy::BigInt n) {
 //         r = 2
 //     else:
 //         r = n + 10
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)           # -> S_RESUME_0
 //     return r + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_elif::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n == 0)) {
             r = 1;
         } else if ((n == 1)) {
@@ -66,7 +66,7 @@ __coro_coro_if coro_if(::tpy::BigInt n) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -92,11 +92,11 @@ __coro_coro_elif coro_elif(::tpy::BigInt n) {
 //             r = 100
 //         case _:
 //             r = n + 1
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)            # -> S_RESUME_0
 //     return r + 1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro_match::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = n;
         if (__match_subject_1 == 0) {
             r = 100;
@@ -107,7 +107,7 @@ __coro_coro_elif coro_elif(::tpy::BigInt n) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();

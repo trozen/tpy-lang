@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A reference-type borrow-local from a const dict `__getitem__`/`.get()` off an inferred-const
-// # receiver must bind `const T&`/`const T*`; a mutating method keeps the mutable forms.
 // class Cookie:
 struct Cookie {
     // value: int

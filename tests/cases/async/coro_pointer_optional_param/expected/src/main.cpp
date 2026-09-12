@@ -11,7 +11,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_takes_optional::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((p != nullptr)) {
             __state = S_DONE;
             int32_t __tpy_async_ret = p->n;
@@ -36,12 +36,12 @@ __coro_takes_optional takes_optional(P* p) {
 //     items: list[P] = []
 //     items.append(P(42))
 //     items.append(P(7))
-//     print(await takes_optional(items[0]))
-//     print(await takes_optional(items[1]))
-//     print(await takes_optional(None))
+//     print(await takes_optional(items[0]))  # -> S_RESUME_0
+//     print(await takes_optional(items[1]))  # -> S_RESUME_1
+//     print(await takes_optional(None))      # -> S_RESUME_2
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         items.emplace(std::vector<P>{});
         (*items).push_back(P(42));
         (*items).push_back(P(7));
@@ -49,7 +49,7 @@ __coro_takes_optional takes_optional(P* p) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await takes_optional(items[0]))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -59,7 +59,7 @@ __coro_takes_optional takes_optional(P* p) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await takes_optional(items[1]))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -69,7 +69,7 @@ __coro_takes_optional takes_optional(P* p) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await takes_optional(None))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();

@@ -57,7 +57,6 @@ struct _ChanState {
     uint32_t _count;
     // _closed: bool
     bool _closed;
-    // # SPSC: at most one parked waiter per side.
     // _send_waker: Waker
     ::tpystd::coro::Waker _send_waker;
     // _has_send_waiter: bool

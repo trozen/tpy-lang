@@ -6,16 +6,17 @@ namespace tpyapp::main {
 Point* g{};
 Point* galias{};
 
+// # frame generator: one frame field per name, so the FIRST rebind clobbers.
 // def gen_section() -> Iterator[int32]:
 //     p = Point(1)
 //     alias = p
 //     p = Point(50)  # tpyc: warning(/will not keep the object it was given/)
 //     alias.bump()
-//     yield alias.x
-//     yield p.x
+//     yield alias.x                                                            # -> S_RESUME_0
+//     yield p.x                                                                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         p.emplace(Point(1));
         alias = &((*p));
         p.emplace(Point(50));
@@ -23,11 +24,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__() {
         __state = S_RESUME_0;
         return alias->x;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield alias.x
         __state = S_RESUME_1;
         return (*p).x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p.x
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -42,6 +43,7 @@ __gen_gen_section gen_section() {
     return __gen_gen_section();
 }
 
+// # async def: same resumable frame, same single generation.
 // async def async_section() -> int32:
 //     p = Point(2)
 //     alias = p
@@ -51,7 +53,7 @@ __gen_gen_section gen_section() {
 ::tpystd::tpy::Poll<int32_t> __coro_async_section::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         p.emplace(Point(2));
         alias = &((*p));
         p.emplace(Point(50));

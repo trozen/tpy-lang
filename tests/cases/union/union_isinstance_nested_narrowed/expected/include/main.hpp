@@ -24,8 +24,6 @@ std::string elif_exhaustive(::tpy::Union<const A*, const B*, const C*> v);
 // def main() -> None:
 void main();
 
-// # isinstance() on a variable already narrowed to a concrete type folds to
-// # a constant at compile time (no redundant std::holds_alternative).
 // class A:
 struct A {
     // x: int

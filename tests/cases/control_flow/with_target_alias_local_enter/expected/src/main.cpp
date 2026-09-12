@@ -8,13 +8,13 @@ namespace tpyapp::main {
 //     h = Holder(start)
 //     with h as it:
 //         pass
-//     yield it.n
+//     yield it.n                                                                    # -> S_RESUME_0
 //     it.n += 1  # mutates through the alias, after the statement AND a suspension
-//     yield it.n
-//     yield h.total()  # the manager sees the mutation -- proof it was not copied
+//     yield it.n                                                                    # -> S_RESUME_1
+//     yield h.total()  # the manager sees the mutation -- proof it was not copied   # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h.emplace(Holder(start));
         auto& __ctx_1 = (*h);
         it.emplace(__ctx_1.__enter__());
@@ -32,16 +32,16 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
         __state = S_RESUME_0;
         return (*it).n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield it.n
         (*it).n = ::tpy::add_check<int32_t>((*it).n, 1);
         __state = S_RESUME_1;
         return (*it).n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield it.n
         __state = S_RESUME_2;
         return (*h).total();
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield h.total()  # the manager sees the mutation -- proof it was not copied
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

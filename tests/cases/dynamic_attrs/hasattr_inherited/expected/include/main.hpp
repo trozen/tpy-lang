@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # hasattr / 3-arg getattr work via inherited __getattr__: child class has no
-// # dunder of its own; lookup walks MRO to the parent.
 // class Bag:
 struct Bag {
     // declared: str

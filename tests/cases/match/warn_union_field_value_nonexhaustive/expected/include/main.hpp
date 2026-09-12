@@ -17,8 +17,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # Conditional arms don't cover their variant: a sole `Dog(legs=4)` arm leaves
-// # both Dog and Cat uncovered, so exhaustiveness must still report Dog missing.
 // class Dog:
 struct Dog {
     // legs: int

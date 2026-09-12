@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: sync `with` over a subclass must resolve __enter__/__exit__
-// # inherited from a base (MRO-aware lookup).
 // class BaseCM:
 struct BaseCM {
     // n: int

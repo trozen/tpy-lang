@@ -24,7 +24,6 @@ std::tuple<std::vector<Rec>, int32_t> recs_and_count();
 // def main() -> None:
 void main();
 
-// # @nocopy: an Own transfer that copied instead would fail to compile.
 // @nocopy
 // class Rec:
 struct Rec {

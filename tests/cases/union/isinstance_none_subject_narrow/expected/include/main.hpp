@@ -21,9 +21,6 @@ std::string ref_tuple(::tpy::Union<std::monostate, const A*, const B*> v);
 // def main() -> None:
 void main();
 
-// # isinstance narrowing on a union subject that CONTAINS None: the else branch
-// # narrows to the lone remaining None member (no value to extract). Covers tuple
-// # and inline-union forms over scalar and reference subjects.
 // class A:
 struct A {
 

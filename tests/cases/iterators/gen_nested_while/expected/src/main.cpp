@@ -9,17 +9,17 @@ namespace tpyapp::main {
 //     while i < 3:
 //         j: int32 = 0
 //         while j < 2:
-//             yield i * 10 + j
+//             yield i * 10 + j      # -> S_RESUME_0
 //             j += 1
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i * 10 + j
         j = ::tpy::add_check<int32_t>(j, 1);
         __state = S_JOIN_1;
         continue;

@@ -16,7 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Record with non-value union field: construct, read, narrow
 // class Dog:
 struct Dog {
     // name: str

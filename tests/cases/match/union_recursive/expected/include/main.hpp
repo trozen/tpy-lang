@@ -17,7 +17,6 @@ std::string describe(const Tree& t);
 // def main() -> None:
 void main();
 
-// # match/case on a recursive union type alias
 // class Leaf:
 struct Leaf {
     // value: int

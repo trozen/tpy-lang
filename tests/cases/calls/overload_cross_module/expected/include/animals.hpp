@@ -12,8 +12,10 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "animals";
 
+// @overload
 // def describe(animal: Dog) -> str: ...
 std::string describe(const Dog& animal);
+// @overload
 // def describe(animal: Cat) -> str: ...
 std::string describe(const Cat& animal);
 

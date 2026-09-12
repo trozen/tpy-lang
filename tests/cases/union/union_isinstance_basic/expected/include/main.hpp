@@ -17,7 +17,6 @@ double area(::tpy::Union<const Circle*, const Rect*> s);
 // def main() -> None:
 void main();
 
-// # isinstance narrowing on two-member union with field access
 // class Circle:
 struct Circle {
     // radius: float

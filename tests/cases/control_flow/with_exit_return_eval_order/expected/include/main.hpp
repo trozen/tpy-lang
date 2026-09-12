@@ -16,8 +16,6 @@ bool f(Lock& lk);
 // def main() -> None:
 void main();
 
-// # The return expression must be evaluated before __exit__ runs: returning
-// # state that __exit__ mutates yields the pre-exit value, like CPython.
 // class Lock:
 struct Lock {
     // held: bool

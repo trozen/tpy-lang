@@ -38,7 +38,6 @@ void greet(Named& x);
 // def main():
 void main();
 
-// # Structural conformance (adapter wraps the call)
 // class Dog:
 struct Dog {
     // _name: str
@@ -77,7 +76,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// # Direct inheritance (override must match vtable signature)
 // class Bird(Named):
 struct Bird : Named {
     // _name: str

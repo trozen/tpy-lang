@@ -31,9 +31,6 @@ using ::tpystd::tplib::box::Box;
 using ::tpystd::tplib::rc::Rc;
 
 struct AnyTask;
-// # T-erased view of a task for the executor's slot table. TaskState[T]
-// # structurally conforms via its poll_any / cancel_any methods; the
-// # slot table holds Box[AnyTask] without parameterization on T.
 // @dynamic
 // class AnyTask(Protocol):
 template<typename T>
@@ -74,11 +71,6 @@ struct Executor;
 struct _ExecutorScope;
 
 extern Executor* _current_executor;
-// # epoll_ctl ops + the reactor's drain-batch size. Kept here (not in
-// # posix_epoll.py, which stays declaration-only) the way socket.py hardcodes
-// # the AF_* wire values. The EPOLLIN / EPOLLOUT interest masks live in
-// # `asyncio/__init__.py` next to the fd-awaitable that passes them. The
-// # batch size must equal kMaxBatch in runtime/cpp/src/stdlib/epoll_impl.cpp.
 // _EPOLL_CTL_ADD: Final[int32] = 1
 inline constexpr int32_t _EPOLL_CTL_ADD = 1;
 // _EPOLL_CTL_DEL: Final[int32] = 2
@@ -119,9 +111,6 @@ template<typename T>
 struct TaskState {
     // frame: Box[Cancellable[T]] | None
     std::optional<::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>> frame;
-    // # Single owning slot for the cached result: moves correctly element-wise
-    // # (the TaskState is moved into its Rc cell at creation, while the slot is
-    // # still empty -- the result is cached later by poll_any).
     // result: UninitStorage[T]
     ::tpy::UninitStorage<T> result;
     // exc: Box[Throwable] | None
@@ -304,9 +293,6 @@ inline std::ostream& operator<<(std::ostream& os, const TaskState<T>& obj) {
     return os;
 }
 
-// # Adapter that exposes a TaskState[T] through the non-generic AnyTask
-// # protocol. Holds an Rc clone of the same TaskState; the executor's
-// # slot table holds Box[AnyTask] wrapping this view.
 // @nocopy
 // class TaskStateView[T]:
 template<typename T>
@@ -350,21 +336,6 @@ template<typename T>
 struct Task {
     // _state: Rc[TaskState[T]]
     ::tpystd::tplib::rc::Rc<TaskState<T>> _state;
-    // # Default-constructed (null awaker) for non-executor-owned tasks
-    // # (`task_from_coro`); reassigned by `create_task` to a Waker stamped
-    // # with the spawn slot's (slot_id, generation). `cancel()` calls
-    // # `wake()` on it so the slot is marked runnable promptly -- the
-    // # in-flight frame observes the cancel flag on its next poll instead
-    // # of waiting on a timer / IO wake. Wake on a null-awaker Waker is a
-    // # safe no-op (see Waker.wake in tpy.coro), so the non-executor-
-    // # owned case stays unchanged.
-    // #
-    // # Lifetime: this Waker holds a raw `Ptr[Awaker]` into the running
-    // # `Executor`. A Task[T] handle that survives `asyncio.run`'s scope
-    // # and is later cancel()'d will dispatch through a dangling pointer
-    // # -- same invariant `_ExecutorScope` (below) documents for every
-    // # other stamped Waker. v1 asyncio.run drains spawned tasks during
-    // # teardown to make this case unreachable in practice.
     // _waker: Waker
     ::tpystd::coro::Waker _waker;
 
@@ -497,13 +468,6 @@ struct EpollReactor {
     int32_t _epfd;
     // _waiters: dict[int32, Waker]
     ::tpy::ordered_map<int32_t, ::tpystd::coro::Waker> _waiters;
-    // # Raw scratch buffers for epoll_wait output (written via unsafe_ptr, read
-    // # back by index). Trivial fixed buffers -> Array (memcpy-movable), not the
-    // # @nomove UninitArrayStorage, so EpollReactor stays movable member-wise.
-    // # TODO: Array value-initializes (zeros) these; for a write-before-read
-    // # scratch buffer that's wasted. Switch to an uninitialized-yet-trivially-
-    // # movable storage once the TriviallyRelocatable bound lands (see TODO.md).
-    // # Negligible today (EpollReactor is constructed lazily, once per run).
     // _out_fds: Array[int32, 64]
     std::array<int32_t, 64> _out_fds;
     // _out_events: Array[uint32, 64]
@@ -552,13 +516,8 @@ struct Executor : ::tpystd::coro::Awaker {
     std::vector<int32_t> runnable_q;
     // timer_heap: list[TimerEntry]
     std::vector<TimerEntry> timer_heap;
-    // # Lazily created on the first fd registration: a pure-timer / pure-CPU
-    // # program never opens an epoll fd. The second wake source alongside the
-    // # timer heap.
     // reactor: EpollReactor | None
     std::optional<EpollReactor> reactor;
-    // # True while SIGINT graceful-shutdown handling is active; gates the
-    // # signal-flag poll in run_until.
     // shutdown_armed: bool
     bool shutdown_armed;
 
@@ -573,27 +532,15 @@ struct Executor : ::tpystd::coro::Awaker {
     // def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
     void register_timer(double deadline_seconds, ::tpystd::coro::Waker waker);
 
-    // # Lazily opens the reactor on the first fd registration so a pure-timer
-    // # / pure-CPU program never allocates an epoll fd.
     // def register_fd(self, fd: int32, events: uint32, waker: Waker) -> None:
     void register_fd(int32_t fd, uint32_t events, ::tpystd::coro::Waker waker);
 
     // def unregister_fd(self, fd: int32) -> None:
     void unregister_fd(int32_t fd);
 
-    // # Milliseconds until the nearest timer fires (the epoll_wait timeout):
-    // # -1 (block forever) when no timer is pending, 0 when one is already
-    // # due, else the rounded-up delta. Capped to keep the int32 from
-    // # overflowing on far-future deadlines.
     // def _next_timer_timeout_ms(self) -> int32:
     int32_t _next_timer_timeout_ms() const;
 
-    // # Mint a Waker stamped with the given slot identity. Used by
-    // # `asyncio.create_task` to stash a wake-handle on the Task so its
-    // # `cancel()` can mark the slot runnable promptly. Lives on Executor
-    // # rather than as a free function so the call site can pass a
-    // # method receiver instead of trying to coerce `Ptr[Executor]` to
-    // # the `Awaker` protocol param of `_make_waker`.
     // def make_waker_for_slot(self, slot_id: int32, generation: int32) -> Waker:
     ::tpystd::coro::Waker make_waker_for_slot(int32_t slot_id, int32_t generation);
 
@@ -620,19 +567,12 @@ struct Executor : ::tpystd::coro::Awaker {
     // def wait_for_event(self) -> bool:
     bool wait_for_event();
 
-    // # Cancel the root task so its CancelledError unwinds normal cleanup
-    // # (finally / __aexit__ / wait_closed), then mark it runnable so the next
-    // # drain delivers the cancel at its suspension point.
     // def _cancel_root(self, main_id: int32) -> None:
     void _cancel_root(int32_t main_id);
 
-    // # True iff a SIGINT has been delivered since the last check; on the first
-    // # such observation cancels the root for graceful shutdown.
     // def _check_shutdown_signal(self, main_id: int32, already: bool) -> bool:
     bool _check_shutdown_signal(int32_t main_id, bool already);
 
-    // # Returns True if a SIGINT interrupted the run (root cancelled for graceful
-    // # shutdown), False on normal completion.
     // def run_until(self, main_id: int32) -> bool:
     bool run_until(int32_t main_id);
 

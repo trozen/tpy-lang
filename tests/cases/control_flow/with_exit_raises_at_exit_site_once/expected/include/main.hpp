@@ -23,11 +23,6 @@ void cont_out();
 // def main() -> None:
 void main();
 
-// # Regression: an __exit__ that RAISES must run exactly once when control
-// # leaves the with body via return / break. Sibling of with_exit_raises_once
-// # (which covers the fall-through path): there the copy is moved outside the
-// # try, here the inline exit-site copy is guarded instead, since a `with` can
-// # be left from arbitrarily many points inside its body.
 // class Thrower:
 struct Thrower {
 

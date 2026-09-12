@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def triple(n: int32) -> int32:
-//     await asyncio.sleep(0.0)
+//     await asyncio.sleep(0.0)          # -> S_RESUME_0
 //     return n + n + n
 ::tpystd::tpy::Poll<int32_t> __coro_triple::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -42,16 +42,16 @@ std::function<std::unique_ptr<::tpystd::coro::Cancellable<int32_t>>(int32_t)> pi
 
 // async def main_coro() -> int32:
 //     factory = pick()
-//     return await asyncio.create_task(factory(7))
+//     return await asyncio.create_task(factory(7))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         factory = pick();
         __sub_0.emplace(std::move(::tpystd::asyncio::create_task<int32_t>(factory(7))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await asyncio.create_task(factory(7))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();

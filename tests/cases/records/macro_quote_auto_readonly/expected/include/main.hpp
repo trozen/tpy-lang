@@ -26,11 +26,9 @@ struct Holder {
     Holder() = default;
     explicit Holder(int32_t value);
 
-    // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
     // from tpy import int32, readonly
     int32_t first();
 
-    // # Regression: macro-emitted @auto_readonly methods flow through sema expansion.
     // from tpy import int32, readonly
     int32_t first() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";

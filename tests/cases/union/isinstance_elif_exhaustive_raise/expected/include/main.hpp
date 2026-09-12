@@ -18,10 +18,6 @@ void check(::tpy::Union<const Cat*, const Dog*> pet);
 // def main() -> None:
 void main();
 
-// # Same static-true exhaustive-elif shape as isinstance_elif_exhaustive, but the
-// # branch bodies `raise` instead of `return` -- pins the TpyRaise arm of the
-// # post-narrowing static-true guard (the dead implicit-else must not emit a
-// # wrong-type extraction of the member the outer `if` already excluded).
 // class Dog:
 struct Dog {
     // self.n = n

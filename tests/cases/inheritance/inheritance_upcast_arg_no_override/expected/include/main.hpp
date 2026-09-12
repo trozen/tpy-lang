@@ -41,7 +41,6 @@ struct Dog : Animal {
     // breed: str
     std::string breed;
 
-    // # Adds a field and a new method but does NOT override describe()
     // def __init__(self, name: str, breed: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name, std::string_view breed);

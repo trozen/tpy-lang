@@ -12,8 +12,10 @@ struct Data;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(E)
 // def make_data(v: int) -> Own[Data]:
 std::expected<Data, E> make_data(const ::tpy::BigInt& v);
+// @error_return(E)
 // def get_value(v: int) -> int:
 std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v);
 // def main() -> None:

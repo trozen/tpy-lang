@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # An int literal at an `int | float` field renders bare: the union is the render
-// # target, so the literal's own scalar type must not add a BigInt wrap.
 // class Holder:
 struct Holder {
     // u: int | float

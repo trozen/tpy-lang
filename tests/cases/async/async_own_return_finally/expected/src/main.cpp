@@ -14,7 +14,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<Box> __coro_make::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(Box(v));
         {
             bool __fin_ran_1 = false;
@@ -47,16 +47,16 @@ __coro_make make(int32_t v) {
 }
 
 // async def driver() -> int32:
-//     b = await make(7)
+//     b = await make(7)         # -> S_RESUME_0
 //     return b.v
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(7);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: b = await make(7)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         b.emplace(std::move(__r0).value());

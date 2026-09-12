@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // def doubled(items: list[Node]) -> Iterator[int32]:
 //     for it in items:
-//         yield it.x
-//         yield it.x + 100
+//         yield it.x                                  # -> S_RESUME_0
+//         yield it.x + 100                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield it.x
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(it->x, 100));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield it.x + 100
         __state = S_JOIN_0;
         continue;
     }

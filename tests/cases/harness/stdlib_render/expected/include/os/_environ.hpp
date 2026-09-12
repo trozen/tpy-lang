@@ -19,10 +19,6 @@ struct _Environ;
 
 extern _Environ* environ;
 
-// # A snapshot of the process environment captured at program start. Writes
-// # through this mapping (__setitem__/__delitem__) keep it in sync with libc;
-// # os.putenv/os.unsetenv go straight to libc and intentionally leave it stale,
-// # matching CPython, where os.environ is the only mapping kept in sync.
 // class _Environ:
 struct _Environ {
     // _data: dict[str, str]
@@ -34,8 +30,6 @@ struct _Environ {
     // def __getitem__(self, key: str) -> str:
     std::string __getitem__(std::string_view key) const;
 
-    // # CPython raises ValueError on an embedded NUL in key/value; we don't check
-    // # (setenv would truncate at the NUL) -- env names/values never contain NUL.
     // def __setitem__(self, key: str, value: str) -> None:
     void __setitem__(std::string_view key, std::string_view value);
 
@@ -51,11 +45,6 @@ struct _Environ {
     // def __iter__(self) -> Iterator[str]:
     auto __iter__() const;
 
-    // # keys/values/items return owned snapshot lists, not CPython's live set-like
-    // # views: a dict view borrows self._data and carries an auto_readonly[V] wrap
-    // # that the wrapper return type can't name. Iteration is identical; what is
-    // # lost is live reflection and set ops (uncommon for os.environ, itself a
-    // # snapshot). See STDLIB_ROADMAP.md.
     // def keys(self) -> Own[list[str]]:
     std::vector<std::string> keys() const;
 
@@ -65,15 +54,9 @@ struct _Environ {
     // def items(self) -> Own[list[tuple[str, str]]]:
     std::vector<std::tuple<std::string, std::string>> items() const;
 
-    // # Single method, not the typeshed str / str|None overload pair: an
-    // # overloaded method on a cross-module-imported type does not resolve (see
-    // # BUGS.md), and os.environ.get is always called from a downstream module.
     // def get(self, key: str, default: str | None = None) -> str | None:
     std::optional<std::string> get(std::string_view key, std::optional<std::string_view> default_ = std::nullopt) const;
 
-    // # pop takes a required default (returns it when absent) rather than the
-    // # typeshed pop(key)-raises / pop(key, default) pair -- same cross-module
-    // # overload limitation as get (BUGS.md); bare pop(key) is deferred.
     // def pop(self, key: str, default: str) -> str:
     std::string pop(std::string_view key, std::string_view default_);
 

@@ -16,10 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Restore guard: A's all-MIL ctor (no body, so no setup_body_scope reset after
-// # it) seeds pointer_locals for its optional-ptr param `n`. Without the scoped
-// # restore, that classification leaks into B's all-MIL ctor and would deref B's
-// # plain int `n` (emit `x(*n)`). Pins x(n) / the correct deref boundary.
 // class Node:
 struct Node {
     // v: int

@@ -5,22 +5,23 @@ namespace tpyapp::main {
 
 Impl* GLOBAL_SRC{};
 
+// # free: a bare @dynamic protocol param on a free generator.
 // def free_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
-//     yield s.get()
+//     yield s.get()                                     # -> S_RESUME_0
 //     s.bump()
-//     yield s.get()
+//     yield s.get()                                     # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return s.get();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s.get()
         s.bump();
         __state = S_RESUME_1;
         return s.get();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s.get()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -35,20 +36,21 @@ __gen_free_gen free_gen(Src& s) {
     return __gen_free_gen(s);
 }
 
+// # readonly: `readonly[Src]` captures as a `const Src&` frame field.
 // def ro_gen(s: readonly[RoSrc]) -> Iterator[int32]:  # tpyc: ok
-//     yield s.get()
-//     yield s.get() * 2
+//     yield s.get()                                               # -> S_RESUME_0
+//     yield s.get() * 2                                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_ro_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return s.get();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s.get()
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(s.get(), 2));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s.get() * 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -63,22 +65,23 @@ __gen_ro_gen ro_gen(const RoSrc& s) {
     return __gen_ro_gen(s);
 }
 
+// # generic: a generic @dynamic protocol behaves like the monomorphic twin.
 // def generic_gen(s: Src2[int32]) -> Iterator[int32]:  # tpyc: ok
-//     yield s.get()
+//     yield s.get()                                                # -> S_RESUME_0
 //     s.bump()
-//     yield s.get()
+//     yield s.get()                                                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_generic_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return s.get();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s.get()
         s.bump();
         __state = S_RESUME_1;
         return s.get();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s.get()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -93,27 +96,30 @@ __gen_generic_gen generic_gen(Src2<int32_t>& s) {
     return __gen_generic_gen(s);
 }
 
+// # forward: an ALREADY-ERASED `Src` forwarded from one bare-protocol-param
+// # generator into another -- no second adapter, the borrow passes straight
+// # through, and the inner bump is visible to the outer frame after the yield.
 // def forward_gen(s: Src) -> Iterator[int32]:  # tpyc: ok
-//     yield s.get()
+//     yield s.get()                                        # -> S_RESUME_0
 //     for n in free_gen(s):
-//         yield n
-//     yield s.get()
+//         yield n                                          # -> S_RESUME_1
+//     yield s.get()                                        # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_forward_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return s.get();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s.get()
         __for_src_0.emplace(free_gen(s));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield n
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield s.get()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -138,22 +144,25 @@ __gen_forward_gen forward_gen(Src& s) {
     return __gen_forward_gen(s);
 }
 
+// # own: `Own[Src]` was already admitted -- regression guard for the adjacent arm.
+// # It warns because a generator cannot consume an Own[@dynamic P]: a protocol is
+// # not a valid field or return type, so there is nowhere for it to go.
 // def own_gen(s: Own[Src]) -> Iterator[int32]:  # tpyc: warning(/never consumed/)
-//     yield s.get()
+//     yield s.get()                                                                # -> S_RESUME_0
 //     s.bump()
-//     yield s.get()
+//     yield s.get()                                                                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return s->get();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s.get()
         s->bump();
         __state = S_RESUME_1;
         return s->get();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s.get()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -344,22 +353,23 @@ void main() {
     std::cout << "global after" << " " << GLOBAL_SRC->get() << "\n";
 }
 
+// # method: the same param alongside the `self` receiver capture.
 // def walk(self, s: Src) -> Iterator[int32]:  # tpyc: ok
-//     yield s.get() + self.tag
+//     yield s.get() + self.tag                            # -> S_RESUME_0
 //     s.bump()
-//     yield s.get() + self.tag
+//     yield s.get() + self.tag                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Holder_walk::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(s.get(), __self.tag));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s.get() + self.tag
         s.bump();
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(s.get(), __self.tag));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s.get() + self.tag
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -9,8 +9,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def report(a: int32, b: int32 = 0, *, mode: str = "x") -> str:
 std::string report(int32_t a, int32_t b = 0, std::string_view mode = "x");
+// @dispatch
 // def report(a: int32, b: int32 = 0, *, count: int32 = 1) -> int32:
 int32_t report(int32_t a, int32_t b = 0, int32_t count = 1);
 // def main() -> None:

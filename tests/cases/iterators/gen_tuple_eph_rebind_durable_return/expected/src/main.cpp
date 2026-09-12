@@ -6,15 +6,15 @@ namespace tpyapp::main {
 
 // def gen() -> Iterator[tuple[int32, Box]]:
 //     items: list[tuple[int32, Box]] = [(1, Box(5))]
-//     yield items[0]
+//     yield items[0]                                  # -> S_RESUME_0
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
         __state = S_RESUME_0;
         return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*items), 0));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield items[0]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

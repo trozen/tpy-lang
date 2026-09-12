@@ -10,23 +10,25 @@ bool is_small(int32_t n) {
     return (n < 5);
 }
 
+// # Concrete generator emitted AFTER the generics, reusing the param name `it`
+// # -- this is what previously inherited the prior generator's template header.
 // def tag(it: list[int32]) -> Iterator[int32]:
 //     for x in it:
-//         yield x
-//         yield x * 10
+//         yield x                               # -> S_RESUME_0
+//         yield x * 10                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_tag::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((it).begin());
         __for_end_0.emplace((it).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 10));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x * 10
         __state = S_JOIN_0;
         continue;
     }
@@ -131,23 +133,25 @@ void main() {
     }
 }
 
+// # Generator METHOD after the generics (the leak also crossed the
+// # free-fn/method boundary). Same param name `it`.
 // def each_twice(self, it: list[int32]) -> Iterator[int32]:
 //     for x in it:
-//         yield x
-//         yield x
+//         yield x                                            # -> S_RESUME_0
+//         yield x                                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Doubler_each_twice::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((it).begin());
         __for_end_0.emplace((it).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

@@ -51,7 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, const DoubleCounter& obj) {
     return os;
 }
 
-// # Multi-level: GrandChild -> DoubleCounter -> Counter
 // class GrandChild(DoubleCounter):
 struct GrandChild : DoubleCounter {
 

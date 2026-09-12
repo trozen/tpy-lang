@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def describe(a: Dog | Cat) -> Iterator[str]:
-//     yield "start"
+//     yield "start"                             # -> S_RESUME_0
 //     match a:
 //         case Dog():
-//             yield "dog:" + a.sound()
+//             yield "dog:" + a.sound()          # -> S_RESUME_1
 //         case Cat():
-//             yield "cat:" + a.sound()
+//             yield "cat:" + a.sound()          # -> S_RESUME_2
 std::expected<std::string, ::tpy::StopIteration> __gen_describe::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return "start";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "start"
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -36,12 +36,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_describe::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "dog:" + a.sound()
         auto& __a = *std::get<Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "cat:" + a.sound()
         auto& __a = *std::get<Cat*>(a);
         __state = S_JOIN_0;
         continue;

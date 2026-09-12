@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // async def main() -> None:
 //     n = Node(1)
-//     r = await identity(n)
+//     r = await identity(n)        # -> S_RESUME_0
 //     r.v = 42
 //     print(n.v)
-//     s = await identity("plain")
+//     s = await identity("plain")  # -> S_RESUME_1
 //     print(s)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n.emplace(Node(::tpy::BigInt(1)));
         __sub_0.emplace((*n));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await identity(n)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
@@ -31,7 +31,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: s = await identity("plain")
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         s = std::move(__r1).value();

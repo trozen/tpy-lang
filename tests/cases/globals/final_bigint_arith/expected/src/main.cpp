@@ -24,12 +24,6 @@ void main() {
     std::cout << NESTED << "\n";
 }
 
-// A: Final[int] = 100
-// B: Final[int] = 7
-// SUM: Final[int] = A + B
-// PROD: Final[int] = A * B
-// NESTED: Final[int] = (A + B) * 10 - 1
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

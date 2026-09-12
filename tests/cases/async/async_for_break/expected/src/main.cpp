@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // async def first_above(c: Counts, threshold: int) -> int:
 //     result = -1
-//     async for x in c:
+//     async for x in c:                                     # -> S_RESUME_0
 //         if x > threshold:
 //             result = x
 //             break
 //     return result
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_first_above::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         result = -1;
         __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in c:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -76,16 +76,16 @@ __coro_first_above first_above(Counts& c, ::tpy::BigInt threshold) {
 
 // async def main() -> None:
 //     c = Counts()
-//     print(await first_above(c, 5))
+//     print(await first_above(c, 5))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c.emplace(Counts());
         __sub_0.emplace((*c), ::tpy::BigInt(5));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await first_above(c, 5))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -111,7 +111,7 @@ __coro_main main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.n = (__self.n) + (::tpy::BigInt(1));
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.n;

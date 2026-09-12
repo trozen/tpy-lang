@@ -5,24 +5,24 @@ namespace tpyapp::main {
 
 
 // def scaled(n: int32) -> Iterator[int32]:
-//     yield n
-//     yield n * 2
-//     yield n * 3
+//     yield n                               # -> S_RESUME_0
+//     yield n * 2                           # -> S_RESUME_1
+//     yield n * 3                           # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_scaled::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(n, 2));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield n * 2
         __state = S_RESUME_2;
         return (::tpy::mul_check<int32_t>(n, 3));
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield n * 3
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

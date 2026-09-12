@@ -8,18 +8,18 @@ namespace tpyapp::main {
 //     # Both writes narrow into base-typed site slots; `kind` set by each
 //     # subclass ctor survives the slice, so the reads stay CPython-equal.
 //     p: Optional[Animal] = Dog()  # tpyc: warning(/upcast narrows/)
-//     yield "start"
+//     yield "start"                                                         # -> S_RESUME_0
 //     p = Cat()
 //     if p is not None:
-//         yield p.name()
+//         yield p.name()                                                    # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         p = &*(__ptr_slot_f0 = Dog());
         __state = S_RESUME_0;
         return "start";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "start"
         p = &*(__ptr_slot_f1 = Cat());
         if ((p != nullptr)) {
             __state = S_RESUME_1;
@@ -29,7 +29,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p.name()
         __state = S_JOIN_0;
         continue;
     }

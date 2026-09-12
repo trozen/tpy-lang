@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Send + Sync iff T is Send AND Sync (Arc's rule), despite the raw Ptr field.
 // @unsafe_send(if_params_send=True, if_params_sync=True)
 // @unsafe_sync(if_params_send=True, if_params_sync=True)
 // class Shared[T]:
@@ -37,8 +36,6 @@ inline std::ostream& operator<<(std::ostream& os, const Shared<T>& obj) {
     return os;
 }
 
-// # Send iff T is Send (the Mutex[T] shape); Sync stays structural -- a raw-Ptr
-// # field is not Sync and there is no if_params on @unsafe_sync, so SendCell is never Sync.
 // @unsafe_send(if_params_send=True)
 // class SendCell[T]:
 template<typename T>

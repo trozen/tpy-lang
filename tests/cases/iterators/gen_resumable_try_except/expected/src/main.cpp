@@ -9,18 +9,18 @@ namespace tpyapp::main {
 //         try:
 //             if x < 0:
 //                 raise ValueError("negative")
-//             yield x
+//             yield x                           # -> S_RESUME_0
 //         except ValueError:
-//             yield -1
+//             yield -1                          # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         try {
             __state = S_JOIN_1;
             continue;
@@ -31,7 +31,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_guarded::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_JOIN_1;
         continue;
     }

@@ -143,8 +143,6 @@ struct Bag {
     Bag() = default;
     explicit Bag(int32_t n);
 
-    // # method, `self.field` subject: the write is the method's only mutation,
-    // # so nothing else can demote its inferred readonly
     // def bump(self) -> None:
     void bump();
 
@@ -167,12 +165,6 @@ struct Owner {
     Owner() = default;
     explicit Owner(int32_t n);
 
-    // # the capture is re-seated between a `self.field` subject and a PARAM
-    // # subject, so the write owes BOTH: the method loses its inferred readonly
-    // # (the snapshot pins the missing const qualifier) and `other` stays
-    // # mutable. A vararg section would belong here too, but passing a capture
-    // # as a vararg does not build at all
-    // # (BUGS.md#vararg-of-pointer-capture-takes-address).
     // def touch(self, other: Bag) -> None:
     void touch(Bag& other);
 
@@ -244,9 +236,6 @@ struct UnionHolder {
     // def __init__(self, n: int32) -> None:
     explicit UnionHolder(int32_t n);
 
-    // # the literal BUGS shape: a UNION-typed `self.field` matched with an
-    // # `as`-capture whose write is the method's only mutation, so it alone
-    // # decides the method's const qualifier
     // def bump(self, v: int32) -> None:
     void bump(int32_t v);
 

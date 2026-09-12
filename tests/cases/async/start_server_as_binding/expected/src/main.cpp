@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // async def handle(reader: Own[asyncio.StreamReader],
 //                  writer: Own[asyncio.StreamWriter]) -> None:
-//     line = await reader.readline()
+//     line = await reader.readline()                            # -> S_RESUME_0
 //     writer.write(line)
-//     await writer.drain()
+//     await writer.drain()                                      # -> S_RESUME_1
 //     writer.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_handle::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(reader);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: line = await reader.readline()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         line = std::move(__r0).value();
@@ -27,7 +27,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await writer.drain()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -49,22 +49,22 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
 }
 
 // async def client(port: int32, msg: str) -> str:
-//     reader, writer = await asyncio.open_connection("127.0.0.1", port)
+//     reader, writer = await asyncio.open_connection("127.0.0.1", port)  # -> S_RESUME_0
 //     writer.write(msg.encode() + b"\n")
-//     await writer.drain()
-//     reply = await reader.readline()
+//     await writer.drain()                                               # -> S_RESUME_1
+//     reply = await reader.readline()                                    # -> S_RESUME_2
 //     writer.close()
-//     await writer.wait_closed()
+//     await writer.wait_closed()                                         # -> S_RESUME_3
 //     return reply.decode().strip()
 ::tpystd::tpy::Poll<std::string> __coro_client::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "127.0.0.1";
         __sub_0.emplace(__coro_arg_0, port);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: reader, writer = await asyncio.open_connection("127.0.0.1", port)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
@@ -77,7 +77,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await writer.drain()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r1).value();
@@ -86,7 +86,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: reply = await reader.readline()
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         reply = std::move(__r2).value();
@@ -96,7 +96,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: await writer.wait_closed()
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r3).value();
@@ -117,28 +117,28 @@ __coro_client client(int32_t port, std::string_view msg) {
 }
 
 // async def main_coro() -> None:
-//     server = await asyncio.start_server(handle, "127.0.0.1", 0)
+//     server = await asyncio.start_server(handle, "127.0.0.1", 0)      # -> S_RESUME_0
 //     sf = asyncio.create_task(server.serve_forever())
-//     async with server as srv:
+//     async with server as srv:                                        # -> S_RESUME_1, S_RESUME_3
 //         port = srv.sockets[0].getsockname()[1]
-//         print(await client(port, "ping"))
+//         print(await client(port, "ping"))                            # -> S_RESUME_2
 //         srv.close()
 //     # srv.close() acted on the real server, so serve_forever raises
 //     # CancelledError (the __aexit__ close is then a no-op).
 //     try:
-//         await sf
+//         await sf                                                     # -> S_RESUME_4
 //     except asyncio.CancelledError:
 //         pass
 //     print("served")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "127.0.0.1";
         __sub_0.emplace([](::tpystd::asyncio::StreamReader&& __a0, ::tpystd::asyncio::StreamWriter&& __a1) -> std::unique_ptr<::tpystd::coro::Cancellable<std::monostate>> { return ::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(handle(std::move(__a0), std::move(__a1))); }, __coro_arg_0, 0);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: server = await asyncio.start_server(handle, "127.0.0.1", 0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         server.emplace(std::move(__r0).value());
@@ -149,7 +149,7 @@ __coro_client client(int32_t port, std::string_view msg) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async with server as srv:
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         srv = std::move(__r1).value();
@@ -157,7 +157,7 @@ __coro_client client(int32_t port, std::string_view msg) {
         __state = S_JOIN_3;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await client(port, "ping"))
         try {
             auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -174,7 +174,7 @@ __coro_client client(int32_t port, std::string_view msg) {
             continue;
         }
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: async with server as srv:
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r3).value();
@@ -187,7 +187,7 @@ __coro_client client(int32_t port, std::string_view msg) {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: await sf
         try {
             auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
             if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

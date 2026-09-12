@@ -31,8 +31,6 @@ struct A {
     // def __init__(self, x: int32) -> None:
     explicit A(int32_t x);
 
-    // # Discriminates on float64 (== float under CPython) so a plain-int
-    // # argument narrows the same way on both runtimes.
     // def tag(self, v: int32 | float64) -> int32:
     int32_t tag(const ::tpy::Union<double, int32_t>& v) const;
 

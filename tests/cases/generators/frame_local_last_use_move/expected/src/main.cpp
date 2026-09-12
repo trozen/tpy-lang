@@ -9,13 +9,13 @@ namespace tpyapp::main {
 //     seen: list[bytes] = []
 //     buf = [1, 2, 3]
 //     ba = bytearray(b"abc")
-//     yield n
+//     yield n                                                                 # -> S_RESUME_0
 //     out.append(buf)  # the frame slot, moved at its last use
 //     seen.append(bytes(ba))  # the written copy into a `bytes` element slot
 //     print(len(out), len(out[0]), len(seen[0]))
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_chunks::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         out.emplace(std::vector<std::vector<int32_t>>{});
         seen.emplace(std::vector<::tpy::Bytes>{});
         buf.emplace(std::vector<int32_t>{1, 2, 3});
@@ -23,7 +23,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_chunks::__next__() {
         __state = S_RESUME_0;
         return n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         (*out).push_back(std::move((*buf)));
         (*seen).push_back(::tpy::Bytes((*ba)));
         std::cout << ::tpy::__len__((*out)) << " " << ::tpy::__len__(::tpy::__getitem__((*out), 0)) << " " << ::tpy::__len__(::tpy::__getitem__((*seen), 0)) << "\n";

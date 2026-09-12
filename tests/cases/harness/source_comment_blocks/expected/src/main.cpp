@@ -29,17 +29,18 @@ std::string quoted() {
     return std::string(text);
 }
 
+// # resumable generator: the block sits above the frame's __next__ implementation
 // def pair(n: int32) -> Iterator[int32]:
-//     yield n
+//     yield n                             # -> S_RESUME_0
 //     if n > 0:
-//         yield n + 1
+//         yield n + 1                     # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_pair::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         if ((n > 0)) {
             __state = S_RESUME_1;
             return (::tpy::add_check<int32_t>(n, 1));
@@ -48,7 +49,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_pair::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield n + 1
         __state = S_JOIN_0;
         continue;
     }
@@ -67,17 +68,18 @@ __gen_pair pair(int32_t n) {
     return __gen_pair(n);
 }
 
+// # async: the block sits above the frame's poll implementation
 // async def doubled(n: int32) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)             # -> S_RESUME_0
 //     return n * 2
 ::tpystd::tpy::Poll<int32_t> __coro_doubled::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -127,7 +129,8 @@ void main() {
 }
 
 // # Source-comment placement in generated C++: a declaration echoes its signature,
-// # an implementation echoes its whole Python definition above the C++ (the C++ is the assertion).
+// # an implementation its whole Python definition above the C++, a resumable frame
+// # with `# -> S_RESUME_n` tags on its suspending lines (the C++ is the assertion).
 // import asyncio
 //
 // # module-level multi-line statement: the module body is the block above __tpy_init
@@ -135,7 +138,8 @@ void main() {
 //     "a": 1,
 //     "b": 2,
 // }
-// print("module", TABLE["a"] + TABLE["b"])
+//
+// print("module", (TABLE["a"] + TABLE["b"]) * SCALE)
 // main()
 void __tpy_init() {
     static bool initialized = false;
@@ -145,7 +149,7 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     static ::tpy::ordered_map<std::string, int32_t> __global_slot_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     TABLE = &__global_slot_1;
-    std::cout << "module" << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__((*TABLE), "a"), ::tpy::__getitem__((*TABLE), "b"))) << "\n";
+    std::cout << "module" << " " << (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*TABLE), "a"), ::tpy::__getitem__((*TABLE), "b"))), SCALE)) << "\n";
     main();
 }
 

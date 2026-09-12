@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Keyword arguments in method calls
 // class Formatter:
 struct Formatter {
     // prefix: str

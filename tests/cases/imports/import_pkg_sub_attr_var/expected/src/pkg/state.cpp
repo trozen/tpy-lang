@@ -4,8 +4,6 @@
 namespace tpyapp::pkg::state {
 
 
-// LIMIT: Final[int32] = 16
-// banner: Final[str] = "ok"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

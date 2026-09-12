@@ -7,23 +7,23 @@ namespace tpyapp::main {
 // def gen(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
 //     prev: P | None = None
 //     for it in items:
-//         yield (prev, it)
+//         yield (prev, it)                                                 # -> S_RESUME_0
 //         # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
 //         if it.x == int32(0):
 //             prev = None
 //         else:
 //             prev = it
-//     yield (prev, None)
+//     yield (prev, None)                                                   # -> S_RESUME_1
 std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         prev = nullptr;
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield (prev, it)
         if ((it->x == 0)) {
             prev = nullptr;
         } else {
@@ -32,7 +32,7 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield (prev, None)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

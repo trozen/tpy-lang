@@ -16,7 +16,6 @@ V3 mk(double s);
 // def main() -> None:
 void main();
 
-// # @nocopy: the const-ref binding is the subject, so a silent copy is an error.
 // @nocopy
 // class V3:
 struct V3 {

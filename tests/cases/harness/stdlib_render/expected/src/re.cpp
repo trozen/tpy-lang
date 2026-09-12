@@ -471,25 +471,6 @@ std::vector<std::string> Pattern::split(std::string_view subject, int32_t maxspl
 // # casts in this file are on `len(...)` results (BigInt) and other typed
 // # sources, where a runtime narrowing check is intentional.
 // from _bindings import pcre2
-//
-// # User-facing flags are `int32`: the total bit surface is tiny (max 256),
-// # negative values are never valid, and int32 is TPy's DefaultInt so users
-// # don't need to write `uint32(...)` when mixing flags with bare literals.
-// # Internally `_to_pcre2_opts` translates to PCRE2's `uint32` flag space
-// # where top-bit values like pcre2.PCRE2_ANCHORED require the wider unsigned range.
-// NOFLAG:     Final[int32] = 0
-// IGNORECASE: Final[int32] = 2
-// MULTILINE:  Final[int32] = 8
-// DOTALL:     Final[int32] = 16
-// VERBOSE:    Final[int32] = 64
-// ASCII:      Final[int32] = 256
-//
-// # Short aliases (CPython exposes both forms).
-// I: Final[int32] = IGNORECASE
-// M: Final[int32] = MULTILINE
-// S: Final[int32] = DOTALL
-// X: Final[int32] = VERBOSE
-// A: Final[int32] = ASCII
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

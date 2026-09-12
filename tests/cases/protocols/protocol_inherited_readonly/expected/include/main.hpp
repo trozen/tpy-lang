@@ -25,6 +25,7 @@ struct Impl;
 extern Impl* obj;
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def read_via_child(x: Child) -> int32:
 template<Child T_x>
 int32_t read_via_child(const T_x& x);

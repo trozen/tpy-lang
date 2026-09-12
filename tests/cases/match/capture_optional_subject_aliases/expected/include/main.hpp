@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # A bare capture of a pointer-repr Optional subject aliases the subject (binds
-// # the pointer directly, no address-of), so mutation through it is visible.
 // class Box:
 struct Box {
     // self.v = v

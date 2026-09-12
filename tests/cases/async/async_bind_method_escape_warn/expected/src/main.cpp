@@ -8,10 +8,10 @@ namespace tpyapp::main {
 //     w = Counter(40)
 //     c = w.bump(5)
 //     t = asyncio.create_task(c)  # tpyc: warning(/borrows its receiver/)
-//     print(await t)
+//     print(await t)                                                       # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         w.emplace(Counter(::tpy::BigInt(40)));
         c.emplace((*w).bump(5));
         t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(std::move(*(c)))));
@@ -19,7 +19,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await t)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -50,7 +50,7 @@ void main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter_bump::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((__self.base) + (n));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));

@@ -20,7 +20,6 @@ void g(const C& a);
 // def main() -> None:
 void main();
 
-// # Assignment narrowing in one function must not leak into another
 // class A:
 struct A {
     // x: float

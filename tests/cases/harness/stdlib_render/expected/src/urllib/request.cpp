@@ -116,9 +116,6 @@ namespace tpystd::urllib::request {
 // import ssl
 // from http.client import HTTPConnection, HTTPSConnection, HTTPResponse, _Connection
 // from urllib.parse import urlsplit
-//
-// HTTP_PORT: Final[int32] = 80
-// HTTPS_PORT: Final[int32] = 443
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

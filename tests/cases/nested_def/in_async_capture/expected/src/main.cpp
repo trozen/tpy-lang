@@ -12,12 +12,12 @@ namespace tpyapp::main {
 //         b.n += 1
 //
 //     bump()
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)               # -> S_RESUME_0
 //     bump()
 //     return b
 ::tpystd::tpy::Poll<Box> __coro_capture_mutate::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(Box());
         // def bump: frame member
         bump();
@@ -25,7 +25,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box>::pending();
         (void)std::move(__r0).value();
@@ -56,11 +56,11 @@ __coro_capture_mutate capture_mutate() {
 //         return x + base
 //
 //     first = scaled(1)
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)          # -> S_RESUME_0
 //     return first + scaled(2)
 ::tpystd::tpy::Poll<int32_t> __coro_across_await::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         base = 100;
         // def scaled: frame member
         first = scaled(1);
@@ -68,7 +68,7 @@ __coro_capture_mutate capture_mutate() {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -97,19 +97,22 @@ int32_t apply(const std::function<int32_t(int32_t)>& f, int32_t v) {
     return f(v);
 }
 
+// # A LAMBDA at the same position reads a frame MEMBER, which has no variable
+// # form: the capture is an init-capture snapshot of the member, and it stays
+// # valid across the await without holding the frame.
 // async def lambda_capture(n: int32) -> int32:
 //     first = apply(lambda x: x + n, 1)  # tpyc: ok
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                         # -> S_RESUME_0
 //     return first + apply(lambda x: x + n, 2)
 ::tpystd::tpy::Poll<int32_t> __coro_lambda_capture::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         first = apply([n = n](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, n)); }, 1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -130,17 +133,17 @@ __coro_lambda_capture lambda_capture(int32_t n) {
 }
 
 // async def main() -> None:
-//     print((await capture_mutate()).n)
-//     print(await across_await())
-//     print(await lambda_capture(10))
+//     print((await capture_mutate()).n)  # -> S_RESUME_0
+//     print(await across_await())        # -> S_RESUME_1
+//     print(await lambda_capture(10))    # -> S_RESUME_2
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print((await capture_mutate()).n)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
@@ -150,7 +153,7 @@ __coro_lambda_capture lambda_capture(int32_t n) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await across_await())
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -160,7 +163,7 @@ __coro_lambda_capture lambda_capture(int32_t n) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await lambda_capture(10))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();

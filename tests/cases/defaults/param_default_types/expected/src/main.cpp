@@ -129,8 +129,6 @@ void main() {
 
 // from enum import IntEnum
 //
-// STEP: Final[int64] = 7
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

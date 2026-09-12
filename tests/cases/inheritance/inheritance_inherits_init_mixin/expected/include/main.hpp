@@ -59,7 +59,6 @@ inline std::ostream& operator<<(std::ostream& os, const WithMixin& obj) {
     return os;
 }
 
-// # Sister-base order should not matter -- still picks Base's __init__.
 // class WithMixinReversed(Greeter, Base):
 struct WithMixinReversed : Greeter, Base {
 

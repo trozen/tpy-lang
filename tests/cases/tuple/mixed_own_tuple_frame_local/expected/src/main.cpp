@@ -13,21 +13,21 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 // def gen(b: Box) -> Iterator[int32]:
 //     p = make_mixed(b)
 //     p[1].val = 88
-//     yield p[0].val
-//     yield p[1].val
+//     yield p[0].val                   # -> S_RESUME_0
+//     yield p[1].val                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         p.emplace(make_mixed(b));
         std::get<1>((*p))->val = 88;
         __state = S_RESUME_0;
         return std::get<0>((*p)).val;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p[0].val
         __state = S_RESUME_1;
         return std::get<1>((*p))->val;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p[1].val
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -45,18 +45,18 @@ __gen_gen gen(Box& b) {
 // async def coro(b: Box) -> int32:
 //     p = make_mixed(b)
 //     p[1].val = 99
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)        # -> S_RESUME_0
 //     return p[0].val + p[1].val
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         p.emplace(make_mixed(b));
         std::get<1>((*p))->val = 99;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

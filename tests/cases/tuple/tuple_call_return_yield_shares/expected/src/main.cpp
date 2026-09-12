@@ -12,15 +12,15 @@ std::tuple<int32_t, Box*> make(Box& b) {
 
 // def gen(b: Box) -> Iterator[tuple[int32, Box]]:
 //     u = make(b)
-//     yield u
+//     yield u                                      # -> S_RESUME_0
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         u = make(b);
         __state = S_RESUME_0;
         return u;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield u
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

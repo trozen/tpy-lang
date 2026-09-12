@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_doubled::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) * (::tpy::BigInt(2)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -27,18 +27,18 @@ __coro_doubled doubled(::tpy::BigInt n) {
 
 // async def total(c: Counts) -> int:
 //     s = 0
-//     async for x in c:
-//         s += await doubled(x)
+//     async for x in c:               # -> S_RESUME_0
+//         s += await doubled(x)       # -> S_RESUME_1
 //     return s
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         s = 0;
         __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in c:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -55,7 +55,7 @@ __coro_doubled doubled(::tpy::BigInt n) {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: s += await doubled(x)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r1).value();
@@ -99,16 +99,16 @@ __coro_total total(Counts& c) {
 
 // async def main() -> None:
 //     c = Counts(3)
-//     print(await total(c))
+//     print(await total(c))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c.emplace(Counts(::tpy::BigInt(3)));
         __sub_0.emplace((*c));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await total(c))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -136,7 +136,7 @@ __coro_main main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.n >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

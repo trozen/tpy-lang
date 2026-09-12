@@ -394,15 +394,15 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
 //             i += 1
 //         if not blank:
 //             row.append("".join(parts))
-//         yield row
+//         yield row                                                                     # -> S_RESUME_0
 template <typename R>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<R>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield row
         __state = S_JOIN_0;
         continue;
     }
@@ -628,15 +628,15 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
 //             i += 1
 //         if not blank:
 //             row.append("".join(parts))
-//         yield row
+//         yield row                                                                     # -> S_RESUME_0
 template <::tpystd::tpy::Readable T_fp>
 std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield row
         __state = S_JOIN_0;
         continue;
     }
@@ -804,17 +804,17 @@ struct __gen_DictReader___iter__ : public ::tpy::next_iter_mixin<__gen_DictReade
 //             name = self.fieldnames[i]
 //             out[name] = row[i] if i < len(row) else ""
 //             i += 1
-//         yield out
+//         yield out                                                            # -> S_RESUME_0
 template <::tpystd::tpy::Readable W>
 std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __gen_DictReader___iter__<W>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         first = true;
         __for_src_0.emplace(_parse_rows<W>(__self._fp, __self._delimiter, __self._quotechar, __self._doublequote, __self._skipinitialspace));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield out
         __state = S_JOIN_0;
         continue;
     }

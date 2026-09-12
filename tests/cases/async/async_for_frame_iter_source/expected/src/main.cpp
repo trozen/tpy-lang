@@ -4,22 +4,24 @@
 namespace tpyapp::main {
 
 
+// # Mutating through the loop element across a suspension: the element must alias
+// # the bag's storage, and the change is read back off the bag afterwards.
 // async def bump(bag: Bag) -> int32:
 //     total = 0
 //     for p in bag:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)      # -> S_RESUME_0
 //         p.x += 10
 //         total += p.x
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         ::tpy::resumable_iter_init(__for_itr_0, bag);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -54,17 +56,17 @@ __coro_bump bump(Bag& bag) {
 
 // async def amain() -> None:
 //     bag = Bag([Point(1), Point(2)])
-//     print(await bump(bag))
+//     print(await bump(bag))                                               # -> S_RESUME_0
 //     print("mutations reached the bag:", bag.items[0].x, bag.items[1].x)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         bag.emplace(Bag({Point(1), Point(2)}));
         __sub_0.emplace((*bag));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await bump(bag))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -87,21 +89,21 @@ __coro_amain amain() {
 
 // def __iter__(self) -> Iterator[Point]:
 //     for p in self.items:
-//         yield p
-//         yield p
+//         yield p                         # -> S_RESUME_0
+//         yield p                         # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p
         __state = S_RESUME_1;
         return (*p);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield p
         __state = S_JOIN_0;
         continue;
     }

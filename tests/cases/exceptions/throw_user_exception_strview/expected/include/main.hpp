@@ -14,10 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # User Exception subclass with `str` (string_view) message param
-// # delegating to the native BaseException ctor via super().__init__.
-// # Mirrors the idiomatic Python pattern (vs the throw_user_exception
-// # variant which only stores ad-hoc fields).
 // class MyError(Exception):
 struct MyError : ::tpy::Exception {
     // msg: str

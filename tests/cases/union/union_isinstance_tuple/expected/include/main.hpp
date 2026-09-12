@@ -28,8 +28,6 @@ std::string match_guard(::tpy::Union<const A*, const B*, const C*> v);
 // def main() -> None:
 void main();
 
-// # Tuple form isinstance(x, (A, B)) expands to "A or B" narrowing,
-// # composing with and/or chains, negation, and match-case guards.
 // class A:
 struct A {
     // tag: int

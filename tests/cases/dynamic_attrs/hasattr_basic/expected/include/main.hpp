@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # D16 v1.5 phase 7: hasattr on a dyn-readable class -- runtime check via try/catch
-// # of __getattr__'s AttributeError. True when the dunder returns, False on raise.
 // class Headers:
 struct Headers {
     // _origin: str

@@ -46,22 +46,23 @@ void sec_generic(const Cell& c) {
     std::cout << "generic:" << " " << g.get().n << " " << g2.get().n << "\n";
 }
 
+// # generator: the copy happens inside a resumable frame.
 // def gen_copies(c: readonly[Cell]) -> Iterator[int32]:
 //     d = bump(copy(c))  # tpyc: ok
-//     yield d.n
-//     yield c.n
+//     yield d.n                                          # -> S_RESUME_0
+//     yield c.n                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_copies::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         d.emplace(bump(Cell(c)));
         __state = S_RESUME_0;
         return (*d).n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield d.n
         __state = S_RESUME_1;
         return c.n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield c.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -96,13 +97,14 @@ void sec_generator(const Cell& c) {
     std::cout << "generator:" << " " << ::tpy::__getitem__(out, 1) << " " << ::tpy::__getitem__(out, 0) << "\n";
 }
 
+// # async: the copy happens inside a coroutine frame.
 // async def copy_in_task(c: readonly[Cell]) -> int32:
 //     d = bump(copy(c))  # tpyc: ok
 //     return d.n
 ::tpystd::tpy::Poll<int32_t> __coro_copy_in_task::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         d.emplace(bump(Cell(c)));
         __state = S_DONE;
         int32_t __tpy_async_ret = (*d).n;

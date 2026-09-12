@@ -44,7 +44,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// # --- Case 2: union subject + union-typed field ---
 // class Container:
 struct Container {
     // value: str | int32
@@ -60,7 +59,6 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// # --- Case 3: union-field x type-param (record field is parameterized union) ---
 // class Outer:
 struct Outer {
     // item: Box[str] | Box[int32]
@@ -76,7 +74,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
-// # --- Case 4: union-field x union-field (value-type unions) ---
 // class Tagged:
 struct Tagged {
     // label: str

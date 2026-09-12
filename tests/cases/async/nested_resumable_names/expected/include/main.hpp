@@ -248,17 +248,17 @@ struct __coro_2_5_Outer_3_Box_3_get {
 };
 
 // async def get(self) -> T:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)  # -> S_RESUME_0
 //     return self.value
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_2_5_Outer_3_Box_3_get<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
@@ -334,17 +334,17 @@ struct __coro_2_5_Outer_5_Inner_4_echo {
 };
 
 // async def echo[T](self, value: T) -> T:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)               # -> S_RESUME_0
 //     return value
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_2_5_Outer_5_Inner_4_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
@@ -645,17 +645,17 @@ struct __coro_nested_echo {
 };
 // async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
 //     # The generic twin must retain its template header and default argument.
-//     await inner.compute(delta)  # tpyc: ok
+//     await inner.compute(delta)  # tpyc: ok                                    # -> S_RESUME_0
 //     return value
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_nested_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(inner, delta);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await inner.compute(delta)  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();

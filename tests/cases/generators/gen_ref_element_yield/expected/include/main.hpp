@@ -139,10 +139,6 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
     return os;
 }
 
-// # 11. a `readonly[T]` element yields a CONST borrow: the frame's `__next__`
-// #     returns `std::expected<val_or_ref<const std::vector<int32_t>>,
-// #     StopIteration>` and the consumer binds `const auto&`, so a pull hands out
-// #     a pointer instead of copying the whole vector out of the source.
 // class ROBag:
 struct ROBag {
     // buf: list[int32]
@@ -509,20 +505,20 @@ struct __gen_relay : public ::tpy::next_iter_mixin<__gen_relay<T_it>, int32_t> {
 //         # `yield b.v` would copy an int32, but the ephemeral-borrow escape
 //         # check roots on `b` -- BUGS.md#ephemeral-value-read-escape.
 //         v = b.v
-//         yield v
-//     yield -1
+//         yield v                                                             # -> S_RESUME_0
+//     yield -1                                                                # -> S_RESUME_1
 template <::tpystd::typing::Iterator<Box> T_it>
 std::expected<int32_t, ::tpy::StopIteration> __gen_relay<T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

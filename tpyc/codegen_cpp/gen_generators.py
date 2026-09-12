@@ -463,14 +463,14 @@ class GeneratorCodegen:
         if record_name:
             const_suffix = " const" if func.is_readonly else ""
             out.write(f"\n")
-            self.ctx.emit_definition_source_block(out, func.loc, INDENT)
+            self.ctx.emit_definition_echo(out, func.loc, INDENT)
             tpl_header = self._gen_template_header(func, indent=INDENT)
             if tpl_header:
                 out.write(tpl_header)
             params = self._gen_params(func, emit_defaults=True)
             out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
         else:
-            self.ctx.emit_definition_source_block(out, func.loc)
+            self.ctx.emit_definition_echo(out, func.loc)
             tpl_header = self._gen_template_header(func)
             if tpl_header:
                 out.write(tpl_header)
@@ -569,14 +569,14 @@ class GeneratorCodegen:
         if record_name:
             const_suffix = " const" if func.is_readonly else ""
             out.write(f"\n")
-            self.ctx.emit_definition_source_block(out, func.loc, INDENT)
+            self.ctx.emit_definition_echo(out, func.loc, INDENT)
             tpl_header = self._gen_template_header(func, indent=INDENT)
             if tpl_header:
                 out.write(tpl_header)
             params = self._gen_params(func, emit_defaults=True)
             out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
         else:
-            self.ctx.emit_definition_source_block(out, func.loc)
+            self.ctx.emit_definition_echo(out, func.loc)
             tpl_header = self._gen_template_header(func)
             if tpl_header:
                 out.write(tpl_header)

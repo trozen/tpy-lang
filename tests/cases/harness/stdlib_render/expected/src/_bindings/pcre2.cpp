@@ -37,40 +37,6 @@ namespace tpystd::_bindings::pcre2 {
 // """
 //
 // from tpy.extern import native
-//
-// PCRE2_CASELESS:                     Final[uint32] = 0x00000008
-// PCRE2_MULTILINE:                    Final[uint32] = 0x00000400
-// PCRE2_DOTALL:                       Final[uint32] = 0x00000020
-// PCRE2_EXTENDED:                     Final[uint32] = 0x00000080
-// PCRE2_UTF:                          Final[uint32] = 0x00080000
-// PCRE2_UCP:                          Final[uint32] = 0x00020000
-// PCRE2_ANCHORED:                     Final[uint32] = 0x80000000
-// PCRE2_ENDANCHORED:                  Final[uint32] = 0x20000000
-//
-// # Match-time option: reject an empty match at the start offset (the
-// # advance-after-empty-match step of global substitution semantics).
-// PCRE2_NOTEMPTY_ATSTART:             Final[uint32] = 0x00000008
-//
-// # Match-step option for pcre2_substitute.
-// PCRE2_SUBSTITUTE_GLOBAL:            Final[uint32] = 0x00000100
-// PCRE2_SUBSTITUTE_OVERFLOW_LENGTH:   Final[uint32] = 0x00001000
-// PCRE2_SUBSTITUTE_MATCHED:           Final[uint32] = 0x00010000
-//
-// # pcre2_jit_compile selector: full JIT for normal matching.
-// PCRE2_JIT_COMPLETE:                 Final[uint32] = 0x00000001
-//
-// # Pattern-info selectors for pcre2_pattern_info.
-// PCRE2_INFO_CAPTURECOUNT:            Final[uint32] = 4
-//
-// # pcre2_match return codes. NOMATCH means "no match" (not an error);
-// # NOMEMORY is returned by pcre2_substitute when the output buffer is
-// # too small AND PCRE2_SUBSTITUTE_OVERFLOW_LENGTH is set.
-// PCRE2_ERROR_NOMATCH:                Final[int32] = -1
-// PCRE2_ERROR_NOMEMORY:               Final[int32] = -48
-//
-// # Sentinel meaning "this group did not participate". PCRE2_UNSET is
-// # (PCRE2_SIZE)~0u = SIZE_MAX in C; we compare against it via raw uint64.
-// PCRE2_UNSET:                        Final[uint64] = 0xFFFFFFFFFFFFFFFF
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

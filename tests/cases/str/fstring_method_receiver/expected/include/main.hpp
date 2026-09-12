@@ -18,8 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # An f-string used directly as a method receiver -- the std::format rvalue
-// # feeds the native str method's receiver slot, at every value sink.
 // class Page:
 struct Page {
     // body: bytes

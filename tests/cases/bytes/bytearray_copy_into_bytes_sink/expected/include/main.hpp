@@ -18,26 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # The explicit `bytes(ba)` at every OWNING `bytes` sink -- the spelling the
-// # located error asks for (tests/cases/bytes/error_bytearray_at_bytes_sink).
-// # CPython's `bytes(ba)` copies too, so every section is parity-clean; mutating
-// # `ba` after the stores is what makes the copy observable, and both languages
-// # give the same answer. One prefixed line per sink so a divergence names the
-// # cell that moved. The element slot IS the `Own[bytes]` parameter face -- the
-// # free-function and constructor ones take only a bytes literal today
-// # (BUGS.md#own-bytes-param-takes-only-a-literal). The BORROWING direction is a
-// # free view over the caller's buffer and is not this case
-// # (tests/cases/generics/generic_slot_distinct_buffer_types). The literal,
-// # comprehension and WRAPPED (`bytes | None`) element slots are here too, since
-// # they are owning sinks the rule reaches at the leaf; the literal and Optional
-// # REJECTIONS have their own cases (bytes/error_bytearray_in_bytes_literal,
-// # bytes/error_bytearray_at_optional_bytes_slot).
-// # A tuple ELEMENT is an owning slot at every position the tuple sits at, so the
-// # tuple section below passes its tuple as a plain (BORROWING) argument on
-// # purpose; bytes/error_bytearray_in_bytes_tuple_arg pins the rejection there.
-// # The set-literal and dict-KEY faces cannot be witnessed at all: a bare
-// # bytearray is unhashable and is refused before the buffer rule is reached,
-// # which is CPython's answer too (TypeError: unhashable type: 'bytearray').
 // class Holder:
 struct Holder {
     // data: bytes

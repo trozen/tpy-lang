@@ -8,16 +8,16 @@ namespace tpyapp::main {
 //     i: int32 = 0
 //     while i < n:
 //         if i % 2 == 0:
-//             yield i
+//             yield i                      # -> S_RESUME_0
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_JOIN_1;
         continue;
     }

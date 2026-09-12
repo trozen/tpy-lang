@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<bool> __coro_below::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         bool __tpy_async_ret = (i < limit);
         return ::tpystd::tpy::Poll<bool>::ready(std::move(__tpy_async_ret));
@@ -27,19 +27,19 @@ __coro_below below(::tpy::BigInt i, ::tpy::BigInt limit) {
 
 // async def normal_exit() -> None:
 //     i = 0
-//     while await below(i, 3):
+//     while await below(i, 3):      # -> S_RESUME_0
 //         print("iter", i)
 //         i += 1
 //     else:
 //         print("else ran")
 ::tpystd::tpy::Poll<::std::monostate> __coro_normal_exit::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: while await below(i, 3):
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -82,7 +82,7 @@ __coro_normal_exit normal_exit() {
 
 // async def break_exit() -> None:
 //     i = 0
-//     while await below(i, 10):
+//     while await below(i, 10):         # -> S_RESUME_0
 //         if i == 2:
 //             break
 //         print("b-iter", i)
@@ -91,12 +91,12 @@ __coro_normal_exit normal_exit() {
 //         print("else should NOT run")
 ::tpystd::tpy::Poll<::std::monostate> __coro_break_exit::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: while await below(i, 10):
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -143,16 +143,16 @@ __coro_break_exit break_exit() {
 }
 
 // async def main() -> None:
-//     await normal_exit()
-//     await break_exit()
+//     await normal_exit()    # -> S_RESUME_0
+//     await break_exit()     # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await normal_exit()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -161,7 +161,7 @@ __coro_break_exit break_exit() {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await break_exit()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

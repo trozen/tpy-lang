@@ -7,14 +7,12 @@
 
 namespace tpyapp::main {
 
-// # User-defined protocol that will be a bound on Wrapper
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
-// # Record that implements Printable
 // class Message:
 struct Message {
     // text: str
@@ -36,7 +34,6 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 
 template<Printable T> struct Wrapper;
 
-// # Bound protocol that references Wrapper[Message]
 // class WrapperMaker(Protocol):
 template<typename T>
 concept WrapperMaker = requires(T& t) {
@@ -51,7 +48,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Record with user-defined bound, referenced by a bound protocol
 // class Wrapper[T: Printable]:
 template<Printable T>
 struct Wrapper {
@@ -77,7 +73,6 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     return os;
 }
 
-// # Implementation of WrapperMaker
 // class DefaultWrapperMaker:
 struct DefaultWrapperMaker {
 
@@ -92,7 +87,6 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj
     return os;
 }
 
-// # Record that uses WrapperMaker as a bound
 // class Container[T: WrapperMaker]:
 template<WrapperMaker T>
 struct Container {

@@ -16,8 +16,6 @@ std::string describe(const W& w);
 // def main() -> None:
 void main();
 
-// # `field=None` on a record subject tests the field's storage repr (optional
-// # -> has_value, union-with-None -> monostate); a non-None value falls through.
 // class W:
 struct W {
     // opt: "str | None"

@@ -12,6 +12,7 @@ struct NotFound;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(NotFound)
 // def inner(key: str) -> int32:
 std::expected<int32_t, NotFound> inner(std::string_view key);
 // def outer(key: str) -> int32:

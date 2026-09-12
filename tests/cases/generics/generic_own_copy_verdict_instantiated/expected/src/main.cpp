@@ -21,17 +21,17 @@ Cell ret_own_twin(const Cell& v) {
 }
 
 // async def async_driver(c: Cell) -> int32:
-//     ref = await async_slot(c)
-//     val = await async_slot(4)
+//     ref = await async_slot(c)              # -> S_RESUME_0
+//     val = await async_slot(4)              # -> S_RESUME_1
 //     return ref + val
 ::tpystd::tpy::Poll<int32_t> __coro_async_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(c);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: ref = await async_slot(c)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         ref = std::move(__r0).value();
@@ -40,7 +40,7 @@ Cell ret_own_twin(const Cell& v) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: val = await async_slot(4)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         val = std::move(__r1).value();

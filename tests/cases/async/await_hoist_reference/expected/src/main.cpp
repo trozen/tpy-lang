@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::vector<int32_t> __tpy_async_ret = {10, 20, 30};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -30,7 +30,7 @@ __coro_make_list make_list() {
 ::tpystd::tpy::Poll<int32_t> __coro_get_multiplier::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int32_t __tpy_async_ret = 2;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -50,20 +50,20 @@ __coro_get_multiplier get_multiplier() {
 //     # `xs: list[int32]` is set in region 0 (before await get_multiplier())
 //     # and read in region 2 (after that await). Must be hoisted as
 //     # `tpy::frame_slot<std::vector<int32_t>> xs;` on the frame.
-//     xs = await make_list()
-//     multiplier = await get_multiplier()
+//     xs = await make_list()                                                  # -> S_RESUME_0
+//     multiplier = await get_multiplier()                                     # -> S_RESUME_1
 //     total = int32(0)
 //     for x in xs:
 //         total = total + x * multiplier
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: xs = await make_list()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         xs.emplace(std::move(__r0).value());
@@ -72,7 +72,7 @@ __coro_get_multiplier get_multiplier() {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: multiplier = await get_multiplier()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         multiplier = std::move(__r1).value();

@@ -9,7 +9,6 @@
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
-// # Final[float] initializer (would constexpr-panic without the fold).
 // MY_NAN: Final[float] = float("nan")
 inline constexpr double MY_NAN = std::numeric_limits<double>::quiet_NaN();
 // MY_INF: Final[float] = float("inf")

@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # bytes param assigned to bytes field: codegen must construct
-// # std::vector<uint8_t> from std::span<const uint8_t> in the member init list.
 // class Packet:
 struct Packet {
     // self.data = data

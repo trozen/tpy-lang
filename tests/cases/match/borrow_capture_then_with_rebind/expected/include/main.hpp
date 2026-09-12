@@ -14,11 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # A name borrow-captured from a reference-type lvalue match subject (aliases
-// # the subject, mutation visible) and then reused as a `with ... as` target: the
-// # capture must alias (b.v == 99) and the with-body sees its own object. The two
-// # bindings share one C++ declaration whose form must stay consistent with the
-// # match-arm's borrow binding; a regression here reads garbage for b.v.
 // class Box:
 struct Box {
     // self.v = v

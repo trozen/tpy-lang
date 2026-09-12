@@ -10,16 +10,6 @@ namespace tpystd::coro {
 struct Waker;
 
 struct Awaker;
-// # The dispatch target for `Waker.wake()`. `asyncio.Executor` inherits
-// # this protocol; Waker holds a `Ptr[Awaker]` to the running executor and
-// # calls `mark_runnable` through the @dynamic vtable. The only concrete
-// # implementer today lives in `asyncio._executor`.
-// #
-// # `register_timer(deadline, Waker)` would form an `Awaker` <-> `Waker`
-// # forward-declaration cycle in generated C++ headers if it lived on
-// # this protocol; timer registration goes through a direct
-// # `Executor.register_timer(...)` call in `asyncio/__init__.py` where
-// # the concrete `Ptr[Executor]` handle is available.
 // @dynamic
 // class Awaker(Protocol):
 template<typename T>
@@ -32,12 +22,6 @@ struct Awaker {
     virtual ~Awaker() = default;
 };
 
-// # Structural awaitable. Distinct from `typing.Awaitable[T]` (CPython's
-// # `__await__`-based shape) -- TPy uses `__poll__(Waker) -> Poll[T]`.
-// # The dunder name matches how other TPy/typing structural protocols
-// # spell their required methods (`__iter__`, `__hash__`, `__lt__`, ...)
-// # and signals "runtime protocol method -- prefer `await` / `poll_once`
-// # to direct calls".
 // class Awaitable[T](Protocol):
 template<typename T, typename _T0>
 concept Awaitable = requires(T& t) {
@@ -45,14 +29,6 @@ concept Awaitable = requires(T& t) {
 };
 
 template<typename T> struct Cancellable;
-// # Cancellable awaitable -- the @dynamic protocol every consumer of
-// # asyncio's cancellation machinery accepts (`run`, `create_task`,
-// # `wait_for`, `Task[T]` storage, ...). Structurally extends `Awaitable`
-// # with a `cancel()` precondition that lets the task layer deliver a
-// # `CancelledError` at the awaitee's next suspension. gen_async.py
-// # auto-emits cancel() on every coro struct, so any compiled `async def`
-// # conforms automatically. Re-exported from `asyncio` for user-facing
-// # API typing.
 // @dynamic
 // class Cancellable[T](Protocol):
 template<typename T, typename _T0>
@@ -109,10 +85,6 @@ struct Waker {
     //              generation: int32 = 0) -> None:
     explicit Waker(Awaker* awaker = nullptr, int32_t task_id = 0, int32_t generation = 0);
 
-    // # Not @readonly: wake() doesn't mutate self, but it dispatches into
-    // # the awaker's `mark_runnable`, which mutates the executor's runnable
-    // # queue. Marking wake() readonly would narrow `self.awaker` to
-    // # `Ptr[readonly[Awaker]]` and reject the call.
     // def wake(self) -> None:
     void wake();
     static constexpr std::string_view __tpy_class_name__ = "tpy.coro.Waker";

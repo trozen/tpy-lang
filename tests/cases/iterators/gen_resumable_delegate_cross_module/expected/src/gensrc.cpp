@@ -5,19 +5,19 @@ namespace tpyapp::gensrc {
 
 
 // def walk() -> Iterator[int32]:
-//     yield 1
-//     yield 2
+//     yield 1                     # -> S_RESUME_0
+//     yield 2                     # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -34,23 +34,23 @@ __gen_walk walk() {
 
 // def chatty() -> Iterator[int32]:
 //     print("  callee: before 1")
-//     yield 1
+//     yield 1                       # -> S_RESUME_0
 //     print("  callee: after 1")
-//     yield 2
+//     yield 2                       # -> S_RESUME_1
 //     print("  callee: after 2")
 std::expected<int32_t, ::tpy::StopIteration> __gen_chatty::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "  callee: before 1" << "\n";
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         std::cout << "  callee: after 1" << "\n";
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         std::cout << "  callee: after 2" << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -68,18 +68,18 @@ __gen_chatty chatty() {
 
 // def guarded() -> Iterator[int32]:
 //     try:
-//         yield 1
-//         yield 2
+//         yield 1                     # -> S_RESUME_0
+//         yield 2                     # -> S_RESUME_1
 //     finally:
 //         print("  callee: cleanup")
 std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             __state = S_RESUME_1;
             return 2;
@@ -88,7 +88,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_guarded::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         bool __fin_ran_2 = false;
         try {
             __fin_ran_2 = true;
@@ -129,19 +129,19 @@ __gen_guarded guarded() {
 }
 
 // def steps(self) -> Iterator[int32]:
-//     yield self.n
-//     yield self.n + 1
+//     yield self.n                     # -> S_RESUME_0
+//     yield self.n + 1                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.n
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.n, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.n + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -152,19 +152,19 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
 
 
 // def readings(self) -> Iterator[int32]:
-//     yield self.n
-//     yield self.n
+//     yield self.n                        # -> S_RESUME_0
+//     yield self.n                        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Bag_readings::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.n
         __state = S_RESUME_1;
         return __self.n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

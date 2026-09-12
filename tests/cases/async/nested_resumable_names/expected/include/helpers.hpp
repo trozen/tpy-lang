@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "helpers";
 
 struct __coro_2_7_Library_6_Worker_7_compute;
 
-// # Imported nested frames must use this defining namespace through a Python alias.
-// # tpy: cpp_namespace("nested_case::helpers")
 // class Library:
 struct Library {
     // class Worker:

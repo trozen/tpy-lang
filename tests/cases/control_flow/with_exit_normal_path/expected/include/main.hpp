@@ -18,9 +18,6 @@ void fall_through();
 // def main() -> None:
 void main();
 
-// # Normal (non-exception) path through `with`: __exit__ sees exc_val=None.
-// # Also exercises early-return through the with body (finally chain emits
-// # __exit__({}, nullptr, {}) before the function-level return).
 // class Tracker:
 struct Tracker {
 

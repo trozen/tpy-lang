@@ -17,21 +17,23 @@ namespace tpyapp::main {
     return ::tpy::BigInt(n);
 }
 
+// # free generator, TWO yields (frame): the while-head temp is rebuilt on every
+// # re-entry, so eat() keeps seeing a fresh [1, 2].
 // def fresh_each_pull_framed() -> Iterator[int]:
 //     while eat([1, 2]) > 1:  # tpyc: ok
-//         yield 1
-//         yield 2
+//         yield 1                                 # -> S_RESUME_0
+//         yield 2                                 # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_fresh_each_pull_framed::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_JOIN_0;
         continue;
     }
@@ -56,24 +58,26 @@ __gen_fresh_each_pull_framed fresh_each_pull_framed() {
     return __gen_fresh_each_pull_framed();
 }
 
+// # An IF condition carrying the same temp -- the frame's Branch seam is shared
+// # by if and while heads, so the fresh list is rebuilt per loop iteration.
 // def if_cond_temp(n: int) -> Iterator[int]:
 //     for i in range(n):
 //         if eat([1, 2, 3]) > 2:  # tpyc: ok
-//             yield i
-//         yield -i
+//             yield i                         # -> S_RESUME_0
+//         yield -i                            # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_if_cond_temp::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(::tpy::BigInt(0));
         __for_stop_0.emplace(static_cast<::tpy::BigInt>(n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -i
         __state = S_JOIN_0;
         continue;
     }

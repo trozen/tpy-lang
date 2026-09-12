@@ -72,6 +72,7 @@ void try_body();
 void match_arm(int32_t k);
 // def closure() -> None:
 void closure();
+// @error_return(MyErr)
 // def error_return_body(i: int32) -> int32:
 std::expected<int32_t, MyErr> error_return_body(int32_t i);
 // def main() -> None:
@@ -198,12 +199,10 @@ struct Builder {
     // total: int32
     int32_t total;
 
-    // # Constructor position.
     // def __init__(self, k: int32) -> None:
     Builder() = default;
     explicit Builder(int32_t k);
 
-    // # Method position.
     // def add(self, k: int32) -> None:
     void add(int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Builder";

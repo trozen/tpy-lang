@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def producer(f: Future[int32]) -> None:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)                 # -> S_RESUME_0
 //     f.set_result(int32(7))
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -37,18 +37,18 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
 // async def main_coro() -> None:
 //     f: Future[int32] = Future[int32]()
 //     asyncio.create_task(producer(f))
-//     result = await f
+//     result = await f                    # -> S_RESUME_0
 //     print(result)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         f.emplace(::tpystd::asyncio::Future<int32_t>());
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*f))));
         __sub_0 = &((*f));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: result = await f
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         result = std::move(__r0).value();

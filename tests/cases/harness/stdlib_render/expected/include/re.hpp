@@ -22,11 +22,6 @@ struct Match;
 struct Pattern;
 
 inline constexpr std::string_view __name__ = "re";
-// # User-facing flags are `int32`: the total bit surface is tiny (max 256),
-// # negative values are never valid, and int32 is TPy's DefaultInt so users
-// # don't need to write `uint32(...)` when mixing flags with bare literals.
-// # Internally `_to_pcre2_opts` translates to PCRE2's `uint32` flag space
-// # where top-bit values like pcre2.PCRE2_ANCHORED require the wider unsigned range.
 // NOFLAG:     Final[int32] = 0
 inline constexpr int32_t NOFLAG = 0;
 // IGNORECASE: Final[int32] = 2
@@ -39,7 +34,6 @@ inline constexpr int32_t DOTALL = 16;
 inline constexpr int32_t VERBOSE = 64;
 // ASCII:      Final[int32] = 256
 inline constexpr int32_t ASCII = 256;
-// # Short aliases (CPython exposes both forms).
 // I: Final[int32] = IGNORECASE
 inline constexpr int32_t I = IGNORECASE;
 // M: Final[int32] = MULTILINE
@@ -79,18 +73,6 @@ std::string sub(std::string_view pattern, std::string_view repl, std::string_vie
 //           flags: int32 = NOFLAG) -> Own[list[str]]:
 std::vector<std::string> split(std::string_view pattern, std::string_view subject, int32_t maxsplit = 0, int32_t flags = NOFLAG);
 
-// # ---------- RAII wrappers for PCRE2 handles ----------
-// # Every handle is wrapped in an @nocopy owning type so the corresponding
-// # free runs automatically on scope exit (returns, raises, field-holding
-// # record destruction). All three free functions are null-safe, so __del__
-// # needs no null check.
-// #
-// # @nocopy+__del__ wrappers have their auto default ctor suppressed, so
-// # the enclosing record's field init must MIL-hoist (RHS references only
-// # ctor params / module-level names, no body-locals). That's why _OwnedCode
-// # takes high-level args in __init__ and delegates the multi-step PCRE2
-// # call sequence to a staticmethod returning Ptr[pcre2.Code] -- the
-// # dangling-return check trusts locals bound from call returns.
 // @nocopy
 // class _OwnedMatchData:
 struct _OwnedMatchData {
@@ -119,10 +101,6 @@ inline std::ostream& operator<<(std::ostream& os, const _OwnedMatchData& obj) {
     return os;
 }
 
-// # ---------- re.error exception ----------
-// # Must be defined BEFORE _OwnedCode because its _compile staticmethod is
-// # emitted inline in the generated header and throws `error`, which
-// # requires a complete type at the throw site (not just a forward decl).
 // class error(Exception):
 struct error : ::tpy::Exception {
 
@@ -199,7 +177,6 @@ inline std::ostream& operator<<(std::ostream& os, const _OwnedMatchContext& obj)
     return os;
 }
 
-// # ---------- Match ----------
 // class Match:
 struct Match {
     // _md: _OwnedMatchData
@@ -243,7 +220,6 @@ inline std::ostream& operator<<(std::ostream& os, const Match& obj) {
     return os;
 }
 
-// # ---------- Pattern ----------
 // class Pattern:
 struct Pattern {
     // _code: _OwnedCode

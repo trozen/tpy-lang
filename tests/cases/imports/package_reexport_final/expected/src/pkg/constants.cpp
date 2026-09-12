@@ -4,8 +4,6 @@
 namespace tpyapp::pkg::constants {
 
 
-// VERSION: Final[str] = "1.0.0"
-// LIMIT: Final[int32] = 16
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

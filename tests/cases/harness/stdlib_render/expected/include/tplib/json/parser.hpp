@@ -152,7 +152,6 @@ struct JsonReader {
     // def skip_value(self) -> None:
     std::expected<void, JsonError> skip_value();
 
-    // # -- internal helpers --
     // @error_return(JsonError)
     // def _skip_str(self) -> None:
     std::expected<void, JsonError> _skip_str();
@@ -177,9 +176,6 @@ struct JsonReader {
     // def _parse_hex4(self, pos: int32) -> int32:
     int32_t _parse_hex4(int32_t pos) const;
 
-    // # TODO: shape validation is loose -- accepts malformed numbers like
-    // # `1.`, `1e`, `1..2`, and leading zeros (`01`) that CPython rejects.
-    // # Tighten when the BigInt/float parsers stop being lenient.
     // @error_return(JsonError)
     // def _read_number_raw(self) -> StrView:
     std::expected<std::string_view, JsonError> _read_number_raw();

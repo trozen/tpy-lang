@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def process(rows: list[tuple[int32, Item]]) -> Iterator[int32]:  # tpyc: ok
 //     for idx, it in rows:
 //         it.n = idx * 100      # mutate the reference element
-//         yield idx             # suspend; idx (value) and it (ref) must survive
+//         yield idx             # suspend; idx (value) and it (ref) must survive  # -> S_RESUME_0
 //         it.n = it.n + idx     # read + mutate the same element after resume
 std::expected<int32_t, ::tpy::StopIteration> __gen_process::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((rows).begin());
         __for_end_0.emplace((rows).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield idx             # suspend; idx (value) and it (ref) must survive
         it->n = (::tpy::add_check<int32_t>(it->n, idx));
         __state = S_JOIN_0;
         continue;

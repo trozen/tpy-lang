@@ -27,10 +27,6 @@ inline constexpr std::string_view __name__ = "tpy.sync";
 // def _require_locked(locked: bool) -> None:
 void _require_locked(bool locked);
 
-// # The heap cell holding the lock next to its payload. Reached only through the
-// # raw `Ptr` a Mutex/guard carries, so mutating the lock or payload through it
-// # never demotes the shared (readonly) Mutex handle -- the interior-mutability
-// # escape hatch, same shape as Rc/Arc's `_cell`.
 // @nocopy
 // class _MutexCell[T]:
 template<typename T>
@@ -159,11 +155,6 @@ inline std::ostream& operator<<(std::ostream& os, const _RwLockCell<T>& obj) {
 // class Mutex[T]:
 template<typename T>
 struct Mutex {
-    // # Both fields are `unsafe_interior_mutable` so lock() (a @readonly method reached
-    // # through a shared Arc handle) can mutate the lock and hand out a mutable
-    // # payload borrow: readonly does not propagate into an interior field's
-    // # pointee. `_payload` aliases into the cell's storage; the mutable borrow it
-    // # yields is exactly what the lock's runtime exclusion makes sound.
     // _cell: unsafe_interior_mutable[Ptr[_MutexCell[T]]]
     _MutexCell<T>* _cell;
     // _payload: unsafe_interior_mutable[Ptr[T]]
@@ -234,11 +225,6 @@ struct MutexGuard {
     T* _payload;
     // _locked: bool
     bool _locked;
-    // # A pointer to the cell's raw lock, for Condvar.wait's `_CondvarLock` hook.
-    // # Interior-mutable (only this pointer, not `_cell`) so `_raw_mutex` can be
-    // # @readonly -- callable through wait's readonly param -- without exposing a
-    // # mutable path to the payload from a readonly guard. Points into the cell
-    // # (no allocation); the cell outlives the guard.
     // _raw_mu: unsafe_interior_mutable[Ptr[_RawMutex]]
     ::tpy::MovableMutex* _raw_mu;
 
@@ -344,14 +330,6 @@ inline std::ostream& operator<<(std::ostream& os, const MutexGuard<T>& obj) {
     return os;
 }
 
-// # Sync iff T: Send -- same as Mutex. Looser than Rust's RwLock<T> (needs
-// # T: Send + Sync) and sound on the safe surface: a safe not-Sync T is always a
-// # container whose shared-mutability the readonly read guard removes, and TPy has
-// # no safe interior mutability (unlike Rust's Cell). NOT sound in general: a
-// # Send-but-not-Sync interior-mutable payload from the unsafe
-// # `unsafe_interior_mutable` hatch (a user Cell-analog) gets a Sync the author
-// # never asserted -- a latent hole, low priority. See docs/SEND_SYNC_DESIGN.md
-// # (RwLock Sync bound) and BUGS.md.
 // @unsafe_sync(if_params_send=True)
 // class RwLock[T]:
 template<typename T>
@@ -590,15 +568,6 @@ inline std::ostream& operator<<(std::ostream& os, const WriteGuard<T>& obj) {
 // @unsafe_sync
 // class Condvar:
 struct Condvar {
-    // # `_cv` is interior-mutable like Mutex's `_cell`: wait()/notify() mutate the
-    // # underlying std::condition_variable through a shared (readonly) handle,
-    // # sound because the primitive is internally synchronized -- exactly how a
-    // # @readonly Mutex.lock() mutates its std::mutex. Send+Sync unconditionally
-    // # (the C++ primitive is thread-safe), matching Atomic.
-    // # TODO: the Ptr (and its heap alloc via unsafe_take) is here only because the
-    // # hatch is Ptr-only. Unlike Mutex/Rc/Arc, nothing holds a pointer INTO the
-    // # Condvar, so once unsafe_interior_mutable accepts an inline `mutable` member
-    // # (TODO.md), this becomes an alloc-free `unsafe_interior_mutable[_RawCondvar]`.
     // _cv: unsafe_interior_mutable[Ptr[_RawCondvar]]
     ::tpy::MovableConditionVariable* _cv;
     bool __tpy_owned_ = true;

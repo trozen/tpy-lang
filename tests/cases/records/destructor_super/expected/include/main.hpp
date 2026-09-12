@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # Tests super().__del__() as last statement: call is dropped (parent dtor is automatic),
-// # no warning emitted
 // class Base:
 struct Base {
     bool __tpy_owned_ = true;

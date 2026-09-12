@@ -68,6 +68,7 @@ __coro_in_async in_async(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<co
 bool in_with(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
 // def in_try(a: Pet, b: Pet) -> bool:  # try/finally
 bool in_try(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
+// @error_return(Boom)
 // def in_error_return(a: Pet, b: Pet) -> bool:  # @error_return
 std::expected<bool, Boom> in_error_return(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
 // def in_match(a: Pet, b: Pet) -> bool:  # match arm
@@ -214,8 +215,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// # `__ne__` INVERTED on purpose: CPython calls a declared `__ne__` instead of
-// # deriving one from `__eq__`, so both rows below disagree with the negation.
 // class Tag:
 struct Tag {
     // n: int32
@@ -269,8 +268,6 @@ inline std::ostream& operator<<(std::ostream& os, const Mark& obj) {
     return os;
 }
 
-// # `__ne__` and NO `__eq__`: `!=` calls the dunder while `==` still falls back
-// # to identity, so the two operators answer from different rules on one pair.
 // class OnlyNe:
 struct OnlyNe {
     // n: int32
@@ -294,9 +291,6 @@ inline std::ostream& operator<<(std::ostream& os, const OnlyNe& obj) {
     return os;
 }
 
-// # Neither alternative defines `__eq__`, so Python falls back to identity --
-// # the row the storage form cannot answer, because the slot it compares is a
-// # copy of the object rather than the object.
 // class Plain:
 struct Plain {
     // n: int32

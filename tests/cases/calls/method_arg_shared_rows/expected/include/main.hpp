@@ -18,8 +18,6 @@ void main();
 // @nocopy
 // class Tag:
 struct Tag {
-    // # @nocopy so a silent COPY at either stub-slot leg below is a compile
-    // # error rather than an invisible extra object.
     // ident: int32
     int32_t ident;
 

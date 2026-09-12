@@ -12,16 +12,16 @@ std::tuple<::tpy::Union<::tpy::BigInt, std::string>, ::tpy::BigInt> remake() {
 
 // def gen(a: int | str) -> Iterator[str]:
 //     if isinstance(a, int):
-//         yield "int:" + str(a + 1)
+//         yield "int:" + str(a + 1)        # -> S_RESUME_0
 //         a, n = remake()
-//         yield "rebound"
+//         yield "rebound"                  # -> S_RESUME_1
 //         if isinstance(a, str):
-//             yield "str:" + a
+//             yield "str:" + a             # -> S_RESUME_2
 //         else:
-//             yield "still-int"
+//             yield "still-int"            # -> S_RESUME_3
 std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (std::holds_alternative<::tpy::BigInt>(a)) {
             const auto& __a = std::get<::tpy::BigInt>(a);
             __state = S_RESUME_0;
@@ -32,7 +32,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "int:" + str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);
         auto __tup_1 = remake();
         a = std::get<0>(__tup_1);
@@ -40,7 +40,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_1;
         return "rebound";
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "rebound"
         if (std::holds_alternative<std::string>(a)) {
             const auto& __a = std::get<std::string>(a);
             __state = S_RESUME_2;
@@ -51,12 +51,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
             return "still-int";
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "str:" + a
         const auto& __a = std::get<std::string>(a);
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield "still-int"
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_JOIN_1;
         continue;

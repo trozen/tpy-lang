@@ -16,8 +16,6 @@ void check(std::optional<std::string_view> s);
 // def main() -> None:
 void main();
 
-// # Test subscript, slice, and len() on narrowed Optional[str] values,
-// # including field access on narrowed optional fields.
 // class Wrapper:
 struct Wrapper {
     // text: str | None

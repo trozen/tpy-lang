@@ -19,7 +19,6 @@ void log_from_service(Service& svc, int32_t val);
 // def main() -> None:
 void main();
 
-// # _logger field path
 // class Module:
 struct Module {
     // _logger: LogHandle
@@ -29,7 +28,6 @@ struct Module {
     Module() = default;
     explicit Module(std::string_view name);
 
-    // # Auto-discover via _logger field
     // def log_auto(self, tag: str, n: int32) -> None:
     void log_auto(std::string_view tag, int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Module";
@@ -40,7 +38,6 @@ inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
     return os;
 }
 
-// # get_logger() method path
 // class Service:
 struct Service {
     // _handle: LogHandle
@@ -53,7 +50,6 @@ struct Service {
     // def get_logger(self) -> LogHandle:
     ::mylog::LogHandle& get_logger();
 
-    // # Auto-discover via get_logger() method
     // def log_auto(self, msg: str) -> None:
     void log_auto(std::string_view msg);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Service";

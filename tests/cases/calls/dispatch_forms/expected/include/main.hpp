@@ -11,30 +11,39 @@ struct Acc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def area(w: int32) -> int32:  # tpyc: ok
 int32_t area(int32_t w);
+// @dispatch
 // def area(w: int32, h: int32) -> int32:
 int32_t area(int32_t w, int32_t h);
+// @dispatch
 // def tag(x: int32) -> str:  # tpyc: ok
 std::string tag(int32_t x);
+// @dispatch
 // def tag(x: str) -> int32:
 int32_t tag(std::string_view x);
+// @dispatch
 // def kind(x: str) -> str:  # tpyc: ok
 std::string kind(std::string_view x);
+// @dispatch
 // def kind(x: int32) -> str:
 std::string kind(int32_t x);
+// @dispatch
 // def push(xs: list[int32]) -> None:  # tpyc: ok
 void push(std::vector<int32_t>& xs);
+// @dispatch
 // def push(xs: list[int32], v: int32) -> None:
 void push(std::vector<int32_t>& xs, int32_t v);
+// @overload
 // def show(x: int) -> str: ...
 std::string show(const ::tpy::BigInt& x);
+// @overload
 // def show(x: str) -> str: ...
 std::string show(std::string_view x);
 // def main() -> None:
 void main();
 
-// # method: variants on one receiver
 // class Acc:
 struct Acc {
     // total: int32

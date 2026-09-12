@@ -118,11 +118,11 @@ void main() {
 
 // def gen_field(self) -> Iterator[int32]:
 //     if self.f is not None:
-//         yield self.f
-//     yield -1
+//         yield self.f                     # -> S_RESUME_0
+//     yield -1                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.f.has_value())) {
             __state = S_RESUME_0;
             return (*__self.f);
@@ -131,11 +131,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.f
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -153,11 +153,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
 //     q = 0
 //     if self.f is not None:
 //         q = self.f
-//     yield q
-//     yield -2
+//     yield q                                 # -> S_RESUME_0
+//     yield -2                                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         q = 0;
         if ((__self.f.has_value())) {
             q = (*__self.f);
@@ -165,11 +165,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() 
         __state = S_RESUME_0;
         return q;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield q
         __state = S_RESUME_1;
         return -2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -181,13 +181,13 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__next__() 
 
 // def gen_reguard(self) -> Iterator[int32]:
 //     if self.f is not None:
-//         yield self.f
+//         yield self.f                       # -> S_RESUME_0
 //     if self.f is not None:
-//         yield self.f + 1
-//     yield -3
+//         yield self.f + 1                   # -> S_RESUME_1
+//     yield -3                               # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.f.has_value())) {
             __state = S_RESUME_0;
             return (*__self.f);
@@ -196,15 +196,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.f
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.f + 1
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -3
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -230,12 +230,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reguard::__next__() {
 // def gen_local_bind(self) -> Iterator[int32]:
 //     v = self.f
 //     if v is not None:
-//         yield v
-//         yield v + 1
-//     yield -4
+//         yield v                               # -> S_RESUME_0
+//         yield v + 1                           # -> S_RESUME_1
+//     yield -4                                  # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         v = __self.f;
         if ((v.has_value())) {
             __state = S_RESUME_0;
@@ -245,15 +245,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__(
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>((*v), 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v + 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -4
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -273,14 +273,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind::__next__(
 //     # error_narrowed_field_stale_except).
 //     if self.f is not None:
 //         try:
-//             yield self.f
+//             yield self.f                                              # -> S_RESUME_0
 //             raise ValueError("boom")
 //         except ValueError:
-//             yield -5
-//     yield -6
+//             yield -5                                                  # -> S_RESUME_1
+//     yield -6                                                          # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.f.has_value())) {
             __state = S_JOIN_2;
             continue;
@@ -289,7 +289,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.f
         try {
             throw ::tpy::ValueError("boom");
         } catch (const ::tpy::ValueError&) {
@@ -299,11 +299,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -5
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -6
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -339,11 +339,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_try_body::__next__() 
 //     v = self.f
 //     if v is not None:
 //         for _i in range(2):
-//             yield v
-//     yield -7
+//             yield v                                                     # -> S_RESUME_0
+//     yield -7                                                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         v = __self.f;
         if ((v.has_value())) {
             __for_i_0.emplace(int32_t(0));
@@ -355,11 +355,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_local_bind_loop::__ne
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -7
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

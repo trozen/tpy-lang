@@ -336,12 +336,6 @@ bool isclose(double a, double b, double rel_tol, double abs_tol) {
 }
 
 // from tpy.extern import native, cpp_template, type_param_default, DefaultInt
-//
-// pi: Final[float] = 3.141592653589793
-// tau: Final[float] = 6.283185307179586
-// e: Final[float] = 2.718281828459045
-// inf: Final[float] = 1e309
-// nan: Final[float] = float("nan")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

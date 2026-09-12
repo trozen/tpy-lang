@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // async def coro() -> int32:
 //     try:
-//         await asyncio.sleep(60.0)
+//         await asyncio.sleep(60.0)  # -> S_RESUME_0
 //         return int32(99)
 //     finally:
 //         print("cleanup ran")
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(60.0)
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);

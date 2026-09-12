@@ -14,9 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # D16 v1.5 phase 7: hasattr resolves to compile-time True for declared
-// # fields / properties / methods / class constants. Each True below is folded
-// # at sema time, no runtime check emitted.
 // class Box:
 struct Box {
     // width: int

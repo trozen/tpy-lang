@@ -24,11 +24,9 @@ struct Ticket {
     Ticket() = default;
     explicit Ticket(int32_t id);
 
-    // # The subject: the finally mutates the receiver the return hands back.
     // def stamped(self: Own[Self]) -> Own[Self]:
     Ticket stamped() &&;
 
-    // # The same shape with a finally that never touches the receiver.
     // def logged(self: Own[Self]) -> Own[Self]:
     Ticket logged() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ticket";
@@ -54,7 +52,6 @@ struct Badge {
     Badge(Badge&&) = default;
     Badge& operator=(Badge&&) = default;
 
-    // # A copy here cannot compile, so the deferred capture must be a move.
     // def bumped(self: Own[Self]) -> Own[Self]:
     Badge bumped() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Badge";

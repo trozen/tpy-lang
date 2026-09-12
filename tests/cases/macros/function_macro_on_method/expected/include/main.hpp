@@ -11,6 +11,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @probe
 // def free(x: int32) -> int32:  # tpyc: warning(/macro on free: no self \(is_method=False\)/)
 int32_t free(int32_t x);
 // def main() -> None:

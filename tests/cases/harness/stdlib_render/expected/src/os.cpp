@@ -49,6 +49,19 @@ std::vector<std::string> listdir(std::string_view path) {
     return ::tpy::stdlib::os::listdir(path);
 }
 
+// # Iterative (explicit-stack) directory tree walk. `yield from`/recursion are
+// # unsupported, so the descent is an explicit stack. In topdown mode the yielded
+// # `dirnames` aliases the frame, so the caller's in-place edit prunes the descent
+// # (the os.walk contract); bottomup yields each directory after its subtree. The
+// # bottomup yield is a fresh `list(...)` copy of dirnames/filenames -- a copy sema
+// # forces (yielding the popped union's list fields by reference is rejected), not
+// # an optimization to remove; editing it is traversal-inert (the descent already
+// # happened, so CPython ignores such edits too). A directory that can't be scanned
+// # is reported to `onerror` (and skipped); with the default `onerror=None` it is
+// # silently skipped, matching CPython. The callback param is `readonly[OSError]`
+// # only to work around a slicing-guard over-rejection (BUGS.md) -- a plain
+// # `Callable[[OSError], None]` would be safe; drop the `readonly` once that is
+// # fixed. A lambda works unannotated either way.
 // def walk(top: str, topdown: bool = True,
 //          onerror: Callable[[readonly[OSError]], None] | None = None,
 //          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
@@ -64,7 +77,7 @@ std::vector<std::string> listdir(std::string_view path) {
 //             if isinstance(item, _WalkEmit):
 //                 bdirs = list(item.dirnames)
 //                 bfiles = list(item.filenames)
-//                 yield (item.path, bdirs, bfiles)
+//                 yield (item.path, bdirs, bfiles)                                    # -> S_RESUME_0
 //                 continue
 //             bcur = item.path
 //             bdirnames: list[str] = []
@@ -119,7 +132,7 @@ std::vector<std::string> listdir(std::string_view path) {
 //                 dirnames.append(e.name)
 //             else:
 //                 filenames.append(e.name)
-//         yield (cur, dirnames, filenames)
+//         yield (cur, dirnames, filenames)                                            # -> S_RESUME_1
 //         # The caller may have pruned `dirnames` during the yield. Push the
 //         # survivors in reverse so they pop in `dirnames` order (CPython visits
 //         # subdirectories pre-order in scandir order).
@@ -131,7 +144,7 @@ std::vector<std::string> listdir(std::string_view path) {
 //             i -= 1
 std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!(topdown))) {
             bstack.emplace(std::vector<::tpy::Union<_WalkEmit, _WalkExpand>>{});
             (*bstack).push_back(_WalkExpand(top));
@@ -144,12 +157,12 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield (item.path, bdirs, bfiles)
         auto& __item = std::get<_WalkEmit>((*item));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield (cur, dirnames, filenames)
         i = (::tpy::sub_check<int32_t>(::tpy::__len__((*dirnames)), 1));
         while ((i >= 0)) {
             std::array<const std::string, 1> __tmp_2{::tpy::__getitem__((*dirnames), i)};
@@ -573,44 +586,6 @@ void unlink(std::string_view path) {
 // # without a cyclic import of this (executable-bearing) module. Re-exported here
 // # as os.stat_result.
 // from ._types import stat_result
-//
-// # st_mode S_IF* type bits, for DirEntry's stat fallback when readdir's d_type is
-// # unknown or a symlink (which is_dir/is_file must follow).
-// _S_IFMT: Final[int64] = 0o170000
-// _S_IFDIR: Final[int64] = 0o040000
-// _S_IFREG: Final[int64] = 0o100000
-// _S_IFLNK: Final[int64] = 0o120000
-//
-// # open()/lseek()/access() constants. These names (O_*, SEEK_*, *_OK) are libc
-// # macros present in the generated TU, so they cannot be emitted as C++ symbols;
-// # native_global binds each to a safe-named C++ global holding the real macro
-// # value (correct on every platform -- the O_CREAT family differs Linux/macOS).
-// O_RDONLY: Final[int64] = native_global("tpy::stdlib::os::kc_o_rdonly")
-// O_WRONLY: Final[int64] = native_global("tpy::stdlib::os::kc_o_wronly")
-// O_RDWR: Final[int64] = native_global("tpy::stdlib::os::kc_o_rdwr")
-// O_CREAT: Final[int64] = native_global("tpy::stdlib::os::kc_o_creat")
-// O_EXCL: Final[int64] = native_global("tpy::stdlib::os::kc_o_excl")
-// O_TRUNC: Final[int64] = native_global("tpy::stdlib::os::kc_o_trunc")
-// O_APPEND: Final[int64] = native_global("tpy::stdlib::os::kc_o_append")
-// SEEK_SET: Final[int64] = native_global("tpy::stdlib::os::kc_seek_set")
-// SEEK_CUR: Final[int64] = native_global("tpy::stdlib::os::kc_seek_cur")
-// SEEK_END: Final[int64] = native_global("tpy::stdlib::os::kc_seek_end")
-// F_OK: Final[int64] = native_global("tpy::stdlib::os::kc_f_ok")
-// R_OK: Final[int64] = native_global("tpy::stdlib::os::kc_r_ok")
-// W_OK: Final[int64] = native_global("tpy::stdlib::os::kc_w_ok")
-// X_OK: Final[int64] = native_global("tpy::stdlib::os::kc_x_ok")
-//
-// # POSIX path/line separators and special names (os.name is "posix"). altsep is
-// # None on POSIX (omitted; matches the os.path decision). These mirror the
-// # os.path constants for the values shared between the two modules.
-// name: Final[str] = "posix"
-// sep: Final[str] = "/"
-// extsep: Final[str] = "."
-// pathsep: Final[str] = ":"
-// linesep: Final[str] = "\n"
-// curdir: Final[str] = "."
-// pardir: Final[str] = ".."
-// devnull: Final[str] = "/dev/null"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

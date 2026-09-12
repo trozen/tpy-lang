@@ -12,6 +12,7 @@ struct Failed;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(Failed)
 // def run(ok: bool) -> int:
 std::expected<::tpy::BigInt, Failed> run(bool ok);
 // def main() -> None:

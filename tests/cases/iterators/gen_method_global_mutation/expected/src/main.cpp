@@ -26,29 +26,29 @@ void main() {
 // def values(self) -> Iterator[int32]:
 //     global emitted
 //     emitted += 1
-//     yield 0
+//     yield 0                           # -> S_RESUME_0
 //     emitted += 1
-//     yield 1
+//     yield 1                           # -> S_RESUME_1
 //     emitted += 1
-//     yield 2
+//     yield 2                           # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_values::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         emitted = ::tpy::add_check<int32_t>(emitted, 1);
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         emitted = ::tpy::add_check<int32_t>(emitted, 1);
         __state = S_RESUME_1;
         return 1;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 1
         emitted = ::tpy::add_check<int32_t>(emitted, 1);
         __state = S_RESUME_2;
         return 2;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

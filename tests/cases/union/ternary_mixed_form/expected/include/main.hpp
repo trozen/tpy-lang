@@ -18,13 +18,6 @@ void bump(::tpy::Union<A*, B*> p, Holder& h, bool c);
 // def main() -> None:
 void main();
 
-// # A ternary (union form) joining a borrow-form arm (pointer-variant
-// # param) and a storage-form arm (value-variant field) normalizes each arm to
-// # the pointer variant (to_ptr_variant on the field arm), so the C++ ?: operands
-// # match. The binding ALIASES the chosen arm; mutation is visible on the source,
-// # matching CPython. Pre-fix this emitted mixed ?: operands (variant<A*,B*> vs
-// # variant<A,B>). Explicit elif sidesteps an unrelated fall-through-narrowing
-// # limitation on two-member unions.
 // class A:
 struct A {
     // x: int

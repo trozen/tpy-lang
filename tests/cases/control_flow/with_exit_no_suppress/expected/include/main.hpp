@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # __exit__ returning False (or None) does NOT suppress; the exception propagates
-// # out of the with and is caught by an outer handler.
 // class Bouncer:
 struct Bouncer {
 

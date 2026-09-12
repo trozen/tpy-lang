@@ -16,8 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # D16 Phase 5: with multiple inheritance, the first ancestor in MRO declaring
-// # __getattr__ wins. Mirrors how method dispatch works under D22.
 // class WithGetattr:
 struct WithGetattr {
     // _store: dict[str, str]

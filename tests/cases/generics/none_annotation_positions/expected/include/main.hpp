@@ -17,22 +17,6 @@ void takes_none(std::monostate x);
 // def main() -> None:
 void main();
 
-// # Bare `None` is accepted at every value-bearing annotation slot:
-// # function param, method param, variable annotation, record field, and
-// # `__exit__` exc params. Lowers to NoneType -> std::monostate. The
-// # return slot is the only carve-out -- `-> None` stays VoidType ->
-// # `void` (function-returns-nothing semantic).
-// #
-// # Free function and method params go through different finalize paths
-// # (`_finalize_function_refs` vs `resolve_refs.resolve_refs`'s record-
-// # method loop), so both are covered here.
-// #
-// # The Guard / __exit__ case is a parse-only guard: parser.py strips the
-// # three exc params before `_parse_type_ref` is called, so codegen never
-// # emits them today. The case verifies the annotations parse + resolve
-// # cleanly so a future stop-stripping upgrade doesn't have to re-type
-// # them. The other shapes exercise the full parse + resolve + codegen
-// # path.
 // class Field:
 struct Field {
     // slot: None

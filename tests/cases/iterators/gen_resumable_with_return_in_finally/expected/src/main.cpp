@@ -8,19 +8,19 @@ namespace tpyapp::main {
 //     # Outer with must have __exit__ called even though inner finally returns.
 //     with CM("outer"):
 //         try:
-//             yield 1
+//             yield 1                                                            # -> S_RESUME_0
 //         finally:
 //             return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_in_finally::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(CM("outer"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             bool __fin_ran_2 = false;
             try {
@@ -114,19 +114,19 @@ __gen_gen_with_outer_return_in_finally gen_with_outer_return_in_finally() {
 //     with CM("outer"):
 //         with CM("inner"):
 //             try:
-//                 yield 1
+//                 yield 1                                    # -> S_RESUME_0
 //             finally:
 //                 return
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_in_finally::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(CM("outer"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             try {
                 bool __fin_ran_7 = false;

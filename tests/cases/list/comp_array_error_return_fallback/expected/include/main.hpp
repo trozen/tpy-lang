@@ -12,10 +12,13 @@ struct Gauge;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(MyErr)
 // def half(n: int32) -> int32:
 std::expected<int32_t, MyErr> half(int32_t n);
+// @error_return(MyErr)
 // def halves() -> int32:
 std::expected<int32_t, MyErr> halves();
+// @error_return(MyErr)
 // def bad() -> int32:
 std::expected<int32_t, MyErr> bad();
 // def main():

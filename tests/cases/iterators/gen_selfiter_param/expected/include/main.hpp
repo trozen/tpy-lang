@@ -58,19 +58,20 @@ struct __gen_repeat_n : public ::tpy::next_iter_mixin<__gen_repeat_n<T>, T> {
         return os << "<generator repeat_n>";
     }
 };
+// # generic generator with a range-loop body -> a move-only resumable frame
 // def repeat_n[T](obj: T, times: int32) -> Iterator[T]:
 //     for _ in range(times):
-//         yield obj
+//         yield obj                                      # -> S_RESUME_0
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_repeat_n<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(times));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield obj
         __state = S_JOIN_0;
         continue;
     }
@@ -124,23 +125,25 @@ struct __gen_take : public ::tpy::next_iter_mixin<__gen_take<T, T_it>, T> {
         return os << "<generator take>";
     }
 };
+// # generator consuming a generic Iterable[T] param (the param's runtime value is
+// # the move-only generator above) -- resumable (the break forces the frame)
 // def take[T](it: Iterable[T], n: int32) -> Iterator[T]:
 //     c: int32 = 0
 //     for x in it:
 //         if c >= n:
 //             break
-//         yield x
+//         yield x                                         # -> S_RESUME_0
 //         c += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_take<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c = 0;
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -231,22 +234,23 @@ struct __gen_take_iter : public ::tpy::next_iter_mixin<__gen_take_iter<T, T_it>,
         return os << "<generator take_iter>";
     }
 };
+// # inverse 1: Iterator[T] param (the `next` strategy -- source IS the iterator)
 // def take_iter[T](it: Iterator[T], n: int32) -> Iterator[T]:
 //     c: int32 = 0
 //     for x in it:
 //         if c >= n:
 //             break
-//         yield x
+//         yield x                                              # -> S_RESUME_0
 //         c += 1
 template <typename T, ::tpystd::typing::Iterator<T> T_it>
 std::expected<T, ::tpy::StopIteration> __gen_take_iter<T, T_it>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         c = ::tpy::add_check<int32_t>(c, 1);
         __state = S_JOIN_0;
         continue;
@@ -282,6 +286,7 @@ __gen_take_iter<T, T_it> take_iter(T_it&& it, int32_t n) {
     return __gen_take_iter<T, T_it>(std::forward<T_it>(it), n);
 }
 
+// # inverse 2: a plain list source in a generator (begin_end strategy, unchanged)
 // def doubled(xs: list[int32]) -> Iterator[int32]:
 //     for x in xs:
 //         yield x * 2

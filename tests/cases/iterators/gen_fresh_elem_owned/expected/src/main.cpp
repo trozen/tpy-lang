@@ -6,21 +6,21 @@ namespace tpyapp::main {
 
 // def collect(src: Fresh) -> Iterator[int32]:
 //     for node in src:
-//         yield node.v
-//         yield node.v
+//         yield node.v                                  # -> S_RESUME_0
+//         yield node.v                                  # -> S_RESUME_1
 //     print("leaked loop var after the loop:", node.v)
 std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, src);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield node.v
         __state = S_RESUME_1;
         return (*node).v;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield node.v
         __state = S_JOIN_0;
         continue;
     }

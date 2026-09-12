@@ -50,7 +50,6 @@ void test_list_to_span();
 // def test_subscript_to_ptr() -> None:
 void test_subscript_to_ptr();
 
-// # --- Records for pointer coercion tests ---
 // class Point:
 struct Point {
     // x: int32

@@ -17,9 +17,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # A capture NAME bound at different types per arm keeps its per-arm binding
-// # even when one arm rebinds it: the rebound-capture hoist is skipped unless
-// # every binding arm agrees on the type, since one shared slot cannot hold both.
 // class Cat:
 struct Cat {
     // lives: int

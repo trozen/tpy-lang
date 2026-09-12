@@ -61,8 +61,6 @@ inline constexpr std::string_view __name__ = "tplib.requests";
 inline constexpr int32_t DEFAULT_HTTP_PORT = 80;
 // DEFAULT_HTTPS_PORT: Final[int32] = 443
 inline constexpr int32_t DEFAULT_HTTPS_PORT = 443;
-// # Chunk size iter_lines pulls from the raw stream between newline scans. requests
-// # uses 512 for iter_lines; iter_content has no default (see Response.iter_content).
 // _ITER_LINES_CHUNK: Final[int32] = 512
 inline constexpr int32_t _ITER_LINES_CHUNK = 512;
 
@@ -244,8 +242,6 @@ inline std::ostream& operator<<(std::ostream& os, const RequestException& obj) {
 
 // class CaseInsensitiveDict:
 struct CaseInsensitiveDict {
-    // # lowercased name -> (original-cased name, value): the lowercased key drives
-    // # case-insensitive lookup while the tuple keeps the caller's casing.
     // _store: dict[str, tuple[str, str]]
     ::tpy::ordered_map<std::string, std::tuple<std::string, std::string>> _store;
 
@@ -354,7 +350,6 @@ struct Cookie {
     bool secure;
     // deleted: bool
     bool deleted;
-    // # Absolute Unix expiry (seconds); 0.0 means a session cookie (no expiry).
     // expires_at: float
     double expires_at;
 
@@ -388,7 +383,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cookie& obj) {
 
 // class CookieJar:
 struct CookieJar {
-    // # name -> Cookie; the Cookie carries its own domain/path/secure scope.
     // _store: dict[str, Cookie]
     ::tpy::ordered_map<std::string, Cookie> _store;
 
@@ -462,20 +456,10 @@ struct Response {
     CaseInsensitiveDict headers;
     // content: bytes
     ::tpy::Bytes content;
-    // # Cookies this response set (parsed from its Set-Cookie headers), mirroring
-    // # requests.Response.cookies. On a redirect chain each hop's response carries
-    // # its own; the final returned response has the last hop's, and Session
-    // # accumulates all of them.
     // cookies: CookieJar
     CookieJar cookies;
-    // # The chain of responses that led here (oldest first); empty when the
-    // # request was not redirected. The final response carries the whole chain,
-    // # mirroring requests.Response.history. Recursive (list of Self).
     // history: list[Response]
     std::vector<Response> history;
-    // # The live body reader for a stream=True response; None for a fully-read
-    // # one. Holding it makes Response non-copyable, which the redirect engine
-    // # already respects (it only ever moves responses).
     // _raw: HTTPResponse | None
     std::optional<::tpystd::http::client::HTTPResponse> _raw;
 
@@ -540,21 +524,10 @@ struct Session {
     ::tpy::ordered_map<std::string, std::string> params;
     // auth: tuple[str, str] | None
     std::optional<std::tuple<std::string, std::string>> auth;
-    // # Cookies persisted across requests: Set-Cookie responses accumulate here and
-    // # are sent (domain/path/secure-matched) on later requests, like requests'
-    // # Session.cookies.
     // cookies: CookieJar
     CookieJar cookies;
-    // # Offline test seam: the tests can't run a threaded loopback server, so they
-    // # inject a pre-bound connection here instead of letting hop 0 do a real TCP
-    // # connect. Cleared after use and never pooled (single-use). Held as
-    // # Box[_Connection] so an injected HTTPConnection or HTTPSConnection both fit.
-    // # (Pooling tests seed `_pool` directly instead -- a Box cannot be moved out
-    // # of this Optional field into the pool.)
     // _connection: Box[_Connection] | None
     std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> _connection;
-    // # Offline test seam for redirect hops 1..N (hop 0 uses `_connection`): each
-    // # hop pops the next queued connection, bypassing the pool.
     // _redirect_connections: list[Box[_Connection]]
     std::vector<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> _redirect_connections;
     // _pool: dict[str, Box[_Connection]]

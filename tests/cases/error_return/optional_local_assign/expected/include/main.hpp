@@ -12,6 +12,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(Bad)
 // def decode(ok: bool) -> Own[Box]:
 std::expected<Box, Bad> decode(bool ok);
 // def run(ok: bool) -> int32:

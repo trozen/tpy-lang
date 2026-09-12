@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def voices(a: Dog | Cat) -> Iterator[str]:
 //     match a:
 //         case Dog():
-//             yield "is-dog"
-//             yield a.sound()
+//             yield "is-dog"                  # -> S_RESUME_0
+//             yield a.sound()                 # -> S_RESUME_1
 //         case Cat():
-//             yield a.sound()
+//             yield a.sound()                 # -> S_RESUME_2
 std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -32,17 +32,17 @@ std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "is-dog"
         auto& __a = *std::get<Dog*>(a);
         __state = S_RESUME_1;
         return __a.sound();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.sound()
         auto& __a = *std::get<Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield a.sound()
         auto& __a = *std::get<Cat*>(a);
         __state = S_JOIN_0;
         continue;
@@ -65,13 +65,13 @@ __gen_voices voices(::tpy::Union<Cat*, Dog*> a) {
 // def capture(a: Dog | Cat) -> Iterator[str]:
 //     match a:
 //         case Dog() as d:
-//             yield "got-dog"
-//             yield d.sound()
+//             yield "got-dog"                  # -> S_RESUME_0
+//             yield d.sound()                  # -> S_RESUME_1
 //         case Cat():
-//             yield a.sound()
+//             yield a.sound()                  # -> S_RESUME_2
 std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -91,17 +91,17 @@ std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "got-dog"
         auto& __a = *std::get<Dog*>(a);
         __state = S_RESUME_1;
         return (*d).sound();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield d.sound()
         auto& __a = *std::get<Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield a.sound()
         auto& __a = *std::get<Cat*>(a);
         __state = S_JOIN_0;
         continue;
@@ -124,13 +124,13 @@ __gen_capture capture(::tpy::Union<Cat*, Dog*> a) {
 // def guarded(a: int | str, allow: bool) -> Iterator[str]:
 //     match a:
 //         case int() if allow:
-//             yield "big"
-//             yield str(a + 1)
+//             yield "big"                                   # -> S_RESUME_0
+//             yield str(a + 1)                              # -> S_RESUME_1
 //         case _:
-//             yield "other"
+//             yield "other"                                 # -> S_RESUME_2
 std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -160,17 +160,17 @@ __match_end_2:;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "big"
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_RESUME_1;
         return (((__a) + (::tpy::BigInt(1)))).to_string();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "other"
         __state = S_JOIN_0;
         continue;
     }
@@ -198,19 +198,19 @@ __gen_guarded guarded(::tpy::Union<::tpy::BigInt, std::string> a, bool allow) {
 // def kill(a: int | str) -> Iterator[str]:
 //     match a:
 //         case int():
-//             yield "int:" + str(a + 1)
+//             yield "int:" + str(a + 1)     # -> S_RESUME_0
 //             a = remake()
-//             yield "rebound"
+//             yield "rebound"               # -> S_RESUME_1
 //             match a:
 //                 case str():
-//                     yield "str:" + a
+//                     yield "str:" + a      # -> S_RESUME_2
 //                 case _:
-//                     yield "still-int"
+//                     yield "still-int"     # -> S_RESUME_3
 //         case _:
-//             yield "not-int"
+//             yield "not-int"               # -> S_RESUME_4
 std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 0: {
@@ -228,13 +228,13 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "int:" + str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);
         a = remake();
         __state = S_RESUME_1;
         return "rebound";
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "rebound"
         auto& __match_subject_2 = a;
         switch (__match_subject_2.index()) {
         case 1: {
@@ -252,16 +252,16 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "str:" + a
         const auto& __a = std::get<std::string>(a);
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield "still-int"
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_4: {
+    case S_RESUME_4: {  // after: yield "not-int"
         __state = S_JOIN_0;
         continue;
     }

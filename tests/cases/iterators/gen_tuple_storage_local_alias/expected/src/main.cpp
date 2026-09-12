@@ -8,24 +8,24 @@ namespace tpyapp::main {
 //     items: list[tuple[int32, Box]] = [(1, Box(5))]
 //     t = items[0]
 //     t[1].val = 99
-//     yield items[0][1].val
+//     yield items[0][1].val                           # -> S_RESUME_0
 //     t[1].val = 7
-//     yield items[0][1].val
+//     yield items[0][1].val                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
         t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*items), 0));
         std::get<1>(t)->val = 99;
         __state = S_RESUME_0;
         return std::get<1>(::tpy::__getitem__((*items), 0)).val;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield items[0][1].val
         std::get<1>(t)->val = 7;
         __state = S_RESUME_1;
         return std::get<1>(::tpy::__getitem__((*items), 0)).val;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield items[0][1].val
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -17,7 +17,6 @@ std::string describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # Pattern binding leaks into enclosing scope when all arms define it
 // class Dog:
 struct Dog {
     // name: str

@@ -11,6 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def takes(flag: bool) -> int32:
 int32_t takes(bool flag);
+// @kwarg_bool
 // def run() -> int32:
 int32_t run();
 // def main() -> None:

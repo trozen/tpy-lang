@@ -6,16 +6,16 @@ namespace tpyapp::main {
 
 // async def reader(sock: socket) -> bytes:
 //     loop = asyncio.get_running_loop()
-//     return await loop.sock_recv(sock, 16)
+//     return await loop.sock_recv(sock, 16)  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::tpy::Bytes> __coro_reader::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(::tpystd::asyncio::get_running_loop());
         __sub_0.emplace(std::move((*loop).sock_recv(sock, 16)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await loop.sock_recv(sock, 16)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::Bytes>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -41,16 +41,16 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
 //     b2.setblocking(False)
 //     t1 = asyncio.create_task(reader(b1))
 //     t2 = asyncio.create_task(reader(b2))
-//     await asyncio.sleep(0.01)  # let both readers park on the reactor
+//     await asyncio.sleep(0.01)  # let both readers park on the reactor  # -> S_RESUME_0
 //     a1.sendall(b"one")
 //     a2.sendall(b"two")
-//     r1 = await t1
-//     r2 = await t2
+//     r1 = await t1                                                      # -> S_RESUME_1
+//     r2 = await t2                                                      # -> S_RESUME_2
 //     print(r1)
 //     print(r2)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = ::tpystd::socket::socketpair();
         a1.emplace(std::move(std::get<0>(__tup_1)));
         b1.emplace(std::move(std::get<1>(__tup_1)));
@@ -65,7 +65,7 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)  # let both readers park on the reactor
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -76,7 +76,7 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: r1 = await t1
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r1 = std::move(__r1).value();
@@ -85,7 +85,7 @@ __coro_reader reader(::tpystd::socket::socket& sock) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: r2 = await t2
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r2 = std::move(__r2).value();

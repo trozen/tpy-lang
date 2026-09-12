@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def first_two(xs: list[int32]) -> Iterator[int32]:
-//     yield xs[0]
-//     yield xs[1]
+//     yield xs[0]                                     # -> S_RESUME_0
+//     yield xs[1]                                     # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_first_two::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::__getitem__(xs, 0);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield xs[0]
         __state = S_RESUME_1;
         return ::tpy::__getitem__(xs, 1);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield xs[1]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

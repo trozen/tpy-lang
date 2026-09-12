@@ -79,7 +79,7 @@ template <typename T>
 ::tpystd::tpy::Poll<int32_t> __coro_increment<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         x.bump();
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;

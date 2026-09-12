@@ -7,18 +7,18 @@ namespace tpyapp::main {
 // async def main_coro() -> None:
 //     a = A()
 //     b = B()
-//     print(await a.tag())
-//     print(await b.tag())
+//     print(await a.tag())        # -> S_RESUME_0
+//     print(await b.tag())        # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a.emplace(A());
         b.emplace(B());
         __sub_0.emplace((*a));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await a.tag())
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -28,7 +28,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await b.tag())
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -53,7 +53,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<std::string> __coro_A_tag::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::string __tpy_async_ret = "from-A";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -69,7 +69,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<std::string> __coro_B_tag::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::string __tpy_async_ret = "from-B";
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));

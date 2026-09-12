@@ -47,22 +47,22 @@ struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, T> {
 };
 // def doubled[T](xs: list[T]) -> Iterator[T]:  # tpyc: ok
 //     for x in xs:
-//         yield x
-//         yield x
+//         yield x                                          # -> S_RESUME_0
+//         yield x                                          # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return (*x);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

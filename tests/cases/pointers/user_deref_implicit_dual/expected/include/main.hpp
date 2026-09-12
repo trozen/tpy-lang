@@ -44,15 +44,9 @@ struct Ref {
     Ref() = default;
     explicit Ref(const Point& target);
 
-    // # Plain `def __deref__` -- no @auto_readonly or @readonly. Implicit path
-    // # should produce dual mutable/const overloads because the return type is
-    // # a reference type (Point).
     // def __deref__(self) -> Point:
     Point& __deref__();
 
-    // # Plain `def __deref__` -- no @auto_readonly or @readonly. Implicit path
-    // # should produce dual mutable/const overloads because the return type is
-    // # a reference type (Point).
     // def __deref__(self) -> Point:
     const Point& __deref__() const;
 

@@ -19,23 +19,23 @@ std::optional<Point> make_opt(int32_t n) {
 //     # The Point(42) slot must survive the loop's suspensions.
 //     saved: Optional[Point] = Point(42)
 //     for i in range(3):
-//         yield i
+//         yield i                                                # -> S_RESUME_0
 //     if saved is not None:
-//         yield saved.x
+//         yield saved.x                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_rvalue_init::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         saved = &*(__ptr_slot_f0 = Point(42));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield saved.x
         __state = S_JOIN_1;
         continue;
     }
@@ -74,16 +74,16 @@ __gen_rvalue_init rvalue_init() {
 //     # The alias write stays an alias: this mutation reaches items[0].
 //     if saved is not None:
 //         saved.x += 10
-//     yield 1
+//     yield 1                                                              # -> S_RESUME_0
 //     # The rvalue rebind gets its own frame slot; the alias target above
 //     # is untouched by it.
 //     saved = Point(9)
-//     yield 2
+//     yield 2                                                              # -> S_RESUME_1
 //     if saved is not None:
-//         yield saved.x
+//         yield saved.x                                                    # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         saved = nullptr;
         saved = &(::tpy::__getitem__(items, 0));
         if ((saved != nullptr)) {
@@ -92,12 +92,12 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__(
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         saved = &*(__ptr_slot_f0 = Point(9));
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         if ((saved != nullptr)) {
             __state = S_RESUME_2;
             return saved->x;
@@ -106,7 +106,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_alias::__next__(
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield saved.x
         __state = S_JOIN_0;
         continue;
     }
@@ -127,24 +127,24 @@ __gen_rebind_after_alias rebind_after_alias(std::vector<Point>& items) {
 
 // def rebind_after_none() -> Iterator[int32]:
 //     saved: Optional[Point] = None
-//     yield 1
+//     yield 1                                  # -> S_RESUME_0
 //     saved = Point(5)
-//     yield 2
+//     yield 2                                  # -> S_RESUME_1
 //     if saved is not None:
-//         yield saved.x
+//         yield saved.x                        # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         saved = nullptr;
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         saved = &*(__ptr_slot_f0 = Point(5));
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         if ((saved != nullptr)) {
             __state = S_RESUME_2;
             return saved->x;
@@ -153,7 +153,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_after_none::__next__()
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield saved.x
         __state = S_JOIN_0;
         continue;
     }
@@ -176,23 +176,23 @@ __gen_rebind_after_none rebind_after_none() {
 //     # The returned optional<Point> lives in a frame slot; the pointer
 //     # local is lifted from it and read after two suspensions.
 //     got = make_opt(3)
-//     yield 1
-//     yield 2
+//     yield 1                                                            # -> S_RESUME_0
+//     yield 2                                                            # -> S_RESUME_1
 //     if got is not None:
-//         yield got.x
+//         yield got.x                                                    # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __ptr_slot_f0 = make_opt(3);
         got = ::tpy::optional_to_ptr(__ptr_slot_f0);
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         if ((got != nullptr)) {
             __state = S_RESUME_2;
             return got->x;
@@ -201,7 +201,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_own_opt_call::__next__() {
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield got.x
         __state = S_JOIN_0;
         continue;
     }
@@ -227,19 +227,19 @@ __gen_own_opt_call own_opt_call() {
 //     i = 0
 //     while i < n:
 //         saved = Point(i * 100)
-//         yield i
+//         yield i                                                         # -> S_RESUME_0
 //         if saved is not None:
-//             yield saved.x
+//             yield saved.x                                               # -> S_RESUME_1
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         saved = nullptr;
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         if ((saved != nullptr)) {
             __state = S_RESUME_1;
             return saved->x;
@@ -248,7 +248,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_loop_rebind::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield saved.x
         __state = S_JOIN_1;
         continue;
     }

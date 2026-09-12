@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     loop = asyncio.get_running_loop()
 //     s = socket(AF_INET, SOCK_STREAM)
 //     s.setblocking(False)
-//     await loop.sock_connect(s, ("127.0.0.1", port))
-//     await loop.sock_sendall(s, b"hello")
-//     reply = await loop.sock_recv(s, 1024)
+//     await loop.sock_connect(s, ("127.0.0.1", port))  # -> S_RESUME_0
+//     await loop.sock_sendall(s, b"hello")             # -> S_RESUME_1
+//     reply = await loop.sock_recv(s, 1024)            # -> S_RESUME_2
 //     print("client got: " + reply.decode())
 //     s.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_echo_client::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(::tpystd::asyncio::get_running_loop());
         s.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*s).setblocking(false);
@@ -23,7 +23,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await loop.sock_connect(s, ("127.0.0.1", port))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -32,7 +32,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await loop.sock_sendall(s, b"hello")
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -41,7 +41,7 @@ namespace tpyapp::main {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: reply = await loop.sock_recv(s, 1024)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         reply = std::move(__r2).value();
@@ -72,17 +72,17 @@ __coro_echo_client echo_client(int32_t port) {
 //
 //     client = asyncio.create_task(echo_client(port))
 //
-//     conn, addr = await loop.sock_accept(listener)
-//     data = await loop.sock_recv(conn, 1024)
-//     await loop.sock_sendall(conn, data)
+//     conn, addr = await loop.sock_accept(listener)    # -> S_RESUME_0
+//     data = await loop.sock_recv(conn, 1024)          # -> S_RESUME_1
+//     await loop.sock_sendall(conn, data)              # -> S_RESUME_2
 //     conn.close()
 //
-//     await client
+//     await client                                     # -> S_RESUME_3
 //     print("server done")
 //     listener.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(::tpystd::asyncio::get_running_loop());
         listener.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*listener).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
@@ -96,7 +96,7 @@ __coro_echo_client echo_client(int32_t port) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: conn, addr = await loop.sock_accept(listener)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0.emplace(std::move(__r0).value());
@@ -108,7 +108,7 @@ __coro_echo_client echo_client(int32_t port) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: data = await loop.sock_recv(conn, 1024)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         data = std::move(__r1).value();
@@ -117,7 +117,7 @@ __coro_echo_client echo_client(int32_t port) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: await loop.sock_sendall(conn, data)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
@@ -127,7 +127,7 @@ __coro_echo_client echo_client(int32_t port) {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: await client
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r3).value();

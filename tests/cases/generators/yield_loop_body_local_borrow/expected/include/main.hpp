@@ -31,7 +31,6 @@ __gen_gen_walrus gen_walrus();
 // def main() -> None:
 void main();
 
-// # A generator METHOD yielding a loop-body local: same drain/eligibility path.
 // class Source:
 struct Source {
 

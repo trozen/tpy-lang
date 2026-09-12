@@ -61,6 +61,7 @@ void try_finally();
 void with_body();
 // def gen_body() -> Iterator[int32]:
 __gen_gen_body gen_body();
+// @error_return(Missing)
 // def er_body(n: int32) -> int32:
 std::expected<int32_t, Missing> er_body(int32_t n);
 // def error_return_body() -> None:
@@ -187,7 +188,7 @@ template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_echo<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(::tpy::param_to_return<T>(value));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));

@@ -16,10 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: a union-typed field initialized in __init__ from a bare
-// # alternative value (`A(1)`, not a pointer-variant) must NOT be wrapped
-// # with `to_value_variant` -- that helper expects a `std::variant<T*...>`
-// # source, and bare alternatives construct the value-variant directly.
 // class A:
 struct A {
     // a: int

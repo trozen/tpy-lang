@@ -6,20 +6,20 @@ namespace tpyapp::main {
 
 // def gen() -> Iterator[int32]:
 //     with Fresh() as a:
-//         yield a.boxed.get()
+//         yield a.boxed.get()    # -> S_RESUME_0
 //         a.boxed.set(6)
-//         yield a.boxed.get()
-//     yield a.boxed.get()
+//         yield a.boxed.get()    # -> S_RESUME_1
+//     yield a.boxed.get()        # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Fresh());
         a.emplace((*__with_ctx_0).__enter__());
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a.boxed.get()
         try {
             (*a).boxed.set(6);
             __state = S_RESUME_1;
@@ -32,7 +32,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.boxed.get()
         bool __fin_ran_2 = false;
         try {
             __fin_ran_2 = true;
@@ -49,7 +49,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield a.boxed.get()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

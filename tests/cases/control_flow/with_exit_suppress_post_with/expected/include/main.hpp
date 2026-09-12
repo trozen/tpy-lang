@@ -16,13 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression for the liveness change: a `-> int` function whose with-body
-// # always raises but whose CM may suppress. The Python body terminates
-// # (`raise`), but the with cannot be considered terminating -- control may
-// # fall through past the with on the suppressed path. The trailing
-// # `return -1` is the reachable result on that path. Pre-liveness-fix the
-// # function was treated as terminating-on-body, leaving the post-with
-// # return at risk of being treated as dead.
 // class Suppressor:
 struct Suppressor {
 

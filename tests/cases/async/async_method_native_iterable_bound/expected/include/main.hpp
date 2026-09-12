@@ -74,7 +74,7 @@ template <::tpy::NativeIterable<int32_t> T>
 ::tpystd::tpy::Poll<int32_t> __coro_Wrap_total<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         result = 0;
         auto& __obj_0 = __self.items;
         auto __beg_0 = __obj_0.begin();

@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Test __str__/__repr__ dispatch: str(), repr(), print(), f-string, !r, !s
 // class Point:
 struct Point {
     // x: int

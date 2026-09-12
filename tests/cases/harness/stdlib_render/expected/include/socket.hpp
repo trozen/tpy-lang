@@ -38,12 +38,6 @@ struct gaierror;
 struct socket;
 
 inline constexpr std::string_view __name__ = "socket";
-// # ---------- Wire constants ----------
-// # Values identical across Linux and macOS/BSD are literals; the ones that
-// # diverge (SOL_SOCKET, SO_*, AF_INET6) are sourced from the system headers
-// # via posix_socket.tpy_const_* getters so the same source builds correctly on
-// # either platform. Sourced from `<sys/socket.h>`, `<netinet/in.h>`,
-// # `<netinet/tcp.h>`.
 // AF_INET:     Final[int32] = 2
 inline constexpr int32_t AF_INET = 2;
 // AF_UNIX:     Final[int32] = 1    # Not yet usable (no sockaddr_un binding).
@@ -64,10 +58,6 @@ inline constexpr int32_t SHUT_RD = 0;
 inline constexpr int32_t SHUT_WR = 1;
 // SHUT_RDWR: Final[int32] = 2
 inline constexpr int32_t SHUT_RDWR = 2;
-// # ---------- socket class ----------
-// # Class name is lowercase `socket` to match CPython's `socket.socket`
-// # exactly, so user code (and the asyncio reactor's sock_* helpers) ports to
-// # CPython unchanged and the test cpy phase can run on CPython's real socket.
 // _SOCKADDR_IN_LEN: Final[uint32] = 16
 inline constexpr uint32_t _SOCKADDR_IN_LEN = 16;
 
@@ -96,12 +86,9 @@ socket create_connection(const std::tuple<std::string, int32_t>& address, std::o
 //                   reuse_addr: bool = True) -> Own[socket]:
 socket create_server(const std::tuple<std::string, int32_t>& address, int32_t backlog = 128, bool reuse_addr = true);
 
-// # ---------- SocketError ----------
 // class SocketError(OSError):
 struct SocketError : ::tpy::OSError {
 
-    // # Single (errno, strerror) __init__: user classes cannot mirror the
-    // # base's message-only overload (no user-class ctor overloads; BUGS.md).
     // def __init__(self, err: int32, strerror: str) -> None:
     SocketError() = default;
     explicit SocketError(int32_t err, std::string_view strerror);
@@ -138,14 +125,8 @@ inline std::ostream& operator<<(std::ostream& os, const gaierror& obj) {
 // @nocopy
 // class socket:
 struct socket {
-    // # Field default silences a sema "not initialized before ctor body"
-    // # warning (the if/else below sets fd on every path, sema can't prove it).
     // fd: int32 = int32(-1)
     int32_t fd = -1;
-    // # Socket mode, mirroring CPython's three states: -1.0 = blocking (None
-    // # timeout), 0.0 = non-blocking, > 0 = timeout mode. recv/send read this to
-    // # decide whether an EAGAIN is a timeout (TimeoutError) or a non-blocking
-    // # "would block" (BlockingIOError, which the asyncio reactor parks on).
     // _timeout: float = -1.0
     double _timeout = -1.0;
     bool __tpy_owned_ = true;
@@ -192,17 +173,9 @@ struct socket {
     // def connect(self, address: tuple[str, int32]) -> None:
     void connect(const std::tuple<std::string, int32_t>& address) const;
 
-    // # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
     // def listen(self, backlog: int32 = int32(128)) -> None:
     void listen(int32_t backlog = 128) const;
 
-    // # Returns the raw accepted fd + peer address as value types (no Own
-    // # element), so callers can wrap the fd in a fresh-constructor `socket`
-    // # local -- the move-analyzer tracks that as owned, whereas unpacking an
-    // # `Own[socket]` out of a tuple and repacking hits a move gap (BUGS.md).
-    // # Peer resolution (`_ipv4_to_str` -> `inet_ntop`) can raise while `new_fd`
-    // # is still naked (not yet owned by a `socket`), so close it on failure to
-    // # avoid leaking the accepted descriptor.
     // def _accept_fd(self) -> tuple[int32, tuple[str, int32]]:
     std::tuple<int32_t, std::tuple<std::string, int32_t>> _accept_fd() const;
 
@@ -215,10 +188,6 @@ struct socket {
     // def send(self, data: bytes) -> int32:
     int32_t send(::tpy::BytesView data) const;
 
-    // # Send the suffix `data[offset:]` without materializing it -- the async
-    // # `_SockSendAll` advances `offset` across parks, so slicing a fresh
-    // # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
-    // # Underscore-private: not part of CPython's socket surface.
     // def _send_from(self, data: bytes, offset: uint64) -> int32:
     int32_t _send_from(::tpy::BytesView data, uint64_t offset) const;
 

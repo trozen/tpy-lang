@@ -14,12 +14,8 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # bytearray is a reference type: binding a local or reading a field aliases the
-// # buffer (no deep copy), so mutation through the alias is visible, like CPython.
 // class Holder:
 struct Holder {
-    // # bytearray is a reference type: storing into a field copies (storage
-    // # form), warned like list/dict/set.
     // self.data = data  # tpyc: warning(/copies bytearray into field/)
     ::tpy::ByteArray data;
 

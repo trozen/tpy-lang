@@ -18,7 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Nullable union field assignment: pointer-variant with None (monostate)
 // class Dog:
 struct Dog {
     // name: str

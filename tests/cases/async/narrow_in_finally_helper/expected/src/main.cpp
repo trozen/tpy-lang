@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // async def a_assert(a: Dog | Cat) -> str:
 //     try:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                              # -> S_RESUME_0
 //     finally:
 //         assert isinstance(a, Dog)  # tpyc: ok
 //         # The alias is a reference into the caller's Dog, so both bumps of
@@ -17,11 +17,11 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::string> __coro_a_assert::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -78,7 +78,7 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
 
 // async def a_post_if(a: Dog | Cat) -> str:
 //     try:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                                                  # -> S_RESUME_0
 //     finally:
 //         if isinstance(a, Dog):  # tpyc: ok
 //             raise ValueError("dog")
@@ -89,11 +89,11 @@ __coro_a_assert a_assert(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<std::string> __coro_a_post_if::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_3 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -154,7 +154,7 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
 // async def a_nested(a: Dog | Cat, b: Dog | Cat) -> str:
 //     try:
 //         try:
-//             await asyncio.sleep(0)
+//             await asyncio.sleep(0)                                             # -> S_RESUME_0
 //         finally:
 //             assert isinstance(a, Cat)  # tpyc: ok
 //             print(a.meow())
@@ -166,11 +166,11 @@ __coro_a_post_if a_post_if(::tpy::Union<Cat*, Dog*> a) {
 ::tpystd::tpy::Poll<std::string> __coro_a_nested::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         try {
             bool __fin_ran_6 = false;
             try {
@@ -265,18 +265,18 @@ __coro_a_nested a_nested(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b)
 
 // def g_assert(a: Dog | Cat) -> Iterator[str]:
 //     try:
-//         yield "one"
+//         yield "one"                            # -> S_RESUME_0
 //     finally:
 //         assert isinstance(a, Cat)  # tpyc: ok
 //         print(a.meow())
 std::expected<std::string, ::tpy::StopIteration> __gen_g_assert::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "one"
         bool __fin_ran_11 = false;
         try {
             __fin_ran_11 = true;
@@ -320,7 +320,7 @@ __gen_g_assert g_assert(::tpy::Union<Cat*, Dog*> a) {
 
 // def g_post_if(a: Dog | Cat) -> Iterator[str]:
 //     try:
-//         yield "two"
+//         yield "two"                            # -> S_RESUME_0
 //     finally:
 //         if isinstance(a, Cat):  # tpyc: ok
 //             raise ValueError("cat")
@@ -328,11 +328,11 @@ __gen_g_assert g_assert(::tpy::Union<Cat*, Dog*> a) {
 std::expected<std::string, ::tpy::StopIteration> __gen_g_post_if::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "two"
         bool __fin_ran_12 = false;
         try {
             __fin_ran_12 = true;
@@ -379,26 +379,26 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
 
 // async def amain() -> None:
 //     d = Dog()
-//     print(await a_assert(d))
+//     print(await a_assert(d))       # -> S_RESUME_0
 //     print(d.barks)
 //
 //     c = Cat()
-//     print(await a_post_if(c))
+//     print(await a_post_if(c))      # -> S_RESUME_1
 //     print(c.meows)
 //
 //     c2 = Cat()
 //     d2 = Dog()
-//     print(await a_nested(c2, d2))
+//     print(await a_nested(c2, d2))  # -> S_RESUME_2
 //     print(c2.meows, d2.barks)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         d.emplace(Dog());
         __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*d))});
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await a_assert(d))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -410,7 +410,7 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await a_post_if(c))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -423,7 +423,7 @@ __gen_g_post_if g_post_if(::tpy::Union<Cat*, Dog*> a) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await a_nested(c2, d2))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();

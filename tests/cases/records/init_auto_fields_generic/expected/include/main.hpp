@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A generic subclass infers a field whose type is the class type parameter.
 // class Holder:
 struct Holder {
 

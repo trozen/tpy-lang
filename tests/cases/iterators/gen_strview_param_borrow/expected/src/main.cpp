@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def lengths(s: StrView) -> Iterator[int]:
-//     yield len(s)
-//     yield len(s)
+//     yield len(s)                           # -> S_RESUME_0
+//     yield len(s)                           # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_lengths::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__(s));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(s)
         __state = S_RESUME_1;
         return ::tpy::BigInt(::tpy::__len__(s));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield len(s)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

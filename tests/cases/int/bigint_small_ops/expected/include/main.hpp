@@ -28,6 +28,7 @@ bool compare(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 // def generic_compare[T: Comparable](a: T, b: T) -> bool:
 template<::tpystd::tpy::Comparable T>
 bool generic_compare(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+// @error_return(InvalidOperand)
 // def checked_floor(a: int, b: int) -> int:
 std::expected<::tpy::BigInt, InvalidOperand> checked_floor(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 // def generated(a: int, b: int) -> Iterator[int]:

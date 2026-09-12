@@ -1,4 +1,4 @@
-module 3
+module 6
 shaped 3
 quoted first
     second

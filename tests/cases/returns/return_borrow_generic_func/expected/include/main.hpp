@@ -52,8 +52,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # (d) Generic method: addr_taken_roots(self._items[0]) -> "self", so
-// # return_borrows_from = {-1} (borrows from self).
 // class Box[T]:
 template<typename T>
 struct Box {

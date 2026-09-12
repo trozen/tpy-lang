@@ -17,10 +17,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def local_sink(flag: bool, label: str) -> bool:
 bool local_sink(bool flag, std::string_view label);
+// @dispatch
 // def amb(x: bool) -> bool:
 bool amb(bool x);
+// @dispatch
 // def amb(x: str) -> str:
 std::string amb(std::string_view x);
+// @deduce_from_slot
 // def run() -> bool:
 bool run();
 // def main() -> None:

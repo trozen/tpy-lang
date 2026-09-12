@@ -38,3 +38,13 @@ def test_numbered_form_counts_every_line_including_blank():
     out = io.StringIO()
     _Ctx(True)._write_source_lines(out, 12, ["    a = 1", "", "    b = 2"], "")
     assert out.getvalue() == "// 12: a = 1\n// 13:\n// 14: b = 2\n"
+
+
+def test_markers_align_past_the_widest_line_and_join():
+    out = io.StringIO()
+    _Ctx(False)._write_source_lines(out, 5, ["    yield n", "    if n > 0:"], "",
+                                    markers={5: ["S_RESUME_0"], 6: ["S_RESUME_1", "S_RESUME_2"]})
+    assert out.getvalue() == (
+        "// yield n    # -> S_RESUME_0\n"
+        "// if n > 0:  # -> S_RESUME_1, S_RESUME_2\n"
+    )

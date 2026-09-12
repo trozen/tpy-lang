@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     s = socket(AF_INET, SOCK_STREAM)
 //     s.setblocking(False)
 //     try:
-//         await loop.sock_connect(s, ("127.0.0.1", port))
+//         await loop.sock_connect(s, ("127.0.0.1", port))                      # -> S_RESUME_0
 //         print("connected unexpectedly")
 //     except ConnectionRefusedError:
 //         # The specific subclass pins the CPython-parity claim; a regression
@@ -26,7 +26,7 @@ namespace tpyapp::main {
 //     s.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         loop.emplace(::tpystd::asyncio::get_running_loop());
         probe.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*probe).bind(std::tuple<std::string, int32_t>{"127.0.0.1", 0});
@@ -40,7 +40,7 @@ namespace tpyapp::main {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await loop.sock_connect(s, ("127.0.0.1", port))
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

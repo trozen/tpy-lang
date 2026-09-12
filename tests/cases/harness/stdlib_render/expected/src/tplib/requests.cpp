@@ -869,16 +869,16 @@ Response delete_(std::string_view url, const ::tpy::ordered_map<std::string, std
 //     # (get / in / keys / items) -- iteration must hide them too.
 //     for name in self._store:
 //         if not self._store[name].deleted:
-//             yield name
+//             yield name                                                  # -> S_RESUME_0
 std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self._store).begin());
         __for_end_0.emplace((__self._store).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield name
         __state = S_JOIN_1;
         continue;
     }
@@ -917,7 +917,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__nex
 //             chunk = r.read(chunk_size)
 //             if len(chunk) == 0:
 //                 break
-//             yield chunk
+//             yield chunk                                                       # -> S_RESUME_0
 //     else:
 //         # Non-streamed response: chunk over the already-read body, so
 //         # iter_content works regardless of stream= (matching requests).
@@ -928,11 +928,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_CookieJar___iter__::__nex
 //             end = pos + chunk_size
 //             if end > n:
 //                 end = n
-//             yield data[pos:end]
+//             yield data[pos:end]                                               # -> S_RESUME_1
 //             pos = end
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         r = ::tpy::optional_to_ptr(__self._raw);
         if ((r != nullptr)) {
             __state = S_JOIN_1;
@@ -945,11 +945,11 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield chunk
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield data[pos:end]
         pos = end;
         __state = S_JOIN_3;
         continue;
@@ -1012,7 +1012,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
 //             end = nl
 //             if end > 0 and buf[end - 1] == 13:  # strip a preceding CR ("\r\n")
 //                 end = end - 1
-//             yield buf[:end]
+//             yield buf[:end]                                                      # -> S_RESUME_0
 //             buf = bytes(buf[nl + 1:])
 //             nl = buf.find(b"\n")
 //         pending = bytearray(buf)
@@ -1021,22 +1021,22 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
 //         tend = len(tail)
 //         if tend > 0 and tail[tend - 1] == 13:
 //             tend = tend - 1
-//         yield tail[:tend]
+//         yield tail[:tend]                                                        # -> S_RESUME_1
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         pending.emplace(::tpy::ByteArray());
         __for_src_0.emplace(__self.iter_content(_ITER_LINES_CHUNK));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield buf[:end]
         buf = ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(nl, 1)), std::nullopt}));
         nl = ::tpy::bytes_find(buf, ::tpy::bytes_literal("\n", 1));
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield tail[:tend]
         __state = S_JOIN_2;
         continue;
     }
@@ -1676,13 +1676,6 @@ void Session::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_
 // from datetime import datetime, UTC
 // import base64
 // import time
-//
-// DEFAULT_HTTP_PORT: Final[int32] = 80
-// DEFAULT_HTTPS_PORT: Final[int32] = 443
-//
-// # Chunk size iter_lines pulls from the raw stream between newline scans. requests
-// # uses 512 for iter_lines; iter_content has no default (see Response.iter_content).
-// _ITER_LINES_CHUNK: Final[int32] = 512
 //
 // # The multipart/form-data boundary. Fixed (not randomized like urllib3) so the
 // # emitted wire bytes are deterministic and snapshot-testable; as with urllib3

@@ -15,8 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # Tests __del__ with inheritance: parent destructor is called automatically after child
-// # In C++ destructor order is child-first, then parent (opposite of __init__)
 // class Base:
 struct Base {
     bool __tpy_owned_ = true;

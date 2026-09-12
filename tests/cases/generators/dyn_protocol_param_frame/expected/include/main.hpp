@@ -112,8 +112,6 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
     return os;
 }
 
-// # An INHERITANCE conformer: the call site upcasts directly, with no RefAdapter
-// # temp -- the other half of the adapter-vs-upcast split.
 // class Inh(Src):
 struct Inh : Src {
     // n: int32

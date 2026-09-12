@@ -18,10 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Inverse of the exhaustive-elif fix: a 3-member union where if/elif rule out
-// # two members and the remaining member is accessed in the reachable fall-through.
-// # That tail extraction must SURVIVE -- the static-true guard must not over-trigger
-// # (the elif condition here is a real runtime check, not statically folded).
 // class A:
 struct A {
     // self.x = x

@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Test bool() dispatch to __bool__() dunder method on user-defined classes
 // class Container:
 struct Container {
     // count: int

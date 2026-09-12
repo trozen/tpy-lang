@@ -1,7 +1,8 @@
 # Source-comment placement in generated C++: a declaration echoes its signature,
-# an implementation echoes its whole Python definition above the C++ (the C++ is the assertion).
+# an implementation its whole Python definition above the C++, a resumable frame
+# with `# -> S_RESUME_n` tags on its suspending lines (the C++ is the assertion).
 import asyncio
-from typing import Iterator
+from typing import Final, Iterator
 
 from tpy import int32, readonly
 
@@ -91,5 +92,7 @@ TABLE = {
     "a": 1,
     "b": 2,
 }
-print("module", TABLE["a"] + TABLE["b"])
+# a Final between two module statements echoes at its own declaration, not here
+SCALE: Final[int32] = 2
+print("module", (TABLE["a"] + TABLE["b"]) * SCALE)
 main()

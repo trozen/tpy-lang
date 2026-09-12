@@ -26,11 +26,6 @@ std::string field_arm(Rec& r, const Rec& t, bool cond);
 // def main() -> None:
 void main();
 
-// # A str/bytes local from a COMPOUND view source (ternary / and-or / nested) over
-// # owned-borrow arms must register every root, so mutating any root after the
-// # binding demotes the view to an owned copy instead of dangling (was a silent UAF).
-// # Each function mutates a root and returns/reads the value; a dangling view would
-// # read freed memory and diverge from CPython.
 // class Rec:
 struct Rec {
     // s: str

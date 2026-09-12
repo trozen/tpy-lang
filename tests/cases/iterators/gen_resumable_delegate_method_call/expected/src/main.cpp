@@ -5,25 +5,25 @@ namespace tpyapp::main {
 
 
 // def bump_all(h: Holder) -> Iterator[int32]:
-//     yield 0
+//     yield 0                                  # -> S_RESUME_0
 //     total = 0
 //     for n in h.nodes_gen():  # tpyc: ok
 //         n.val += 10
 //         total += n.val
-//         yield total
+//         yield total                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bump_all::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         total = 0;
         __for_src_0.emplace(h.nodes_gen());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield total
         __state = S_JOIN_0;
         continue;
     }
@@ -71,19 +71,19 @@ void main() {
 }
 
 // def nodes_gen(self) -> Iterator[Node]:
-//     yield self.a
-//     yield self.b
+//     yield self.a                        # -> S_RESUME_0
+//     yield self.b                        # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<Node>, ::tpy::StopIteration> __gen_Holder_nodes_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.a;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.a
         __state = S_RESUME_1;
         return __self.b;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.b
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

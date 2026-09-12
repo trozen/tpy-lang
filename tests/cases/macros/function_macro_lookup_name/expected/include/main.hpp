@@ -37,6 +37,7 @@ struct Gate;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @lookup_typed_locals
 // def check(gate: Gate, lamp: Lamp) -> bool:
 bool check(const Gate& gate, const ::tpyapp::lampmod::Lamp& lamp);
 // def main() -> None:

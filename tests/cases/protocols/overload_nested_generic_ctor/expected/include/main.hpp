@@ -36,9 +36,11 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def wrap[T](x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
 template<typename T>
 ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap(::tpystd::tplib::box::Box<T>&& x);
+// @dispatch
 // def wrap(x: str) -> Own[Rc[Box[str]]]:
 ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x);
 // def main() -> None:

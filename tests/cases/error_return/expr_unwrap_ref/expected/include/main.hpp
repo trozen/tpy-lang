@@ -12,8 +12,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(E)
 // def positive(p: Point) -> Point:
 std::expected<::tpy::val_or_ref<Point>, E> positive(Point& p);
+// @error_return(E)
 // def modify(p: Point) -> Point:
 std::expected<::tpy::val_or_ref<Point>, E> modify(Point& p);
 // def main() -> None:

@@ -56,10 +56,6 @@ struct _ArcCell : _ArcCellBase {
     ::tpystd::tpy::atomic::Atomic<uint32_t> strong;
     // weak: Atomic[uint32]
     ::tpystd::tpy::atomic::Atomic<uint32_t> weak;
-    // # A single owning slot: tracks its own liveness and moves correctly, so a
-    // # cell over a payload with SSO-`str`/non-relocatable fields survives the
-    // # one move into heap storage at `new_` (the payload is constructed in
-    // # place after that move, while the slot is still empty).
     // storage: UninitStorage[U]
     ::tpy::UninitStorage<U> storage;
 
@@ -172,10 +168,6 @@ inline std::ostream& operator<<(std::ostream& os, const _ArcCell<U>& obj) {
 // class Arc[T](Deref[T], Covariant[T]):
 template<typename T>
 struct Arc {
-    // # `_cell` is bookkeeping outside the readonly boundary (the refcount lives
-    // # behind it): clone/downgrade bump it through a readonly handle, the
-    // # std::shared_ptr const-copy pattern. `_payload` stays inside the boundary
-    // # so a readonly handle still yields readonly T.
     // _cell: unsafe_interior_mutable[Ptr[_ArcCellBase]]
     _ArcCellBase* _cell;
     // _payload: Ptr[T]
@@ -398,8 +390,6 @@ template<typename T>
 struct Weak {
     // _cell: unsafe_interior_mutable[Ptr[_ArcCellBase]]
     _ArcCellBase* _cell;
-    // # _payload dangles between strong=0 and weak=0, but is only dereferenced
-    // # via upgrade() after the strong-count check confirms the payload is live.
     // _payload: Ptr[T]
     T* _payload;
     bool __tpy_owned_ = true;

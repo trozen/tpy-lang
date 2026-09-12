@@ -5,15 +5,15 @@ namespace tpyapp::main {
 
 
 // async def relay(b: Box2) -> Box2:
-//     return await b.me()
+//     return await b.me()            # -> S_RESUME_0
 ::tpystd::tpy::Poll<Box2*> __coro_relay::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(b);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await b.me()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box2*>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -34,18 +34,18 @@ __coro_relay relay(Box2& b) {
 
 // async def main() -> None:
 //     b = Box2(2)
-//     r = await relay(b)
+//     r = await relay(b)     # -> S_RESUME_0
 //     r.v = 77
 //     print(b.v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(Box2(::tpy::BigInt(2)));
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await relay(b)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
@@ -67,16 +67,16 @@ __coro_main main() {
 }
 
 // async def me(self) -> "Box2":
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)     # -> S_RESUME_0
 //     return self
 ::tpystd::tpy::Poll<Box2*> __coro_Box2_me::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box2*>::pending();
         (void)std::move(__r0).value();

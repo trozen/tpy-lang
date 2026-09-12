@@ -92,12 +92,9 @@ struct S {
     S(S&&) = default;
     S& operator=(S&&) = default;
 
-    // # Direct call on a local alias of a self field -- must NOT be const.
     // def mutate_via_alias(self) -> None:
     void mutate_via_alias();
 
-    // # Chained call (Box.get().mutate()) on a local alias of a self field --
-    // # must NOT be const.
     // def mutate_via_alias_chained(self) -> None:
     void mutate_via_alias_chained();
     static constexpr std::string_view __tpy_class_name__ = "__main__.S";

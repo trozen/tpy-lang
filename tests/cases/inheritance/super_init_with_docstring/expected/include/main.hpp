@@ -13,7 +13,6 @@ struct Child;
 extern Child* c;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Test: docstring before super().__init__() is allowed
 // class Parent:
 struct Parent {
     // value: int

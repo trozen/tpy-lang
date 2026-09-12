@@ -79,13 +79,13 @@ struct __coro_combine {
 //
 //     for x in xs:
 //         stash(b, x)
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                           # -> S_RESUME_0
 //     double()
 //     return b
 template <::tpystd::typing::Iterable<int32_t> T_xs>
 ::tpystd::tpy::Poll<Box> __coro_combine<T_xs>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(Box());
         // def stash: frame member
         // def double: frame member
@@ -101,7 +101,7 @@ template <::tpystd::typing::Iterable<int32_t> T_xs>
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box>::pending();
         (void)std::move(__r0).value();

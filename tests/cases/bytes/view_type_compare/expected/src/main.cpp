@@ -58,19 +58,20 @@ void hashes(::tpy::BytesView a) {
     std::cout << "hash" << " " << ::tpy::print_bool((::tpy::__hash__(v) == ::tpy::__hash__(a))) << " " << ::tpy::print_bool((::tpy::__hash__(::tpy::Bytes{}) == ::tpy::__hash__(::tpy::Bytes()))) << " " << ::tpy::print_bool((::tpy::BytesView{} == ::tpy::bytes_slice(a, ::tpy::BasicSlice{::tpy::__len__(a), std::nullopt}))) << "\n";
 }
 
+// # generator: the compare and the tuple chain inside a resumable frame
 // def matching(names: list[bytes], want: bytes) -> Iterator[bytes]:
 //     for n in names:
 //         if n == want or n in (b"PLAYPAL", b"COLORMAP"):  # tpyc: ok
-//             yield n
+//             yield n                                                  # -> S_RESUME_0
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_matching::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((names).begin());
         __for_end_0.emplace((names).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_1;
         continue;
     }

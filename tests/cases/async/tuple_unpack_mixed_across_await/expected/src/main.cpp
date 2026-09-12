@@ -12,12 +12,12 @@ std::tuple<::tpy::BigInt, Box*> pick(std::vector<Box>& items, const ::tpy::BigIn
 
 // async def step(items: list[Box]) -> int:
 //     tag, it = pick(items, 0)
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                # -> S_RESUME_0
 //     it.n += 5
 //     return tag + it.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_step::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = pick(items, ::tpy::BigInt(0));
         tag = std::get<0>(__tup_1);
         it = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -25,7 +25,7 @@ std::tuple<::tpy::BigInt, Box*> pick(std::vector<Box>& items, const ::tpy::BigIn
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -48,17 +48,17 @@ __coro_step step(std::vector<Box>& items) {
 
 // async def amain() -> None:
 //     items = [Box(1)]
-//     print(await step(items))
+//     print(await step(items))  # -> S_RESUME_0
 //     print(items[0].n)
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         items.emplace(std::vector<Box>{Box(::tpy::BigInt(1))});
         __sub_0.emplace((*items));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await step(items))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

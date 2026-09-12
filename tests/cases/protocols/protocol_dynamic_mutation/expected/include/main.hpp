@@ -38,7 +38,6 @@ void bump(Counter& c);
 // def main() -> None:
 void main();
 
-// # Direct inheritor
 // class MyCounter(Counter):
 struct MyCounter : Counter {
     // count: int32
@@ -60,7 +59,6 @@ inline std::ostream& operator<<(std::ostream& os, const MyCounter& obj) {
     return os;
 }
 
-// # Structural conformance (no inheritance)
 // class Tally:
 struct Tally {
     // count: int32

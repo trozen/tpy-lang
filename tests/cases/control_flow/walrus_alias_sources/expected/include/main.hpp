@@ -26,10 +26,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Walrus borrow-alias source shapes: a pointer-slot GLOBAL, a record FIELD, a
-// # container FIELD, an Optional container ELEMENT, and a readonly-inferred param
-// # as the receiver. Every one aliases its source, so a mutation on either side
-// # has to be visible through the other.
 // class Rec:
 struct Rec {
     // n: int

@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // async def main_coro() -> None:
-//     async with CM() as v:
+//     async with CM() as v:       # -> S_RESUME_0, S_RESUME_1
 //         print(v)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(CM());
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with CM() as v:
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();
@@ -23,7 +23,7 @@ namespace tpyapp::main {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async with CM() as v:
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -73,7 +73,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<int32_t> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "aenter" << "\n";
         __state = S_DONE;
         int32_t __tpy_async_ret = 7;
@@ -90,7 +90,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_CM___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "aexit" << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

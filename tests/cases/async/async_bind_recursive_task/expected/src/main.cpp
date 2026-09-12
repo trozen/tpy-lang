@@ -8,11 +8,11 @@ namespace tpyapp::main {
 //     if n <= 1:
 //         return 1
 //     t = asyncio.create_task(fact(n - 1))
-//     r = await t
+//     r = await t                           # -> S_RESUME_0
 //     return n * r
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_fact::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n <= 1)) {
             __state = S_DONE;
             ::tpy::BigInt __tpy_async_ret = 1;
@@ -24,7 +24,7 @@ namespace tpyapp::main {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         r = std::move(__r0).value();

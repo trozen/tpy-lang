@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::vector<int32_t> __tpy_async_ret = {1, 2};
         return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
@@ -30,7 +30,7 @@ __coro_make_list make_list() {
 ::tpystd::tpy::Poll<::tpy::ByteArray> __coro_make_bytes::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::ByteArray __tpy_async_ret = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
         return ::tpystd::tpy::Poll<::tpy::ByteArray>::ready(std::move(__tpy_async_ret));
@@ -51,7 +51,7 @@ __coro_make_bytes make_bytes() {
 ::tpystd::tpy::Poll<std::array<int32_t, 3>> __coro_make_array::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::array<int32_t, 3> __tpy_async_ret = {7, 8, 9};
         return ::tpystd::tpy::Poll<std::array<int32_t, 3>>::ready(std::move(__tpy_async_ret));
@@ -72,7 +72,7 @@ __coro_make_array make_array() {
 ::tpystd::tpy::Poll<std::vector<::tpystd::tplib::box::Box<int32_t>>> __coro_make_boxes::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::vector<::tpystd::tplib::box::Box<int32_t>> __tpy_async_ret = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1), ::tpystd::tplib::box::Box<int32_t>(2));
         return ::tpystd::tpy::Poll<std::vector<::tpystd::tplib::box::Box<int32_t>>>::ready(std::move(__tpy_async_ret));
@@ -89,26 +89,26 @@ __coro_make_boxes make_boxes() {
 }
 
 // async def drive() -> None:
-//     xs = await make_list()
+//     xs = await make_list()                                                         # -> S_RESUME_0
 //     xs.append(3)                                # the awaited value is owned here
 //     print(len(xs))
-//     ba = await make_bytes()
+//     ba = await make_bytes()                                                        # -> S_RESUME_1
 //     ba.append(99)
 //     print(len(ba), ba[2])
-//     arr = await make_array()
+//     arr = await make_array()                                                       # -> S_RESUME_2
 //     arr[0] = 70
 //     print(arr[0], arr[2])
-//     bs = await make_boxes()
+//     bs = await make_boxes()                                                        # -> S_RESUME_3
 //     bs.append(Box(3))
 //     print(len(bs))
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: xs = await make_list()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         xs.emplace(std::move(__r0).value());
@@ -119,7 +119,7 @@ __coro_make_boxes make_boxes() {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: ba = await make_bytes()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         ba.emplace(std::move(__r1).value());
@@ -130,7 +130,7 @@ __coro_make_boxes make_boxes() {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: arr = await make_array()
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         arr.emplace(std::move(__r2).value());
@@ -141,7 +141,7 @@ __coro_make_boxes make_boxes() {
         __state = S_RESUME_3;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: bs = await make_boxes()
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         bs.emplace(std::move(__r3).value());

@@ -16,8 +16,6 @@ void del_it(Tracker& t, std::string_view name);
 // def main() -> None:
 void main();
 
-// # D16 phase 9: delattr(obj, name_var) with a runtime name -- routes to
-// # __delattr__ unconditionally.
 // class Tracker:
 struct Tracker {
     // _last_deleted: str

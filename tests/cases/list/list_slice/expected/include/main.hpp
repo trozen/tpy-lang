@@ -24,6 +24,7 @@ void test_type_inference();
 void test_array();
 // def test_span(s: Span[int32]) -> None:
 void test_span(std::span<int32_t> s);
+// @readonly
 // def test_readonly_list(items: list[int32]) -> None:
 void test_readonly_list(const std::vector<int32_t>& items);
 // def test_readonly_span_param(s: Span[readonly[int32]]) -> None:

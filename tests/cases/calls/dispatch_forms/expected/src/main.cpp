@@ -72,7 +72,6 @@ void push(std::vector<int32_t>& xs, int32_t v) {
 //     if isinstance(x, int):
 //         return "n=" + str(x)
 //     return "s=" + x
-// # typing.overload in the same module keeps its stubs-plus-implementation form
 // @overload
 // def show(x: int) -> str: ...
 std::string show(const ::tpy::BigInt& x) {

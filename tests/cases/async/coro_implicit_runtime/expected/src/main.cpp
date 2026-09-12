@@ -4,12 +4,13 @@
 namespace tpyapp::main {
 
 
+// # Free function: scalar, tuple and optional return signatures share the dependency.
 // async def scalar(n: int) -> int:  # tpyc: ok
 //     return n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_scalar::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -30,7 +31,7 @@ __coro_scalar scalar(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt>> __coro_wrapped::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::tuple<::tpy::BigInt> __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<std::tuple<::tpy::BigInt>>::ready(std::move(__tpy_async_ret));
@@ -51,7 +52,7 @@ __coro_wrapped wrapped(std::tuple<::tpy::BigInt> n) {
 ::tpystd::tpy::Poll<std::optional<::tpy::BigInt>> __coro_optional::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         std::optional<::tpy::BigInt> __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<std::optional<::tpy::BigInt>>::ready(std::move(__tpy_async_ret));
@@ -67,17 +68,18 @@ __coro_optional optional(std::optional<::tpy::BigInt> n) {
     return __coro_optional(n);
 }
 
+// # Async body: chained awaits instantiate the generic twin without an executor import.
 // async def chained(n: int) -> int:
-//     value = await scalar(n)  # tpyc: ok
-//     return await identity(value)  # tpyc: ok
+//     value = await scalar(n)  # tpyc: ok       # -> S_RESUME_0
+//     return await identity(value)  # tpyc: ok  # -> S_RESUME_1
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_chained::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(n);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: value = await scalar(n)  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         value = std::move(__r0).value();
@@ -86,7 +88,7 @@ __coro_optional optional(std::optional<::tpy::BigInt> n) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: return await identity(value)  # tpyc: ok
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         auto __ret1 = std::move(__r1).value();
@@ -105,19 +107,20 @@ __coro_chained chained(::tpy::BigInt n) {
     return __coro_chained(n);
 }
 
+// # Try/finally: the cleanup region keeps the same enclosing frame dependency.
 // async def cleanup(n: int) -> int:
 //     try:
-//         return await chained(n)  # tpyc: ok
+//         return await chained(n)  # tpyc: ok  # -> S_RESUME_0
 //     finally:
 //         print("try/finally: cleanup")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await chained(n)  # tpyc: ok
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -184,7 +187,7 @@ void main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Worker_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -200,7 +203,7 @@ void main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_5_Outer_5_Inner_7_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -216,7 +219,7 @@ void main() {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_Gate___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -232,7 +235,7 @@ void main() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_Gate___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

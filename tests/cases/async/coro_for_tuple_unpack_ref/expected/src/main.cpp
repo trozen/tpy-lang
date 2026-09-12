@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // async def total(pairs: list[tuple[Item, Item]]) -> int32:
 //     s: int32 = 0
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                 # -> S_RESUME_0
 //     for a, b in pairs:
 //         s += a.n + b.n
 //     return s
 ::tpystd::tpy::Poll<int32_t> __coro_total::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         s = 0;
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -52,10 +52,10 @@ __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
 //     pairs: list[tuple[Item, Item]] = []
 //     pairs.append((Item(1), Item(2)))
 //     pairs.append((Item(10), Item(20)))
-//     print(await total(pairs))
+//     print(await total(pairs))            # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         pairs.emplace(std::vector<std::tuple<Item, Item>>{});
         (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(1), Item(2)}));
         (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(std::tuple<Item, Item>{Item(10), Item(20)}));
@@ -63,7 +63,7 @@ __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await total(pairs))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

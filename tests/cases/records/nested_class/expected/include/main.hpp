@@ -35,9 +35,6 @@ struct Outer {
         // v: int32
         int32_t v;
 
-        // # A defaulted parameter of a NESTED constructor, filled by a
-        // # positional argument or left to its default; the keyword
-        // # spelling is tests/cases/calls/error_nested_ctor_kwargs.
         // def __init__(self, v: int32, w: int32 = 0) -> None:
         Pair() = default;
         explicit Pair(int32_t v, int32_t w = 0);

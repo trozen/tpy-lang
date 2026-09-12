@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // async def producer(tx: Own[Sender[Counter]]) -> None:
 //     i = 0
 //     while i < 5:
-//         await tx.send(Counter(i))
+//         await tx.send(Counter(i))                      # -> S_RESUME_0
 //         i += 1
 //     tx.close()
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await tx.send(Counter(i))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -51,17 +51,17 @@ __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx) {
 // async def consumer(rx: Own[Receiver[Counter]]) -> None:
 //     while True:
 //         try:
-//             c = await rx.recv()
+//             c = await rx.recv()                          # -> S_RESUME_0
 //             print(c.n)
 //         except ChannelClosed:
 //             break
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: c = await rx.recv()
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -123,11 +123,11 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
 //     tx, rx = channel[Counter](2)
 //     p = asyncio.create_task(producer(tx))
 //     c = asyncio.create_task(consumer(rx))
-//     await p
-//     await c
+//     await p                                # -> S_RESUME_0
+//     await c                                # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_co::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = ::tpystd::tpy::channel::channel<Counter>(2);
         tx.emplace(std::move(std::get<0>(__tup_1)));
         rx.emplace(std::move(std::get<1>(__tup_1)));
@@ -137,7 +137,7 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await p
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -146,7 +146,7 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await c
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

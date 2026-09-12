@@ -18,7 +18,6 @@ std::string describe(::tpy::Union<const Bird*, const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
-// # Test elif isinstance chain for 3-way union narrowing
 // class Dog:
 struct Dog {
     // name: str

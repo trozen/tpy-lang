@@ -21,9 +21,6 @@ void fail_direct();
 // def main() -> None:
 void main();
 
-// # A record rvalue passed to a reference-typed parameter inside a raise's
-// # argument must be materialized before the throw line, not rejected as a
-// # temp at an unflushable position.
 // class Tag:
 struct Tag {
     // self.n = n

@@ -129,17 +129,17 @@ struct __coro_held {
     }
 };
 // async def held[T](x: T) -> T:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)     # -> S_RESUME_0
 //     return x
 template <typename T>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_held<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::pending();
         (void)std::move(__r0).value();
@@ -210,19 +210,19 @@ struct __gen_hold : public ::tpy::next_iter_mixin<__gen_hold<T>, T> {
     }
 };
 // def hold[T](x: T) -> Iterator[T]:
-//     yield x
+//     yield x                        # -> S_RESUME_0
 //     total = 0
 //     while total < 1:
 //         total += 1
-//     yield x
+//     yield x                        # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_hold<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return x;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         total = 0;
         while ((total < 1)) {
             total = ::tpy::add_check<int32_t>(total, 1);
@@ -230,7 +230,7 @@ std::expected<T, ::tpy::StopIteration> __gen_hold<T>::__next__() {
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -11,10 +11,13 @@ struct ParseError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(ParseError)
 // def parse_digit(s: str) -> int32:
 std::expected<int32_t, ParseError> parse_digit(std::string_view s);
+// @error_return(ParseError)
 // def validate(s: str) -> None:
 std::expected<void, ParseError> validate(std::string_view s);
+// @error_return(ParseError)
 // def parse_two_digits(a: str, b: str) -> int32:
 std::expected<int32_t, ParseError> parse_two_digits(std::string_view a, std::string_view b);
 // def main() -> None:

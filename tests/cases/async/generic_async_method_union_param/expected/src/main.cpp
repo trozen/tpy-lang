@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_bump::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a.x = 41;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -29,14 +29,14 @@ __coro_bump bump(A& a) {
 //     h = Holder(int32(5))
 //     a = A()
 //     t = asyncio.create_task(bump(a))
-//     print(await h.show(a))
-//     await t
+//     print(await h.show(a))            # -> S_RESUME_0
+//     await t                           # -> S_RESUME_1
 //     p = PlainHolder(7)
 //     b = B()
-//     print(await p.show(b))
+//     print(await p.show(b))            # -> S_RESUME_2
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         h.emplace(Holder<int32_t>(5));
         a.emplace(A());
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(bump((*a)))));
@@ -44,7 +44,7 @@ __coro_bump bump(A& a) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await h.show(a))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -54,7 +54,7 @@ __coro_bump bump(A& a) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await t
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -65,7 +65,7 @@ __coro_bump bump(A& a) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await p.show(b))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r2).value();
@@ -92,18 +92,18 @@ void main() {
 }
 
 // async def show(self, u: A | B) -> int32:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)            # -> S_RESUME_0
 //     if isinstance(u, A):
 //         return u.x
 //     return u.y
 ::tpystd::tpy::Poll<int32_t> __coro_PlainHolder_show::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

@@ -98,7 +98,6 @@ inline std::ostream& operator<<(std::ostream& os, const Twin& obj) {
     return os;
 }
 
-// # generic method: the same slot inside a generic record's own body.
 // class GRelay[T]:
 template<typename T>
 struct GRelay {

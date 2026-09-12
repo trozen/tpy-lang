@@ -469,6 +469,15 @@ class AsyncWithKind(Enum):
 @dataclass(frozen=True)
 class AwaitPayload:
     """An async-def suspension. Held inside a Yield terminator."""
+
+    @property
+    def source_loc(self) -> 'SourceLocation | None':
+        """Where the suspension sits in the source: the await node, else the
+        statement that hosts it."""
+        if self.await_node.loc is not None:
+            return self.await_node.loc
+        return self.host_stmt.loc if self.host_stmt is not None else None
+
     mode: AwaitMode
     sub_field_cpp_type: str       # cpp type for std::optional<...> / pointee
     operand_expr: TpyExpr         # the operand of `await ...`
@@ -513,6 +522,11 @@ class AwaitPayload:
 class YieldPayload:
     """A generator suspension. Held inside a Yield terminator when the CFG
     is built from a generator body."""
+
+    @property
+    def source_loc(self) -> 'SourceLocation | None':
+        return self.yield_stmt.loc if self.yield_stmt is not None else None
+
     value_expr: TpyExpr | None    # the yielded expression (None for bare yield)
     # The source `yield` statement, so emit can reuse the ordinary yield
     # emit (storage->borrow bridging etc.).

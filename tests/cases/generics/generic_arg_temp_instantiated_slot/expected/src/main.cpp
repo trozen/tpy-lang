@@ -198,16 +198,16 @@ void with_body() {
 //     n = 0
 //     while n < 2:
 //         if anyslot("genbody", n) and anyslot_i32("genbody", n):  # tpyc: ok
-//             yield n
+//             yield n                                                              # -> S_RESUME_0
 //         n += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         n = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield n
         __state = S_JOIN_1;
         continue;
     }
@@ -324,15 +324,15 @@ void generator_factory() {
 
 // async def async_main() -> int32:
 //     # The coroutine factory takes the same row as the generator's.
-//     return await echo(21)  # tpyc: ok
+//     return await echo(21)  # tpyc: ok                               # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_async_main::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(21);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await echo(21)  # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();

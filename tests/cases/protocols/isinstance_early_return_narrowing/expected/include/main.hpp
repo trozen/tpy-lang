@@ -91,8 +91,6 @@ inline std::ostream& operator<<(std::ostream& os, const Pet& obj) {
 struct CM {
 
 
-    // # Minimal context manager used by narrow_in_with_body. No state -- the
-    // # interesting part is the `with` block's C++ scope, not the manager.
     // def __enter__(self) -> "CM":
     CM& __enter__();
 

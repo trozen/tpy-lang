@@ -13,7 +13,6 @@ struct Child;
 extern Child* c;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Test: super().__init__() when parent has no explicit __init__ (calls default constructor)
 // class Base:
 struct Base {
 

@@ -16,12 +16,16 @@ struct Flat;
 extern Box* self;
 inline constexpr std::string_view __name__ = "__main__";
 
+// @export
 // def identity(b: Box) -> Box:
 Box& identity(Box& b);
+// @export
 // def through_param(b: Box) -> Inner:
 Inner& through_param(Box& b);
+// @export
 // def get_global() -> Box:
 Box& get_global();
+// @export
 // def fresh(v: int64) -> Own[Box]:
 Box fresh(int64_t v);
 

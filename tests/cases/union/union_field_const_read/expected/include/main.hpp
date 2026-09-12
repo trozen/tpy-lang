@@ -15,12 +15,16 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def get_pet_name(z: Zoo) -> str:
 std::string get_pet_name(const Zoo& z);
+// @readonly
 // def get_pet_name_ro(z: Zoo) -> str:
 std::string get_pet_name_ro(const Zoo& z);
+// @readonly
 // def greet_pet(pet: Dog | Cat) -> str:
 std::string greet_pet(::tpy::Union<const Cat*, const Dog*> pet);
+// @readonly
 // def show_dog(d: Dog) -> str:
 std::string show_dog(const Dog& d);
+// @readonly
 // def forward_pet(pet: Dog | Cat) -> str:
 std::string forward_pet(::tpy::Union<const Cat*, const Dog*> pet);
 // def main() -> None:

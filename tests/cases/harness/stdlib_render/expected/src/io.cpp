@@ -12,14 +12,14 @@ int32_t _SEEK_END{};
 //         line: str = self.readline()
 //         if not line:
 //             return
-//         yield line
+//         yield line                    # -> S_RESUME_0
 std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield line
         __state = S_JOIN_0;
         continue;
     }
@@ -48,14 +48,14 @@ std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__::__next
 //         line: bytes = self.readline()
 //         if len(line) == 0:
 //             return
-//         yield line
+//         yield line                      # -> S_RESUME_0
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield line
         __state = S_JOIN_0;
         continue;
     }
@@ -84,14 +84,14 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__::__next
 //         line = self.readline()
 //         if len(line) == 0:
 //             return
-//         yield line
+//         yield line                      # -> S_RESUME_0
 std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BufferedReader___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield line
         __state = S_JOIN_0;
         continue;
     }
@@ -578,16 +578,6 @@ int32_t BytesIO::truncate(int32_t size) {
 // from tplib.box import Box
 // import os
 //
-// # CPython's io.DEFAULT_BUFFER_SIZE: chunk size for raw reads / the default
-// # BufferedReader buffer.
-// DEFAULT_BUFFER_SIZE: Final[int32] = 8192
-//
-// # SEEK_SET/CUR/END names are <cstdio> macros, so they can't be emitted as C++
-// # symbols; bind via native_global to the os runtime's int32 seek globals (same
-// # POSIX 0/1/2, int32 to match io.seek's whence; always linked).
-// SEEK_SET: Final[int32] = native_global("tpy::stdlib::os::kc_seek_set32")
-// SEEK_CUR: Final[int32] = native_global("tpy::stdlib::os::kc_seek_cur32")
-// SEEK_END: Final[int32] = native_global("tpy::stdlib::os::kc_seek_end32")
 // _SEEK_SET: int32 = 0
 // _SEEK_CUR: int32 = 1
 // _SEEK_END: int32 = 2

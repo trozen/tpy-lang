@@ -6,15 +6,15 @@ namespace tpyapp::main {
 std::vector<std::string>* dropped{};
 
 // async def waiter(f: Future[Tracked]) -> Own[Tracked]:
-//     return await f
+//     return await f                                     # -> S_RESUME_0
 ::tpystd::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0 = &(f);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await f
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Tracked>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -39,12 +39,12 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
 //     f.set_result(Tracked("payload"))
 //     t.cancel()
 //     try:
-//         await t
+//         await t                             # -> S_RESUME_0
 //     except asyncio.CancelledError:
 //         print("cancelled")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         f.emplace(::tpystd::asyncio::Future<Tracked>());
         t.emplace(::tpystd::asyncio::create_task<Tracked>(::tpy::make_adapter<::tpystd::coro::Cancellable<Tracked>>(waiter((*f)))));
         (*f).set_result(Tracked("payload"));
@@ -52,7 +52,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await t
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

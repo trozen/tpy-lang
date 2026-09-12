@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // async def inner() -> None:
-//     async with CM("inner") as b:
+//     async with CM("inner") as b:  # -> S_RESUME_0, S_RESUME_1
 //         print(f"inner body {b}")
 ::tpystd::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(CM("inner"));
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with CM("inner") as b:
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r0).value();
@@ -23,7 +23,7 @@ namespace tpyapp::main {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async with CM("inner") as b:
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
@@ -68,18 +68,18 @@ __coro_inner inner() {
 }
 
 // async def main_coro() -> None:
-//     async with CM("outer") as a:
+//     async with CM("outer") as a:  # -> S_RESUME_0, S_RESUME_2
 //         print(f"outer body {a}")
-//         await inner()
+//         await inner()             # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(CM("outer"));
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with CM("outer") as a:
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
@@ -87,7 +87,7 @@ __coro_inner inner() {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await inner()
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -102,7 +102,7 @@ __coro_inner inner() {
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: async with CM("outer") as a:
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r2).value();
@@ -153,7 +153,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<std::string> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << std::format("aenter {}", __self.name) << "\n";
         __state = S_DONE;
         std::string __tpy_async_ret = __self.name;
@@ -170,7 +170,7 @@ __coro_main_coro main_coro() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_CM___aexit__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << std::format("aexit {}", __self.name) << "\n";
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

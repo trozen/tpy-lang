@@ -562,43 +562,6 @@ void socket::sendall(::tpy::BytesView data) const {
 //
 // import os
 // from io import FileIO, BufferedReader, DEFAULT_BUFFER_SIZE
-//
-// AF_INET:     Final[int32] = 2
-// AF_UNIX:     Final[int32] = 1    # Not yet usable (no sockaddr_un binding).
-// # Linux 10, macOS/BSD 30. Not yet usable (no sockaddr_in6 binding).
-// AF_INET6:    Final[int32] = native_global("tpy_const_af_inet6", binding="C")
-//
-// SOCK_STREAM: Final[int32] = 1
-// SOCK_DGRAM:  Final[int32] = 2
-//
-// # Linux 1, BSD/macOS 0xffff.
-// SOL_SOCKET:   Final[int32] = native_global("tpy_const_sol_socket", binding="C")
-// SO_REUSEADDR: Final[int32] = native_global("tpy_const_so_reuseaddr", binding="C")
-// SO_KEEPALIVE: Final[int32] = native_global("tpy_const_so_keepalive", binding="C")
-// SO_ERROR:     Final[int32] = native_global("tpy_const_so_error", binding="C")
-//
-// IPPROTO_TCP: Final[int32] = 6
-// IPPROTO_UDP: Final[int32] = 17
-//
-// TCP_NODELAY: Final[int32] = 1
-//
-// SHUT_RD:   Final[int32] = 0
-// SHUT_WR:   Final[int32] = 1
-// SHUT_RDWR: Final[int32] = 2
-//
-// # errno values diverge across platforms (Linux EAGAIN 11 / EINPROGRESS 115;
-// # macOS 35 / 36), so source them from <errno.h> via native globals. EAGAIN ==
-// # EWOULDBLOCK on both Linux and macOS; EINPROGRESS is a non-blocking connect's
-// # "in progress" result.
-// _EAGAIN: Final[int32] = native_global("tpy_const_eagain", binding="C")
-// _EINPROGRESS: Final[int32] = native_global("tpy_const_einprogress", binding="C")
-// # Connection-error errno values, also platform-divergent (see socket_impl.cpp).
-// _EPIPE: Final[int32] = native_global("tpy_const_epipe", binding="C")
-// _ECONNRESET: Final[int32] = native_global("tpy_const_econnreset", binding="C")
-// _ECONNREFUSED: Final[int32] = native_global("tpy_const_econnrefused", binding="C")
-// _ECONNABORTED: Final[int32] = native_global("tpy_const_econnaborted", binding="C")
-//
-// _SOCKADDR_IN_LEN: Final[uint32] = 16
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

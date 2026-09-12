@@ -59,8 +59,6 @@ struct H {
     // n: int32
     int32_t n;
 
-    // # Known sema false positive: the field-consumption check does not
-    // # credit copy() at a field store, though the MIL genuinely moves v.
     // def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
     explicit H(::tpy::Union<A, B>&& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";

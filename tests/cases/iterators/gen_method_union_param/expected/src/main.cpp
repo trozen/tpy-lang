@@ -44,20 +44,20 @@ void main() {
 
 // def voices(self, a: Dog | Cat) -> Iterator[str]:
 //     self.seen += 1
-//     yield "start"
+//     yield "start"                                 # -> S_RESUME_0
 //     match a:
 //         case Dog():
-//             yield a.speak()
+//             yield a.speak()                       # -> S_RESUME_1
 //         case Cat():
-//             yield a.speak()
+//             yield a.speak()                       # -> S_RESUME_2
 std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.seen = (__self.seen) + (::tpy::BigInt(1));
         __state = S_RESUME_0;
         return "start";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "start"
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -76,12 +76,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.speak()
         auto& __a = *std::get<Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield a.speak()
         auto& __a = *std::get<Cat*>(a);
         __state = S_JOIN_0;
         continue;
@@ -98,20 +98,20 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
 
 // def names(self, a: readonly[Dog | Cat]) -> Iterator[str]:
 //     self.seen += 1
-//     yield "ro"
+//     yield "ro"                                             # -> S_RESUME_0
 //     match a:
 //         case Dog():
-//             yield "dog"
+//             yield "dog"                                    # -> S_RESUME_1
 //         case Cat():
-//             yield "cat"
+//             yield "cat"                                    # -> S_RESUME_2
 std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.seen = (__self.seen) + (::tpy::BigInt(1));
         __state = S_RESUME_0;
         return "ro";
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "ro"
         auto& __match_subject_1 = a;
         switch (__match_subject_1.index()) {
         case 1: {
@@ -130,12 +130,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "dog"
         auto& __a = *std::get<const Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield "cat"
         auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;

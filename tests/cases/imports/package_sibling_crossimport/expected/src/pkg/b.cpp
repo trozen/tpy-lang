@@ -49,8 +49,6 @@ int32_t g(int32_t n) {
 }
 
 // from enum import Enum
-//
-// V: Final[int32] = 3
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

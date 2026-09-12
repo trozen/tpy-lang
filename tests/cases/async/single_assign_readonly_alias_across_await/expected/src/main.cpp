@@ -6,17 +6,17 @@ namespace tpyapp::main {
 
 // async def peek(o: readonly[Outer]) -> int:
 //     a = o.inner
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                  # -> S_RESUME_0
 //     return a.n
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_peek::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a = &(o.inner);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -37,16 +37,16 @@ __coro_peek peek(const Outer& o) {
 }
 
 // async def amain() -> None:
-//     print(await peek(Outer(9)))
+//     print(await peek(Outer(9)))  # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0.emplace(Outer(::tpy::BigInt(9)));
         __sub_0.emplace((*__coro_arg_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await peek(Outer(9)))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

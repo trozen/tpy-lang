@@ -17,8 +17,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # isinstance narrowing where the remaining member is reached via implicit
-// # fall-through (no explicit `else:`) -- the narrowed member access must resolve.
 // class Cat:
 struct Cat {
     // self.a = a

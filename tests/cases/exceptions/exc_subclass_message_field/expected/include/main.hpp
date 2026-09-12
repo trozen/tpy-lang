@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # `message` is a field of the builtin Exception base; a subclass assigning
-// # self.message must reuse that inherited slot, not declare a shadow.
 // class AppError(Exception):
 struct AppError : ::tpy::Exception {
 

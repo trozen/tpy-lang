@@ -276,6 +276,7 @@ inline __gen_Holder_walk Holder::walk() {
     return __gen_Holder_walk(*this);
 }
 
+// @readonly
 // def peek(self) -> Iterator[int32]:
 struct __gen_Holder_peek : public ::tpy::next_iter_mixin<__gen_Holder_peek, int32_t> {
     int32_t __state;

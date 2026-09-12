@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def add(a: int32, b: int32 = 10) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                        # -> S_RESUME_0
 //     return a + b
 ::tpystd::tpy::Poll<int32_t> __coro_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -36,16 +36,16 @@ __coro_add add(int32_t a, int32_t b) {
 
 // async def with_default() -> int32:
 //     t = asyncio.create_task(add(5))       # default b=10 -> 15
-//     return await t
+//     return await t                                              # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_with_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(add(5))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -66,16 +66,16 @@ __coro_with_default with_default() {
 
 // async def with_override() -> int32:
 //     t = asyncio.create_task(add(5, 2))    # override -> 7
-//     return await t
+//     return await t                                         # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_with_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(add(5, 2))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -94,16 +94,17 @@ __coro_with_override with_override() {
     return __coro_with_override();
 }
 
+// # inline await, free async def -- the reproducer
 // async def inline_default() -> int32:
-//     return await add(5)                   # tpyc: ok
+//     return await add(5)                   # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_inline_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await add(5)                   # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -122,16 +123,17 @@ __coro_inline_default inline_default() {
     return __coro_inline_default();
 }
 
+// # inline await, explicit argument beats the default
 // async def inline_override() -> int32:
-//     return await add(5, 2)                # tpyc: ok
+//     return await add(5, 2)                # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_inline_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(5, 2);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await add(5, 2)                # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -150,18 +152,19 @@ __coro_inline_override inline_override() {
     return __coro_inline_override();
 }
 
+// # generic async def, inline await
 // async def generic_default() -> int32:
 //     nums: list[int32] = [1, 2, 3]
-//     return await counted(nums)            # tpyc: ok
+//     return await counted(nums)            # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_generic_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         nums.emplace(std::vector<int32_t>{1, 2, 3});
         __sub_0.emplace((*nums));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await counted(nums)            # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -180,18 +183,19 @@ __coro_generic_default generic_default() {
     return __coro_generic_default();
 }
 
+// # generic async def, inline await, explicit argument beats the default
 // async def generic_override() -> int32:
 //     nums: list[int32] = [1, 2, 3]
-//     return await counted(nums, 3)         # tpyc: ok
+//     return await counted(nums, 3)         # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_generic_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         nums.emplace(std::vector<int32_t>{1, 2, 3});
         __sub_0.emplace((*nums), 3);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await counted(nums, 3)         # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -210,18 +214,19 @@ __coro_generic_override generic_override() {
     return __coro_generic_override();
 }
 
+// # async METHOD, inline await
 // async def method_inline_default() -> int32:
 //     ad = Adder(100)
-//     return await ad.add(5)                # tpyc: ok
+//     return await ad.add(5)                # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_method_inline_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ad.emplace(Adder(100));
         __sub_0.emplace((*ad), 5);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await ad.add(5)                # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -240,18 +245,19 @@ __coro_method_inline_default method_inline_default() {
     return __coro_method_inline_default();
 }
 
+// # async METHOD, explicit argument beats the default
 // async def method_inline_override() -> int32:
 //     ad = Adder(100)
-//     return await ad.add(5, 2)             # tpyc: ok
+//     return await ad.add(5, 2)             # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_method_inline_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ad.emplace(Adder(100));
         __sub_0.emplace((*ad), 5, 2);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await ad.add(5, 2)             # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -270,20 +276,21 @@ __coro_method_inline_override method_inline_override() {
     return __coro_method_inline_override();
 }
 
+// # async METHOD, create_task (the factory path)
 // async def method_task_default() -> int32:
 //     ad = Adder(100)
 //     t = asyncio.create_task(ad.add(5))    # tpyc: ok
-//     return await t
+//     return await t                                    # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_method_task_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ad.emplace(Adder(100));
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*ad).add(5))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -302,20 +309,21 @@ __coro_method_task_default method_task_default() {
     return __coro_method_task_default();
 }
 
+// # async METHOD, create_task, explicit argument beats the default
 // async def method_task_override() -> int32:
 //     ad = Adder(100)
 //     t = asyncio.create_task(ad.add(5, 2))  # tpyc: ok
-//     return await t
+//     return await t                                     # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_method_task_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ad.emplace(Adder(100));
         t.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*ad).add(5, 2))));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -334,15 +342,16 @@ __coro_method_task_override method_task_override() {
     return __coro_method_task_override();
 }
 
+// # defaulted __aenter__ under async with
 // async def aenter_default() -> int32:
 //     cm = CM()
 //     out: int32 = 0
-//     async with cm as v:                   # tpyc: ok
+//     async with cm as v:                   # tpyc: ok  # -> S_RESUME_0, S_RESUME_1
 //         out = v
 //     return out
 ::tpystd::tpy::Poll<int32_t> __coro_aenter_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         cm.emplace(CM());
         out = 0;
         __with_ctx_0 = &((*cm));
@@ -350,7 +359,7 @@ __coro_method_task_override method_task_override() {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with cm as v:                   # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         v = std::move(__r0).value();
@@ -358,7 +367,7 @@ __coro_method_task_override method_task_override() {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async with cm as v:                   # tpyc: ok
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r1).value();
@@ -403,21 +412,22 @@ __coro_aenter_default aenter_default() {
     return __coro_aenter_default();
 }
 
+// # defaulted __aexit__ under async with
 // async def aexit_default() -> int32:
 //     cm = CM2()
-//     async with cm:                        # tpyc: ok
+//     async with cm:                        # tpyc: ok  # -> S_RESUME_0, S_RESUME_1
 //         cm.hits += 1
 //     return cm.seen
 ::tpystd::tpy::Poll<int32_t> __coro_aexit_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         cm.emplace(CM2());
         __with_ctx_0 = &((*cm));
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async with cm:                        # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -425,7 +435,7 @@ __coro_aenter_default aenter_default() {
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: async with cm:                        # tpyc: ok
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r1).value();
@@ -470,22 +480,23 @@ __coro_aexit_default aexit_default() {
     return __coro_aexit_default();
 }
 
+// # defaulted __anext__ under async for
 // async def anext_default() -> int32:
 //     c = Counts(4)
 //     total: int32 = 0
-//     async for x in c:                     # tpyc: ok
+//     async for x in c:                     # tpyc: ok  # -> S_RESUME_0
 //         total += x
 //     return total
 ::tpystd::tpy::Poll<int32_t> __coro_anext_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c.emplace(Counts(4));
         total = 0;
         __for_itr_0.emplace(((*c)).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in c:                     # tpyc: ok
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -535,16 +546,17 @@ __coro_anext_default anext_default() {
     return __coro_anext_default();
 }
 
+// # cross-module: the default names the CALLEE module's Final constant
 // async def cross_module_default() -> int32:
-//     return await defmod.scaled(5)         # tpyc: ok
+//     return await defmod.scaled(5)         # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_cross_module_default::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(5);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await defmod.scaled(5)         # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -563,16 +575,17 @@ __coro_cross_module_default cross_module_default() {
     return __coro_cross_module_default();
 }
 
+// # cross-module, explicit argument beats the default
 // async def cross_module_override() -> int32:
-//     return await defmod.scaled(5, 7)      # tpyc: ok
+//     return await defmod.scaled(5, 7)      # tpyc: ok  # -> S_RESUME_0
 ::tpystd::tpy::Poll<int32_t> __coro_cross_module_override::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(5, 7);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await defmod.scaled(5, 7)      # tpyc: ok
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -626,16 +639,16 @@ void main() {
 }
 
 // async def add(self, a: int32, b: int32 = 10) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                              # -> S_RESUME_0
 //     return self.base + a + b
 ::tpystd::tpy::Poll<int32_t> __coro_Adder_add::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -650,18 +663,20 @@ void main() {
 }
 
 
+// # A defaulted __aenter__ param: the synthetic async-with suspension
+// # emplaces only the receiver, so only a ctor default can supply `bump`.
 // async def __aenter__(self, bump: int32 = 5) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                             # -> S_RESUME_0
 //     self.n += bump
 //     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_CM___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -679,16 +694,16 @@ void main() {
 
 // async def __aexit__(self, exc_type: None, exc: None,
 //                     tb: None) -> bool:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                            # -> S_RESUME_0
 //     return False
 ::tpystd::tpy::Poll<bool> __coro_CM___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
@@ -704,16 +719,16 @@ void main() {
 
 
 // async def __aenter__(self) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)            # -> S_RESUME_0
 //     return 1
 ::tpystd::tpy::Poll<int32_t> __coro_CM2___aenter__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -728,19 +743,22 @@ void main() {
 }
 
 
+// # A defaulted 4th __aexit__ param: the synthetic exit suspension passes
+// # the three monostate exception slots and nothing else, so `extra` can
+// # only come from the frame ctor's default.
 // async def __aexit__(self, exc_type: None, exc: None, tb: None,
 //                     extra: int32 = 9) -> bool:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                      # -> S_RESUME_0
 //     self.seen = extra
 //     return False
 ::tpystd::tpy::Poll<bool> __coro_CM2___aexit__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
@@ -756,20 +774,22 @@ void main() {
 }
 
 
+// # A defaulted __anext__ param: the synthetic async-for suspension
+// # emplaces only the receiver, so `step` comes from the ctor default.
 // async def __anext__(self, step: int32 = 1) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                            # -> S_RESUME_0
 //     if self.n <= 0:
 //         raise StopAsyncIteration
 //     self.n -= step
 //     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_Counter___anext__::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();

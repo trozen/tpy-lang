@@ -9,14 +9,14 @@ namespace tpyapp::main {
 //         pass
 //     with Blob() as b:
 //         pass
-//     yield 1
+//     yield 1                    # -> S_RESUME_0
 //     print(s)
 //     print(len(s))
 //     print(b[0])
-//     yield 2
+//     yield 2                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __ctx_1 = Label();
         s = __ctx_1.__enter__();
         try {
@@ -46,14 +46,14 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         std::cout << s << "\n";
         std::cout << ::tpy::__len__(s) << "\n";
         std::cout << static_cast<int>(::tpy::bytes_getitem(b, 0)) << "\n";
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -23,7 +23,6 @@ void main();
 
 // class Holder:
 struct Holder {
-    // # Recursive alias used as a record field type.
     // value: V
     ::tpyapp::pkg_v::V value;
 

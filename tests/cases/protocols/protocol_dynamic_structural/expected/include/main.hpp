@@ -35,7 +35,6 @@ void greet(Pet& pet);
 // def main() -> None:
 void main();
 
-// # Parrot satisfies Pet structurally but does NOT inherit it
 // class Parrot:
 struct Parrot {
 

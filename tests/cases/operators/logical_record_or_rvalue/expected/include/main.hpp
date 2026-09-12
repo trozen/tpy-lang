@@ -18,9 +18,6 @@ void or_truthy_skips_ctor(Box& a, std::vector<::tpy::BigInt>& log);
 // def main() -> None:
 void main();
 
-// # `and`/`or` over a record param (borrow form) and a same-type record rvalue
-// # resolves to the record type (not bool): it compiles, short-circuits, and the
-// # result aliases the chosen operand.
 // class Box:
 struct Box {
     // n: int

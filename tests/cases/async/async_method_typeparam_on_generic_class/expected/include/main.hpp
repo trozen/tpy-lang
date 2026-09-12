@@ -71,7 +71,7 @@ template <typename T, typename U>
 ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>> __coro_Box_with_label<T, U>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::val_or_ptr_t<U> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(::tpy::param_to_return<U>(label));
         return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<U>>::ready(std::move(__tpy_async_ret));

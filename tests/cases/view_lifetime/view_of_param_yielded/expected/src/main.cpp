@@ -5,19 +5,19 @@ namespace tpyapp::main {
 
 
 // def tails(s: str) -> Iterator[StrView]:
-//     yield s[1:]
-//     yield s[2:]
+//     yield s[1:]                          # -> S_RESUME_0
+//     yield s[2:]                          # -> S_RESUME_1
 std::expected<std::string_view, ::tpy::StopIteration> __gen_tails::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return ::tpy::str_slice(s, ::tpy::BasicSlice{1, std::nullopt});
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield s[1:]
         __state = S_RESUME_1;
         return ::tpy::str_slice(s, ::tpy::BasicSlice{2, std::nullopt});
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield s[2:]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

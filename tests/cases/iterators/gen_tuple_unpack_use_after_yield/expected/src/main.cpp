@@ -8,24 +8,24 @@ namespace tpyapp::main {
 //     total = 0
 //     for a, b in pairs:
 //         total += a
-//         yield a + b
+//         yield a + b                                            # -> S_RESUME_0
 //         total += b      # `b` must survive the yield above
-//     yield total
+//     yield total                                                # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __for_it_0.emplace((pairs).begin());
         __for_end_0.emplace((pairs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a + b
         total = ::tpy::add_check<int32_t>(total, b);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield total
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -57,20 +57,20 @@ struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, U> {
 };
 
 // def items[U](self, x: U) -> Iterator[U]:
-//     yield x
-//     yield x
+//     yield x                               # -> S_RESUME_0
+//     yield x                               # -> S_RESUME_1
 template <typename U>
 std::expected<U, ::tpy::StopIteration> __gen_Foo_items<U>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return x;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

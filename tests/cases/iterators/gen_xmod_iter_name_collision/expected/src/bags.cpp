@@ -6,21 +6,21 @@ namespace tpyapp::bags {
 
 // def __iter__(self) -> Iterator[int32]:
 //     for x in self.items:
-//         yield x
-//         yield x
+//         yield x                         # -> S_RESUME_0
+//         yield x                         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Bag___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((__self.items).begin());
         __for_end_0.emplace((__self.items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

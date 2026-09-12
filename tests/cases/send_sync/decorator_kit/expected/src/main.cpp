@@ -4,12 +4,13 @@
 namespace tpyapp::main {
 
 
+// @unsafe_send
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 //     return len(xs)
 ::tpystd::tpy::Poll<int32_t> __coro_forced::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(xs);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -20,6 +21,7 @@ namespace tpyapp::main {
 }
 
 
+// @unsafe_send
 // async def forced(xs: list[int32]) -> int32:    # tpyc: frame_send(yes)
 __coro_forced forced(std::vector<int32_t>& xs) {
     return __coro_forced(xs);

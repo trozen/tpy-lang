@@ -7,7 +7,6 @@
 
 namespace tpyapp::main {
 
-// # Protocol
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
@@ -20,7 +19,6 @@ struct Person;
 extern Person* p;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Base class
 // class Entity:
 struct Entity {
     // name: str
@@ -42,7 +40,6 @@ inline std::ostream& operator<<(std::ostream& os, const Entity& obj) {
     return os;
 }
 
-// # Inherit from class AND implement protocol
 // class Person(Entity, Printable):
 struct Person : Entity {
     // age: int32

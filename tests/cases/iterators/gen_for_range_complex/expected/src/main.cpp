@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def squares_plus(n: int32) -> Iterator[int32]:
-//     yield -1
+//     yield -1                                    # -> S_RESUME_0
 //     for i in range(n):
-//         yield i * i
+//         yield i * i                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i * i
         __state = S_JOIN_0;
         continue;
     }

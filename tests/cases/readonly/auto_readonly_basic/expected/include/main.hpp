@@ -32,7 +32,6 @@ struct Buffer {
     // def as_span(self) -> Span[auto_readonly[int32]]:
     std::span<const int32_t> as_span() const;
 
-    // # __getitem__ is implicitly readonly; returns int32 (value type), no dual overload needed
     // def __getitem__(self, index: int32) -> int32:
     int32_t __getitem__(int32_t index) const;
 

@@ -8,11 +8,11 @@ Sentinel* SHARED{};
 // def gen() -> Iterator[int32]:
 //     with Wrapper() as g:
 //         pass
-//     yield 1
-//     yield g.n
+//     yield 1                    # -> S_RESUME_0
+//     yield g.n                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __ctx_1 = Wrapper();
         g.emplace(__ctx_1.__enter__());
         try {
@@ -29,11 +29,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return (*g).n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield g.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

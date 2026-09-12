@@ -11,6 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def pick(a: Box, b: Box, flag: bool) -> int32:
 int32_t pick(const Box& a, const Box& b, bool flag);
 // def main() -> None:

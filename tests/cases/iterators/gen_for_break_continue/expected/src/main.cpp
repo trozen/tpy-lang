@@ -5,26 +5,26 @@ namespace tpyapp::main {
 
 
 // def filtered(items: list[int32], limit: int32) -> Iterator[int32]:
-//     yield -1
+//     yield -1                                                        # -> S_RESUME_0
 //     for x in items:
 //         if x < 0:
 //             continue
 //         if x >= limit:
 //             break
-//         yield x * 2
+//         yield x * 2                                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x * 2
         __state = S_JOIN_0;
         continue;
     }

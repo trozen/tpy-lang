@@ -11,7 +11,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_boom::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((n > 0)) {
             throw ::tpy::ValueError("bad input");
         }
@@ -33,18 +33,18 @@ __coro_boom boom(::tpy::BigInt n) {
 // async def main_coro() -> None:
 //     c = boom(1)
 //     try:
-//         print(await c)
+//         print(await c)          # -> S_RESUME_0
 //     except ValueError:
 //         print("caught")
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)  # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c.emplace(boom(::tpy::BigInt(1)));
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await c)
         try {
             auto __r0 = ::tpy::poll_with_cancel(c, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -63,7 +63,7 @@ __coro_boom boom(::tpy::BigInt n) {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0.001)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

@@ -18,12 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # A value-typed match capture (int field) rebound in its arm binds BY VALUE (a
-// # fresh copy) rather than aliasing the matched object: the for-loop var and
-// # aug-assign rebinds mutate the local, leaving the subject's field untouched --
-// # matching CPython, where the capture is a fresh local. Regression guard for
-// # the `auto& v = subject.lives` alias write-through miscompile (was TPy `12 3`
-// # vs CPython `12 9`).
 // class Cat:
 struct Cat {
     // lives: int

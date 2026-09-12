@@ -36,8 +36,6 @@ void field_slot();
 // def main() -> None:
 void main();
 
-// # field slot: a literal stored through a record field (a typed VALUE written
-// # to a union field is a lowering reject today, assign.field_write_shape)
 // class Holder:
 struct Holder {
     // v: int32 | int

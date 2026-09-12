@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = n;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -29,7 +29,7 @@ __coro_value value(::tpy::BigInt n) {
 //     total = 0
 //     i = 0
 //     while True:
-//         x = await value(i)
+//         x = await value(i)  # -> S_RESUME_0
 //         if x >= 5:
 //             break
 //         total = total + x
@@ -37,13 +37,13 @@ __coro_value value(::tpy::BigInt n) {
 //     return total
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: x = await value(i)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r0).value();

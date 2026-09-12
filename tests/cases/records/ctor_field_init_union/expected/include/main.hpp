@@ -16,8 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A ctor field initializer reading a union param `A | B` via member access
-// # (after isinstance narrowing) lowers correctly in the member-init list.
 // class A:
 struct A {
     // x: int

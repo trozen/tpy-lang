@@ -8,9 +8,6 @@
 namespace tpyapp::pkg::b {
 
 struct Greeter;
-// # @dynamic protocol re-export: covers the descendant-guard skip for
-// # protocols (mirrors function/variable suppression -- the using-decl
-// # in pkg.hpp would otherwise hit the same parent<->sub include cycle).
 // @dynamic
 // class Greeter(Protocol):
 template<typename T>

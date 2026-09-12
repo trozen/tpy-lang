@@ -14,7 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Auto-declare string fields from __init__
 // class Person:
 struct Person {
     // self.name = name

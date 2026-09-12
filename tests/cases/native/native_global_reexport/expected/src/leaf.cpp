@@ -5,9 +5,6 @@ namespace tpyapp::leaf {
 
 
 // from tpy.extern import native_global
-//
-// GLOBAL_VAL: Final[int32] = native_global("tpy_test_global", binding="C")
-// NORMAL_VAL: Final[int32] = 7
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

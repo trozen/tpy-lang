@@ -22,18 +22,10 @@ struct Box {
     // def __init__(self) -> None:
     Box();
 
-    // # @auto_readonly generates a const-qualified clone alongside the
-    // # mutable original. Both clones have identical positional params
-    // # (just `self`) and identical return types -- the only difference
-    // # is the synthesised `is_readonly` flag.
     // @auto_readonly
     // def get(self) -> int32:
     int32_t get();
 
-    // # @auto_readonly generates a const-qualified clone alongside the
-    // # mutable original. Both clones have identical positional params
-    // # (just `self`) and identical return types -- the only difference
-    // # is the synthesised `is_readonly` flag.
     // @auto_readonly
     // def get(self) -> int32:
     int32_t get() const;

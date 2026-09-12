@@ -17,18 +17,18 @@ Rec make() {
 // def gen_while(n: int) -> Iterator[int]:
 //     i = 0
 //     while make():
-//         yield i
+//         yield i                          # -> S_RESUME_0
 //         i += 1
 //         if i >= n:
 //             break
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_while::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         i = ::tpy::add_check<int32_t>(i, 1);
         if ((i >= n)) {
             __state = S_JOIN_1;
@@ -68,16 +68,16 @@ __gen_gen_while gen_while(::tpy::BigInt n) {
 //         # The suspend inside the branch forces the resumable CFG, not the
 //         # simple-generator peephole.
 //         if make():
-//             yield i
+//             yield i                                                        # -> S_RESUME_0
 //         i += 1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         __state = S_JOIN_1;
         continue;
     }

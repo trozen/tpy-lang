@@ -4,8 +4,6 @@
 namespace tpyapp::consts {
 
 
-// CASELESS: Final[uint32] = uint32(8)
-// DEFAULT_GREETING: Final[str] = "hello"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

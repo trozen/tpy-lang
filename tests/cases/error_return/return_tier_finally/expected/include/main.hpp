@@ -11,6 +11,7 @@ struct NotFound;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(NotFound)
 // def lookup(key: str) -> int32:
 std::expected<int32_t, NotFound> lookup(std::string_view key);
 // def main() -> None:

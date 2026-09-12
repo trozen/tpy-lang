@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def greet() -> str:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)  # -> S_RESUME_0
 //     return "hi"
 ::tpystd::tpy::Poll<std::string> __coro_greet::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();

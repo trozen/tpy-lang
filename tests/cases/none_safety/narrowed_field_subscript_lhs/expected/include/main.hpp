@@ -14,10 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: subscript-LHS receiver (`self.f[i] = v`) on a value-Optional
-// # container field. After `if self.f is None: return`, sema views self.f as
-// # the inner container but storage stays std::optional<vector<...>>, so the
-// # subscript-assign codegen must unwrap before calling __setitem__.
 // class Buffer:
 struct Buffer {
     // items: list[int] | None

@@ -17,16 +17,12 @@ void main();
 // class W[T]:
 template<typename T>
 struct W {
-    // # Sentinel int we actually assign so the snippet has runtime content.
     // tag: int32
     int32_t tag;
-    // # T buried inside a Union -- new walker catches it.
     // via_union: int32 | T
     ::tpy::Union<T, int32_t> via_union;
-    // # T buried inside a Callable's param list -- new walker catches it.
     // via_callable: Callable[[T], int32]
     std::function<int32_t(::tpy::param_val_or_ref_t<T>)> via_callable;
-    // # Sanity: T directly -- always caught.
     // direct: T
     T direct;
 

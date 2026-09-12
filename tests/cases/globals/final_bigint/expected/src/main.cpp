@@ -12,8 +12,6 @@ void main() {
     std::cout << BIG_VALUE << "\n";
 }
 
-// BIG_VALUE: Final[int] = 1000000
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

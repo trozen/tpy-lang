@@ -21,11 +21,6 @@ void caught(const ::tpy::BigInt& which, const Plain& p);
 // def main() -> None:
 void main();
 
-// # A diagnostic inside an `except (A, B):` body is reported ONCE, not once per
-// # expanded arm. The parser clones the body per element and sema analyzes each
-// # clone, so without deduplication the same warning would print twice against the
-// # one source line the user wrote. The warning below is independent of the bound
-// # type, so both clones emit it identically -- the shape dedup must collapse.
 // class Plain:
 struct Plain {
 

@@ -592,14 +592,6 @@ std::string expanduser(std::string_view p) {
 // # than the parent `os` module (importing os here would be an executable-bearing
 // # cyclic import, which TPy rejects).
 // from ._types import stat_result
-//
-// sep: Final[str] = "/"
-// pathsep: Final[str] = ":"
-// extsep: Final[str] = "."
-// curdir: Final[str] = "."
-// pardir: Final[str] = ".."
-// defpath: Final[str] = "/bin:/usr/bin"
-// devnull: Final[str] = "/dev/null"
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

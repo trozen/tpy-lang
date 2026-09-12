@@ -97,6 +97,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 
 namespace tpyapp::main {
 
+// @readonly
 // async def describe(self) -> str:
 struct __coro_Pet_describe {
     int32_t __state;

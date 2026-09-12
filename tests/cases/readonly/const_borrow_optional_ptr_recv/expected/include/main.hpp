@@ -21,8 +21,6 @@ void bump(H* h);
 // def main() -> None:
 void main();
 
-// # A borrow-local off a narrowed pointer-repr Optional param inferred `const H*` must
-// # spell `const` (REF_ALIAS + OPTIONAL_TO_PTR); a mutating function keeps mutable forms.
 // class A:
 struct A {
     // v: int

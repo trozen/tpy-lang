@@ -5,30 +5,30 @@ namespace tpyapp::main {
 
 
 // def gen(xs: list[int32], brk: int32) -> Iterator[int32]:
-//     yield 0
+//     yield 0                                               # -> S_RESUME_0
 //     for x in xs:
 //         if x == brk:
 //             break
 //     else:
-//         yield -1
-//     yield -2
+//         yield -1                                          # -> S_RESUME_1
+//     yield -2                                              # -> S_RESUME_2
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_it_0.emplace((xs).begin());
         __for_end_0.emplace((xs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield -1
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

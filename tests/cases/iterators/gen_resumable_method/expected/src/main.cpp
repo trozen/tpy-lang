@@ -40,20 +40,20 @@ void main() {
 //     i = 0
 //     try:
 //         while i < len(xs):
-//             yield xs[i] + self.base
-//             yield xs[i] * self.base
+//             yield xs[i] + self.base                                  # -> S_RESUME_0
+//             yield xs[i] * self.base                                  # -> S_RESUME_1
 //             i += 1
 //     finally:
 //         print("windowed done")
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield xs[i] + self.base
         try {
             __state = S_RESUME_1;
             return (::tpy::mul_check<int32_t>(::tpy::__getitem__(xs, i), __self.base));
@@ -62,7 +62,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield xs[i] * self.base
         try {
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
@@ -118,19 +118,19 @@ void __gen_Source_windowed::__finally_0() {
 }
 
 // def doubled(self) -> Iterator[int32]:  # tpyc: ok
-//     yield self.base
-//     yield self.base * 2
+//     yield self.base                                # -> S_RESUME_0
+//     yield self.base * 2                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_doubled::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.base;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.base
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(__self.base, 2));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.base * 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

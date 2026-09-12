@@ -10,32 +10,32 @@ namespace tpyapp::main {
 //             case 0:
 //                 break
 //             case v if v > 10:
-//                 yield v
-//                 yield v + 100
+//                 yield v                      # -> S_RESUME_0
+//                 yield v + 100                # -> S_RESUME_1
 //             case v:
-//                 yield v
-//     yield -1
+//                 yield v                      # -> S_RESUME_2
+//     yield -1                                 # -> S_RESUME_3
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((items).begin());
         __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield v
         __state = S_RESUME_1;
         return ((v) + (::tpy::BigInt(100)));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v + 100
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield v
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield -1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

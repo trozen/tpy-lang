@@ -56,7 +56,7 @@ template <::tpystd::typing::Iterable<::tpy::BigInt> T_items>
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_total<T_items>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         s = 0;
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

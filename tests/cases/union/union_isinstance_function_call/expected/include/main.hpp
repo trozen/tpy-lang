@@ -19,7 +19,6 @@ void greet_cat(const Cat& c);
 // def main() -> None:
 void main();
 
-// # Pass narrowed union var to function expecting the member type
 // class Dog:
 struct Dog {
     // name: str

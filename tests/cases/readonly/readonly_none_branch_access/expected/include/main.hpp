@@ -11,8 +11,10 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def observe_field(flag: bool, p: Box) -> None:
 void observe_field(bool flag, const Box& p);
+// @readonly
 // def observe_method(flag: bool, p: Box) -> None:
 void observe_method(bool flag, const Box& p);
 

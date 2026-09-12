@@ -51,6 +51,7 @@ void comprehension(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x);
 void closure(bool choose_text);
 // def cleanup_reads(x: str | int32) -> None:
 void cleanup_reads(const ::tpy::Union<int32_t, std::string>& x);
+// @error_return(Err)
 // def error_read(x: bytearray | int32) -> int32:
 std::expected<int32_t, Err> error_read(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x);
 // def conditional_reads(x: str | int32, counter: Counter) -> None:
@@ -91,12 +92,10 @@ struct Reader {
     // value: str
     std::string value;
 
-    // # Constructor: the indexed scalar is consumed by a field store.
     // def __init__(self, x: str | int32) -> None:
     Reader() = default;
     explicit Reader(const ::tpy::Union<int32_t, std::string>& x);
 
-    // # Method: readonly receiver inference must not affect scalar indexing.
     // def read(self, x: str | int32) -> str:
     std::string read(const ::tpy::Union<int32_t, std::string>& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Reader";

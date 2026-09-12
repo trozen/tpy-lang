@@ -10,7 +10,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << "background ran" << "\n";
         done.set_result(0);
         __state = S_DONE;
@@ -32,11 +32,11 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 //     t: Task[None] = asyncio.create_task(background(done))
 //     # Drop the handle without awaiting; the executor still drives the task.
 //     del t
-//     _ = await done
+//     _ = await done                                                           # -> S_RESUME_0
 //     print("main done")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         done.emplace(::tpystd::asyncio::Future<int32_t>());
         t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background((*done)))));
         { auto __del_sink = std::move(t); }
@@ -44,7 +44,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: _ = await done
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         _ = std::move(__r0).value();

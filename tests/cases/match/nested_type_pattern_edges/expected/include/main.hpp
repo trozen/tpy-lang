@@ -118,7 +118,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// # --- Or-pattern with union field guards on same variant ---
 // class Tag:
 struct Tag {
     // label: str
@@ -135,7 +134,6 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
-// # --- Primitive types as union field sub-patterns (float, bool) ---
 // class FloatHolder:
 struct FloatHolder {
     // value: float | str

@@ -19,9 +19,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A 2-member union exhausted by an if/elif: the elif's isinstance folds to a
-// # static-true branch, so its dead implicit-else must NOT emit a (wrong-type)
-// # extraction of the member the outer `if` already excluded.
 // class Dog:
 struct Dog {
     // self.n = n

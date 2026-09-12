@@ -41,13 +41,13 @@ void main() {
 // def items(self) -> Iterator[int]:
 //     match self.n:  # tpyc: ok
 //         case 0:
-//             yield 10
-//             yield 20
+//             yield 10               # -> S_RESUME_0
+//             yield 20               # -> S_RESUME_1
 //         case _:
-//             yield 30
+//             yield 30               # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Counter_items::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = __self.n;
         if (__match_subject_1 == 0) {
             __state = S_RESUME_0;
@@ -59,15 +59,15 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Counter_items::__next__
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 10
         __state = S_RESUME_1;
         return ::tpy::BigInt(20);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 20
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 30
         __state = S_JOIN_0;
         continue;
     }

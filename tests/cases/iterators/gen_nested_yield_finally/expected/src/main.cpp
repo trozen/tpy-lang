@@ -7,18 +7,18 @@ namespace tpyapp::main {
 // def gen() -> Iterator[int]:
 //     try:
 //         try:
-//             yield 1
+//             yield 1          # -> S_RESUME_0
 //         finally:
-//             yield 2
+//             yield 2          # -> S_RESUME_1
 //     finally:
-//         yield 3
+//         yield 3              # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             try {
                 __state = S_JOIN_4;
@@ -34,7 +34,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         try {
             __state = S_JOIN_3;
             continue;
@@ -44,7 +44,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 3
         __state = S_JOIN_0;
         continue;
     }

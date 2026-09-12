@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) + (::tpy::BigInt(1)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -34,17 +34,17 @@ std::unique_ptr<::tpystd::coro::Cancellable<::tpy::BigInt>> make(const ::tpy::Bi
 // async def spawn_via(factory: Callable[[int], Own[Cancellable[int]]], n: int) -> int:
 //     coro = factory(n)
 //     t = asyncio.create_task(coro)
-//     return await t
+//     return await t                                                                    # -> S_RESUME_0
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_spawn_via::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         coro = factory(n);
         t.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(std::move(coro)));
         __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         auto __ret0 = std::move(__r0).value();

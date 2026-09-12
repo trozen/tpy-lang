@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def countdown(start: int32) -> Iterator[int32]:
-//     yield 999
+//     yield 999                                    # -> S_RESUME_0
 //     for i in range(start, 0, -1):
-//         yield i
+//         yield i                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 999;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 999
         __for_i_0.emplace(static_cast<int32_t>(start));
         __for_stop_0.emplace(static_cast<int32_t>(0));
         __for_step_0.emplace(static_cast<int32_t>(-1));
@@ -22,7 +22,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i
         __state = S_JOIN_0;
         continue;
     }

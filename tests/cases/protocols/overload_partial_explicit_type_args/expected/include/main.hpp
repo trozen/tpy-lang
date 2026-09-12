@@ -9,12 +9,14 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @dispatch
 // def stub[T, U](fn: Fn[[T], U]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
 int32_t stub(__F0&& fn);
+// @dispatch
 // def stub(val: str) -> str:
 std::string stub(std::string_view val);
 // def main() -> None:

@@ -5,21 +5,21 @@ namespace tpyapp::main {
 
 
 // def doubled_range(r: NumberRange) -> Iterator[int32]:
-//     yield -1
+//     yield -1                                           # -> S_RESUME_0
 //     for x in r:
-//         yield x * 2
+//         yield x * 2                                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         ::tpy::resumable_iter_init(__for_itr_0, r);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x * 2
         __state = S_JOIN_0;
         continue;
     }

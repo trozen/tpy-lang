@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = ((n) * (::tpy::BigInt(10)));
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
@@ -28,13 +28,13 @@ __coro_sub sub(::tpy::BigInt n) {
 // async def caller(tag: int) -> int:
 //     match tag:
 //         case 0:
-//             return await sub(1)
+//             return await sub(1)     # -> S_RESUME_0
 //         case v:
-//             r = await sub(v)
+//             r = await sub(v)        # -> S_RESUME_1
 //             return r + v
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = tag;
         if (__match_subject_1 == 0) {
             __sub_0.emplace(::tpy::BigInt(1));
@@ -49,7 +49,7 @@ __coro_sub sub(::tpy::BigInt n) {
         ::std::unreachable();
         __builtin_unreachable();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await sub(1)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -57,7 +57,7 @@ __coro_sub sub(::tpy::BigInt n) {
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__ret0));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: r = await sub(v)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         r = std::move(__r1).value();

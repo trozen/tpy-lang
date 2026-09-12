@@ -13,26 +13,36 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(E)
 // def parse(s: str) -> int:
 std::expected<::tpy::BigInt, E> parse(std::string_view s);
+// @error_return(E)
 // def get_name(s: str) -> str:
 std::expected<std::string, E> get_name(std::string_view s);
+// @error_return(E)
 // def add(a: str, b: str) -> int:
 std::expected<::tpy::BigInt, E> add(std::string_view a, std::string_view b);
+// @error_return(E)
 // def mul3(a: str, b: str, c: str) -> int:
 std::expected<::tpy::BigInt, E> mul3(std::string_view a, std::string_view b, std::string_view c);
+// @error_return(E)
 // def as_arg(s: str) -> int:
 std::expected<::tpy::BigInt, E> as_arg(std::string_view s);
+// @error_return(E)
 // def greet(s: str) -> str:
 std::expected<std::string, E> greet(std::string_view s);
+// @error_return(E)
 // def positive(x: int, y: int) -> Own[Point]:
 std::expected<Point, E> positive(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
+// @error_return(E)
 // def modify(x: int, y: int) -> Own[Point]:
 std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y);
 // def main() -> None:
 void main();
+// @error_return(ParseErr)
 // def checked_parse(s: str) -> int:
 std::expected<::tpy::BigInt, ParseErr> checked_parse(std::string_view s);
+// @error_return(ParseErr)
 // def checked_add(a: str, b: str) -> int:
 std::expected<::tpy::BigInt, ParseErr> checked_add(std::string_view a, std::string_view b);
 // def test_as_binding() -> None:

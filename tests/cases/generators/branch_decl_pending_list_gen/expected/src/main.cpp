@@ -9,11 +9,11 @@ namespace tpyapp::main {
 //         xs = [1, 2]
 //     else:
 //         xs = [3]
-//     yield len(xs)
-//     yield xs[0]
+//     yield len(xs)                   # -> S_RESUME_0
+//     yield xs[0]                     # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (c) {
             xs.emplace(std::vector<int32_t>{1, 2});
         } else {
@@ -22,11 +22,11 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__((*xs)));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield len(xs)
         __state = S_RESUME_1;
         return ::tpy::__getitem__((*xs), 0);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield xs[0]
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

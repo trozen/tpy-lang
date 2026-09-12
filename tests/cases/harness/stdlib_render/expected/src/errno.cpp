@@ -16,27 +16,6 @@ namespace tpystd::errno_mod {
 // """
 //
 // from tpy.extern import native_global
-//
-// # Network-domain constants (defined in socket_impl.cpp).
-// EAGAIN:       Final[int32] = native_global("tpy_const_eagain", binding="C")
-// # EWOULDBLOCK == EAGAIN on Linux and macOS/BSD (POSIX allows them to differ,
-// # but no supported platform does).
-// EWOULDBLOCK:  Final[int32] = native_global("tpy_const_eagain", binding="C")
-// EINPROGRESS:  Final[int32] = native_global("tpy_const_einprogress", binding="C")
-// EPIPE:        Final[int32] = native_global("tpy_const_epipe", binding="C")
-// ECONNRESET:   Final[int32] = native_global("tpy_const_econnreset", binding="C")
-// ECONNREFUSED: Final[int32] = native_global("tpy_const_econnrefused", binding="C")
-// ECONNABORTED: Final[int32] = native_global("tpy_const_econnaborted", binding="C")
-//
-// # File-domain constants (defined in os_impl.cpp).
-// ENOENT:       Final[int32] = native_global("tpy_const_enoent", binding="C")
-// EEXIST:       Final[int32] = native_global("tpy_const_eexist", binding="C")
-// EACCES:       Final[int32] = native_global("tpy_const_eacces", binding="C")
-// EPERM:        Final[int32] = native_global("tpy_const_eperm", binding="C")
-// EISDIR:       Final[int32] = native_global("tpy_const_eisdir", binding="C")
-// ENOTDIR:      Final[int32] = native_global("tpy_const_enotdir", binding="C")
-// EBADF:        Final[int32] = native_global("tpy_const_ebadf", binding="C")
-// ETIMEDOUT:    Final[int32] = native_global("tpy_const_etimedout", binding="C")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

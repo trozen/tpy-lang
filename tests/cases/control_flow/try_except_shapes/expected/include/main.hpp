@@ -28,13 +28,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Throw-tier try/except shapes: multi-handler catch arms, bare except,
-// # as-binding field reads, else via the goto label, except+finally (handler
-// # returns re-emitting the finally), bare re-raise, raise ctor/no-arg forms,
-// # and a raise-terminated finally overriding the try's return.
-// # raising_finally's raise arg is deliberately side-effect-free: the emitted
-// # shape runs a raising finally twice after a return (known parity bug, see
-// # BUGS.md), which is observable only through side effects.
 // class AppError(Exception):
 struct AppError : ::tpy::Exception {
     // code: int

@@ -72,17 +72,17 @@ struct __coro_consume {
 };
 // async def consume(it: Iterable[int32]) -> None:
 //     for x in it:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)                   # -> S_RESUME_0
 //         print(x)
 template <::tpystd::typing::Iterable<int32_t> T_it>
 ::tpystd::tpy::Poll<::std::monostate> __coro_consume<T_it>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -145,18 +145,18 @@ struct __coro_Runner_go {
 
 // async def go(self, extra: Iterable[int32]) -> None:
 //     local: list[int32] = [7, 8]
-//     await consume(local)
-//     await consume(extra)
+//     await consume(local)                             # -> S_RESUME_0
+//     await consume(extra)                             # -> S_RESUME_1
 template <::tpystd::typing::Iterable<int32_t> T_extra>
 ::tpystd::tpy::Poll<::std::monostate> __coro_Runner_go<T_extra>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         local.emplace(std::vector<int32_t>{7, 8});
         __sub_0.emplace((*local));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await consume(local)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -165,7 +165,7 @@ template <::tpystd::typing::Iterable<int32_t> T_extra>
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await consume(extra)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

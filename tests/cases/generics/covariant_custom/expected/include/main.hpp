@@ -77,8 +77,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// # Two type params: T (covariant), N (invariant).
-// # Uses Ptr[T] (raw pointer is naturally covariant in C++) and N for a tag.
 // class Tagged[T, N](Covariant[T]):
 template<typename T, typename N>
 struct Tagged {

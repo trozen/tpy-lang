@@ -20,7 +20,6 @@ std::string describe_exhaustive(const Point& p);
 // def main() -> None:
 void main();
 
-// # warning: non-exhaustive match on record (guarded and literal-field arms only)
 // class Point:
 struct Point {
     // x: int

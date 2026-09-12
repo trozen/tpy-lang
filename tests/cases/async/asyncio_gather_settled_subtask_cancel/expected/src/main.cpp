@@ -8,18 +8,18 @@ namespace tpyapp::main {
 //     try:
 //         # 1s never elapses -- the canceller fires at ~2ms; the wide margin
 //         # keeps the cancel-before-completion race deterministic under load.
-//         await asyncio.sleep(1.0)
+//         await asyncio.sleep(1.0)                                             # -> S_RESUME_0
 //         return int32(1)
 //     except asyncio.CancelledError:
 //         # Propagate so the gather observes it and collects it.
 //         raise
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(1.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -59,16 +59,16 @@ __coro_slow slow() {
 }
 
 // async def fast() -> int32:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)  # -> S_RESUME_0
 //     return int32(2)
 ::tpystd::tpy::Poll<int32_t> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -89,16 +89,16 @@ __coro_fast fast() {
 }
 
 // async def canceller(target: Own[asyncio.Task[int32]]) -> None:
-//     await asyncio.sleep(0.002)
+//     await asyncio.sleep(0.002)                                  # -> S_RESUME_0
 //     target.cancel()
 ::tpystd::tpy::Poll<::std::monostate> __coro_canceller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.002)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.002)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -130,10 +130,10 @@ __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target) {
 //     tasks: list[asyncio.Task[int32]] = []
 //     tasks.append(a.clone())
 //     tasks.append(b.clone())
-//     return await asyncio.gather_list_settled(tasks)
+//     return await asyncio.gather_list_settled(tasks)                         # -> S_RESUME_0
 ::tpystd::tpy::Poll<std::vector<::tpystd::asyncio::Settled<int32_t>>> __coro_gather_helper::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow())));
         b.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fast())));
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(canceller((*a).clone())));
@@ -144,7 +144,7 @@ __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await asyncio.gather_list_settled(tasks)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<::tpystd::asyncio::Settled<int32_t>>>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -164,7 +164,7 @@ __coro_gather_helper gather_helper() {
 }
 
 // async def main_coro() -> None:
-//     results = await gather_helper()
+//     results = await gather_helper()                    # -> S_RESUME_0
 //     print("count", len(results))
 //     for r in results:
 //         if r.exception is not None:
@@ -178,12 +178,12 @@ __coro_gather_helper gather_helper() {
 //             print("entry: ok", r.value.get())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: results = await gather_helper()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         results.emplace(std::move(__r0).value());

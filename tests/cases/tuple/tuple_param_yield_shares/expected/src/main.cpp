@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // def gen(p: tuple[int32, Box]) -> Iterator[tuple[int32, Box]]:
-//     yield p
+//     yield p                                                    # -> S_RESUME_0
 std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return p;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield p
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

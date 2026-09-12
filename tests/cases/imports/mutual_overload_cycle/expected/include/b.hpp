@@ -10,8 +10,10 @@ namespace tpyapp::b {
 
 inline constexpr std::string_view __name__ = "b";
 
+// @overload
 // def g(x: int32) -> int32: ...
 int32_t g(int32_t x);
+// @overload
 // def g(x: str) -> int32: ...
 int32_t g(std::string_view x);
 // def relay(n: int32) -> int32:

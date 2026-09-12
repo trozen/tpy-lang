@@ -6,22 +6,22 @@ namespace tpyapp::main {
 
 // async def main_coro() -> None:
 //     c = Container("hi")
-//     a = await c.echo(int32(7))  # tpyc: type(int32)
+//     a = await c.echo(int32(7))  # tpyc: type(int32)                      # -> S_RESUME_0
 //     print(a)
-//     b = await c.echo("world")  # tpyc: type(str)
+//     b = await c.echo("world")  # tpyc: type(str)                         # -> S_RESUME_1
 //     print(b)
-//     p = await c.labeled(int32(42))  # tpyc: type(/tuple\[str, int32\]/)
+//     p = await c.labeled(int32(42))  # tpyc: type(/tuple\[str, int32\]/)  # -> S_RESUME_2
 //     print(p[0])
 //     print(p[1])
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c.emplace(Container("hi"));
         __sub_0.emplace((*c), 7);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: a = await c.echo(int32(7))  # tpyc: type(int32)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
@@ -32,7 +32,7 @@ namespace tpyapp::main {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: b = await c.echo("world")  # tpyc: type(str)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
@@ -42,7 +42,7 @@ namespace tpyapp::main {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: p = await c.labeled(int32(42))  # tpyc: type(/tuple\[str, int32\]/)
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p = std::move(__r2).value();

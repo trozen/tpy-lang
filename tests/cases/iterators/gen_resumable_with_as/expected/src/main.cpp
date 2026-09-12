@@ -8,19 +8,19 @@ namespace tpyapp::main {
 //     with Resource(7) as v:
 //         i: int32 = 0
 //         while i < n:
-//             yield i
+//             yield i                    # -> S_RESUME_0
 //             i += 1
-//         yield v.val
+//         yield v.val                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Resource(7));
         v.emplace((*__with_ctx_0).__enter__());
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         try {
             i = ::tpy::add_check<int32_t>(i, 1);
             __state = S_JOIN_0;
@@ -33,7 +33,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield v.val
         bool __fin_ran_2 = false;
         try {
             __fin_ran_2 = true;

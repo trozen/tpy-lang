@@ -28,11 +28,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main():
 void main();
 
-// # Truthiness of a pointer-repr Optional[record] narrowed past None must
-// # dispatch the record's __bool__/__len__ (regression: it emitted a bare
-// # non-null pointer test, always true once narrowed). Covers the not / while /
-// # and siblings that recurse into the same truthy leaf, plus a plain record
-// # (no dunder -> always truthy, matching CPython's object default).
 // class Flag:
 struct Flag {
     // self.on = on

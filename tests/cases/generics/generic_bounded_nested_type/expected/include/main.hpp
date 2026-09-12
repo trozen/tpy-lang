@@ -40,7 +40,6 @@ inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
     return os;
 }
 
-// # Bound is ItemsProvider[int32], so items() must return list[int32]
 // class Wrapper[V: ItemsProvider[int32]]:
 template<ItemsProvider<int32_t> V>
 struct Wrapper {

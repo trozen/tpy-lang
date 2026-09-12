@@ -17,8 +17,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Method call (not just field access) through an implicit-else union narrowing:
-// # dispatch on the narrowed member must resolve to that member's method.
 // class Cat:
 struct Cat {
     // self.a = a

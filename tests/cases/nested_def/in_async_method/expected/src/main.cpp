@@ -35,12 +35,12 @@ void main() {
 //         self.n += delta
 //
 //     bump()
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)            # -> S_RESUME_0
 //     bump()
 //     return self.n
 ::tpystd::tpy::Poll<int32_t> __coro_Counter_bump_twice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         delta = 0;
         // def bump: frame member
         bump();
@@ -48,7 +48,7 @@ void main() {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -76,21 +76,21 @@ void __coro_Counter_bump_twice::bump() {
 //         step += self.n
 //         return step
 //
-//     yield next_offset()
-//     yield next_offset()
+//     yield next_offset()              # -> S_RESUME_0
+//     yield next_offset()              # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Counter_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         step = 100;
         // def next_offset: frame member
         __state = S_RESUME_0;
         return next_offset();
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield next_offset()
         __state = S_RESUME_1;
         return next_offset();
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield next_offset()
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

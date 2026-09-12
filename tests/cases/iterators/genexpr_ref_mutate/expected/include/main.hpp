@@ -14,10 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A generator expression over a concrete reference type hands out a live borrow
-// # (zero-copy), like a def-generator's Iterator[T]: consumer mutation through the
-// # yielded element propagates to the source -- CPython semantics (was a silent
-// # copy before the declaration-driven yield ABI).
 // class Node:
 struct Node {
     // val: int

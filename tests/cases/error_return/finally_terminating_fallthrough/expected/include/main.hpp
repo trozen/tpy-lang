@@ -11,10 +11,13 @@ struct E;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(E)
 // def may_fail(x: int32) -> int32:
 std::expected<int32_t, E> may_fail(int32_t x);
+// @error_return(E)
 // def falls_through() -> int32:
 std::expected<int32_t, E> falls_through();
+// @error_return(E)
 // def returns_from_finally() -> int32:
 std::expected<int32_t, E> returns_from_finally();
 // def call_it() -> None:

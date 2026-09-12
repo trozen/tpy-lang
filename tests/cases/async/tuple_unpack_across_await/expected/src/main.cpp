@@ -12,11 +12,11 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
 
 // async def f() -> int:
 //     a, b = make_pair()
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)  # -> S_RESUME_0
 //     return a + b
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = make_pair();
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
@@ -24,7 +24,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> make_pair() {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();

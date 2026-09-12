@@ -54,6 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
+// @readonly
 // async def total(self) -> int32:
 struct __coro_Container_total {
     int32_t __state;

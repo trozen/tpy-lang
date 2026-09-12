@@ -78,6 +78,10 @@ struct __coro_count_mono {
         return os << "<coroutine count_mono>";
     }
 };
+// # async body with the same param: the frame-param gate admits it too. NOT
+// # awaited -- every drive shape for such a coroutine still rejects elsewhere
+// # (inline await at res.await_param_type:own_protocol.static, create_task /
+// # asyncio.run at method.qualcall.arg.own).
 // async def count_mono(items: Own[Iterable[int32]]) -> int32:  # tpyc: warning(/never consumed/)
 //     s: int32 = 0
 //     for _item in items:
@@ -87,7 +91,7 @@ template <::tpystd::typing::Iterable<int32_t> T_items>
 ::tpystd::tpy::Poll<int32_t> __coro_count_mono<T_items>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         s = 0;
         auto& __src_0 = items;
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -141,26 +145,29 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T, T_items>, std::t
         return os << "<generator each>";
     }
 };
+// # free generic generator: the admitted `Own[static P]` frame param. Two yields
+// # per element keep every generator here off the simple-generator lambda
+// # peephole, so the frame is the thing under test.
 // def each[T](items: Own[Iterable[T]]) -> Iterator[tuple[int32, T]]:  # tpyc: warning(/never consumed/)
 //     i: int32 = 0
 //     for item in items:
-//         yield (i, item)
-//         yield (i, item)
+//         yield (i, item)                                                                                # -> S_RESUME_0
+//         yield (i, item)                                                                                # -> S_RESUME_1
 //         i += 1
 template <typename T, ::tpystd::typing::Iterable<T> T_items>
 std::expected<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>, ::tpy::StopIteration> __gen_each<T, T_items>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield (i, item)
         __state = S_RESUME_1;
         return std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>((*item))};
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield (i, item)
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -215,26 +222,29 @@ struct __gen_each_mono : public ::tpy::next_iter_mixin<__gen_each_mono<T_items>,
         return os << "<generator each_mono>";
     }
 };
+// # monomorphic twin: the same body at a concrete element type. NOT called -- its
+// # call site still rejects at the untouched call-arg gate
+// # (call.arg_shape.own_protocol.static), so only the body is exercised here.
 // def each_mono(items: Own[Iterable[int32]]) -> Iterator[tuple[int32, int32]]:  # tpyc: warning(/never consumed/)
 //     i: int32 = 0
 //     for item in items:
-//         yield (i, item)
-//         yield (i, item)
+//         yield (i, item)                                                                                          # -> S_RESUME_0
+//         yield (i, item)                                                                                          # -> S_RESUME_1
 //         i += 1
 template <::tpystd::typing::Iterable<int32_t> T_items>
 std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_each_mono<T_items>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = 0;
         ::tpy::resumable_iter_init(__for_itr_0, items);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield (i, item)
         __state = S_RESUME_1;
         return std::tuple<int32_t, int32_t>{i, item};
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield (i, item)
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;

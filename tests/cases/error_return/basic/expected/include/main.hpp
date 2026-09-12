@@ -11,6 +11,7 @@ struct NotFound;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(NotFound)
 // def find_index(items: list[int32], target: int32) -> int32:
 std::expected<int32_t, NotFound> find_index(const std::vector<int32_t>& items, int32_t target);
 // def main() -> None:

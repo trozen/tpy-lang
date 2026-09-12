@@ -19,8 +19,6 @@ void main() {
 // from label_macro import label
 // from const_mod import VERSION
 //
-// NAME: Final[str] = "tpy"
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // async def slow() -> int:
 //     try:
-//         await asyncio.sleep(1.0)
+//         await asyncio.sleep(1.0)    # -> S_RESUME_0
 //         return 42
 //     finally:
-//         await asyncio.sleep(0.001)
+//         await asyncio.sleep(0.001)  # -> S_RESUME_1
 //         print("cleanup-ran")
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(1.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -34,7 +34,7 @@ namespace tpyapp::main {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await asyncio.sleep(0.001)
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
@@ -86,18 +86,18 @@ __coro_slow slow() {
 
 // async def main_coro() -> None:
 //     try:
-//         v = await asyncio.wait_for(slow(), 0.01)
+//         v = await asyncio.wait_for(slow(), 0.01)  # -> S_RESUME_0
 //         print("not reached")
 //         print(v)
 //     except TimeoutError:
 //         print("timed-out")
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: v = await asyncio.wait_for(slow(), 0.01)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();

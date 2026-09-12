@@ -35,7 +35,6 @@ struct SSLRawIO;
 
 extern std::vector<std::string>* _ca_probe_paths;
 inline constexpr std::string_view __name__ = "ssl";
-// # CPython ssl.CERT_* values.
 // CERT_NONE: Final[int32] = 0
 inline constexpr int32_t CERT_NONE = 0;
 // CERT_REQUIRED: Final[int32] = 2

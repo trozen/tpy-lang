@@ -11,6 +11,7 @@ struct Ops;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @readonly
 // def add_one(x: int32) -> int32:
 int32_t add_one(int32_t x);
 

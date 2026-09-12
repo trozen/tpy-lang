@@ -71,7 +71,6 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
-// # Non-generic user type as factory default
 // @dataclass
 // class Canvas:
 struct Canvas {

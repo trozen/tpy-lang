@@ -16,8 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Both direct parents define greet(); MRO-aware super() picks the MRO-first
-// # one (Speaker), not an ambiguity error.
 // class Speaker:
 struct Speaker {
 

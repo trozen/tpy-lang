@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // async def producer(e: Event) -> None:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)         # -> S_RESUME_0
 //     e.set()
 //     print("producer set")
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -37,16 +37,16 @@ __coro_producer producer(::tpystd::asyncio::Event& e) {
 }
 
 // async def consumer(e: Event) -> None:
-//     await e
+//     await e                            # -> S_RESUME_0
 //     print("consumer woke")
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0 = &(e);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await e
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -67,16 +67,16 @@ __coro_consumer consumer(::tpystd::asyncio::Event& e) {
 }
 
 // async def fast_path_consumer(e: Event) -> None:
-//     await e
+//     await e                                      # -> S_RESUME_0
 //     print("fast-path woke")
 ::tpystd::tpy::Poll<::std::monostate> __coro_fast_path_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0 = &(e);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await e
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -111,13 +111,13 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
 //     # scheduler under load: main resumes only after "consumer woke".
 //     t = asyncio.create_task(consumer(e))
 //     asyncio.create_task(producer(e))
-//     await t
+//     await t                                                             # -> S_RESUME_0
 //     print(e.is_set())
 //     e.clear()
 //     print(e.is_set())
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         e_fast.emplace(::tpystd::asyncio::Event());
         std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
         (*e_fast).set();
@@ -132,7 +132,7 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await t
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

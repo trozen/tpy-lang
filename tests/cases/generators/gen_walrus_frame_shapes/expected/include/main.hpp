@@ -93,7 +93,6 @@ inline std::ostream& operator<<(std::ostream& os, const Boom& obj) {
     return os;
 }
 
-// # -- generator METHOD: the frame carries `__self` too, same field machinery.
 // class Src:
 struct Src {
     // n: int32

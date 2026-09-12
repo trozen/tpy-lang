@@ -9,12 +9,16 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @export
 // def push(xs: list[int], v: int) -> None:  # tpyc: warning(/list parameter 'xs' is copied in.*not visible to the caller/)
 void push(std::vector<::tpy::BigInt>& xs, const ::tpy::BigInt& v);
+// @export
 // def fill(d: dict[str, int]) -> None:  # tpyc: warning(/dict parameter 'd' is copied in.*not visible to the caller/)
 void fill(::tpy::ordered_map<std::string, ::tpy::BigInt>& d);
+// @export
 // def add_one(s: set[int], v: int) -> None:  # tpyc: warning(/set parameter 's' is copied in.*not visible to the caller/)
 void add_one(::tpy::ordered_set<::tpy::BigInt>& s, const ::tpy::BigInt& v);
+// @export
 // def read_only(s: set[int]) -> int:  # tpyc: ok
 ::tpy::BigInt read_only(const ::tpy::ordered_set<::tpy::BigInt>& s);
 

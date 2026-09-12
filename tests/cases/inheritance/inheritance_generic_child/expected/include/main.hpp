@@ -16,7 +16,6 @@ extern Box<int32_t>* b;
 extern Wrapper<std::string>* w;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Case 1: Generic class inheriting from non-generic class
 // class Animal:
 struct Animal {
     // name: str
@@ -33,7 +32,6 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
     return os;
 }
 
-// # Case 2: Generic class inheriting from concrete generic parent
 // class Container[T]:
 template<typename T>
 struct Container {

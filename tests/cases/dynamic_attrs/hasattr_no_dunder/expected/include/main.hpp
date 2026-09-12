@@ -14,8 +14,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # D16 v1.5 phase 7: hasattr on a class without __getattr__: declared members
-// # fold to True, anything else folds to False at compile time (no runtime call).
 // class Point:
 struct Point {
     // x: int

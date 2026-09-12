@@ -36,7 +36,6 @@ inline constexpr int32_t AND_ = (static_cast<int32_t>(A & B));
 inline constexpr int32_t OR_ = (static_cast<int32_t>(A | B));
 // XOR: Final[int32] = A ^ B
 inline constexpr int32_t XOR = (static_cast<int32_t>(A ^ B));
-// # Works on int64 too
 // X: Final[int64] = 100
 inline constexpr int64_t X = 100;
 // Y: Final[int64] = 7

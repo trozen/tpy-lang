@@ -17,15 +17,10 @@ extern std::vector<std::string>* argv;
 extern ::tpy::StdStream* stdout;
 extern ::tpy::StdStream* stderr;
 inline constexpr std::string_view __name__ = "sys";
-// # CPython's value on 64-bit platforms (2**63 - 1). TPy targets 64-bit;
-// # a 32-bit target would need a per-target constant.
 // maxsize: Final[int] = 9223372036854775807
 extern const ::tpy::BigInt maxsize;
-// # TPy targets little-endian (x86-64 / ARM64), same assumption as maxsize.
 // byteorder: Final[str] = "little"
 inline constexpr std::string_view byteorder = "little";
-// # U+10FFFF -- fixed by the Unicode standard, so target-independent (unlike
-// # maxsize / byteorder).
 // maxunicode: Final[int] = 0x10FFFF
 extern const ::tpy::BigInt maxunicode;
 

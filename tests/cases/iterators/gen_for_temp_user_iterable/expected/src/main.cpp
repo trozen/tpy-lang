@@ -11,22 +11,22 @@ Holder make() {
 }
 
 // def g_resumable() -> Iterator[int32]:
-//     yield 0
+//     yield 0                            # -> S_RESUME_0
 //     for x in make():  # tpyc: ok
-//         yield x
+//         yield x                        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_src_0.emplace(make());
         ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

@@ -8,21 +8,21 @@ namespace tpyapp::main {
 //     try:
 //         match n:
 //             case 0:
-//                 yield 10
+//                 yield 10           # -> S_RESUME_0
 //             case _:
-//                 yield 20
-//                 yield 21
+//                 yield 20           # -> S_RESUME_1
+//                 yield 21           # -> S_RESUME_2
 //     finally:
 //         print("cleanup")
-//     yield 99
+//     yield 99                       # -> S_RESUME_3
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 10
         try {
             __state = S_JOIN_0;
             continue;
@@ -31,7 +31,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 20
         try {
             __state = S_RESUME_2;
             return ::tpy::BigInt(21);
@@ -40,7 +40,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 21
         try {
             __state = S_JOIN_0;
             continue;
@@ -49,7 +49,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             throw;
         }
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield 99
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

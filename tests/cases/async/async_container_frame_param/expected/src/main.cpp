@@ -5,17 +5,17 @@ namespace tpyapp::main {
 
 
 // async def fill_buf(b: bytearray) -> int32:  # tpyc: ok
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                              # -> S_RESUME_0
 //     b.append(66)
 //     return len(b)
 ::tpystd::tpy::Poll<int32_t> __coro_fill_buf::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -37,17 +37,17 @@ __coro_fill_buf fill_buf(::tpy::ByteArray& b) {
 }
 
 // async def bump_arr(a: Array[int32, 2]) -> int32:  # tpyc: ok
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                    # -> S_RESUME_0
 //     a[0] = a[0] + 5
 //     return a[0]
 ::tpystd::tpy::Poll<int32_t> __coro_bump_arr::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -69,17 +69,17 @@ __coro_bump_arr bump_arr(std::array<int32_t, 2>& a) {
 }
 
 // async def push_list(xs: list[int32]) -> int32:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                      # -> S_RESUME_0
 //     xs.append(9)
 //     return len(xs)
 ::tpystd::tpy::Poll<int32_t> __coro_push_list::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -104,22 +104,22 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
 //     # The coroutine mutates through its captured param; the caller's own
 //     # object must show the change, which a by-value frame capture would hide.
 //     b = bytearray(b"a")
-//     print(await fill_buf(b), len(b))
+//     print(await fill_buf(b), len(b))                                           # -> S_RESUME_0
 //
 //     a = Array[int32, 2]()
-//     print(await bump_arr(a), a[0])
+//     print(await bump_arr(a), a[0])                                             # -> S_RESUME_1
 //
 //     xs = [1]
-//     print(await push_list(xs), len(xs))
+//     print(await push_list(xs), len(xs))                                        # -> S_RESUME_2
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         b.emplace(::tpy::ByteArray(::tpy::bytes_literal("a", 1)));
         __sub_0.emplace((*b));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await fill_buf(b), len(b))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -130,7 +130,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await bump_arr(a), a[0])
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -141,7 +141,7 @@ __coro_push_list push_list(std::vector<int32_t>& xs) {
         __state = S_RESUME_2;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: print(await push_list(xs), len(xs))
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();

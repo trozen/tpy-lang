@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def relay(b: Own[Box]) -> Own[Box]:
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                 # -> S_RESUME_0
 //     return b
 ::tpystd::tpy::Poll<Box> __coro_relay::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Box>::pending();
         (void)std::move(__r0).value();
@@ -35,17 +35,17 @@ __coro_relay relay(Box b) {
 }
 
 // async def driver() -> int32:
-//     b = await relay(Box(9))
+//     b = await relay(Box(9))   # -> S_RESUME_0
 //     b.v += 1
 //     return b.v
 ::tpystd::tpy::Poll<int32_t> __coro_driver::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(Box(9));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: b = await relay(Box(9))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         b.emplace(std::move(__r0).value());

@@ -72,7 +72,6 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
-// # Mixed: union field type pattern + regular literal on same record
 // class Tagged:
 struct Tagged {
     // tag: str

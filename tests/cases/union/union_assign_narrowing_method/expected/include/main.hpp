@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Assignment narrowing works for method calls on narrowed union vars
 // class Circle:
 struct Circle {
     // radius: float

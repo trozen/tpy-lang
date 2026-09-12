@@ -15,9 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # An inferred ref-type field on a subclass stores and mutates correctly. The
-// # field store copies the list (TPy reference-type field semantics, warned), so
-// # this observes the field's own contents -- not aliasing back to the source.
 // class Holder:
 struct Holder {
 

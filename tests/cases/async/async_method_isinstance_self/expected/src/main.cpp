@@ -7,15 +7,15 @@ namespace tpyapp::main {
 // async def describe_via_pet(p: Pet) -> str:
 //     # Borrow source: isinstance(self, Sub) sees the real runtime type
 //     # (no slicing because Pet is polymorphic and we accept it by reference).
-//     return await p.describe()
+//     return await p.describe()                                                 # -> S_RESUME_0
 ::tpystd::tpy::Poll<std::string> __coro_describe_via_pet::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(p);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: return await p.describe()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -37,18 +37,18 @@ __coro_describe_via_pet describe_via_pet(Pet& p) {
 // async def amain() -> None:
 //     d = Dog("rex")
 //     p = Pet("plain")
-//     print(await describe_via_pet(d))
-//     print(await describe_via_pet(p))
+//     print(await describe_via_pet(d))  # -> S_RESUME_0
+//     print(await describe_via_pet(p))  # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_amain::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         d.emplace(Dog("rex"));
         p.emplace(Pet("plain"));
         __sub_0.emplace((*d));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await describe_via_pet(d))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -58,7 +58,7 @@ __coro_describe_via_pet describe_via_pet(Pet& p) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await describe_via_pet(p))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -78,21 +78,22 @@ __coro_amain amain() {
     return __coro_amain();
 }
 
+// @readonly
 // async def describe(self) -> str:
 //     # @readonly async: __self captured as `const T&`; cast emits
 //     # `const Sub*`; narrowing through __self_ptr binds `const Sub&`.
-//     await asyncio.sleep(0)
+//     await asyncio.sleep(0)                                            # -> S_RESUME_0
 //     if isinstance(self, Dog):  # tpyc: ok
 //         return "dog: " + self.bark()
 //     return "pet: " + self._name
 ::tpystd::tpy::Poll<std::string> __coro_Pet_describe::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();

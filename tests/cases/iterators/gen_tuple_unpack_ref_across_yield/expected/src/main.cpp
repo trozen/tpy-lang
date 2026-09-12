@@ -12,26 +12,26 @@ std::tuple<Box*, Box*> first_two(std::vector<Box>& items) {
 
 // def g(items: list[Box]) -> Iterator[int]:
 //     a, b = first_two(items)
-//     yield a.n
+//     yield a.n                              # -> S_RESUME_0
 //     a.n += 10
 //     b.n += 20
-//     yield a.n + b.n
+//     yield a.n + b.n                        # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_g::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto __tup_1 = first_two(items);
         a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __state = S_RESUME_0;
         return a->n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a.n
         a->n = (a->n) + (::tpy::BigInt(10));
         b->n = (b->n) + (::tpy::BigInt(20));
         __state = S_RESUME_1;
         return ((a->n) + (b->n));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield a.n + b.n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

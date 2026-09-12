@@ -15,10 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Walrus binding from a storage-form Optional field lifts via
-// # optional_to_ptr into the pointer-form target. The binding ALIASES the field
-// # (mutation through it is visible on the source), matching CPython; pre-fix
-// # this was a hard g++ error (std::optional<Box> -> Box* assignment).
 // class Box:
 struct Box {
     // val: int

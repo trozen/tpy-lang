@@ -101,6 +101,7 @@ template<::tpy::AnyFixedInt T>
 ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> v) {
     return ::tpy::param_to_return<T>(v);
 }
+// # generator: a scalar name at the yield slot
 // def bytes_of(n: int32) -> Iterator[uint8]:
 //     for i in range(n):
 //         yield uint8(i)

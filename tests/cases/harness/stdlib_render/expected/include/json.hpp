@@ -28,6 +28,7 @@ struct JSONDecodeError;
 
 inline constexpr std::string_view __name__ = "json";
 
+// @error_return(JsonError)
 // def _read_value(reader: JsonReader) -> Own[JsonValue]:
 std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(::tpystd::tplib::json::parser::JsonReader& reader);
 // def loads(s: str) -> Own[JsonValue]:

@@ -12,6 +12,7 @@ struct Gate;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @field_typed_locals
 // def check(gate: Gate) -> bool:
 bool check(const Gate& gate);
 // def main() -> None:

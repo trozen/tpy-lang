@@ -23,13 +23,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # A REFERENCE-typed capture reused by a nested match re-seats the binding (it
-// # aliases the inner subject) rather than copying it or writing through to the
-// # outer one. `reseats` and `as_pattern` mutate the aliased object after the
-// # re-seat and read back through the capture, so a silent copy shows up as a
-// # wrong value instead of passing parity-blind; `outer_untouched` is the other
-// # half (the write-through that must NOT happen), and `mixed_const` pins the
-// # const-ness of the shared slot.
 // class Inner:
 struct Inner {
     // n: int

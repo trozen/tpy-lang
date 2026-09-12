@@ -25,16 +25,6 @@ void store_narrowed(std::vector<::tpy::Union<A, B>>& xs, ::tpy::Union<const A*, 
 // def main() -> None:
 void main();
 
-// # Storing a borrow-form value (pointer-repr Optional / pointer-variant
-// # Union param) into a storage-form container element must lift borrow->storage
-// # (ptr_to_optional / to_value_variant). Covers xs[i] = p (Optional + Union) and
-// # xs.append(p) (Union); pre-fix each emitted ill-formed C++ (optional/variant
-// # vs T*/variant-of-ptr) with no diagnostic.
-// #
-// # Copy-into-storage is intended at the element-store boundary (a container
-// # element owns its data inline) -- TPy copies with a warning where CPython
-// # would alias; that acknowledged divergence is the documented model. The test
-// # verifies the stored values read back correctly.
 // class A:
 struct A {
     // x: int

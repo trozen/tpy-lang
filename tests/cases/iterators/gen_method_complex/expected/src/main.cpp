@@ -35,23 +35,23 @@ void main() {
 }
 
 // def __iter__(self) -> Iterator[int32]:
-//     yield -1
+//     yield -1                            # -> S_RESUME_0
 //     i = self.start
 //     while i < self.stop:
-//         yield i
+//         yield i                         # -> S_RESUME_1
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Range___iter__::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return -1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield -1
         i = __self.start;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;
@@ -74,21 +74,21 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Range___iter__::__next__() {
 // def pairs(self) -> Iterator[int32]:
 //     i = self.start
 //     while i < self.stop:
-//         yield i * 10
-//         yield i * 10 + 1
+//         yield i * 10                 # -> S_RESUME_0
+//         yield i * 10 + 1             # -> S_RESUME_1
 //         i += 1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Range_pairs::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         i = __self.start;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i * 10
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield i * 10 + 1
         i = ::tpy::add_check<int32_t>(i, 1);
         __state = S_JOIN_0;
         continue;

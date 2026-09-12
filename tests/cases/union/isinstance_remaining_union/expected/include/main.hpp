@@ -18,9 +18,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # After ruling out one member of a 3-member union, two remain (still a union):
-// # the later isinstance must dispatch on the original variant, not a premature
-// # single-member extraction.
 // class A:
 struct A {
     // self.ax = x

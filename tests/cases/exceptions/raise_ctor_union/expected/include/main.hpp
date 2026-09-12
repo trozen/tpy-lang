@@ -16,8 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # raise X(a) where the ctor param is a union `A | B` routes through the shared
-// # loop's union arm. Field-store copy of the payload is intended (warned).
 // class A:
 struct A {
     // x: int

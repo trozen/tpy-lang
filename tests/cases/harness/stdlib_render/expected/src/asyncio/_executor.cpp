@@ -295,16 +295,6 @@ void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
 // from tplib.rc import Rc
 // from _bindings import posix_epoll, posix_socket, posix_signal
 //
-// # epoll_ctl ops + the reactor's drain-batch size. Kept here (not in
-// # posix_epoll.py, which stays declaration-only) the way socket.py hardcodes
-// # the AF_* wire values. The EPOLLIN / EPOLLOUT interest masks live in
-// # `asyncio/__init__.py` next to the fd-awaitable that passes them. The
-// # batch size must equal kMaxBatch in runtime/cpp/src/stdlib/epoll_impl.cpp.
-// _EPOLL_CTL_ADD: Final[int32] = 1
-// _EPOLL_CTL_DEL: Final[int32] = 2
-// _EPOLL_CTL_MOD: Final[int32] = 3
-// _REACTOR_BATCH: Final[int32] = 64
-//
 // _current_executor: Ptr[Executor] = None
 void __tpy_init() {
     static bool initialized = false;

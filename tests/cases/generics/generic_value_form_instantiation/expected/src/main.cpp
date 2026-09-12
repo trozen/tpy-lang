@@ -123,17 +123,17 @@ void generator_frame() {
 //     c = held(v)
 //     v = 2.5
 //     # Same field in a coroutine frame, mutated between the call and the await.
-//     print("async_frame:", await c, v)
+//     print("async_frame:", await c, v)                                           # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_async_frame::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         v = 1.5;
         c.emplace(held<float>(v));
         v = 2.5;
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("async_frame:", await c, v)
         auto __r0 = ::tpy::poll_with_cancel(c, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

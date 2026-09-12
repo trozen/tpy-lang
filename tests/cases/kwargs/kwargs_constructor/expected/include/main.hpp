@@ -15,7 +15,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Keyword arguments in record constructors
 // class Point:
 struct Point {
     // self.x = x

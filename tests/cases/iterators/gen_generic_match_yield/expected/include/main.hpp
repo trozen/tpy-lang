@@ -48,14 +48,14 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
 // def gen[T](a: T, b: T, tag: int) -> Iterator[T]:
 //     match tag:  # tpyc: ok
 //         case 0:
-//             yield a
-//             yield b
+//             yield a                               # -> S_RESUME_0
+//             yield b                               # -> S_RESUME_1
 //         case _:
-//             yield a
+//             yield a                               # -> S_RESUME_2
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         auto& __match_subject_1 = tag;
         if (__match_subject_1 == 0) {
             __state = S_RESUME_0;
@@ -67,15 +67,15 @@ std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a
         __state = S_RESUME_1;
         return b;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield a
         __state = S_JOIN_0;
         continue;
     }

@@ -63,7 +63,6 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Cell:
 struct Cell {
-    // # User-defined accessor (not a tplib type): borrowing get + value-returning peek.
     // inner: Inner
     Inner inner;
 

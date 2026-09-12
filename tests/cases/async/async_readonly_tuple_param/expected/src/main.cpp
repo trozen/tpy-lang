@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def asum(pair: readonly[tuple[Tag, Tag]]) -> int32:
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)                             # -> S_RESUME_0
 //     return pair[0].n + pair[1].n
 ::tpystd::tpy::Poll<int32_t> __coro_asum::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -35,19 +35,19 @@ __coro_asum asum(std::tuple<const Tag*, const Tag*> pair) {
 }
 
 // def gsum(pair: readonly[tuple[Tag, Tag]]) -> Iterator[int32]:
-//     yield pair[0].n
-//     yield pair[1].n
+//     yield pair[0].n                                            # -> S_RESUME_0
+//     yield pair[1].n                                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gsum::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return std::get<0>(pair)->n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield pair[0].n
         __state = S_RESUME_1;
         return std::get<1>(pair)->n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield pair[1].n
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -74,9 +74,9 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
 // async def main_coro() -> None:
 //     a = Tag(3)
 //     b = Tag(4)
-//     print("asum:", await asum((a, b)))
+//     print("asum:", await asum((a, b)))                                     # -> S_RESUME_0
 //     a.n = 100
-//     print("after:", await asum((a, b)))      # aliased: sees the mutation
+//     print("after:", await asum((a, b)))      # aliased: sees the mutation  # -> S_RESUME_1
 //
 //     total = 0
 //     for v in gsum((a, b)):
@@ -86,7 +86,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
 //     print("pick:", pick((a, b), (b, a), True))
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a.emplace(Tag(3));
         b.emplace(Tag(4));
         __coro_arg_0 = std::tuple<Tag*, Tag*>{&((*a)), &((*b))};
@@ -94,7 +94,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print("asum:", await asum((a, b)))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -106,7 +106,7 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print("after:", await asum((a, b)))      # aliased: sees the mutation
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();

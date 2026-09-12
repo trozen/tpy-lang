@@ -7,7 +7,6 @@
 
 namespace tpyapp::main {
 
-// # Protocol that accepts various types
 // class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
@@ -44,7 +43,6 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
-// # Container of boxes for subscript test
 // class BoxContainer:
 struct BoxContainer {
     // items: list[IntBox]

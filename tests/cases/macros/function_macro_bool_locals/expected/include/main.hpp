@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @bool_locals
 // def pick(use_first: bool) -> bool:
 bool pick(bool use_first);
 // def main() -> None:

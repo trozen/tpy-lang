@@ -6,7 +6,6 @@ namespace tpyapp::constants {
 // BIG_VALUE: Final[int] = 1000000
 const ::tpy::BigInt BIG_VALUE = ::tpy::BigInt(1000000);
 
-// BIG_VALUE: Final[int] = 1000000
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

@@ -7,19 +7,19 @@ namespace tpyapp::main {
 // async def f() -> int:
 //     x = 1
 //     try:
-//         await asyncio.sleep(0)
+//         await asyncio.sleep(0)  # -> S_RESUME_0
 //         return x
 //     finally:
 //         x = 2
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_f::__poll__(::tpystd::coro::Waker waker) {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         x = 1;
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
         bool __fin_ran_1 = false;
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);

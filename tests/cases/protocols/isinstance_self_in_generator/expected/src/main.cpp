@@ -60,14 +60,15 @@ void main() {
     }
 }
 
+// @readonly
 // def ro_names(self) -> Iterator[str]:
 //     if isinstance(self, Dog):  # tpyc: ok
-//         yield "ro-dog:" + self._name
+//         yield "ro-dog:" + self._name       # -> S_RESUME_0
 //     else:
-//         yield "ro-pet:" + self._name
+//         yield "ro-pet:" + self._name       # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((dynamic_cast<const Dog*>(&__self) != nullptr)) {
             const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
             __state = S_RESUME_0;
@@ -77,12 +78,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() 
             return (::tpy::str_concat("ro-pet:", __self._name));
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield "ro-dog:" + self._name
         const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "ro-pet:" + self._name
         __state = S_JOIN_0;
         continue;
     }
@@ -99,14 +100,14 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() 
 // def counts(self) -> Iterator[int]:
 //     if isinstance(self, Dog):  # tpyc: ok
 //         self._n += 1
-//         yield self._n
+//         yield self._n                      # -> S_RESUME_0
 //         self._n += 10
-//         yield self._n
+//         yield self._n                      # -> S_RESUME_1
 //     else:
-//         yield -1
+//         yield -1                           # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((dynamic_cast<Dog*>(&__self) != nullptr)) {
             Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
             __self_narrowed._n = (__self_narrowed._n) + (::tpy::BigInt(1));
@@ -117,18 +118,18 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__next__() 
             return ::tpy::BigInt(-1);
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self._n
         Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
         __self_narrowed._n = (__self_narrowed._n) + (::tpy::BigInt(10));
         __state = S_RESUME_1;
         return __self_narrowed._n;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self._n
         Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }

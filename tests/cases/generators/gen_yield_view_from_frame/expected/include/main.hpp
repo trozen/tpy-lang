@@ -203,6 +203,9 @@ inline std::string_view Holder::__enter__() const {
 //     pass
 inline void Holder::__exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const {
 }
+// # A single yield inside the trailing loop stays on the make_generator lambda,
+// # which reaches the sink through its own emitter -- covered here so the copy is
+// # pinned on both paths at exec level, not only in the THIR unit pins.
 // def peephole_view(n: int32) -> Iterator[str]:
 //     lit = "peephole"
 //     i = 0

@@ -35,14 +35,6 @@ void main() {
     std::cout << y << "\n";
 }
 
-// MAX_SIZE: Final[int32] = 100
-// NEG_VAL: Final[int32] = -42
-// PI: Final[float] = 3.14159
-// DEBUG: Final[bool] = True
-// DISABLED: Final[bool] = False
-// NAME: Final[str] = "hello"
-// LETTER: Final[char] = "A"
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

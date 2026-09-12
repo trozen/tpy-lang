@@ -78,11 +78,11 @@ namespace tpyapp::main {
 
 // def str_branch(t: str) -> Iterator[int32]:
 //     if t:
-//         yield 1
-//     yield 2
+//         yield 1                             # -> S_RESUME_0
+//     yield 2                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!t.empty())) {
             __state = S_RESUME_0;
             return 1;
@@ -91,11 +91,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_str_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -116,11 +116,11 @@ __gen_str_branch str_branch(std::string_view t) {
 
 // def bytes_branch(b: bytes) -> Iterator[int32]:
 //     if b:
-//         yield 1
-//     yield 2
+//         yield 1                                 # -> S_RESUME_0
+//     yield 2                                     # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((!b.empty())) {
             __state = S_RESUME_0;
             return 1;
@@ -129,11 +129,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_bytes_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -154,11 +154,11 @@ __gen_bytes_branch bytes_branch(::tpy::BytesView b) {
 
 // def record_len_branch(g: Bag) -> Iterator[int32]:
 //     if g:
-//         yield 1
-//     yield 2
+//         yield 1                                    # -> S_RESUME_0
+//     yield 2                                        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((::tpy::__len__(g) != 0)) {
             __state = S_RESUME_0;
             return 1;
@@ -167,11 +167,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_len_branch::__next__()
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -192,11 +192,11 @@ __gen_record_len_branch record_len_branch(Bag& g) {
 
 // def record_bool_branch(f: Flag) -> Iterator[int32]:
 //     if f:
-//         yield 1
-//     yield 2
+//         yield 1                                      # -> S_RESUME_0
+//     yield 2                                          # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (::tpy::__bool__(f)) {
             __state = S_RESUME_0;
             return 1;
@@ -205,11 +205,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_record_bool_branch::__next__(
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -228,13 +228,16 @@ __gen_record_bool_branch record_bool_branch(Flag& f) {
     return __gen_record_bool_branch(f);
 }
 
+// # The remaining arms of the same truthiness dispatch. Each renders its own
+// # way (enum folds to always-true, IntEnum tests the underlying value, Any
+// # goes through to_bool), and each was a build error in this position before.
 // def enum_branch(c: Color) -> Iterator[int32]:
 //     if c:
-//         yield 1
-//     yield 2
+//         yield 1                                # -> S_RESUME_0
+//     yield 2                                    # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((static_cast<void>(c), true)) {
             __state = S_RESUME_0;
             return 1;
@@ -243,11 +246,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_enum_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -268,11 +271,11 @@ __gen_enum_branch enum_branch(Color c) {
 
 // def int_enum_branch(lv: Level) -> Iterator[int32]:
 //     if lv:
-//         yield 1
-//     yield 2
+//         yield 1                                     # -> S_RESUME_0
+//     yield 2                                         # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((static_cast<int32_t>(lv) != 0)) {
             __state = S_RESUME_0;
             return 1;
@@ -281,11 +284,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_int_enum_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -306,11 +309,11 @@ __gen_int_enum_branch int_enum_branch(Level lv) {
 
 // def plain_record_branch(p: Plain) -> Iterator[int32]:
 //     if p:
-//         yield 1
-//     yield 2
+//         yield 1                                        # -> S_RESUME_0
+//     yield 2                                            # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((static_cast<void>(p), true)) {
             __state = S_RESUME_0;
             return 1;
@@ -319,11 +322,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_plain_record_branch::__next__
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -344,11 +347,11 @@ __gen_plain_record_branch plain_record_branch(Plain& p) {
 
 // def any_branch(v: Any) -> Iterator[int32]:
 //     if v:
-//         yield 1
-//     yield 2
+//         yield 1                             # -> S_RESUME_0
+//     yield 2                                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (::tpy::to_bool(v)) {
             __state = S_RESUME_0;
             return 1;
@@ -357,11 +360,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_any_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -384,11 +387,11 @@ __gen_any_branch any_branch(::tpy::Any v) {
 //     # A boolop recurses into both operands, so each side takes its own
 //     # truthiness render rather than the whole expression taking one.
 //     if xs and t:
-//         yield 1
-//     yield 2
+//         yield 1                                                         # -> S_RESUME_0
+//     yield 2                                                             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if (((::tpy::__len__(xs) != 0) && (!t.empty()))) {
             __state = S_RESUME_0;
             return 1;
@@ -397,11 +400,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_and_branch::__next__() {
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

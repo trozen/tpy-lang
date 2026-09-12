@@ -7,25 +7,25 @@ namespace tpyapp::main {
 // def dicts() -> Iterator[Own[dict[str, str]]]:
 //     a: dict[str, str] = {}
 //     a["k"] = "v1"
-//     yield a
+//     yield a                                    # -> S_RESUME_0
 //     b: dict[str, str] = {}
 //     b["k"] = "v2"
-//     yield b
+//     yield b                                    # -> S_RESUME_1
 std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration> __gen_dicts::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a.emplace(::tpy::ordered_map<std::string, std::string>());
         ::tpy::__setitem__((*a), "k", "v1");
         __state = S_RESUME_0;
         return (*a);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a
         b.emplace(::tpy::ordered_map<std::string, std::string>());
         ::tpy::__setitem__((*b), "k", "v2");
         __state = S_RESUME_1;
         return (*b);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -42,15 +42,15 @@ __gen_dicts dicts() {
 
 // def lists() -> Iterator[Own[list[int]]]:
 //     a: list[int] = [10, 20, 30]
-//     yield a
+//     yield a                               # -> S_RESUME_0
 std::expected<std::vector<::tpy::BigInt>, ::tpy::StopIteration> __gen_lists::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         a.emplace(std::vector<::tpy::BigInt>{10, 20, 30});
         __state = S_RESUME_0;
         return (*a);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

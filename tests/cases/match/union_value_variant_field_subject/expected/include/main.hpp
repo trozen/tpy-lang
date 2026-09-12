@@ -16,10 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: match directly on a value-variant union field of `self`.
-// # Before the fix, the codegen used the type's *primary* repr (pointer-variant
-// # for unions of records) and emitted `*std::get<I>(__match_subject)`, which
-// # fails to compile because the field's actual storage is value-variant.
 // class A:
 struct A {
     // x: str

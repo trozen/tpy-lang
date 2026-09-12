@@ -26,9 +26,6 @@ void main() {
     std::cout << e.run(2, 1) << "\n";
 }
 
-// NOFLAG: Final[uint32] = uint32(0)
-// DEFAULT_LIMIT: Final[int32] = 16
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

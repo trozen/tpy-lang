@@ -42,7 +42,6 @@ template<> struct tpy::is_value_type<::tpyapp::main::Vec2> : std::true_type {};
 namespace tpyapp::main {
 
 
-// # Rect uses Vec2 -- nested value types.
 // class Rect(ValueType):
 struct Rect {
     // pos: Vec2

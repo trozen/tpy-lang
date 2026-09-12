@@ -56,8 +56,6 @@ struct Base {
     // has_pet: bool
     bool has_pet;
 
-    // # `Cat | Dog | None` is a POINTER-repr union, whose None still spells `{}`
-    // # (monostate is the first alternative in both reprs), not `nullptr`.
     // def __init__(self, tag: int64, pet: Cat | Dog | None = None) -> None:
     Base() = default;
     explicit Base(int64_t tag, ::tpy::Union<std::monostate, const Cat*, const Dog*> pet = {});

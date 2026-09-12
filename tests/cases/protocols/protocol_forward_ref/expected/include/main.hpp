@@ -7,9 +7,6 @@
 
 namespace tpyapp::main {
 
-// # Protocol defined first (required for CPython compatibility)
-// # Note: TurboPython also supports forward references where the protocol
-// # is defined after the class, but CPython doesn't allow this.
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
@@ -27,7 +24,6 @@ struct Person;
 extern Person* p;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # Class implementing protocols defined in same file
 // class Person(Printable, Describable):
 struct Person {
     // name: str

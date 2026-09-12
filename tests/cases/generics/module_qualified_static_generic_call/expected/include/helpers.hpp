@@ -11,7 +11,6 @@ struct Util;
 
 inline constexpr std::string_view __name__ = "helpers";
 
-// # Companion module: `main` calls this static generic as `helpers.Util.second`.
 // class Util:
 struct Util {
 

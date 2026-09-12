@@ -11,8 +11,10 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @export
 // def bump_all(cs: list[Counter]) -> None:  # tpyc: warning(/list parameter 'cs' is copied in.*not visible to the caller/)
 void bump_all(std::vector<Counter>& cs);
+// @export
 // def total(cs: list[Counter]) -> int64:  # tpyc: ok
 int64_t total(const std::vector<Counter>& cs);
 

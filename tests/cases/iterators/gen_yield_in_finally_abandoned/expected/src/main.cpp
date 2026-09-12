@@ -6,19 +6,19 @@ namespace tpyapp::main {
 
 // def gen() -> Iterator[int]:
 //     try:
-//         yield 1
-//         yield 2
+//         yield 1                                                # -> S_RESUME_0
+//         yield 2                                                # -> S_RESUME_1
 //     finally:
 //         print("pre")
-//         yield 99  # tpyc: warning(/'yield' inside 'finally'/)
+//         yield 99  # tpyc: warning(/'yield' inside 'finally'/)  # -> S_RESUME_2
 //         print("post")
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_2;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             __state = S_RESUME_1;
             return ::tpy::BigInt(2);
@@ -28,7 +28,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         try {
             __state = S_JOIN_1;
             continue;
@@ -38,7 +38,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 99  # tpyc: warning(/'yield' inside 'finally'/)
         std::cout << "post" << "\n";
         __state = S_JOIN_0;
         continue;

@@ -67,8 +67,6 @@ void _check_zone_key(std::string_view key);
 // @dataclass(frozen=True, order=True)
 // class timedelta(ValueType):
 struct timedelta {
-    // # Normalized: 0 <= seconds < 86400, 0 <= microseconds < 10**6,
-    // # -999999999 <= days <= 999999999. Fields carry CPython's attribute names.
     // days: int32
     int32_t days;
     // seconds: int32
@@ -256,14 +254,6 @@ namespace tpystd::datetime {
 // @dataclass(frozen=True)
 // class timezone(ValueType):
 struct timezone {
-    // # Fixed-offset tz -- the only kind in the closed value-typed set
-    // # (chrono-inspired; a ZoneInfo widening is deferred, user tzinfo
-    // # subclasses are permanently unsupported). Packed to 16B, trivially
-    // # copyable: the offset lives inline (hot: eq/hash/arithmetic), the
-    // # name in the process-global intern table (cold: tzname/repr; id 0 =
-    // # unnamed, so timezone(off) and timezone(off, "") stay distinct --
-    // # CPython stores None vs ""). Field layout mirrors datetime's inline
-    // # tz block so ingestion/reconstruction are raw field copies.
     // _off_us: int64
     int64_t _off_us;
     // _name_id: int32
@@ -285,7 +275,6 @@ struct timezone {
     // def fromutc(self, dt: "datetime") -> "datetime":
     datetime fromutc(datetime dt) const;
 
-    // # CPython compares timezones by offset only; the name is cosmetic.
     // def __eq__(self, other: "timezone") -> bool:
     bool __eq__(timezone other) const;
 
@@ -325,9 +314,6 @@ template<> struct tpy::is_value_type<::tpystd::datetime::timezone> : std::true_t
 namespace tpystd::datetime {
 
 
-// # Home of the zoneinfo surface (re-exported by lib/tpy/zoneinfo.py): the
-// # ZoneInfo <-> datetime signature cycle forces one module, and TPy modules
-// # re-export cleanly.
 // class ZoneInfoNotFoundError(KeyError):
 struct ZoneInfoNotFoundError : ::tpy::KeyError {
 
@@ -347,12 +333,6 @@ inline std::ostream& operator<<(std::ostream& os, const ZoneInfoNotFoundError& o
 // @dataclass(frozen=True)
 // class ZoneInfo(ValueType):
 struct ZoneInfo {
-    // # IANA zone -- the DST-rule kind in the closed value-typed tz set.
-    // # One interned zone id (the provider pins the zone handle process-
-    // # globally), so the value is 4B and trivially copyable; equality is by
-    // # key, which matches CPython's per-key instance cache (no_cache /
-    // # from_file / available_timezones are unsupported -- see the roadmap).
-    // # Offsets are per-instant: utcoffset/dst/tzname need the datetime.
     // _zid: int32
     int32_t _zid;
 
@@ -376,9 +356,6 @@ struct ZoneInfo {
     // def fromutc(self, dt: "datetime") -> "datetime":
     datetime fromutc(datetime dt) const;
 
-    // # CPython ZoneInfo has no __eq__/__hash__ (identity semantics); the
-    // # per-key cache makes that equal-by-key in practice, which is exactly
-    // # what zone-id equality gives a value type.
     // def __eq__(self, other: "ZoneInfo") -> bool:
     bool __eq__(ZoneInfo other) const;
 
@@ -421,10 +398,6 @@ namespace tpystd::datetime {
 // @dataclass(frozen=True, order=True)
 // class date(ValueType):
 struct date {
-    // # Packed to 4B: narrow private storage (validated ranges fit exactly),
-    // # public attrs are int32-widening properties so user arithmetic never
-    // # touches the narrow types. Storage stays in significance order --
-    // # order=True tuple comparison over it is the chronological order.
     // _y: int16
     int16_t _y;
     // _mo: int8
@@ -566,10 +539,6 @@ namespace tpystd::datetime {
 // @dataclass(frozen=True, order=True)
 // class time(ValueType):
 struct time {
-    // # Naive only (no tzinfo/fold; aware time is out of scope -- see the
-    // # roadmap). Packed to 8B: narrow private storage in significance order
-    // # (order=True tuple comparison stays chronological), public attrs are
-    // # int32-widening properties.
     // _hh: int8
     int8_t _hh;
     // _mm: int8
@@ -678,21 +647,6 @@ namespace tpystd::datetime {
 // @dataclass(frozen=True)
 // class datetime(ValueType):
 struct datetime {
-    // # Composed, not a date subclass: cross-type date/datetime comparison is
-    // # a compile error (documented divergence). No order=True: awareness makes
-    // # tuple comparison wrong, so ordering operators are hand-written.
-    // # Awareness is a RUNTIME property; mixing naive and aware in ordering/
-    // # subtraction raises TypeError exactly like CPython.
-    // # Packed to 24B, trivially copyable: narrow private storage behind
-    // # int32-widening properties, and the tz inline as a kind-tagged triple
-    // # (_tzf packs kind 0=naive/1=fixed/2=zoneinfo in the low bits + the
-    // # PEP 495 fold in bit 2; _tz_off_us holds the fixed offset, unused for
-    // # zoneinfo whose offset is per-instant; _tz_name_id holds the interned
-    // # timezone name or the ZoneInfo zone id). The tz value is reconstructed
-    // # only when .tzinfo is read -- cold; the packed fields drive all hot
-    // # paths directly. Field order is packing order (widest first); nothing
-    // # here relies on declaration order (all comparisons/hash/repr are
-    // # hand-written).
     // _tz_off_us: int64
     int64_t _tz_off_us;
     // _us: int32

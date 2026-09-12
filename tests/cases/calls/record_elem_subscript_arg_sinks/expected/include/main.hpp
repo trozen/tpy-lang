@@ -68,7 +68,6 @@ inline std::ostream& operator<<(std::ostream& os, const Player& obj) {
     return os;
 }
 
-// # Mutates through the borrowed slot.
 // class Bump:
 struct Bump {
     // x: float
@@ -132,8 +131,6 @@ struct Map {
     // bumped: Bump
     Bump bumped;
 
-    // # The doom shape: a field write in the constructor body, off a field
-    // # container a method filled; the second write mutates the element.
     // def __init__(self, n: int32) -> None:
     Map() = default;
     explicit Map(int32_t n);
@@ -141,7 +138,6 @@ struct Map {
     // def fill(self, n: int32) -> None:
     void fill(int32_t n);
 
-    // # Method body, field write, mutating the element.
     // def reseat(self) -> None:
     void reseat();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Map";
@@ -229,6 +225,7 @@ inline void Map::fill(int32_t n) {
 inline void Map::reseat() {
     this->bumped = Bump(::tpy::__getitem__(this->things, 1));
 }
+// # Generator body.
 // def gen(things: list[Thing]) -> Iterator[float]:
 //     for i in range(len(things)):
 //         b = Bump(things[i])  # tpyc: ok

@@ -12,7 +12,6 @@ struct Switch;
 
 inline constexpr std::string_view __name__ = "lampmod";
 
-// # Imported-record source for the lookup_imported_name test.
 // class Lamp:
 struct Lamp {
     // lit: bool
@@ -29,8 +28,6 @@ inline std::ostream& operator<<(std::ostream& os, const Lamp& obj) {
     return os;
 }
 
-// # Defined here but NOT imported by main; the macro asserts it stays
-// # invisible to lookup_imported_name (per-module scope, not flat-global).
 // class Switch:
 struct Switch {
     // on: bool

@@ -46,20 +46,20 @@ struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     }
 };
 // def pair[T](a: T, b: T) -> Iterator[T]:
-//     yield a
-//     yield b
+//     yield a                              # -> S_RESUME_0
+//     yield b                              # -> S_RESUME_1
 template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_pair<T>::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return a;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a
         __state = S_RESUME_1;
         return b;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

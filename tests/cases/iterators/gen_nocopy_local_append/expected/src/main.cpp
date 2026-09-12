@@ -7,23 +7,23 @@ namespace tpyapp::main {
 // def collect() -> Iterator[int32]:
 //     boxes: list[Box[int32]] = []
 //     a = Box(7)
-//     yield 0
+//     yield 0                        # -> S_RESUME_0
 //     boxes.append(a)  # tpyc: ok
-//     yield len(boxes)
+//     yield len(boxes)               # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_collect::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         boxes.emplace(std::vector<::tpystd::tplib::box::Box<int32_t>>{});
         a.emplace(::tpystd::tplib::box::Box<int32_t>(7));
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         (*boxes).push_back(std::move((*a)));
         __state = S_RESUME_1;
         return ::tpy::__len__((*boxes));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield len(boxes)
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

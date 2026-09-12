@@ -10,7 +10,7 @@ namespace nested_case::helpers {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_2_7_Library_6_Worker_7_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __self.value = (__self.value) + (delta);
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = __self.value;

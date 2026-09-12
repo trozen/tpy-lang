@@ -11,7 +11,6 @@ namespace tpyapp::main {
 //     if name == "age":
 //         return 42
 //     return "hello"
-// # --- Free function flattening ---
 // @overload
 // def get_field(name: Literal["age"]) -> int32: ...
 int32_t get_field__lit_age(std::string_view name) {

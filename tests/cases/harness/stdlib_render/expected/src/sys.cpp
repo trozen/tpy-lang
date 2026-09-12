@@ -19,17 +19,6 @@ const ::tpy::BigInt maxunicode = ::tpy::BigInt(1114111);
 //
 // argv: list[str] = _get_sys_argv()
 //
-// # CPython's value on 64-bit platforms (2**63 - 1). TPy targets 64-bit;
-// # a 32-bit target would need a per-target constant.
-// maxsize: Final[int] = 9223372036854775807
-//
-// # TPy targets little-endian (x86-64 / ARM64), same assumption as maxsize.
-// byteorder: Final[str] = "little"
-//
-// # U+10FFFF -- fixed by the Unicode standard, so target-independent (unlike
-// # maxsize / byteorder).
-// maxunicode: Final[int] = 0x10FFFF
-//
 // stdout: _StdStream = _get_sys_stdout()
 // stderr: _StdStream = _get_sys_stderr()
 void __tpy_init() {

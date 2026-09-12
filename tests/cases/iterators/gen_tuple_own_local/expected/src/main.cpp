@@ -13,21 +13,21 @@ std::tuple<int32_t, Box> make_pair(int32_t n) {
 // def gen() -> Iterator[int32]:
 //     t = make_pair(9)
 //     t[1].val = 50
-//     yield t[0]
-//     yield t[1].val
+//     yield t[0]                 # -> S_RESUME_0
+//     yield t[1].val             # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         t.emplace(make_pair(9));
         std::get<1>((*t)).val = 50;
         __state = S_RESUME_0;
         return std::get<0>((*t));
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield t[0]
         __state = S_RESUME_1;
         return std::get<1>((*t)).val;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield t[1].val
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

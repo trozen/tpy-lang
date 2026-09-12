@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // async def slow() -> int:
-//     await asyncio.sleep(1.0)
+//     await asyncio.sleep(1.0)  # -> S_RESUME_0
 //     return 42
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(1.0)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -36,17 +36,17 @@ __coro_slow slow() {
 
 // async def zero_timeout() -> None:
 //     try:
-//         await asyncio.wait_for(slow(), 0.0)
+//         await asyncio.wait_for(slow(), 0.0)  # -> S_RESUME_0
 //         print("not reached")
 //     except TimeoutError:
 //         print("zero")
 ::tpystd::tpy::Poll<::std::monostate> __coro_zero_timeout::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.wait_for(slow(), 0.0)
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -94,15 +94,15 @@ __coro_zero_timeout zero_timeout() {
 }
 
 // async def main_coro() -> None:
-//     await zero_timeout()
+//     await zero_timeout()        # -> S_RESUME_0
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await zero_timeout()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();

@@ -18,7 +18,6 @@ void greet(const Animal& a);
 // def main() -> None:
 void main();
 
-// # Implicit value upcast: assign child to parent-typed variable, pass child as parent param
 // class Animal:
 struct Animal {
     // name: str

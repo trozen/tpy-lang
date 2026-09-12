@@ -11,6 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def sentinel(a: int32, b: int32) -> int32:
 int32_t sentinel(int32_t a, int32_t b);
+// @resolve_sentinel
 // def combine(a: int32, b: int32) -> int32:
 int32_t combine(int32_t a, int32_t b);
 // def main() -> None:

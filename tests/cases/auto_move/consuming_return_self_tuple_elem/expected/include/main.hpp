@@ -30,7 +30,6 @@ struct Widget {
     Widget(Widget&&) = default;
     Widget& operator=(Widget&&) = default;
 
-    // # The subject: the receiver fills an owning tuple ELEMENT slot.
     // def split(self: Own[Self]) -> Own[tuple[Own['Widget'], int32]]:
     std::tuple<Widget, int32_t> split() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Widget";

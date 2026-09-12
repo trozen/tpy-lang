@@ -27,7 +27,6 @@ template<typename T>
 template<typename T>
 ::tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx);
 
-// # Generic function with record type
 // class Point:
 struct Point {
     // x: int32

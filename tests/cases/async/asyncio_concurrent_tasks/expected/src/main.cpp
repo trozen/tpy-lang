@@ -6,18 +6,18 @@ namespace tpyapp::main {
 
 // async def doubler(n: int32, label: str) -> int32:
 //     print(label, "pre")
-//     await asyncio.sleep(0.001)
+//     await asyncio.sleep(0.001)                     # -> S_RESUME_0
 //     print(label, "post")
 //     return n * int32(2)
 ::tpystd::tpy::Poll<int32_t> __coro_doubler::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         std::cout << label << " " << "pre" << "\n";
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.001)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -41,12 +41,12 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
 // async def main_coro() -> None:
 //     t1: Task[int32] = asyncio.create_task(doubler(int32(5), "t1"))
 //     t2: Task[int32] = asyncio.create_task(doubler(int32(7), "t2"))
-//     a = await t1
-//     b = await t2
+//     a = await t1                                                    # -> S_RESUME_0
+//     b = await t2                                                    # -> S_RESUME_1
 //     print(a + b)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __coro_arg_0 = "t1";
         t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(doubler(5, __coro_arg_0))));
         __coro_arg_1 = "t2";
@@ -55,7 +55,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: a = await t1
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
@@ -64,7 +64,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: b = await t2
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();

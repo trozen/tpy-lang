@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int64_t> __coro_scaled::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_DONE;
         int64_t __tpy_async_ret = (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 100)), (::tpy::mul_check<int64_t>(b, 10)))), c));
         return ::tpystd::tpy::Poll<int64_t>::ready(std::move(__tpy_async_ret));
@@ -26,16 +26,16 @@ __coro_scaled scaled(int64_t a, int64_t b, int64_t c) {
 }
 
 // async def drive() -> None:
-//     print(await scaled(1, c=3))
-//     print(await scaled(1, 2, c=3))
+//     print(await scaled(1, c=3))     # -> S_RESUME_0
+//     print(await scaled(1, 2, c=3))  # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace(1, 10, 3);
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: print(await scaled(1, c=3))
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -45,7 +45,7 @@ __coro_scaled scaled(int64_t a, int64_t b, int64_t c) {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: print(await scaled(1, 2, c=3))
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();

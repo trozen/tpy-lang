@@ -7,10 +7,6 @@
 
 namespace tpyapp::main {
 
-// # @dynamic protocol with a non-dynamic parent: the concrete class that implements
-// # DynValued must keep value() non-const so it matches the C++ pure virtual signature.
-// # Without the recursive ancestor walk in _dynamic_proto_requires_nonconst, value()
-// # would be incorrectly inferred as const, making Valued abstract.
 // class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
@@ -102,9 +98,6 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// # self.field.method() -- calling a non-readonly method on a field IS self-mutation.
-// # Deferred to Phase 2 via receiver_is_self call edge; Phase 2 marks self as
-// # mutated because list.sort/append have unknown (conservative) mutation status.
 // class SortableBox:
 struct SortableBox {
     // items: list[int32]
@@ -129,9 +122,6 @@ inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
     return os;
 }
 
-// # self.field.method() -- readonly method on a field is deferred to Phase 2
-// # and correctly resolved as non-mutating. Both direct field access and
-// # for-each iteration over fields are covered.
 // class Inner:
 struct Inner {
     // value: int32
@@ -177,8 +167,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
     return os;
 }
 
-// # Optional[UserType] field: const inference + codegen const propagation for
-// # optional_to_ptr narrowing in const methods.
 // class WithOpt:
 struct WithOpt {
     // child: Optional[Inner]

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_setter::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         e.set();
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
@@ -28,18 +28,18 @@ __coro_setter setter(::tpystd::asyncio::Event& e) {
 // async def fast() -> None:
 //     e = Event()
 //     e.set()
-//     r = await e.wait()
+//     r = await e.wait()     # -> S_RESUME_0
 //     print("fast", r)
 ::tpystd::tpy::Poll<::std::monostate> __coro_fast::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         e.emplace(::tpystd::asyncio::Event());
         (*e).set();
         __sub_0.emplace((*e));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await e.wait()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
@@ -62,18 +62,18 @@ __coro_fast fast() {
 // async def slow() -> None:
 //     e = Event()
 //     asyncio.create_task(setter(e))
-//     r = await e.wait()
+//     r = await e.wait()              # -> S_RESUME_0
 //     print("slow", r)
 ::tpystd::tpy::Poll<::std::monostate> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         e.emplace(::tpystd::asyncio::Event());
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(setter((*e))));
         __sub_0.emplace((*e));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: r = await e.wait()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         r = std::move(__r0).value();
@@ -94,16 +94,16 @@ __coro_slow slow() {
 }
 
 // async def main_coro() -> None:
-//     await fast()
-//     await slow()
+//     await fast()                # -> S_RESUME_0
+//     await slow()                # -> S_RESUME_1
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __sub_0.emplace();
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: await fast()
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -112,7 +112,7 @@ __coro_slow slow() {
         __state = S_RESUME_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: await slow()
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

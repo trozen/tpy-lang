@@ -23,7 +23,6 @@ void main();
 struct Node {
     // name: str
     std::string name;
-    // # Strong forward edge owns the child; weak back edge avoids the cycle.
     // parent: Weak[Node] | None
     std::optional<::tpystd::tplib::rc::Weak<Node>> parent;
     // children: list[Rc[Node]]

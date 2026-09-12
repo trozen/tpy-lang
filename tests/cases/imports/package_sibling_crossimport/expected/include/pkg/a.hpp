@@ -37,9 +37,6 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
     return os;
 }
 
-// # Generic record re-exported via pkg/__init__.py; covers the
-// # template-header branch of _emit_sibling_submodule_fwd_decls
-// # (`template<typename T> struct Container;`).
 // class Container[T]:
 template<typename T>
 struct Container {

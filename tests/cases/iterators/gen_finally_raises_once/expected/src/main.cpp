@@ -19,17 +19,17 @@ int32_t _code{};
 // def normal_exit() -> Iterator[int]:
 //     # finally raises on the try's fall-through after a suspension.
 //     try:
-//         yield 1
+//         yield 1                                                     # -> S_RESUME_0
 //     finally:
 //         raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_normal_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_1 = false;
         try {
             __fin_ran_1 = true;
@@ -72,7 +72,7 @@ __gen_normal_exit normal_exit() {
 // def handler_exit() -> Iterator[int]:
 //     # finally raises after the except handler completes normally.
 //     try:
-//         yield 1
+//         yield 1                                                    # -> S_RESUME_0
 //         raise ValueError("v")
 //     except ValueError:
 //         print("caught")
@@ -81,11 +81,11 @@ __gen_normal_exit normal_exit() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_handler_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         try {
             throw ::tpy::ValueError("v");
         } catch (const ::tpy::ValueError&) {
@@ -136,18 +136,18 @@ __gen_handler_exit handler_exit() {
 // def return_exit() -> Iterator[int]:
 //     # return inside the try after a suspension; the finally raises.
 //     try:
-//         yield 1
+//         yield 1                                                      # -> S_RESUME_0
 //         return
 //     finally:
 //         raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_return_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_4 = false;
         try {
             __fin_ran_4 = true;
@@ -186,17 +186,17 @@ __gen_return_exit return_exit() {
 // def with_exit() -> Iterator[int]:
 //     # __exit__ raises on the with's fall-through after a suspension.
 //     with Thrower():
-//         yield 1
+//         yield 1                                                       # -> S_RESUME_0
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_with_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __with_ctx_0.emplace(Thrower());
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_5 = false;
         try {
             __fin_ran_5 = true;
@@ -240,7 +240,7 @@ __gen_with_exit with_exit() {
 //     # inner finally raises on the return path; outer finally must still run.
 //     try:
 //         try:
-//             yield 1
+//             yield 1                                                           # -> S_RESUME_0
 //             return
 //         finally:
 //             print("inner fin")
@@ -250,11 +250,11 @@ __gen_with_exit with_exit() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_nested_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         bool __fin_ran_6 = false;
         try {
             bool __fin_ran_7 = false;
@@ -321,7 +321,7 @@ __gen_nested_exit nested_exit() {
 //     # break out of a try in a loop after a suspension; the finally raises.
 //     for i in range(3):
 //         try:
-//             yield i
+//             yield i                                                         # -> S_RESUME_0
 //             if i == 1:
 //                 break
 //         finally:
@@ -330,13 +330,13 @@ __gen_nested_exit nested_exit() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_break_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         bool __fin_ran_9 = false;
         try {
             if ((i == 1)) {
@@ -402,20 +402,20 @@ __gen_break_exit break_exit() {
 //     # continue out of a try in a loop after a suspension; the finally raises.
 //     for i in range(2):
 //         try:
-//             yield i
+//             yield i                                                            # -> S_RESUME_0
 //             continue
 //         finally:
 //             raise Err(bump())
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_continue_exit::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield i
         bool __fin_ran_10 = false;
         try {
             __fin_ran_10 = true;

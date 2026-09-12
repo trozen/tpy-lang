@@ -15,6 +15,7 @@ using ::tpystd::tplib::json::parser::JsonReader;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @error_return(JsonError)
 // def parse_bad() -> None:
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> parse_bad();
 // def main() -> None:

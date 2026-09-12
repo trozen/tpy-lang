@@ -65,8 +65,6 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// # Context 3: field assignment via constructor arg -- the Holder ctor
-// # param is the propagation surface.
 // class Holder:
 struct Holder {
     // r: Rc[Box[Box[Pet]]]

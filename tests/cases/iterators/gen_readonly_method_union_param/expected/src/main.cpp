@@ -41,18 +41,18 @@ void main() {
 }
 
 // def codes(self, a: Dog | Cat) -> Iterator[int]:
-//     yield self.tag
+//     yield self.tag                               # -> S_RESUME_0
 //     if isinstance(a, Dog):
-//         yield 1
+//         yield 1                                  # -> S_RESUME_1
 //     else:
-//         yield 2
+//         yield 2                                  # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Zoo_codes::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.tag;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.tag
         if (std::holds_alternative<const Dog*>(a)) {
             auto& __a = *std::get<const Dog*>(a);
             __state = S_RESUME_1;
@@ -63,12 +63,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Zoo_codes::__next__() {
             return ::tpy::BigInt(2);
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 1
         auto& __a = *std::get<const Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield 2
         auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;

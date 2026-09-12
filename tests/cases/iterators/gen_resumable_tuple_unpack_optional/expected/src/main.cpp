@@ -7,22 +7,22 @@ namespace tpyapp::main {
 // def gen(pairs: list[tuple[Optional[P], Optional[P]]]) -> Iterator[int32]:  # tpyc: ok
 //     for a, b in pairs:
 //         if a is not None:
-//             yield a.x
+//             yield a.x                                                                  # -> S_RESUME_0
 //         if b is not None:
-//             yield b.x
+//             yield b.x                                                                  # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __for_it_0.emplace((pairs).begin());
         __for_end_0.emplace((pairs).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield a.x
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield b.x
         __state = S_JOIN_2;
         continue;
     }

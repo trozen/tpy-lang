@@ -7,20 +7,20 @@ namespace tpyapp::main {
 // def steps(limit: int32) -> Iterator[int32]:
 //     c = Counter(limit)
 //     with c as guard:
-//         yield guard.n
+//         yield guard.n                        # -> S_RESUME_0
 //         guard.n += 1
-//         yield guard.n
+//         yield guard.n                        # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     try {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         c.emplace(Counter(limit));
         __with_ctx_0 = &((*c));
         guard.emplace((*__with_ctx_0).__enter__());
         __state = S_JOIN_1;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield guard.n
         try {
             (*guard).n = ::tpy::add_check<int32_t>((*guard).n, 1);
             __state = S_RESUME_1;
@@ -33,7 +33,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
             throw;
         }
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield guard.n
         bool __fin_ran_2 = false;
         try {
             __fin_ran_2 = true;

@@ -16,12 +16,6 @@ namespace tpystd::os::_types {
 struct stat_result;
 
 
-// # os.stat / lstat result. Field names match CPython so user code (and the cpy
-// # test phase, which sees the real os.stat_result) is portable. Native code
-// # returns a flat tuple (the @native helper cannot construct this TPy type); the
-// # wrapper unpacks it. Attribute access only -- unlike CPython's structseq, this
-// # does not support the sequence protocol (st[0], len, iteration); those are a
-// # clean compile error, not a silent divergence.
 // class stat_result:
 struct stat_result {
     // self.st_mode = mode

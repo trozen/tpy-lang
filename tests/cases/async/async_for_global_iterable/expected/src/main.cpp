@@ -7,18 +7,18 @@ Source* g{};
 
 // async def main_coro() -> None:
 //     total = 0
-//     async for x in g:
+//     async for x in g:           # -> S_RESUME_0
 //         total += x
 //     print(total)
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 0;
         __for_itr_0.emplace((*(g)).__aiter__());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: async for x in g:
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -82,7 +82,7 @@ void main() {
 ::tpystd::tpy::Poll<int32_t> __coro_AIter___anext__::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.n >= __self.limit)) {
             throw ::tpy::StopAsyncIteration{};
         }

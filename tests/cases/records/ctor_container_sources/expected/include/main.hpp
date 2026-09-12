@@ -53,9 +53,6 @@ struct Grid {
     // def fill_own(self, n: int32) -> None:
     void fill_own(int32_t n);
 
-    // # The mirror write COPIES where CPython aliases; sema warns on the line, so
-    // # the divergence is declared rather than silent. Nothing mutates `h.items`
-    // # afterwards, which is what keeps the printed output identical.
     // def fill_borrow(self, h: Holder) -> None:
     void fill_borrow(Holder& h);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";

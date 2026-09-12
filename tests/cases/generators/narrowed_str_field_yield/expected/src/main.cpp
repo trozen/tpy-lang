@@ -38,11 +38,11 @@ void main() {
 
 // def gen_field(self) -> Iterator[str]:
 //     if self.s is not None:
-//         yield self.s
-//     yield "end"
+//         yield self.s                   # -> S_RESUME_0
+//     yield "end"                        # -> S_RESUME_1
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_field::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         if ((__self.s.has_value())) {
             __state = S_RESUME_0;
             return (*__self.s);
@@ -51,11 +51,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_field::__next__()
             continue;
         }
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.s
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield "end"
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -6,19 +6,19 @@ namespace tpyapp::moda {
 
 
 // def local_walk() -> Iterator[int32]:
-//     yield 1
-//     yield 2
+//     yield 1                           # -> S_RESUME_0
+//     yield 2                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_local_walk::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 1;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
         return 2;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield 2
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -33,22 +33,23 @@ __gen_local_walk local_walk() {
     return __gen_local_walk();
 }
 
+// # free-function delegator, callee in this same (cycle-member) module
 // def free_delegator() -> Iterator[int32]:
-//     yield 0
+//     yield 0                               # -> S_RESUME_0
 //     for x in local_walk():  # tpyc: ok
-//         yield x
+//         yield x                           # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_free_delegator::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 0;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 0
         __for_src_0.emplace(local_walk());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -73,22 +74,23 @@ __gen_free_delegator free_delegator() {
     return __gen_free_delegator();
 }
 
+// # method callee, same module -- the receiver's owner type is a cycle-member type
 // def method_delegator(s: Src) -> Iterator[int32]:
-//     yield 20
+//     yield 20                                      # -> S_RESUME_0
 //     for x in s.steps():  # tpyc: ok
-//         yield x
+//         yield x                                   # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_method_delegator::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return 20;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield 20
         __for_src_0.emplace(s.steps());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }
@@ -126,19 +128,19 @@ int32_t ping(int32_t n) {
 }
 
 // def steps(self) -> Iterator[int32]:
-//     yield self.n
-//     yield self.n + 1
+//     yield self.n                     # -> S_RESUME_0
+//     yield self.n + 1                 # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Src_steps::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         __state = S_RESUME_0;
         return __self.n;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield self.n
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(__self.n, 1));
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield self.n + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

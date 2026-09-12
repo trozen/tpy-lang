@@ -17,9 +17,6 @@ std::string describe(const Outer& o);
 // def main() -> None:
 void main();
 
-// # A `None` field test nested inside a record sub-pattern -- exercises the
-// # `_record_field_conditions` recursion (the None check lands on the inner
-// # record's field, not the outer subject).
 // class Inner:
 struct Inner {
     // child: "str | None"

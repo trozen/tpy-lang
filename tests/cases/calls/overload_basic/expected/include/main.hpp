@@ -12,8 +12,10 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// @overload
 // def describe(animal: Dog) -> str: ...  # tpyc: ok
 std::string describe(const Dog& animal);
+// @overload
 // def describe(animal: Cat) -> str: ...  # tpyc: ok
 std::string describe(const Cat& animal);
 // def main() -> None:

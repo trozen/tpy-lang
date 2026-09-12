@@ -39,7 +39,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Method returning from self (index -1)
 // class Container:
 struct Container {
     // _items: list[Point]

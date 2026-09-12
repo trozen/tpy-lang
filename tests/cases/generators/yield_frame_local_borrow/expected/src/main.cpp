@@ -7,26 +7,26 @@ namespace tpyapp::main {
 // def counter() -> Iterator[list[int]]:
 //     buf: list[int] = []
 //     buf.append(1)
-//     yield buf                 # tpyc: ok
+//     yield buf                 # tpyc: ok              # -> S_RESUME_0
 //     # consumer appended below; the generator sees it
 //     print("resume sees:", buf)
 //     buf.append(99)
-//     yield buf                 # tpyc: ok
+//     yield buf                 # tpyc: ok              # -> S_RESUME_1
 std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __gen_counter::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         buf.emplace(std::vector<::tpy::BigInt>{});
         (*buf).push_back(1);
         __state = S_RESUME_0;
         return (*buf);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield buf                 # tpyc: ok
         std::cout << "resume sees:" << " " << ::tpy::ListPrinter((*buf)) << "\n";
         (*buf).push_back(99);
         __state = S_RESUME_1;
         return (*buf);
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield buf                 # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -64,6 +64,7 @@ void mutate_observe() {
     }
 }
 
+// # os.walk shape: yield a tuple of frame-local lists; consumer prunes in place.
 // def walk() -> Iterator[tuple[str, list[str], list[str]]]:
 //     dirs: list[str] = []
 //     dirs.append("a")
@@ -71,11 +72,11 @@ void mutate_observe() {
 //     dirs.append("b")
 //     files: list[str] = []
 //     files.append("f1")
-//     yield ("root", dirs, files)   # tpyc: ok
+//     yield ("root", dirs, files)   # tpyc: ok               # -> S_RESUME_0
 //     print("after prune, dirs =", dirs)
 std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>, ::tpy::StopIteration> __gen_walk::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         dirs.emplace(std::vector<std::string>{});
         (*dirs).push_back("a");
         (*dirs).push_back("skip");
@@ -85,7 +86,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
         __state = S_RESUME_0;
         return std::tuple<std::string, std::vector<std::string>*, std::vector<std::string>*>{"root", &((*dirs)), &((*files))};
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield ("root", dirs, files)   # tpyc: ok
         std::cout << "after prune, dirs =" << " " << ::tpy::ListPrinter((*dirs)) << "\n";
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -135,19 +136,23 @@ void walk_prune() {
     }
 }
 
+// # A frame-local yielded with no post-yield read is still hoisted (frame-resident),
+// # so the borrow is sound. This case asserts the compile-time hoisting/rooting
+// # path; the consumer is deliberately read-only (no observation point exists once
+// # the generator never touches buf again), so it is intentionally parity-blind.
 // def no_later_read() -> Iterator[list[int]]:
 //     buf: list[int] = []
 //     buf.append(7)
-//     yield buf                     # tpyc: ok
+//     yield buf                     # tpyc: ok  # -> S_RESUME_0
 std::expected<::tpy::val_or_ref<std::vector<::tpy::BigInt>>, ::tpy::StopIteration> __gen_no_later_read::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         buf.emplace(std::vector<::tpy::BigInt>{});
         (*buf).push_back(7);
         __state = S_RESUME_0;
         return (*buf);
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield buf                     # tpyc: ok
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

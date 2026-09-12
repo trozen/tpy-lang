@@ -16,8 +16,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # Regression: match on a pointer-variant union returned from a METHOD call binds
-// # the subject by value (the variant is a prvalue, not X&) -- was ill-formed C++.
 // class Dog:
 struct Dog {
     // name: str

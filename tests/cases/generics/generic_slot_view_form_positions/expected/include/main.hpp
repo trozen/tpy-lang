@@ -56,8 +56,10 @@ void cond_operand(std::string_view k, bool flag);
 void with_body(std::string_view k);
 // def try_finally(k: str) -> None:
 void try_finally(std::string_view k);
+// @error_return(MyErr)
 // def er_body(k: str) -> bool:
 std::expected<bool, MyErr> er_body(std::string_view k);
+// @error_return(MyErr)
 // def er_body_str(k: str) -> bool:
 std::expected<bool, MyErr> er_body_str(std::string_view k);
 // def bytes_positions(k: bytes) -> None:
@@ -93,8 +95,6 @@ inline std::ostream& operator<<(std::ostream& os, const Boxed<T>& obj) {
 // class OwnBoxed[T]:
 template<typename T>
 struct OwnBoxed {
-    // # INVERSE: an `Own[T]` slot spells the owned type by value already, so
-    // # `has_view_param_form` never reaches it.
     // v: T
     T v;
 

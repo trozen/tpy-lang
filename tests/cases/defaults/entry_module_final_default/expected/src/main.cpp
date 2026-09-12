@@ -20,8 +20,6 @@ void main() {
     std::cout << Holder(STEP, 1).n << "\n";
 }
 
-// STEP: Final[int64] = 42
-//
 // main()
 void __tpy_init() {
     static bool initialized = false;

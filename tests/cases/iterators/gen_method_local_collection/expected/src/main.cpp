@@ -25,22 +25,22 @@ void main() {
 // def items(self) -> Iterator[int32]:
 //     tmp = [self.a, self.b, self.a + self.b]
 //     for x in tmp:
-//         yield x
-//         yield x
+//         yield x                              # -> S_RESUME_0
+//         yield x                              # -> S_RESUME_1
 std::expected<int32_t, ::tpy::StopIteration> __gen_Series_items::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         tmp.emplace(std::array<int32_t, 3>{__self.a, __self.b, (::tpy::add_check<int32_t>(__self.a, __self.b))});
         __for_it_0.emplace(((*tmp)).begin());
         __for_end_0.emplace(((*tmp)).end());
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield x
         __state = S_RESUME_1;
         return x;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield x
         __state = S_JOIN_0;
         continue;
     }

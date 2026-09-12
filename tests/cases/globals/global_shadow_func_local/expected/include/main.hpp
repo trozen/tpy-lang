@@ -34,7 +34,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// # Record with method that has pointer-local `p` (tests method→global path)
 // class Picker:
 struct Picker {
     // val: int32

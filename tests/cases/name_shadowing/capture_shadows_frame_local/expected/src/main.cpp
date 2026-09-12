@@ -6,23 +6,23 @@ namespace tpyapp::main {
 
 // def run(n: int32) -> Iterator[int32]:
 //     total = 100
-//     yield total
+//     yield total                        # -> S_RESUME_0
 //
 //     match n:
 //         case 5 as total:
-//             yield total
+//             yield total                # -> S_RESUME_1
 //         case _:
-//             yield -1
+//             yield -1                   # -> S_RESUME_2
 //
-//     yield total + 1
+//     yield total + 1                    # -> S_RESUME_3
 std::expected<int32_t, ::tpy::StopIteration> __gen_run::__next__() {
     while (true) switch (__state) {
-    case S_INITIAL: {
+    case S_INITIAL: {  // entry
         total = 100;
         __state = S_RESUME_0;
         return total;
     }
-    case S_RESUME_0: {
+    case S_RESUME_0: {  // after: yield total
         auto& __match_subject_1 = n;
         switch (__match_subject_1) {
         case 5: {
@@ -40,15 +40,15 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_run::__next__() {
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_1: {
+    case S_RESUME_1: {  // after: yield total
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_2: {
+    case S_RESUME_2: {  // after: yield -1
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_3: {
+    case S_RESUME_3: {  // after: yield total + 1
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

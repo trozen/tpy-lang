@@ -24,11 +24,6 @@ inline constexpr std::string_view __name__ = "__main__";
 // def main() -> None:
 void main();
 
-// # The reference-type half of the block-local reassign fix: a record local first
-// # declared inside a loop body and rebound after it. Rebinding the local must
-// # leave the object an earlier alias captured alone (CPython rebinds the name,
-// # it does not overwrite the object), so each case mutates through one handle
-// # and reads back through the other.
 // class Point:
 struct Point {
     // x: int
