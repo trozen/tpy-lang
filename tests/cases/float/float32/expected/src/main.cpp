@@ -62,7 +62,7 @@ void test_arithmetic() {
     // print(a % b)
     std::cout << ::tpy::print_float(static_cast<double>((::tpy::fmod_f32(a, b)))) << "\n";
     // print(a ** b)
-    std::cout << ::tpy::print_float(static_cast<double>((std::pow(a, b)))) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>((std::pow(a, static_cast<float>(b))))) << "\n";
 }
 
 // def test_negation() -> None:

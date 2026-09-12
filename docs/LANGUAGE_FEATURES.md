@@ -3701,6 +3701,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Canonical member ordering (sorted by type name, `None`/`std::monostate` always first)
   - `A | None` with single non-None type still produces `Optional[T]` (backward compatible)
   - Member type compatibility: `T` assignable to `T | U`, `T | U` assignable to `T | U | V`
+  - Which member a value lands in never depends on the canonical order: a typed value takes the member equal to its type, else the fixed width it widens to, before `int` (`int32` at `int32 | int` stays `int32`, `int32` at `int64 | int` becomes `int64`). A literal renders bare and follows the C++ variant's non-narrowing rule: an `int` literal takes `int32` or `int64` when it fits, any narrower or unsigned width loses to `int` (`uint8 | int = 5` holds an `int`); a float literal is a double, so `float` wins over `float32`. Pinned by `union/fixed_int_literal_member` and the union sections of `float/float32_cpy_precision`.
   - `make_union()` normalizes: flattens nested unions, deduplicates, collapses single-type unions
   - **Protocol unions**: all non-None members must be static protocols (2+ protocols, optionally with None)
     - `Sized | Sequence[int]` -- required protocol union, generates template with disjunctive concept constraints

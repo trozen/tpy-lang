@@ -165,6 +165,54 @@ def _is_natural_union_member(actual: TpyType, a_info, member: TpyType) -> bool:
     return False
 
 
+def _union_member_order(actual: TpyType,
+                    members: 'tuple[TpyType, ...]') -> list[TpyType]:
+    """The members a value is tried against, most specific first.
+
+    Canonical member order is a spelling artifact (make_union sorts on
+    the display name), so it must not decide where a value lands. The
+    member equal to the value's type wins, then the natural (same-
+    family) members with a fixed width before BigInt, then the
+    category-crossing widenings; ties keep canonical order. A literal
+    renders bare and the C++ variant's converting constructor picks
+    its alternative, so its ranking mirrors that rule: an `int`
+    literal converts without narrowing only to a signed width of at
+    least 32 bits that holds it (int32, then int64), everything else
+    loses to BigInt; a float literal is a double, so `float` wins.
+    """
+    a_info = numeric_info(actual)
+    natural: list[TpyType] = []
+    widening: list[TpyType] = []
+    for member in members:
+        if _is_natural_union_member(actual, a_info, member):
+            natural.append(member)
+        else:
+            widening.append(member)
+    literal_value = actual.value if isinstance(actual, IntLiteralType) else None
+
+    def rank(member: TpyType) -> int:
+        if member == actual:
+            return 0
+        m_info = numeric_info(unwrap_readonly(member))
+        if literal_value is not None and m_info is not None and m_info.family == "int":
+            inner = unwrap_readonly(member)
+            if is_big_int_type(inner):
+                return 3
+            tr = int_traits_of(inner)
+            if (tr is None or not tr.signed or tr.bits < 32
+                    or not fixed_int_range_contains(inner, literal_value)):
+                return 4
+            return 1 if tr.bits == 32 else 2
+        if isinstance(actual, FloatLiteralType):
+            return 1 if unwrap_readonly(member) == FLOAT else 2
+        if m_info is not None and m_info.family == "int" and is_big_int_type(unwrap_readonly(member)):
+            return 2
+        return 1
+
+    natural.sort(key=rank)
+    return natural + widening
+
+
 class CompatError:
     """Type compatibility check failure (returned by _check_compat, not raised)."""
     __slots__ = ('message', 'loc')
@@ -748,16 +796,7 @@ class TypeCompatibility:
                 return self._check_compat(
                     actual_unwrapped, expected, context, loc, source_expr,
                     is_return, coercion_ctx, target_is_storage_form, sink_owns)
-            a_info = numeric_info(actual_unwrapped)
-            for member in union_members:
-                if not _is_natural_union_member(actual_unwrapped, a_info, member):
-                    continue
-                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
-                if not isinstance(result, CompatError):
-                    return result
-            for member in union_members:
-                if _is_natural_union_member(actual_unwrapped, a_info, member):
-                    continue
+            for member in _union_member_order(actual_unwrapped, union_members):
                 result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if not isinstance(result, CompatError):
                     return result

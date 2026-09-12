@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// # free function: literal fits the fixed member
+// # free function: an int literal takes int32, the non-narrowing width
 // def fits() -> None:
 void fits() {
     // u: int32 | int = 5
@@ -29,7 +29,7 @@ void fits() {
     }
 }
 
-// # free function: literal outside the fixed member's range falls to int
+// # free function: a literal outside the fixed member's range falls to int
 // def overflows() -> None:
 void overflows() {
     // u: uint8 | int = -1
@@ -49,6 +49,184 @@ void overflows() {
         auto& __case_1 = std::get<0>(__match_subject_1);
         // print("overflows int")
         std::cout << "overflows int" << "\n";
+        break;
+    }
+    }
+}
+
+// # free function: a literal that fits a narrow unsigned width still falls to
+// # int, since int -> uint8 is a narrowing conversion for the C++ variant
+// def narrow_fits() -> None:
+void narrow_fits() {
+    // u: uint8 | int = 5
+    ::tpy::Union<::tpy::BigInt, uint8_t> u = 5;
+    // match u:
+    auto& __match_subject_1 = u;
+    switch (__match_subject_1.index()) {
+    // case uint8():
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject_1);
+        // print("narrow-fits uint8")
+        std::cout << "narrow-fits uint8" << "\n";
+        break;
+    }
+    // case int():
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject_1);
+        // print("narrow-fits int")
+        std::cout << "narrow-fits int" << "\n";
+        break;
+    }
+    }
+}
+
+// # free function: narrower but signed (int16) loses the same way
+// def narrow_signed() -> None:
+void narrow_signed() {
+    // u: int16 | int = 5
+    ::tpy::Union<::tpy::BigInt, int16_t> u = 5;
+    // match u:
+    auto& __match_subject_1 = u;
+    switch (__match_subject_1.index()) {
+    // case int16():
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject_1);
+        // print("narrow-signed int16")
+        std::cout << "narrow-signed int16" << "\n";
+        break;
+    }
+    // case int():
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject_1);
+        // print("narrow-signed int")
+        std::cout << "narrow-signed int" << "\n";
+        break;
+    }
+    }
+}
+
+// # free function: wide but unsigned (uint32) loses the same way
+// def wide_unsigned() -> None:
+void wide_unsigned() {
+    // u: uint32 | int = 5
+    ::tpy::Union<::tpy::BigInt, uint32_t> u = 5;
+    // match u:
+    auto& __match_subject_1 = u;
+    switch (__match_subject_1.index()) {
+    // case uint32():
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject_1);
+        // print("wide-unsigned uint32")
+        std::cout << "wide-unsigned uint32" << "\n";
+        break;
+    }
+    // case int():
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject_1);
+        // print("wide-unsigned int")
+        std::cout << "wide-unsigned int" << "\n";
+        break;
+    }
+    }
+}
+
+// # free function: a literal at a wider signed width takes the width
+// def wide_fits() -> None:
+void wide_fits() {
+    // u: int64 | int = 5
+    ::tpy::Union<::tpy::BigInt, int64_t> u = 5;
+    // match u:
+    auto& __match_subject_1 = u;
+    switch (__match_subject_1.index()) {
+    // case int64():
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject_1);
+        // print("wide-fits int64")
+        std::cout << "wide-fits int64" << "\n";
+        break;
+    }
+    // case int():
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject_1);
+        // print("wide-fits int")
+        std::cout << "wide-fits int" << "\n";
+        break;
+    }
+    }
+}
+
+// # parameter slot: a typed value lands in the member equal to its type
+// def exact_param(u: int32 | int) -> None:
+void exact_param(const ::tpy::Union<::tpy::BigInt, int32_t>& u) {
+    // match u:
+    auto& __match_subject_1 = u;
+    switch (__match_subject_1.index()) {
+    // case int32():
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject_1);
+        // print("exact-param int32")
+        std::cout << "exact-param int32" << "\n";
+        break;
+    }
+    // case int():
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject_1);
+        // print("exact-param int")
+        std::cout << "exact-param int" << "\n";
+        break;
+    }
+    }
+}
+
+// # parameter slot: a narrower typed value widens to the fixed member, not int
+// def widen_param(u: int64 | int) -> None:
+void widen_param(const ::tpy::Union<::tpy::BigInt, int64_t>& u) {
+    // match u:
+    auto& __match_subject_1 = u;
+    switch (__match_subject_1.index()) {
+    // case int64():
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject_1);
+        // print("widen-param int64")
+        std::cout << "widen-param int64" << "\n";
+        break;
+    }
+    // case int():
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject_1);
+        // print("widen-param int")
+        std::cout << "widen-param int" << "\n";
+        break;
+    }
+    }
+}
+
+// # return slot: same rule for the returned value
+// def exact_return(v: int32) -> int32 | int:
+::tpy::Union<::tpy::BigInt, int32_t> exact_return(int32_t v) {
+    // return v
+    return v;
+}
+
+// def check_return() -> None:
+void check_return() {
+    // r = exact_return(8)
+    ::tpy::Union<::tpy::BigInt, int32_t> r = exact_return(8);
+    // match r:
+    auto& __match_subject_1 = r;
+    switch (__match_subject_1.index()) {
+    // case int32():
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject_1);
+        // print("exact-return int32")
+        std::cout << "exact-return int32" << "\n";
+        break;
+    }
+    // case int():
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject_1);
+        // print("exact-return int")
+        std::cout << "exact-return int" << "\n";
         break;
     }
     }
@@ -82,6 +260,23 @@ void main() {
     fits();
     // overflows()
     overflows();
+    // narrow_fits()
+    narrow_fits();
+    // narrow_signed()
+    narrow_signed();
+    // wide_unsigned()
+    wide_unsigned();
+    // wide_fits()
+    wide_fits();
+    // x: int32 = 7
+    int32_t x = 7;
+    // exact_param(x)
+    ::tpy::Union<::tpy::BigInt, int32_t> __tmp_1 = x;
+    exact_param(__tmp_1);
+    // widen_param(x)
+    widen_param(static_cast<::tpy::Union<::tpy::BigInt, int64_t>>(x));
+    // check_return()
+    check_return();
     // field_slot()
     field_slot();
 }

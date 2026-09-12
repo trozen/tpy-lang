@@ -8,6 +8,7 @@ allowing TurboPython source files to run in CPython and enabling IDE support.
 from __future__ import annotations
 from typing import Generic, TypeVar, Callable, Protocol as _Protocol, runtime_checkable as _runtime_checkable
 import copy as _copy_module
+import struct as _struct
 import inspect as _inspect
 import collections.abc as _collections_abc
 import typing as _typing
@@ -146,7 +147,40 @@ uint64 = _make_fixed_int_type("uint64", 64, False)
 # Float types
 # ---------------------------------------------------------------------------
 
-float32 = float
+def _to_f32(value):
+    try:
+        return _struct.unpack("f", _struct.pack("f", value))[0]
+    except OverflowError:
+        return float("inf") if value > 0 else float("-inf")
+
+
+class float32(float):
+    """Single-precision float: every value and every arithmetic result is
+    rounded through IEEE binary32, as the C++ `float` is. An operand that is
+    a plain `float` is rounded too, so a literal like `f + 0.5` matches TPy,
+    where the literal takes float32; a `float`-typed VARIABLE operand yields
+    a double in TPy but a float32 here (BUGS.md#cpy-float32-double-precision).
+    repr/str stay float's, printing the widened double exactly as the C++
+    runtime does."""
+
+    def __new__(cls, value=0.0):
+        return super().__new__(cls, _to_f32(float(value)))
+
+
+def _f32_wrap(value):
+    return value if value is NotImplemented else float32(value)
+
+
+for _name in ("add", "radd", "sub", "rsub", "mul", "rmul", "truediv", "rtruediv",
+              "floordiv", "rfloordiv", "mod", "rmod", "pow", "rpow"):
+    _dunder = f"__{_name}__"
+    setattr(float32, _dunder,
+            (lambda op: lambda self, other: _f32_wrap(op(self, other)))(getattr(float, _dunder)))
+for _name in ("neg", "pos", "abs"):
+    _dunder = f"__{_name}__"
+    setattr(float32, _dunder, (lambda op: lambda self: float32(op(self)))(getattr(float, _dunder)))
+del _name, _dunder
+
 float64 = float
 
 

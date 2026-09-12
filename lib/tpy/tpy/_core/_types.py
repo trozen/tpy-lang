@@ -347,7 +347,8 @@ class float32(Comparable, Equatable):
     def __mod__(self, other: AnyFixedInt) -> float32: ...
 
     @dispatch
-    @cpp_template("std::pow({self}, {0})")
+    # The cast keeps a coerced int literal on the float overload: std::pow(float, int) is double.
+    @cpp_template("std::pow({self}, static_cast<float>({0}))")
     def __pow__(self, other: float32) -> float32: ...
     @dispatch
     @cpp_template("std::pow(static_cast<double>({self}), {0})")
@@ -445,7 +446,7 @@ class float32(Comparable, Equatable):
     def __rmod__(self, other: AnyFixedInt) -> float32: ...
 
     @dispatch
-    @cpp_template("std::pow({0}, {self})")
+    @cpp_template("std::pow(static_cast<float>({0}), {self})")
     def __rpow__(self, other: float32) -> float32: ...
     @dispatch
     @cpp_template("std::pow({0}, static_cast<double>({self}))")

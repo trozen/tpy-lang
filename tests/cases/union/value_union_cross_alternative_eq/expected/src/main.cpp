@@ -526,26 +526,27 @@ void main() {
     ::tpy::Union<bool, int32_t> __tmp_6 = i32;
     std::cout << "family bool|int32" << " " << ::tpy::print_bool(u_bool_i32(__tmp_5, __tmp_6)) << " " << ::tpy::print_bool(t_bool_i32(flag, i32)) << "\n";
     // print("family uint8|int32", u_u8_i32(u8, i32), t_u8_i32(u8, i32))
-    ::tpy::Union<int32_t, uint8_t> __tmp_7 = i32;
-    std::cout << "family uint8|int32" << " " << ::tpy::print_bool(u_u8_i32(static_cast<::tpy::Union<int32_t, uint8_t>>(u8), __tmp_7)) << " " << ::tpy::print_bool(t_u8_i32(u8, i32)) << "\n";
+    ::tpy::Union<int32_t, uint8_t> __tmp_7 = u8;
+    ::tpy::Union<int32_t, uint8_t> __tmp_8 = i32;
+    std::cout << "family uint8|int32" << " " << ::tpy::print_bool(u_u8_i32(__tmp_7, __tmp_8)) << " " << ::tpy::print_bool(t_u8_i32(u8, i32)) << "\n";
     // print("family uint32|int32", u_u32_i32(u32, i32), t_u32_i32(u32, i32))
-    ::tpy::Union<int32_t, uint32_t> __tmp_8 = u32;
-    ::tpy::Union<int32_t, uint32_t> __tmp_9 = i32;
-    std::cout << "family uint32|int32" << " " << ::tpy::print_bool(u_u32_i32(__tmp_8, __tmp_9)) << " " << ::tpy::print_bool(t_u32_i32(u32, i32)) << "\n";
+    ::tpy::Union<int32_t, uint32_t> __tmp_9 = u32;
+    ::tpy::Union<int32_t, uint32_t> __tmp_10 = i32;
+    std::cout << "family uint32|int32" << " " << ::tpy::print_bool(u_u32_i32(__tmp_9, __tmp_10)) << " " << ::tpy::print_bool(t_u32_i32(u32, i32)) << "\n";
     // print("family int|float64", u_int_f64(big, f64), t_int_f64(big, f64))
-    ::tpy::Union<double, ::tpy::BigInt> __tmp_10 = big;
-    ::tpy::Union<double, ::tpy::BigInt> __tmp_11 = f64;
-    std::cout << "family int|float64" << " " << ::tpy::print_bool(u_int_f64(__tmp_10, __tmp_11)) << " " << ::tpy::print_bool(t_int_f64(big, f64)) << "\n";
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_11 = big;
+    ::tpy::Union<double, ::tpy::BigInt> __tmp_12 = f64;
+    std::cout << "family int|float64" << " " << ::tpy::print_bool(u_int_f64(__tmp_11, __tmp_12)) << " " << ::tpy::print_bool(t_int_f64(big, f64)) << "\n";
     // print("ne", u_ne(x, y))
     std::cout << "ne" << " " << ::tpy::print_bool(u_ne(x, y)) << "\n";
     // print("readonly", u_readonly(x, y))
     std::cout << "readonly" << " " << ::tpy::print_bool(u_readonly(x, y)) << "\n";
     // print("same alternative", u_i32_f64(i32, i32), u_ne(i32, i32))
-    ::tpy::Union<double, int32_t> __tmp_12 = i32;
     ::tpy::Union<double, int32_t> __tmp_13 = i32;
     ::tpy::Union<double, int32_t> __tmp_14 = i32;
     ::tpy::Union<double, int32_t> __tmp_15 = i32;
-    std::cout << "same alternative" << " " << ::tpy::print_bool(u_i32_f64(__tmp_12, __tmp_13)) << " " << ::tpy::print_bool(u_ne(__tmp_14, __tmp_15)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_16 = i32;
+    std::cout << "same alternative" << " " << ::tpy::print_bool(u_i32_f64(__tmp_13, __tmp_14)) << " " << ::tpy::print_bool(u_ne(__tmp_15, __tmp_16)) << "\n";
     // xs: list[int32 | float64] = [1]
     std::vector<::tpy::Union<double, int32_t>> xs = {1};
     // ys: list[int32 | float64] = [1.0]
@@ -627,50 +628,50 @@ void main() {
     // print("record alias", shape_tree_eq(st1, st2), shape_tree_eq(st1, st3))
     std::cout << "record alias" << " " << ::tpy::print_bool(shape_tree_eq(st1, st2)) << " " << ::tpy::print_bool(shape_tree_eq(st1, st3)) << "\n";
     // print("lt", u_lt(f64, i32), u_lt(i32, 2.5))
-    ::tpy::Union<double, int32_t> __tmp_16 = f64;
-    ::tpy::Union<double, int32_t> __tmp_17 = i32;
+    ::tpy::Union<double, int32_t> __tmp_17 = f64;
     ::tpy::Union<double, int32_t> __tmp_18 = i32;
-    ::tpy::Union<double, int32_t> __tmp_19 = 2.5;
-    std::cout << "lt" << " " << ::tpy::print_bool(u_lt(__tmp_16, __tmp_17)) << " " << ::tpy::print_bool(u_lt(__tmp_18, __tmp_19)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_19 = i32;
+    ::tpy::Union<double, int32_t> __tmp_20 = 2.5;
+    std::cout << "lt" << " " << ::tpy::print_bool(u_lt(__tmp_17, __tmp_18)) << " " << ::tpy::print_bool(u_lt(__tmp_19, __tmp_20)) << "\n";
     // print("le", u_le(i32, f64))
-    ::tpy::Union<double, int32_t> __tmp_20 = i32;
-    ::tpy::Union<double, int32_t> __tmp_21 = f64;
-    std::cout << "le" << " " << ::tpy::print_bool(u_le(__tmp_20, __tmp_21)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_21 = i32;
+    ::tpy::Union<double, int32_t> __tmp_22 = f64;
+    std::cout << "le" << " " << ::tpy::print_bool(u_le(__tmp_21, __tmp_22)) << "\n";
     // print("gt", u_gt(i32, 0.5))
-    ::tpy::Union<double, int32_t> __tmp_22 = i32;
-    ::tpy::Union<double, int32_t> __tmp_23 = 0.5;
-    std::cout << "gt" << " " << ::tpy::print_bool(u_gt(__tmp_22, __tmp_23)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_23 = i32;
+    ::tpy::Union<double, int32_t> __tmp_24 = 0.5;
+    std::cout << "gt" << " " << ::tpy::print_bool(u_gt(__tmp_23, __tmp_24)) << "\n";
     // print("ge", u_ge(i32, f64))
-    ::tpy::Union<double, int32_t> __tmp_24 = i32;
-    ::tpy::Union<double, int32_t> __tmp_25 = f64;
-    std::cout << "ge" << " " << ::tpy::print_bool(u_ge(__tmp_24, __tmp_25)) << "\n";
+    ::tpy::Union<double, int32_t> __tmp_25 = i32;
+    ::tpy::Union<double, int32_t> __tmp_26 = f64;
+    std::cout << "ge" << " " << ::tpy::print_bool(u_ge(__tmp_25, __tmp_26)) << "\n";
     // nan = float("nan")
     double nan = std::numeric_limits<double>::quiet_NaN();
     // nan_u: int32 | float64 = nan
     ::tpy::Union<double, int32_t> nan_u = nan;
     // print("nan le", u_le(nan_u, f64), t_le(nan, f64))
-    ::tpy::Union<double, int32_t> __tmp_26 = f64;
-    std::cout << "nan le" << " " << ::tpy::print_bool(u_le(nan_u, __tmp_26)) << " " << ::tpy::print_bool(t_le(nan, f64)) << "\n";
-    // print("nan ge", u_ge(nan_u, f64), t_ge(nan, f64))
     ::tpy::Union<double, int32_t> __tmp_27 = f64;
-    std::cout << "nan ge" << " " << ::tpy::print_bool(u_ge(nan_u, __tmp_27)) << " " << ::tpy::print_bool(t_ge(nan, f64)) << "\n";
+    std::cout << "nan le" << " " << ::tpy::print_bool(u_le(nan_u, __tmp_27)) << " " << ::tpy::print_bool(t_le(nan, f64)) << "\n";
+    // print("nan ge", u_ge(nan_u, f64), t_ge(nan, f64))
+    ::tpy::Union<double, int32_t> __tmp_28 = f64;
+    std::cout << "nan ge" << " " << ::tpy::print_bool(u_ge(nan_u, __tmp_28)) << " " << ::tpy::print_bool(t_ge(nan, f64)) << "\n";
     // n: int32 | str = 1
     ::tpy::Union<int32_t, std::string> n = 1;
     // s: int32 | str = "a"
     ::tpy::Union<int32_t, std::string> s = "a";
     // print("value record lt", value_record_lt(Fixed(1), Fixed(2)))
-    ::tpy::Union<Fixed, Zone> __tmp_28 = Fixed(1);
-    ::tpy::Union<Fixed, Zone> __tmp_29 = Fixed(2);
-    std::cout << "value record lt" << " " << value_record_lt(__tmp_28, __tmp_29) << "\n";
+    ::tpy::Union<Fixed, Zone> __tmp_29 = Fixed(1);
+    ::tpy::Union<Fixed, Zone> __tmp_30 = Fixed(2);
+    std::cout << "value record lt" << " " << value_record_lt(__tmp_29, __tmp_30) << "\n";
     // print("custom_ne", dunder_ne(Tagged(1), Tagged(1)),
     // dunder_ne(Tagged(1), Tagged(2)), dunder_ne(Tagged(1), Marked(1)))
-    ::tpy::Union<Marked, Tagged> __tmp_30 = Tagged(1);
     ::tpy::Union<Marked, Tagged> __tmp_31 = Tagged(1);
     ::tpy::Union<Marked, Tagged> __tmp_32 = Tagged(1);
-    ::tpy::Union<Marked, Tagged> __tmp_33 = Tagged(2);
-    ::tpy::Union<Marked, Tagged> __tmp_34 = Tagged(1);
-    ::tpy::Union<Marked, Tagged> __tmp_35 = Marked(1);
-    std::cout << "custom_ne" << " " << ::tpy::print_bool(dunder_ne(__tmp_30, __tmp_31)) << " " << ::tpy::print_bool(dunder_ne(__tmp_32, __tmp_33)) << " " << ::tpy::print_bool(dunder_ne(__tmp_34, __tmp_35)) << "\n";
+    ::tpy::Union<Marked, Tagged> __tmp_33 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_34 = Tagged(2);
+    ::tpy::Union<Marked, Tagged> __tmp_35 = Tagged(1);
+    ::tpy::Union<Marked, Tagged> __tmp_36 = Marked(1);
+    std::cout << "custom_ne" << " " << ::tpy::print_bool(dunder_ne(__tmp_31, __tmp_32)) << " " << ::tpy::print_bool(dunder_ne(__tmp_33, __tmp_34)) << " " << ::tpy::print_bool(dunder_ne(__tmp_35, __tmp_36)) << "\n";
     // print("unorderable", str_int_cmp(n, s, 0), str_int_cmp(n, s, 1),
     // str_int_cmp(n, s, 2), str_int_cmp(n, s, 3))
     std::cout << "unorderable" << " " << str_int_cmp(n, s, 0) << " " << str_int_cmp(n, s, 1) << " " << str_int_cmp(n, s, 2) << " " << str_int_cmp(n, s, 3) << "\n";

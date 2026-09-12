@@ -13,10 +13,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void fits();
 void overflows();
+void narrow_fits();
+void narrow_signed();
+void wide_unsigned();
+void wide_fits();
+void exact_param(const ::tpy::Union<::tpy::BigInt, int32_t>& u);
+void widen_param(const ::tpy::Union<::tpy::BigInt, int64_t>& u);
+::tpy::Union<::tpy::BigInt, int32_t> exact_return(int32_t v);
+void check_return();
 void field_slot();
 void main();
 
-// # field slot: same rule for a literal stored through a record field
+// # field slot: a literal stored through a record field (a typed VALUE written
+// # to a union field is a lowering reject today, assign.field_write_shape)
 // class Holder:
 struct Holder {
     // v: int32 | int

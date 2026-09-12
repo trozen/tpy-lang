@@ -1,3 +1,10 @@
 fits int32
 overflows int
+narrow-fits int
+narrow-signed int
+wide-unsigned int
+wide-fits int64
+exact-param int32
+widen-param int64
+exact-return int32
 field int32
